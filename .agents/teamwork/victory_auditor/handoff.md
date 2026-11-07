@@ -1,132 +1,89 @@
-# Victory Auditor Handoff Report: Flexible Sistem Blok
-
-```
-=== VICTORY AUDIT REPORT ===
-
-VERDICT: VICTORY CONFIRMED
-
-PHASE A — TIMELINE:
-  Result: PASS
-  Anomalies: none
-
-PHASE B — INTEGRITY CHECK:
-  Result: PASS
-  Details: Zero facades, zero hardcoded test outputs, zero test weakening. Genuine schema migration, AST-verified pure evaluation algorithms in src/lib/workflow.ts, live CRUD with RLS in PostgreSQL, and full schedule masking and journal integration across teacher components.
-
-PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/sistem_blok_verification.test.ts && npm test && npx tsc --noEmit && npm run build
-  Your results:
-    - tests/sistem_blok_verification.test.ts: 204/204 PASSED, 0 FAILED (Exit Code 0)
-    - tests/challenger_m2_matching_masking_stress.test.ts: 144/144 PASSED, 0 FAILED (Exit Code 0)
-    - tests/challenger_m2_2_mixed_schedule_journal.test.ts: 52/52 PASSED, 0 FAILED (Exit Code 0)
-    - tests/challenger_m2_fix_2_mixed_fulfillment.test.ts: 25/25 PASSED, 0 FAILED (Exit Code 0)
-    - tests/adversarial_sistem_blok_challenger.test.ts: 22/22 PASSED, 0 FAILED (Exit Code 0)
-    - npx tsc --noEmit: 0 errors (Exit Code 0)
-    - npm test: 46/46 suites PASSED, 0 FAILED (Exit Code 0)
-    - npm run build: Next.js 16.3.4 (Turbopack) compiled cleanly in 2.2s, 13/13 static routes prerendered (Exit Code 0)
-  Claimed results: 204/204 primary assertions, 46/46 npm test suites, 0 tsc errors, clean build, clean git status on main.
-  Match: YES
-```
-
----
+# Independent Victory Audit Report: Role Tata Usaha ('tata_usaha') Implementation
 
 ## 1. Observation
+1. **Target Deliverable & Scope (ORIGINAL_REQUEST.md)**:
+   - R1: Sistem mendukung role `tata_usaha` pada autentikasi, otorisasi, dan manajemen pengguna aplikasi.
+   - R2: Role Tata Usaha memiliki akses operasional hanya untuk mengelola Data Siswa dan Data Guru, serta tidak memiliki akses ke Bank Dokumen / Persuratan, pengaturan konfigurasi sistem, maupun akun superadmin.
+   - R3: Pendekatan /ponytail (solusi paling ringkas, tepat guna, zero duplicate components, zero new external dependencies).
+   - R4: Preservasi fitur dan logika eksisting dengan zero regression untuk role superadmin, admin, guru, dinas_pendidikan, siswa.
 
-1. **Timeline & Git Provenance (Phase A)**:
-   - Git commit history exhibits a realistic, iterative ~2-hour development cycle across Milestones M1 through M4:
-     - `6ec8d24`: `feat(sistem-blok): implement flexible target scopes, time ranges, and admin configuration UI (M1)`
-     - `caba008`, `46fbb29`, `cd79a63`: M1 adversarial challenger tests & reviewer reports
-     - `7a8ab33`: `feat(sistem-blok): implement workflow engine, granular schedule masking, and mixed journal workflow (M2)`
-     - `c7ebe8f`: M2 mixed schedule verification harness
-     - `d3712a6`: `fix(workflow): patch teacher matching empty string bug, 0-schedule blockInfo binding, and mixed schedule journal fulfillment` (M2 remediation)
-     - `4e64f76`: M2 remediation approval
-     - `ec63216`: `test(sistem-blok): expand automated verification test suite to cover all target levels, time ranges, and isolation matrix` (M3)
-     - `7c4d880`: M3 adversarial verification harness
-     - `e32888c`: `feat(sistem-blok): finalize flexible block system with full regression and production build verification` (M4)
-     - `77f59f2`: `test(challenger): complete M4 empirical stress verification and render APPROVE verdict`
-   - Git branch tracking: `HEAD` is `77f59f2`, strictly up to date with `origin/main`. Zero uncommitted source code changes.
+2. **Phase A — Timeline & Provenance Audit**:
+   - Initial user task dispatched at `2026-11-07T17:05:30Z`.
+   - Iterative commit sequence:
+     - `ec6a0eb` (`2026-11-08 01:43:28 +0800` / `17:43:28 UTC`): `feat(rbac): implement role Tata Usaha with isolated operational scope for student and teacher master data`.
+     - `486ed6b` (`2026-11-08 01:54:31 +0800` / `17:54:31 UTC`): `test(tu): add empirical adversarial stress test harness for tata_usaha RBAC and menu isolation`.
+   - Both commits are pushed and up to date with `origin/main` (`git log -n 1 origin/main` -> `486ed6b`).
+   - Clean workspace tree, zero orphaned or pre-populated result/output artifacts.
 
-2. **Integrity Forensics & Code Analysis (Phase B)**:
-   - **Requirement R1 (Target Scopes)**:
-     - SQL migration `supabase/migrations/20261102_flexible_sistem_blok.sql` adds `tipe_target` (checked for `'sekolah' | 'angkatan' | 'kelas' | 'guru'`), `target_angkatan`, `target_kelas`, `target_guru_id`, `target_guru_nama`.
-     - Types defined in `src/types/database.ts` (`TargetBlokType`, `SistemBlok`, `SistemBlokInsert`, `SistemBlokUpdate`).
-     - `src/components/SistemBlokView.tsx` implements segmented target buttons, dynamic contextual inputs, required target validations, and clean persistence via Supabase.
-   - **Requirement R2 (Date & Time Ranges)**:
-     - Supports `tanggal_mulai`, `tanggal_selesai`, `is_full_day`, `jam_mulai`, and `jam_selesai`.
-     - Defaults to full-day (`is_full_day: true`) when bounded hours are not specified.
-     - `isTimeRangeOverlap` in `src/lib/workflow.ts` accurately parses `HH:mm` / `HH.mm`, supports single-digit hours, enforces half-open intervals (`07:30-09:00` does not overlap `09:00-11:00`), and handles single-minute overlaps.
-   - **Requirement R3 (Granular Schedule Masking & Journal Workflows)**:
-     - Pure evaluation engine `evaluateScheduleBlock` in `src/lib/workflow.ts` tests target matching and time overlap.
-     - Cohort evaluation `isKelasInAngkatan` performs bidirectional Arabic-Roman numeral matching (`10` / `X`, `11` / `XI`, `12` / `XII`, `7-9` / `VII-IX`) while isolating numbered substrings (e.g. `100 RPL` is not masked by `10`).
-     - `HomeViewGuru.tsx` evaluates schedule items dynamically, rendering amber cards (`Kegiatan Blok`) for blocked classes and active regular cards for unblocked classes.
-     - `GuruJurnal.tsx` renders an interactive mode toggle between `Jurnal KBM` and `Jurnal Kegiatan` for teachers with mixed schedules.
-     - Invariant enforcement in `src/lib/workflow.ts`: checkout requires both regular KBM journals and block activity journals (`unblockedFulfilled && blockedFulfilled`).
-   - **Anti-Cheating Forensics**:
-     - 0 dummy / hardcoded test results.
-     - 0 facade methods (`return false` / `return true`).
-     - Live database CRUD tests in `tests/sistem_blok_verification.test.ts` test real Supabase roundtrips with RLS session token and clean up in `finally` blocks.
-     - All 85 pre-existing assertions preserved intact.
+3. **Phase B — Forensic Integrity & Cheating / Facade Detection**:
+   - Inspection of modified codebase:
+     - `src/types/user.ts` & `src/types/database.ts`: Extended `UserRole` and `RoleUser` to include `'tata_usaha'` and `'Tata Usaha'`.
+     - `src/lib/navigation.ts`:
+       - `VIEW_ALIASES` & `SIDEBAR_TOUR_ALIASES`: Mapped `'view-data-siswa'` and `'view-data-guru'` to `'view-admin-data'` with respective tabs.
+       - `getConsolidatedMenuItems`: For `normRole === 'tatausaha'`, returns strictly 2 menu items (`Data Siswa`, `Data Guru`).
+       - `evaluateTabRBAC`: Explicitly denies `view-dokumen`, system config (`view-admin-config`), superadmin modules, teacher modules, and all non-Siswa/Guru master tabs.
+     - `src/lib/supabaseClient.ts`:
+       - `isAdminRole('tata_usaha')` strictly returns `false`.
+       - `checkMasterDataMutationGuard`: Filters mutative methods (`POST`, `PUT`, `PATCH`, `DELETE`). For `tata_usaha`, permits mutations only on `data_siswa`, `siswa`, `data_guru`, `guru`, while returning HTTP 403 Forbidden with PostgREST code 42501 for all other 12 master data tables.
+     - `src/components/AdminDataView.tsx`:
+       - Reuses existing view without code duplication (/ponytail).
+       - Restricts `visibleTabs` to `Data_Siswa` and `Data_Guru` for `isTataUsaha`.
+       - Automatic fallback from unauthorized initial tabs.
+       - Restricts CRUD mutations via `canModify = isAdmin || (isTataUsaha && (activeTab === 'Data_Siswa' || activeTab === 'Data_Guru'))`.
+     - `src/components/AdminPenggunaView.tsx`:
+       - Adds "+ Akun TU" creation modal and delete handler without affecting teacher synchronization.
+     - `src/components/AppScreen.tsx` & `ClaySidebar.tsx`:
+       - Enforces route guard and renders "Akses Terblokir" card on `view-dokumen`.
+       - Renders role badge "Tata Usaha" with icon `fa-id-card-clip`.
+       - Preserves verbatim `{/* AST preservation: data-tour={item.id} */}`.
+     - `package.json`: 0 new external dependencies added.
+     - Zero hardcoded test outputs or mock test bypassing.
+     - Zero existing tests modified or weakened.
 
-3. **Independent Empirical Test Execution (Phase C)**:
-   - Primary test suite: `npx tsx tests/sistem_blok_verification.test.ts` -> 204/204 assertions passed, 0 failures.
-   - Stress test suite: `npx tsx tests/challenger_m2_matching_masking_stress.test.ts` -> 144/144 passed.
-   - Mixed schedule suite: `npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts` -> 52/52 passed.
-   - Mixed fulfillment suite: `npx tsx tests/challenger_m2_fix_2_mixed_fulfillment.test.ts` -> 25/25 passed.
-   - Challenger suite: `npx tsx tests/adversarial_sistem_blok_challenger.test.ts` -> 22/22 passed.
-   - Static typecheck: `npx tsc --noEmit` -> 0 errors.
-   - Full regression suite: `npm test` -> 46/46 suites passed, exit code 0.
-   - Production build: `npm run build` -> Next.js Turbopack build succeeded, 13/13 static pages prerendered, 0 errors.
-
----
+4. **Phase C — Independent Test Execution**:
+   - `npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts`: 81/81 assertions passed (0 failed).
+   - `npx tsx tests/adversarial_tu_stress_challenger_1.test.ts`: 172/172 assertions passed (0 failed).
+   - `npx tsx tests/adversarial_tu_postgrest_ast_challenger_2.test.ts`: 457/457 assertions passed (0 failed).
+   - `npx tsc --noEmit`: Exited with code 0 (0 TypeScript errors).
+   - `npm run build`: Exited with code 0 (Next.js 16.3.4 Turbopack compiled 13/13 routes successfully).
+   - `npm test`: Exited with code 0 (All 69 test suites executed and passed 100%).
 
 ## 2. Logic Chain
-
-1. The user requested flexible target options (`sekolah`, `angkatan`, `kelas`, `guru`), optional time boundaries with full-day default, and granular schedule masking with block journal integration.
-2. The team's changes were inspected file-by-file and found to contain authentic, non-facade domain logic across database schemas, types, workflow algorithms, and UI components.
-3. Remediation was observed where an earlier string matching vulnerability and mixed schedule bypass was discovered by challengers and surgically patched.
-4. Independent execution of the canonical test suite and all adversarial suites produced 100% passing results without a single error, matching the team's claimed score of 204 assertions.
-5. Full repository regression (`npm test`), static type checking (`npx tsc --noEmit`), and production build (`npm run build`) all executed cleanly with exit code 0.
-6. The repository on `main` is completely synchronized with `origin/main`.
-7. Therefore, the team's completion claim is verified and genuine.
-
----
+1. The original task in `ORIGINAL_REQUEST.md` required adding role `tata_usaha` to SIPJAM with operational access limited strictly to Data Siswa and Data Guru, blocking Bank Dokumen / Persuratan, system configuration, and superadmin views, while preserving all existing roles without regression using the /ponytail philosophy.
+2. Forensic code analysis proved that the implementation was achieved without adding new components or dependencies, by reusing `AdminDataView` through dynamic tab filtering and scoping CRUD authorization via `canModify`.
+3. Defense-in-depth protection was independently verified across 3 distinct boundaries:
+   - Boundary 1 (UI Navigation): Menu isolation in `getConsolidatedMenuItems` produces strictly 2 menu items (`Data Siswa`, `Data Guru`).
+   - Boundary 2 (Route / Tab RBAC): `evaluateTabRBAC` and `AppScreen.tsx` reject access to `view-dokumen`, system config, and other master tables with clear error messages and fallback.
+   - Boundary 3 (Data / PostgREST Layer): `checkMasterDataMutationGuard` intercepts and rejects mutations to all other 12 master tables with HTTP 403 Forbidden, while allowing mutations on `data_siswa` and `data_guru`.
+4. Independent execution of the full regression suite (`npm test`), adversarial stress harnesses (629 assertions across 2 challenger suites), TypeScript type checker, and Next.js Turbopack build all completed with 0 errors and 100% pass rates.
+5. All acceptance criteria are genuinely satisfied.
 
 ## 3. Caveats
-
-- Hardware webcam video capture in `GuruPresensi` is mocked during headless CLI testing; however, this is standard practice and does not affect the business logic of schedule masking or journal workflows.
-- Cross-midnight block intervals (e.g. 23:00 to 02:00) are not applicable to daytime school KBM schedules and remain out of scope as designed.
-
----
+- No caveats. All requirements R1 through R4 and all acceptance criteria are fully verified and backed by independent empirical execution.
 
 ## 4. Conclusion
-
-The Project Orchestrator's claim of project completion is **VALID and GENUINE**. All requirements R1, R2, and R3 from `ORIGINAL_REQUEST.md` have been fully implemented, verified with comprehensive automated tests, and confirmed without facades or shortcuts. The final verdict is **VICTORY CONFIRMED**.
-
----
+- **VERDICT: VICTORY CONFIRMED**.
+- All requirements from `ORIGINAL_REQUEST.md` are genuinely implemented and satisfied.
+- The implementation adheres strictly to the /ponytail philosophy with zero unnecessary dependencies, zero code duplication, and zero regressions.
 
 ## 5. Verification Method
-
-To independently reproduce this verification:
+To independently reproduce and verify this audit:
 ```bash
-# 1. Primary verification suite (204 assertions)
-npx tsx tests/sistem_blok_verification.test.ts
+# 1. Verify Role Tata Usaha RBAC and Isolation
+npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts
 
-# 2. Adversarial challenger stress suites (243 assertions)
-npx tsx tests/challenger_m2_matching_masking_stress.test.ts
-npx tsx tests/challenger_m2_2_mixed_schedule_journal.test.ts
-npx tsx tests/challenger_m2_fix_2_mixed_fulfillment.test.ts
-npx tsx tests/adversarial_sistem_blok_challenger.test.ts
+# 2. Run Adversarial Stress Test Suite 1 (172 assertions)
+npx tsx tests/adversarial_tu_stress_challenger_1.test.ts
 
-# 3. Static type safety
+# 3. Run Adversarial PostgREST & AST Invariant Suite 2 (457 assertions)
+npx tsx tests/adversarial_tu_postgrest_ast_challenger_2.test.ts
+
+# 4. Verify TypeScript Compilation
 npx tsc --noEmit
 
-# 4. Full repository regression (46 suites)
-npm test
-
-# 5. Production build
+# 5. Verify Next.js Production Build
 npm run build
 
-# 6. Git synchronization check
-git status
-git log origin/main..main
+# 6. Run Complete Regression Test Suite
+npm test
 ```

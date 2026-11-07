@@ -1,39 +1,32 @@
-# Sentinel Handoff Report — Flexible Sistem Blok Implementation
+# Sentinel Final Handoff Report: Role Tata Usaha & Hak Akses Minimalis (/ponytail)
 
 ## Observation
-The user requested full flexibility for the Sipjam "Sistem Blok" feature:
-1. Target scope options per rule: Keseluruhan Sekolah, per Angkatan, per Kelas, or per Guru.
-2. Date range (`tanggal_mulai` to `tanggal_selesai`) and optional bounded time range (`jam_mulai` to `jam_selesai`), defaulting to full day if unspecified.
-3. Schedule masking & journal workflows: affected schedules are marked/masked as block activities while unimpacted classes/teachers remain regular KBM; impacted teachers fill block journals.
-4. Test suite expansion: `tests/sistem_blok_verification.test.ts` expanded and passing with 0 failures.
-
-The Project Orchestrator executed a 4-milestone plan with 39 agent dispatches covering architectural survey, implementation, adversarial reviews, empirical stress testing, remediation cycles, and master verification. The independent Victory Auditor conducted a 3-phase audit (timeline analysis, forensic anti-cheating, and independent empirical test runs) and delivered a formal verdict of **VICTORY CONFIRMED**.
+- The project orchestrator and implementation team delivered the `tata_usaha` role per the requirements in `ORIGINAL_REQUEST.md`.
+- Commits `ec6a0eb` and `486ed6b` were created and pushed directly to `origin main` adhering strictly to git workflow requirements.
+- The independent post-victory audit executed by `teamwork_victory_auditor` confirmed:
+  - Phase A (Timeline): Sequential, genuine git history with zero fabricated artifacts.
+  - Phase B (Integrity): Authentic implementation with zero shortcuts or facade implementations. Navigation menu is strictly isolated to 2 items (Data Siswa & Data Guru). RBAC route and tab evaluators block persuratan/dokumen, system configuration, and superadmin views. PostgREST mutation guard rejects mutations on 12 non-permitted master tables with HTTP 403 Forbidden. Reused `AdminDataView.tsx` with zero new dependencies or component bloat (/ponytail).
+  - Phase C (Independent Tests): 100% pass rate across 69 test suites in `npm test`, 0 TypeScript compiler errors (`tsc --noEmit`), and successful Next.js Turbopack production build (`npm run build`).
 
 ## Logic Chain
-1. **Interview & Routing**: Conducted task interview; received user approval for the task prompt; routed to General Path (`teamwork_orchestrator`).
-2. **Architecture & Decomposition**: Orchestrator surveyed codebase via 3 explorers and partitioned work into 4 sequential milestones:
-   - Milestone 1: Database Schema, TypeScript Types & Admin Configuration UI (`SistemBlokView.tsx`).
-   - Milestone 2: Workflow Engine (`workflow.ts`), Granular Schedule Masking & Journal Workflows (`HomeViewGuru.tsx`, `GuruJurnal.tsx`).
-   - Milestone 3: Automated Verification Test Suite Expansion (`tests/sistem_blok_verification.test.ts`).
-   - Milestone 4: Final Regression, Build, & Integrity Verification.
-3. **Rigorous Quality Gates**:
-   - Milestone 1 passed gate with unanimous approval (2 reviewers, 2 challengers, 1 auditor).
-   - Milestone 2 initially identified 2 subtle edge cases (empty-string teacher matching and mixed-schedule journal fulfillment); the orchestrator held the gate, formulated surgical fixes via 3 explorers, applied patches via remediation worker, and cleared the re-verification gate cleanly.
-   - Milestone 3 expanded `tests/sistem_blok_verification.test.ts` from 85 to 204 assertions, passing 100%.
-   - Milestone 4 passed all 46 test suites across the repository, 0 TypeScript errors, and successful Next.js Turbopack production build.
-4. **Independent Victory Audit**: Spawned `teamwork_victory_auditor` with zero shared context from the implementation swarm. The auditor independently executed all test commands and verified zero cheats, full requirement coverage, and clean git status on `origin/main`.
+- Initial user request prompted task interview; caller approved the prompt with strict requirements (R1-R4) emphasizing /ponytail approach and zero regressions.
+- General route was selected (`teamwork_orchestrator`).
+- Orchestrator orchestrated 3 Explorers, 1 Worker, 2 Reviewers, 2 Challengers, and 1 Forensic Auditor.
+- Quality gate passed unanimously. Orchestrator claimed victory.
+- Sentinel enforced mandatory independent post-victory audit via `teamwork_victory_auditor`.
+- Victory Auditor returned `VERDICT: VICTORY CONFIRMED`.
 
 ## Caveats
-- Database migration script `supabase/migrations/20261102_flexible_sistem_blok.sql` is committed and prepared for Supabase deployment; in local development and test environments, live schema synchronization and fallback column handling ensure immediate functional compatibility.
-- Time range comparisons rely on 24-hour `HH:mm` format with half-open boundary intervals (`isTimeRangeOverlap`).
+- Role `tata_usaha` is strictly scoped to Data Siswa and Data Guru operational management; attempts to modify other master data tables or access document templates are blocked at both client and PostgREST interceptor levels.
+- Production deployment requires standard database role/table RLS policies matching application layer permissions if direct DB queries bypass the client.
 
 ## Conclusion
-All requirements and acceptance criteria in `ORIGINAL_REQUEST.md` have been completely fulfilled, verified, and pushed to `main`. The run is complete.
+- The task is fully completed, verified, and audited. All acceptance criteria are met without regressions.
 
 ## Verification Method
-- Independent empirical execution of:
-  - `npx tsx tests/sistem_blok_verification.test.ts`: **204/204 PASSED (0 failures)**
-  - `npm test`: **46/46 test suites PASSED (0 failures)**
-  - `npx tsc --noEmit`: **0 errors**
-  - `npm run build`: **Next.js 16.3.4 (Turbopack) build succeeded with 0 errors**
-  - `git status`: **Clean working tree; committed (e32888c) and pushed to `origin/main`**
+- `npm test`: 69 test suites passed.
+- `npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts`: 81/81 passed.
+- `npx tsx tests/adversarial_tu_stress_challenger_1.test.ts`: 172/172 passed.
+- `npx tsx tests/adversarial_tu_postgrest_ast_challenger_2.test.ts`: 457/457 passed.
+- `npx tsc --noEmit`: 0 errors.
+- `npm run build`: Production build succeeded.

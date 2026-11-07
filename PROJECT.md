@@ -27,18 +27,18 @@
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: Role Tata Usaha Type & Session Support | Tipe data `UserRole` dan `RoleUser` mendukung `tata_usaha`, login berhasil mengidentifikasi role TU dan tersimpan di sesi | M1 | R1 | IN_PROGRESS |
-| 2 | F2: Navigasi Sidebar Khusus TU (Data Siswa & Guru) | Menu sidebar TU hanya menampilkan akses ke Data Siswa dan Data Guru (tanpa Dokumen, Pengaturan, Superadmin) | M1 | R2 | IN_PROGRESS |
-| 3 | F3: Pembatasan RBAC & Blokir Akses Terlarang | Penolakan akses ke Bank Dokumen / Persuratan, Konfigurasi Sistem, dan Akun Superadmin via `evaluateTabRBAC` dan `handleNavigation` | M1 | R2 | IN_PROGRESS |
-| 4 | F4: Penyaringan Tab & CRUD Master Data Siswa & Guru | `AdminDataView` menyaring tab hanya untuk Siswa dan Guru bagi TU serta mengizinkan operasi CRUD operasional | M1 | R2, R3 | IN_PROGRESS |
-| 5 | F5: Guard Intersepsi Mutasi PostgREST Supabase | `checkMasterDataMutationGuard` mengizinkan mutasi data_siswa & data_guru untuk TU, menolak 403 tabel master lainnya | M1 | R2, R3 | IN_PROGRESS |
-| 6 | F6: Pengelolaan Akun Pengguna TU pada Panel Admin | Panel pengguna admin mendukung penambahan dan pengelolaan akun TU secara ringkas tanpa merusak sinkronisasi guru | M1 | R1, R3 | IN_PROGRESS |
-| 7 | F7: Preservasi Fitur Eksisting & Automated Verification Suite | Zero regression pada seluruh role lain, penambahan automated test suite khusus TU di `npm test` | M1 | R4 | IN_PROGRESS |
+| 1 | F1: Role Tata Usaha Type & Session Support | Tipe data `UserRole` dan `RoleUser` mendukung `tata_usaha`, login berhasil mengidentifikasi role TU dan tersimpan di sesi | M1 | R1 | DONE |
+| 2 | F2: Navigasi Sidebar Khusus TU (Data Siswa & Guru) | Menu sidebar TU hanya menampilkan akses ke Data Siswa dan Data Guru (tanpa Dokumen, Pengaturan, Superadmin) | M1 | R2 | DONE |
+| 3 | F3: Pembatasan RBAC & Blokir Akses Terlarang | Penolakan akses ke Bank Dokumen / Persuratan, Konfigurasi Sistem, dan Akun Superadmin via `evaluateTabRBAC` dan `handleNavigation` | M1 | R2 | DONE |
+| 4 | F4: Penyaringan Tab & CRUD Master Data Siswa & Guru | `AdminDataView` menyaring tab hanya untuk Siswa dan Guru bagi TU serta mengizinkan operasi CRUD operasional | M1 | R2, R3 | DONE |
+| 5 | F5: Guard Intersepsi Mutasi PostgREST Supabase | `checkMasterDataMutationGuard` mengizinkan mutasi data_siswa & data_guru untuk TU, menolak 403 tabel master lainnya | M1 | R2, R3 | DONE |
+| 6 | F6: Pengelolaan Akun Pengguna TU pada Panel Admin | Panel pengguna admin mendukung penambahan dan pengelolaan akun TU secara ringkas tanpa merusak sinkronisasi guru | M1 | R1, R3 | DONE |
+| 7 | F7: Preservasi Fitur Eksisting & Automated Verification Suite | Zero regression pada seluruh role lain, penambahan automated test suite khusus TU di `npm test` | M1 | R4 | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Implementasi Role Tata Usaha, Navigasi, RBAC Guard, dan Verifikasi Otomatis (/ponytail) | `src/types/user.ts`, `src/types/database.ts`, `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/AdminDataView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/supabaseClient.ts`, `tests/tata_usaha_role_rbac_and_isolation.test.ts`, `package.json` | none | IN_PROGRESS |
+| M1 | Implementasi Role Tata Usaha, Navigasi, RBAC Guard, dan Verifikasi Otomatis (/ponytail) | `src/types/user.ts`, `src/types/database.ts`, `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/AdminDataView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/supabaseClient.ts`, `tests/tata_usaha_role_rbac_and_isolation.test.ts`, `package.json` | none | DONE |
 
 ## Interface Contracts
 
