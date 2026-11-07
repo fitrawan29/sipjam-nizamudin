@@ -98,3 +98,18 @@ Gate Result: **FAIL** (REQUEST_CHANGES on DEFECT-01: Data_Mapel kelompok column 
 | auditor_tu_1 | teamwork_auditor | CLEAN (0 violations, real logic) | handoff.md |
 
 Gate Result: **PASS** (Unanimous Approval, 100% Adversarial Stress-Tests Passed, Clean Forensic Integrity Audit)
+
+
+---
+
+## Gate — Milestone 2: Penyesuaian Role Tata Usaha, Read-Only Asesmen & Rapor, Pemisahan Rekap Admin, dan Pengelolaan Akun TU (/ponytail)
+| Agent | Role | Verdict | Source |
+|-------|------|---------|--------|
+| worker_tu_nav | teamwork_worker | DONE (commit 9a68fcd) | handoff.md |
+| reviewer_tu_nav_1 | teamwork_reviewer | APPROVE | handoff.md |
+| reviewer_tu_nav_2 | teamwork_reviewer | APPROVE | handoff.md |
+| challenger_tu_nav_1 | teamwork_challenger | IN_PROGRESS | pending |
+| challenger_tu_nav_2 | teamwork_challenger | IN_PROGRESS | pending |
+| auditor_tu_nav_1 | teamwork_auditor | IN_PROGRESS | pending |
+
+Gate Result: **IN_PROGRESS**
