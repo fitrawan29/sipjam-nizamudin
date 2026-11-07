@@ -119,6 +119,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     }
     return '2024/2025';
   });
+  // Milestone 3 (R4) - Upload Progress & Diagnostic State
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadStage, setUploadStage] = useState<string>('');
+  const [uploadBatchInfo, setUploadBatchInfo] = useState<{
+    currentBatch: number;
+    totalBatches: number;
+    processedRows: number;
+    totalRows: number;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadedRowsCacheRef = useRef<Record<string, any[]>>({});
   const ITEMS_PER_PAGE = 20;
@@ -204,16 +215,28 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   }, [activeTab, user?.sekolah_id]);
 
   const tabs = [
-    { id: 'Data_Siswa', label: 'Siswa', table: 'data_siswa' },
-    { id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas' },
-    { id: 'Data_Mapel', label: 'Mapel', table: 'data_mapel' },
-    { id: 'Data_Guru', label: 'Guru', table: 'data_guru' },
-    { id: 'Jadwal_Pelajaran', label: 'Jadwal', table: 'jadwal_pelajaran' },
-    { id: 'Wali_Kelas', label: 'Wali Kelas', table: 'wali_kelas' },
-    { id: 'Pengguna', label: 'Pengguna', table: 'users' },
-    { id: 'Kalender_Pendidikan', label: 'Kalender', table: 'kalender_pendidikan' },
-    { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok' },
+    { id: 'Data_Siswa', label: 'Siswa', table: 'data_siswa', step: 1, icon: 'fa-user-graduate', desc: 'Identitas Siswa' },
+    { id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas', step: 2, icon: 'fa-chalkboard', desc: 'Rombel & Tingkat' },
+    { id: 'Data_Mapel', label: 'Mapel', table: 'data_mapel', step: 3, icon: 'fa-book', desc: 'Mata Pelajaran' },
+    { id: 'Data_Guru', label: 'Guru', table: 'data_guru', step: 4, icon: 'fa-chalkboard-user', desc: 'Data Pendidik' },
+    { id: 'Jadwal_Pelajaran', label: 'Jadwal', table: 'jadwal_pelajaran', step: 5, icon: 'fa-calendar-days', desc: 'Jadwal KBM' },
+    { id: 'Wali_Kelas', label: 'Wali Kelas', table: 'wali_kelas', step: 6, icon: 'fa-user-tie', desc: 'Penugasan Wali' },
+    { id: 'Pengguna', label: 'Pengguna', table: 'users', step: 7, icon: 'fa-users-gear', desc: 'Akun Login' },
+    { id: 'Kalender_Pendidikan', label: 'Kalender', table: 'kalender_pendidikan', step: 8, icon: 'fa-calendar-check', desc: 'Hari Efektif & Libur' },
+    { id: 'sistem_blok', label: 'Periode Sistem Blok', table: 'sistem_blok', step: 9, icon: 'fa-cubes', desc: 'Rotasi Blok KBM', optional: true },
   ];
+
+  const handleSwitchTab = (tabId: string) => {
+    setActiveTab(tabId);
+    setSelectedStudentIds([]);
+    setSearch('');
+    setFilter1('ALL');
+    setFilter2('ALL');
+    setPage(0);
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      window.history.replaceState(null, '', `?view=view-admin-data&tab=${tabId}`);
+    }
+  };
 
   // Sync data_guru.mata_pelajaran & guru_mapel from jadwal_pelajaran + data_mapel
   const syncGuruMapelFromJadwal = useCallback(async (jadwalRows?: any[]) => {
@@ -497,8 +520,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       },
       Data_Mapel: {
         filename: 'Template_Data_Mapel.csv',
-        headers: ['id', 'nama_mata_pelajaran', 'kategori'],
-        sample: ['MP-01', 'Matematika Wajib', 'X Merdeka']
+        headers: ['id', 'nama_mata_pelajaran', 'kategori', 'kelompok'],
+        sample: ['MP-01', 'Matematika Wajib', 'Umum', 'Wajib']
       },
       Kalender_Pendidikan: {
         filename: 'Template_Kalender_Pendidikan.csv',
@@ -514,6 +537,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         filename: 'Template_Wali_Kelas.csv',
         headers: ['kelas', 'nama_guru', 'nip', 'tahun_ajaran'],
         sample: ['X Merdeka', 'Fitri Aprilia Dotulong', '198501012010011001', configuredTahunAjaran || '2024/2025']
+      },
+      Pengguna: {
+        filename: 'Template_Pengguna.csv',
+        headers: ['username', 'nama', 'role', 'password'],
+        sample: ['dewisartika', 'Dewi Sartika, S.Pd.', 'Guru', 'guru27']
+      },
+      sistem_blok: {
+        filename: 'Template_Periode_Blok.csv',
+        headers: ['nama_kegiatan', 'tanggal_mulai', 'tanggal_selesai', 'tipe_target', 'target_kelas', 'deskripsi'],
+        sample: ['Penilaian Akhir Semester', '2026-12-01', '2026-12-10', 'sekolah', '', 'Ujian Semester Ganjil']
       }
     };
 
@@ -544,6 +577,87 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     URL.revokeObjectURL(url);
   };
 
+  const escapeHtml = (str?: string) => {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  const showMasterDataDiagnosticModal = (err: any) => {
+    const detail = err?.detail || (typeof err === 'object' && err?.message ? {
+      message: err.message,
+      row: err.message.match(/Baris (\d+)/)?.[1],
+      column: err.message.match(/Kolom "([^"]+)"/)?.[1] || err.message.match(/kolom '([^']+)'/)?.[1],
+      remediation: 'Periksa kembali berkas CSV Anda sesuai format template dan pastikan seluruh relasi master data sudah terdaftar.'
+    } : { message: String(err) });
+
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Mengunggah Master Data',
+      html: `
+        <div class="text-left text-xs space-y-3 text-gray-700 dark:text-gray-300">
+          <div class="flex items-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/80 rounded-xl">
+            <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/60 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+              <i class="fa-solid fa-triangle-exclamation text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-red-700 dark:text-red-300 text-xs">Kesalahan Validasi Unggahan</h4>
+              <p class="text-[11px] text-red-600 dark:text-red-400 font-mono">
+                ${detail.code ? `Kode Error: ${detail.code}` : 'Format/Relasi Data Tidak Valid'}
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            ${detail.row ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Lokasi Baris</span>
+                <span class="font-bold text-red-600 dark:text-red-400 font-mono">Baris ${detail.row}</span>
+              </div>
+            ` : ''}
+            ${detail.column ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Kolom Terkait</span>
+                <span class="font-bold text-purple-600 dark:text-purple-400 font-mono">${escapeHtml(detail.column)}</span>
+              </div>
+            ` : ''}
+            ${detail.receivedValue ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Nilai Diterima</span>
+                <span class="font-semibold text-rose-600 dark:text-rose-400 font-mono text-[10.5px]">${escapeHtml(detail.receivedValue)}</span>
+              </div>
+            ` : ''}
+            ${detail.referenceTable ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Tabel Referensi</span>
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400 font-mono text-[10.5px]">${escapeHtml(detail.referenceTable)}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="p-3 bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl font-mono text-[11px] text-red-800 dark:text-red-300 break-words">
+            ${escapeHtml(detail.message)}
+          </div>
+
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+            <div class="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-[11px]">
+              <i class="fa-solid fa-lightbulb text-amber-500"></i> Saran Perbaikan:
+            </div>
+            <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+              ${escapeHtml(detail.remediation || 'Periksa berkas CSV Anda sesuai panduan template resmi, pastikan seluruh data master terkait telah dibuat.')}
+            </p>
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Tutup & Perbaiki',
+      confirmButtonColor: '#7C3AED'
+    });
+  };
+
   // CSV File Parser & Batch Upsert
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -564,6 +678,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       return;
     }
 
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadStage('Mempersiapkan berkas CSV...');
+    setUploadBatchInfo(null);
     setLoading(true);
     try {
       const text = await file.text();
@@ -597,7 +715,24 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
 
       const activeObj = tabs.find(t => t.id === targetTab) || tabObj;
-      const { count, rows } = await importMasterDataFromCsv(supabase, text, targetTable, user);
+      const { count, rows } = await importMasterDataFromCsv(
+        supabase,
+        text,
+        targetTable,
+        user,
+        (p) => {
+          setUploadProgress(p.percentage);
+          setUploadStage(p.stage);
+          if (p.totalBatches > 0) {
+            setUploadBatchInfo({
+              currentBatch: p.currentBatch,
+              totalBatches: p.totalBatches,
+              processedRows: p.processedRows,
+              totalRows: p.totalRows
+            });
+          }
+        }
+      );
 
       // If class data was uploaded, sync to localStorage for immediate AdminKelasView hydration
       if (targetTab === 'Data_Kelas' && Array.isArray(rows) && rows.length > 0) {
@@ -702,7 +837,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         'error'
       );
 
-      if (errorMsg.includes('Baris ') || errorMsg.includes('Kolom ') || errorMsg.includes('wajib') || errorMsg.includes('dilarang')) {
+      showMasterDataDiagnosticModal(err);
+      if (false) {
         Swal.fire({
           icon: 'error',
           title: 'Validasi CSV Gagal',
@@ -725,6 +861,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       }
     } finally {
       setLoading(false);
+      setTimeout(() => {
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadStage('');
+        setUploadBatchInfo(null);
+      }, 600);
       if (fileInputRef.current) fileInputRef.current.value = '';
       if (e?.target) e.target.value = '';
     }
@@ -1370,16 +1512,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     }
   };
 
-  // Helper to escape HTML entities when rendering strings in HTML templates
-  const escapeHtml = (str: any): string => {
-    if (str === null || str === undefined) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
-  };
+
 
   // Single Student Card Download as PNG
   const handleDownloadStudentCard = (student: any) => {
@@ -2321,29 +2454,166 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               <i className="fa-solid fa-database text-purple-500 dark:text-purple-400"></i> Master Data
             </h2>
             
+            {/* PANDUAN ALUR PENGINPUTAN MASTER DATA (VISUAL WORKFLOW STEPPER) */}
+            <div className="clay-card p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-sm bg-[#FAF7F2]/90 dark:bg-gray-800/80 mb-4 overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs sm:text-sm font-bold shadow-sm shrink-0">
+                    <i className="fa-solid fa-diagram-project"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                      <span>Panduan Alur Penginputan Master Data</span>
+                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        9 Tahap Terstruktur
+                      </span>
+                    </h3>
+                    <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">
+                      Urutan penginputan &amp; dependensi data master untuk menjamin integritas relasi antar-tabel.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-[10px] text-gray-500 dark:text-gray-400 hidden lg:flex items-center gap-1.5 bg-white/70 dark:bg-gray-900/50 px-2.5 py-1 rounded-xl border border-gray-200/80 dark:border-gray-700">
+                  <i className="fa-solid fa-hand-pointer text-purple-500"></i>
+                  <span>Klik tahap untuk berpindah menu</span>
+                </div>
+              </div>
+
+              {/* Stepper Pipeline */}
+              {(() => {
+                const currentNormTab = normalizeAdminTab(activeTab);
+                const activeIndex = tabs.findIndex(t => normalizeAdminTab(t.id) === currentNormTab);
+
+                return (
+                  <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scroll pb-1.5 pt-0.5 max-w-full">
+                    {tabs.map((step, idx) => {
+                      const isActive = idx === activeIndex;
+                      const isPast = activeIndex !== -1 && idx < activeIndex;
+
+                      return (
+                        <div key={step.id} className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleSwitchTab(step.id)}
+                            className={`group relative flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-2xl text-left transition-all duration-200 shrink-0 border cursor-pointer ${
+                              isActive
+                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-md shadow-purple-500/25 ring-2 ring-purple-400/50 ring-offset-1 dark:ring-offset-gray-900'
+                                : isPast
+                                ? 'bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-200 border-purple-200/80 dark:border-purple-900/50 hover:bg-purple-50/60 dark:hover:bg-purple-900/30'
+                                : 'bg-white/70 dark:bg-gray-800/70 text-gray-600 dark:text-gray-400 border-gray-200/80 dark:border-gray-700/80 hover:bg-gray-50 dark:hover:bg-gray-700/40 hover:border-gray-300'
+                            }`}
+                            title={`Tahap ${step.step}: ${step.label} (${step.desc})`}
+                          >
+                            {/* Step Circle */}
+                            <div
+                              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-extrabold shrink-0 transition-colors ${
+                                isActive
+                                  ? 'bg-white text-purple-700 shadow-sm'
+                                  : isPast
+                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
+                                  : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                              }`}
+                            >
+                              {isPast ? <i className="fa-solid fa-check text-[9px] sm:text-[10px]"></i> : step.step}
+                            </div>
+
+                            {/* Step Info */}
+                            <div className="flex flex-col pr-0.5">
+                              <div className="flex items-center gap-1.5">
+                                <i className={`fa-solid ${step.icon} text-[11px] ${
+                                  isActive ? 'text-purple-100' : isPast ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-purple-500'
+                                }`}></i>
+                                <span className={`text-xs font-bold whitespace-nowrap ${
+                                  isActive ? 'text-white' : 'text-gray-800 dark:text-gray-200'
+                                }`}>
+                                  {step.label}
+                                </span>
+                                {step.optional && (
+                                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-semibold ${
+                                    isActive
+                                      ? 'bg-white/20 text-white'
+                                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                  }`}>
+                                    Opsional
+                                  </span>
+                                )}
+                              </div>
+                              <span className={`text-[9px] sm:text-[10px] whitespace-nowrap ${
+                                isActive ? 'text-purple-100' : 'text-gray-400 dark:text-gray-500'
+                              }`}>
+                                {step.desc}
+                              </span>
+                            </div>
+                          </button>
+
+                          {/* Connecting Chevron between steps */}
+                          {idx < tabs.length - 1 && (
+                            <i className="fa-solid fa-chevron-right text-[9px] text-gray-300 dark:text-gray-600 shrink-0"></i>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
             {/* TABS */}
             <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1 max-w-full">
-                {tabs.map(tab => (
-                  <button 
-                    key={tab.id}
-                    type="button" 
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      setSelectedStudentIds([]);
-                      setSearch('');
-                      setFilter1('ALL');
-                      setFilter2('ALL');
-                      setPage(0);
-                      if (typeof window !== 'undefined' && window.history?.replaceState) {
-                        window.history.replaceState(null, '', `?view=view-admin-data&tab=${tab.id}`);
-                      }
-                    }} 
-                    className={`btn-click master-tab-btn px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 border transition ${activeTab === tab.id ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' : 'border-gray-200 text-gray-700 dark:text-gray-300 dark:border-gray-700'}`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                {tabs.map(tab => {
+                  const isTabActive = normalizeAdminTab(activeTab) === normalizeAdminTab(tab.id);
+                  return (
+                    <button 
+                      key={tab.id}
+                      type="button" 
+                      onClick={() => handleSwitchTab(tab.id)} 
+                      className={`btn-click master-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 border transition flex items-center gap-1.5 ${
+                        isTabActive 
+                          ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' 
+                          : 'border-gray-200 text-gray-700 dark:text-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                      }`}
+                    >
+                      <i className={`fa-solid ${tab.icon} text-[11px]`}></i>
+                      <span>{tab.label}</span>
+                      {tab.optional && (
+                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(Opsional)</span>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
+
+            {/* Animated Upload Progress Bar */}
+            {isUploading && (
+              <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-sm animate-fade-in">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <i className="fa-solid fa-circle-notch fa-spin text-purple-600 dark:text-purple-400 text-sm"></i>
+                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                      {uploadStage || 'Sedang memproses unggahan...'}
+                    </span>
+                  </div>
+                  <span className="text-xs font-black text-purple-700 dark:text-purple-300 font-mono">
+                    {uploadProgress}%
+                  </span>
+                </div>
+
+                {/* Progress Bar Container */}
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner p-0.5">
+                  <div
+                    className="bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
+                    style={{ width: `${Math.min(100, Math.max(0, uploadProgress))}%` }}
+                  />
+                </div>
+
+                {uploadBatchInfo && uploadBatchInfo.totalRows > 0 && (
+                  <div className="flex justify-between items-center mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                    <span>Batch {uploadBatchInfo.currentBatch} dari {uploadBatchInfo.totalBatches}</span>
+                    <span>{uploadBatchInfo.processedRows} dari {uploadBatchInfo.totalRows} baris</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {(activeTab === 'sistem_blok' || activeTab === 'blok') ? (
               <div className="mt-2">

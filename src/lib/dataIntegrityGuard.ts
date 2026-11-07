@@ -13,6 +13,37 @@ export interface ValidationResult {
   message?: string;
 }
 
+export interface UploadProgressInfo {
+  stage: string;
+  percentage: number;
+  currentBatch: number;
+  totalBatches: number;
+  processedRows: number;
+  totalRows: number;
+}
+
+export type UploadProgressCallback = (progress: UploadProgressInfo) => void;
+
+export interface MasterDataErrorDetail {
+  row?: number;
+  column?: string;
+  receivedValue?: string;
+  expectedFormat?: string;
+  referenceTable?: string;
+  code?: string;
+  message: string;
+  remediation: string;
+}
+
+export class MasterDataValidationError extends Error {
+  detail: MasterDataErrorDetail;
+  constructor(detail: MasterDataErrorDetail) {
+    super(detail.message);
+    this.name = 'MasterDataValidationError';
+    this.detail = detail;
+  }
+}
+
 /**
  * Shared storage cache helper for Master Data across components (sessionStorage with localStorage fallback)
  */
@@ -628,6 +659,8 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
   const isSiswa = normTable === 'data_siswa' || normTable === 'siswa';
   const isMapel = normTable === 'data_mapel' || normTable === 'mapel';
   const isGuru = normTable === 'data_guru' || normTable === 'guru';
+  const isUsers = normTable === 'users' || normTable === 'pengguna';
+  const isBlok = normTable === 'sistem_blok' || normTable === 'periode_blok';
 
   return rawHeaders.map(h => {
     const clean = h
@@ -689,6 +722,8 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
       if (isSiswa) return 'nama_siswa';
       if (isKelas) return 'nama_kelas';
       if (isMapel) return 'nama_mata_pelajaran';
+      if (isUsers) return 'nama';
+      if (isBlok) return 'nama_kegiatan';
       return 'nama_guru';
     }
 
@@ -747,7 +782,7 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
     }
 
     // 9. Calendar / Event aliases
-    if (clean === 'deskripsi' || clean === 'agenda' || clean === 'kegiatan' || clean === 'uraian' || clean === 'acara') {
+    if (!isBlok && (clean === 'deskripsi' || clean === 'agenda' || clean === 'kegiatan' || clean === 'uraian' || clean === 'acara')) {
       return 'keterangan';
     }
     if (clean === 'tgl' || clean === 'date') {
@@ -837,7 +872,10 @@ export function parseAndValidateMasterCsv(
     mapel: ['nama_mata_pelajaran'],
     kalender_pendidikan: ['tanggal', 'keterangan'],
     jadwal_pelajaran: ['hari', 'nama_guru', 'mata_pelajaran', 'kelas'],
-    wali_kelas: ['kelas', 'nama_guru']
+    wali_kelas: ['kelas', 'nama_guru'],
+    users: ['username', 'nama', 'role'],
+    pengguna: ['username', 'nama', 'role'],
+    sistem_blok: ['nama_kegiatan', 'tanggal_mulai', 'tanggal_selesai']
   };
 
   const reqHeaders = REQUIRED_HEADERS_BY_TABLE[tableName.toLowerCase().trim()];
@@ -1220,21 +1258,30 @@ export function parseAndValidateMasterCsv(
       mapel: ['id', 'sekolah_id', 'nama_mata_pelajaran', 'kategori', 'kelompok', 'urutan', 'kode_mapel', 'nama_mapel'],
       kalender_pendidikan: ['id', 'sekolah_id', 'tanggal', 'keterangan', 'tipe', 'tanggal_mulai', 'tanggal_selesai'],
       jadwal_pelajaran: ['id', 'sekolah_id', 'hari', 'nama_guru', 'mata_pelajaran', 'kelas', 'jam_ke', 'jam_mulai', 'jam_selesai', 'mapel', 'user_id'],
-      wali_kelas: ['id', 'sekolah_id', 'kelas', 'guru_id', 'nama_guru', 'nip', 'tahun_ajaran']
+      wali_kelas: ['id', 'sekolah_id', 'kelas', 'guru_id', 'nama_guru', 'nip', 'tahun_ajaran'],
+      users: ['id', 'sekolah_id', 'username', 'password', 'nama', 'role'],
+      pengguna: ['id', 'sekolah_id', 'username', 'password', 'nama', 'role'],
+      sistem_blok: ['id', 'sekolah_id', 'nama_kegiatan', 'deskripsi', 'tanggal_mulai', 'tanggal_selesai', 'tipe_target', 'target_angkatan', 'target_kelas', 'target_guru_id', 'target_guru_nama', 'is_full_day', 'jam_mulai', 'jam_selesai']
     };
 
     const allowedCols = ALLOWED_COLUMNS_BY_TABLE[tableName.toLowerCase().trim()];
+    const targetRow: Record<string, any> = {};
     if (allowedCols) {
-      const sanitizedRow: Record<string, any> = {};
       for (const key of Object.keys(row)) {
         if (allowedCols.includes(key)) {
-          sanitizedRow[key] = row[key];
+          targetRow[key] = row[key];
         }
       }
-      rows.push(sanitizedRow);
     } else {
-      rows.push(row);
+      Object.assign(targetRow, row);
     }
+    Object.defineProperty(targetRow, '_csvRowNumber', {
+      value: i,
+      enumerable: false,
+      writable: true,
+      configurable: true
+    });
+    rows.push(targetRow);
   }
 
   if (rows.length === 0) {
@@ -1245,6 +1292,414 @@ export function parseAndValidateMasterCsv(
 }
 
 /**
+ * Translates PostgreSQL database errors into actionable, user-friendly diagnostics
+ * with exact row numbers, columns, received values, and remediation guidance.
+ */
+export function translateDatabaseError(
+  error: any,
+  batch: Record<string, any>[],
+  tableName: string
+): MasterDataErrorDetail {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  const details = String(error?.details || error?.detail || '');
+
+  // 1. Foreign Key Violation (23503)
+  if (code === '23503' || message.includes('foreign key constraint') || message.includes('sekolah_id_fkey') || details.includes('is not present in table')) {
+    const isSekolahFk = message.includes('sekolah_id_fkey') || message.includes('sekolah_id') || details.includes('sekolah');
+
+    const fkMatch = details.match(/Key \(([^)]+)\)=\(([^)]+)\) is not present in table "([^"]+)"/i);
+    let col = fkMatch && fkMatch[1] ? fkMatch[1].trim() : '';
+    let val = fkMatch && fkMatch[2] ? fkMatch[2].trim() : '';
+    let refTable = fkMatch && fkMatch[3] ? fkMatch[3].trim() : '';
+
+    if (!refTable) {
+      if (isSekolahFk) {
+        col = 'sekolah_id';
+        refTable = 'sekolah';
+      } else if (message.includes('guru') || message.includes('guru_id')) {
+        col = 'nama_guru';
+        refTable = 'data_guru';
+      } else if (message.includes('kelas')) {
+        col = 'kelas';
+        refTable = 'data_kelas';
+      } else if (message.includes('mapel')) {
+        col = 'mata_pelajaran';
+        refTable = 'data_mapel';
+      }
+    }
+
+    const failedRow = (col && val)
+      ? batch.find(r => String(r[col]).trim() === val)
+      : batch[0];
+    const rowNumber = (failedRow as any)?._csvRowNumber || 1;
+    const displayVal = val || (col ? String(failedRow?.[col] || '') : '');
+
+    if (isSekolahFk) {
+      return {
+        code: '23503',
+        row: rowNumber,
+        column: 'sekolah_id',
+        receivedValue: displayVal || undefined,
+        referenceTable: 'sekolah',
+        message: `Baris ${rowNumber}: ID sekolah ("sekolah_id") dalam CSV tidak terdaftar di sistem sekolah. Pastikan menggunakan ID sekolah yang valid.`,
+        remediation: 'Pastikan menggunakan ID sekolah yang valid atau hubungi superadmin untuk mendaftarkan sekolah.'
+      };
+    }
+
+    return {
+      code: '23503',
+      row: rowNumber,
+      column: col || undefined,
+      receivedValue: displayVal || undefined,
+      referenceTable: refTable || undefined,
+      message: `Baris ${rowNumber}: Data '${displayVal || '-'}' tidak ditemukan pada tabel referensi ${refTable || 'terkait'}. Pastikan data master terkait sudah diinput terlebih dahulu.`,
+      remediation: `Pastikan nilai '${displayVal || '-'}' pada kolom '${col || 'referensi'}' sudah terdaftar di master '${refTable || 'tabel referensi'}' sebelum mengunggah berkas ini.`
+    };
+  }
+
+  // 2. Not-Null Violation (23502)
+  if (code === '23502' || message.includes('violates not-null constraint') || message.includes('null value in column')) {
+    const colMatch = message.match(/column "([^"]+)"/i);
+    const col = colMatch && colMatch[1] ? colMatch[1].trim() : '';
+    const failedRow = col
+      ? batch.find(r => r[col] === null || r[col] === undefined || String(r[col]).trim() === '')
+      : batch[0];
+    const rowNumber = (failedRow as any)?._csvRowNumber || 1;
+
+    return {
+      code: '23502',
+      row: rowNumber,
+      column: col || undefined,
+      receivedValue: '(kosong)',
+      expectedFormat: 'Wajib diisi (tidak boleh null atau kosong)',
+      message: `Baris ${rowNumber}: Gagal menyimpan data: terdapat kolom wajib yang bernilai kosong (${col || message}).`,
+      remediation: `Lengkapi nilai kolom '${col || 'terkait'}' pada baris ${rowNumber} di berkas CSV Anda, kemudian unggah kembali.`
+    };
+  }
+
+  // 3. Unique Constraint Violation (23505)
+  if (code === '23505' || message.includes('violates unique constraint') || details.includes('already exists')) {
+    const uqMatch = details.match(/Key \(([^)]+)\)=\(([^)]+)\) already exists/i);
+    let col = '';
+    let val = '';
+    if (uqMatch && uqMatch[1] && uqMatch[2]) {
+      const rawCols = uqMatch[1].split(',').map(s => s.trim());
+      const rawVals = uqMatch[2].split(',').map(s => s.trim());
+      const nonTenantIdx = rawCols.findIndex(c => c !== 'sekolah_id');
+      if (nonTenantIdx >= 0) {
+        col = rawCols[nonTenantIdx];
+        val = rawVals[nonTenantIdx];
+      } else {
+        col = rawCols[0];
+        val = rawVals[0];
+      }
+    }
+    const failedRow = (col && val)
+      ? batch.find(r => String(r[col]).trim().toLowerCase() === val.toLowerCase())
+      : batch[0];
+    const rowNumber = (failedRow as any)?._csvRowNumber || 1;
+
+    return {
+      code: '23505',
+      row: rowNumber,
+      column: col || undefined,
+      receivedValue: val || undefined,
+      message: `Baris ${rowNumber}: Gagal menyimpan data: terdapat data duplikat yang melanggar batasan unik database (${val || message}).`,
+      remediation: `Data '${val || '-'}' sudah terdaftar sebelumnya. Gunakan nilai unik atau perbarui baris yang ada alih-alih membuat duplikat.`
+    };
+  }
+
+  // 4. Row-Level Security (42501)
+  if (code === '42501' || message.includes('row-level security') || message.includes('policy')) {
+    const rowNumber = (batch[0] as any)?._csvRowNumber || 1;
+    return {
+      code: '42501',
+      row: rowNumber,
+      message: `Baris ${rowNumber}: Akses ditolak oleh kebijakan keamanan data sekolah (RLS). Pastikan Anda hanya mengimpor data untuk sekolah Anda sendiri.`,
+      remediation: 'Periksa kolom "sekolah_id" pada berkas CSV agar sesuai dengan ID sekolah yang terdaftar pada akun Anda.'
+    };
+  }
+
+  // Fallback for general errors
+  const fallbackRow = (batch[0] as any)?._csvRowNumber || 1;
+  return {
+    code: code || 'DATABASE_ERROR',
+    row: fallbackRow,
+    message: `Baris ${fallbackRow}: Terjadi kesalahan database (${message}).`,
+    remediation: 'Periksa format baris data pada berkas CSV Anda sesuai template resmi.'
+  };
+}
+
+/**
+ * Validates cross-table relational dependencies before performing bulk upserts.
+ */
+export async function validateRelationalDependencies(
+  supabase: any,
+  rows: Record<string, any>[],
+  tableName: string,
+  schoolId?: string
+): Promise<void> {
+  const normTable = (tableName || '').toLowerCase().trim();
+  const errors: { row: number; column?: string; receivedValue?: string; referenceTable?: string; message: string }[] = [];
+  const effectiveSchoolId = schoolId || rows[0]?.sekolah_id;
+
+  const safeSelect = (tableNameToQuery: string, cols: string) => {
+    try {
+      if (typeof supabase?.from !== 'function') return Promise.resolve({ data: null });
+      const tbl = supabase.from(tableNameToQuery);
+      if (typeof tbl?.select !== 'function') return Promise.resolve({ data: null });
+      let q = tbl.select(cols);
+      if (effectiveSchoolId && typeof q?.eq === 'function') {
+        q = q.eq('sekolah_id', effectiveSchoolId);
+      }
+      return Promise.resolve(q).catch(() => ({ data: null }));
+    } catch (_) {
+      return Promise.resolve({ data: null });
+    }
+  };
+
+  // 1. Relational Validation for data_siswa -> data_kelas / wali_kelas
+  if (normTable === 'data_siswa' || normTable === 'siswa') {
+    try {
+      const validClassSet = new Set<string>();
+
+      if (typeof supabase?.from === 'function') {
+        try {
+          const { data } = await safeSelect('data_kelas', 'nama_kelas');
+          if (Array.isArray(data)) {
+            data.forEach((c: any) => {
+              if (c?.nama_kelas) validClassSet.add(String(c.nama_kelas).trim().toLowerCase());
+            });
+          }
+        } catch (_) {}
+
+        try {
+          const { data } = await safeSelect('wali_kelas', 'kelas');
+          if (Array.isArray(data)) {
+            data.forEach((w: any) => {
+              if (w?.kelas) validClassSet.add(String(w.kelas).trim().toLowerCase());
+            });
+          }
+        } catch (_) {}
+      }
+
+      if (typeof window !== 'undefined' && effectiveSchoolId) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${effectiveSchoolId}`) || '[]');
+          if (Array.isArray(cached)) {
+            cached.forEach(k => { if (k) validClassSet.add(String(k).trim().toLowerCase()); });
+          }
+        } catch (_) {}
+      }
+
+      if (validClassSet.size > 0) {
+        rows.forEach((row, idx) => {
+          const rowNum = (row as any)._csvRowNumber || idx + 2;
+          const k = String(row.kelas || '').trim().toLowerCase();
+          if (!k || !validClassSet.has(k)) {
+            errors.push({
+              row: rowNum,
+              column: 'kelas',
+              receivedValue: row.kelas,
+              referenceTable: 'data_kelas',
+              message: `Baris ${rowNum}: Kelas "${row.kelas}" untuk siswa "${row.nama_siswa || 'siswa'}" belum terdaftar pada Data Kelas.`
+            });
+          }
+        });
+      }
+    } catch (err) {
+      if (err instanceof MasterDataValidationError) throw err;
+      console.warn('[dataIntegrityGuard] Class dependency check warning:', err);
+    }
+  }
+
+  // 2. Relational Validation for jadwal_pelajaran -> data_guru, data_mapel, data_kelas
+  if (normTable === 'jadwal_pelajaran') {
+    try {
+      const teacherSet = new Set<string>();
+      const mapelSet = new Set<string>();
+      const classSet = new Set<string>();
+
+      if (typeof supabase?.from === 'function') {
+        const [guruRes, mapelRes, kelasRes, waliRes] = await Promise.all([
+          safeSelect('data_guru', 'id, nama_guru, nip, user_id'),
+          safeSelect('data_mapel', 'id, nama_mata_pelajaran, nama_mapel'),
+          safeSelect('data_kelas', 'id, nama_kelas'),
+          safeSelect('wali_kelas', 'id, kelas')
+        ]);
+
+        if (Array.isArray(guruRes.data)) {
+          guruRes.data.forEach((g: any) => {
+            if (g?.nama_guru) teacherSet.add(normalizeName(g.nama_guru).toLowerCase());
+            if (g?.nip && String(g.nip).trim() !== '-') teacherSet.add(String(g.nip).trim().toLowerCase());
+          });
+        }
+        if (Array.isArray(mapelRes.data)) {
+          mapelRes.data.forEach((m: any) => {
+            if (m?.nama_mata_pelajaran) mapelSet.add(String(m.nama_mata_pelajaran).trim().toLowerCase());
+            if (m?.nama_mapel) mapelSet.add(String(m.nama_mapel).trim().toLowerCase());
+          });
+        }
+        if (Array.isArray(kelasRes.data)) {
+          kelasRes.data.forEach((c: any) => {
+            if (c?.nama_kelas) classSet.add(String(c.nama_kelas).trim().toLowerCase());
+          });
+        }
+        if (Array.isArray(waliRes.data)) {
+          waliRes.data.forEach((w: any) => {
+            if (w?.kelas) classSet.add(String(w.kelas).trim().toLowerCase());
+          });
+        }
+      }
+
+      if (typeof window !== 'undefined' && effectiveSchoolId) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${effectiveSchoolId}`) || '[]');
+          if (Array.isArray(cached)) cached.forEach(k => { if (k) classSet.add(String(k).trim().toLowerCase()); });
+        } catch (_) {}
+      }
+
+      rows.forEach((row, idx) => {
+        const rowNum = (row as any)._csvRowNumber || idx + 2;
+        if (teacherSet.size > 0) {
+          const cleanGuru = normalizeName(row.nama_guru).toLowerCase();
+          if (!cleanGuru || !teacherSet.has(cleanGuru)) {
+            errors.push({
+              row: rowNum,
+              column: 'nama_guru',
+              receivedValue: row.nama_guru,
+              referenceTable: 'data_guru',
+              message: `Baris ${rowNum}: Guru "${row.nama_guru}" belum terdaftar di Data Guru.`
+            });
+          }
+        }
+        if (mapelSet.size > 0) {
+          const m = String(row.mata_pelajaran || row.mapel || '').trim().toLowerCase();
+          if (!m || !mapelSet.has(m)) {
+            errors.push({
+              row: rowNum,
+              column: 'mata_pelajaran',
+              receivedValue: row.mata_pelajaran || row.mapel,
+              referenceTable: 'data_mapel',
+              message: `Baris ${rowNum}: Mata pelajaran "${row.mata_pelajaran || row.mapel}" belum terdaftar di Data Mapel.`
+            });
+          }
+        }
+        if (classSet.size > 0) {
+          const k = String(row.kelas || '').trim().toLowerCase();
+          if (!k || !classSet.has(k)) {
+            errors.push({
+              row: rowNum,
+              column: 'kelas',
+              receivedValue: row.kelas,
+              referenceTable: 'data_kelas',
+              message: `Baris ${rowNum}: Kelas "${row.kelas}" belum terdaftar di Data Kelas.`
+            });
+          }
+        }
+      });
+    } catch (err) {
+      if (err instanceof MasterDataValidationError) throw err;
+      console.warn('[dataIntegrityGuard] Jadwal dependency check warning:', err);
+    }
+  }
+
+  // 3. Relational Validation for wali_kelas -> data_guru, data_kelas
+  if (normTable === 'wali_kelas') {
+    try {
+      const teacherMap = new Map<string, any>();
+      const classSet = new Set<string>();
+
+      if (typeof supabase?.from === 'function') {
+        const [guruRes, kelasRes] = await Promise.all([
+          safeSelect('data_guru', 'id, nama_guru, nip'),
+          safeSelect('data_kelas', 'id, nama_kelas')
+        ]);
+
+        if (Array.isArray(guruRes.data)) {
+          guruRes.data.forEach((g: any) => {
+            if (g?.nama_guru) teacherMap.set(normalizeName(g.nama_guru).toLowerCase(), g);
+            if (g?.nip && String(g.nip).trim() !== '-') teacherMap.set(String(g.nip).trim().toLowerCase(), g);
+          });
+        }
+        if (Array.isArray(kelasRes.data)) {
+          kelasRes.data.forEach((c: any) => {
+            if (c?.nama_kelas) classSet.add(String(c.nama_kelas).trim().toLowerCase());
+          });
+        }
+      }
+
+      if (typeof window !== 'undefined' && effectiveSchoolId) {
+        try {
+          const cached = JSON.parse(localStorage.getItem(`sipjam_custom_classes_${effectiveSchoolId}`) || '[]');
+          if (Array.isArray(cached)) cached.forEach(k => { if (k) classSet.add(String(k).trim().toLowerCase()); });
+        } catch (_) {}
+      }
+
+      rows.forEach((row, idx) => {
+        const rowNum = (row as any)._csvRowNumber || idx + 2;
+        if (teacherMap.size > 0) {
+          const cleanGuru = normalizeName(row.nama_guru).toLowerCase();
+          const cleanNip = String(row.nip || '').trim().toLowerCase();
+          const matchedGuru = teacherMap.get(cleanGuru) || (cleanNip ? teacherMap.get(cleanNip) : null);
+          if (!matchedGuru) {
+            errors.push({
+              row: rowNum,
+              column: 'nama_guru',
+              receivedValue: row.nama_guru,
+              referenceTable: 'data_guru',
+              message: `Baris ${rowNum}: Guru "${row.nama_guru}" belum terdaftar di Data Guru.`
+            });
+          } else {
+            // Auto-enrich guru_id and nip
+            if (!row.guru_id) row.guru_id = matchedGuru.id;
+            if (!row.nip && matchedGuru.nip) row.nip = matchedGuru.nip;
+          }
+        }
+        if (classSet.size > 0) {
+          const k = String(row.kelas || '').trim().toLowerCase();
+          if (!k || !classSet.has(k)) {
+            errors.push({
+              row: rowNum,
+              column: 'kelas',
+              receivedValue: row.kelas,
+              referenceTable: 'data_kelas',
+              message: `Baris ${rowNum}: Kelas "${row.kelas}" belum terdaftar di Data Kelas.`
+            });
+          }
+        }
+      });
+    } catch (err) {
+      if (err instanceof MasterDataValidationError) throw err;
+      console.warn('[dataIntegrityGuard] Wali kelas dependency check warning:', err);
+    }
+  }
+
+  // If missing dependencies detected, abort immediately with clear row diagnostics
+  if (errors.length > 0) {
+    const errorLimit = 5;
+    const displayed = errors.slice(0, errorLimit).map(e => e.message).join('\n• ');
+    const remainingCount = errors.length - errorLimit;
+    const suffix = remainingCount > 0 ? `\n...dan ${remainingCount} kesalahan lainnya.` : '';
+    const firstErr = errors[0];
+    const fullMessage = errors.length === 1
+      ? firstErr.message
+      : `Gagal validasi data prasyarat (ditemukan ${errors.length} masalah):\n• ${displayed}${suffix}\n\nPastikan data prasyarat sudah diunggah sesuai urutan alur master data.`;
+
+    throw new MasterDataValidationError({
+      code: '23503',
+      row: firstErr.row,
+      column: firstErr.column,
+      receivedValue: firstErr.receivedValue,
+      referenceTable: firstErr.referenceTable,
+      message: fullMessage,
+      remediation: 'Pastikan data prasyarat sudah diunggah sesuai urutan alur master data (Siswa -> Kelas -> Mapel -> Guru -> Jadwal -> Wali Kelas).'
+    });
+  }
+}
+
+/**
  * Imports master data from CSV text with pre-insertion validation.
  * Guaranteed to catch missing sekolah_id for data_guru prior to database interaction.
  */
@@ -1252,9 +1707,32 @@ export async function importMasterDataFromCsv(
   supabase: any,
   csvText: string,
   tableName: string,
-  user?: any
+  user?: any,
+  onProgress?: UploadProgressCallback
 ): Promise<{ count: number; rows: Record<string, any>[] }> {
+  // Stage 1: Membaca berkas CSV... (0% - 10%)
+  onProgress?.({
+    stage: 'Membaca berkas CSV...',
+    percentage: 5,
+    currentBatch: 0,
+    totalBatches: 0,
+    processedRows: 0,
+    totalRows: 0
+  });
+  await new Promise(r => setTimeout(r, 10));
+
+  // Stage 2: Memvalidasi skema data... (10% - 25%)
+  onProgress?.({
+    stage: 'Memvalidasi skema data...',
+    percentage: 15,
+    currentBatch: 0,
+    totalBatches: 0,
+    processedRows: 0,
+    totalRows: 0
+  });
   const rows = parseAndValidateMasterCsv(csvText, tableName, user);
+  const totalRows = rows.length;
+
   const normTable = (tableName || '').toLowerCase().trim();
   const isKelasTable = normTable === 'data_kelas' || normTable === 'kelas';
   const isSiswaTable = normTable === 'data_siswa' || normTable === 'siswa';
@@ -1263,6 +1741,20 @@ export async function importMasterDataFromCsv(
   const isWaliTable = normTable === 'wali_kelas';
   const isKalenderTable = normTable === 'kalender_pendidikan';
   const effectiveTableName = isKelasTable ? 'data_kelas' : tableName;
+
+  // Stage 3: Memeriksa dependensi relasional... (25% - 40%)
+  onProgress?.({
+    stage: 'Memeriksa dependensi relasional...',
+    percentage: 30,
+    currentBatch: 0,
+    totalBatches: Math.ceil(totalRows / 50),
+    processedRows: 0,
+    totalRows
+  });
+  await new Promise(r => setTimeout(r, 10));
+
+  const schoolId = user?.sekolah_id || rows[0]?.sekolah_id;
+  await validateRelationalDependencies(supabase, rows, tableName, schoolId);
 
   // 1. IDEMPOTENT STUDENT RESOLUTION (data_siswa)
   // Match incoming students by (sekolah_id, nisn) or (sekolah_id, nama_siswa, kelas) to update existing rows instead of creating duplicates
@@ -1513,10 +2005,25 @@ export async function importMasterDataFromCsv(
 
   // 2. BATCH UPSERT WITH CONFLICT RESOLUTION AND DEFENSIVE FALLBACK
   const batchSize = 50;
+  const totalBatches = Math.ceil(rows.length / batchSize);
   let isTableMissing = false;
 
-  for (let i = 0; i < rows.length; i += batchSize) {
-    const batch = rows.slice(i, i + batchSize);
+  for (let b = 0; b < totalBatches; b++) {
+    const start = b * batchSize;
+    const batch = rows.slice(start, start + batchSize);
+    const processedRows = Math.min((b + 1) * batchSize, totalRows);
+    const pct = 40 + Math.round((processedRows / totalRows) * 50);
+
+    onProgress?.({
+      stage: `Mengunggah baris ${processedRows} dari ${totalRows}...`,
+      percentage: pct,
+      currentBatch: b + 1,
+      totalBatches,
+      processedRows,
+      totalRows
+    });
+    await new Promise(r => setTimeout(r, 10));
+
     const upsertOptions: any = { ignoreDuplicates: false };
 
     if (isKelasTable) {
@@ -1548,24 +2055,14 @@ export async function importMasterDataFromCsv(
             isTableMissing = true;
             break;
           }
-          throw idErr;
+          const diagnostic = translateDatabaseError(idErr, batch, effectiveTableName);
+          throw new MasterDataValidationError(diagnostic);
         }
         continue;
       }
 
-      if (error.code === '23503' || String(error.message).includes('sekolah_id_fkey') || String(error.message).includes('foreign key constraint')) {
-        throw new Error('ID sekolah ("sekolah_id") dalam CSV tidak terdaftar di sistem sekolah. Pastikan menggunakan ID sekolah yang valid.');
-      }
-      if (error.code === '23502') {
-        throw new Error(`Gagal menyimpan data: terdapat kolom wajib yang bernilai kosong (${error.message}).`);
-      }
-      if (error.code === '23505') {
-        throw new Error(`Gagal menyimpan data: terdapat data duplikat yang melanggar batasan unik database (${error.message}).`);
-      }
-      if (error.code === '42501' || String(error.message).includes('row-level security')) {
-        throw new Error('Akses ditolak oleh kebijakan keamanan data sekolah (RLS). Pastikan Anda hanya mengimpor data untuk sekolah Anda sendiri.');
-      }
-      throw error;
+      const diagnostic = translateDatabaseError(error, batch, effectiveTableName);
+      throw new MasterDataValidationError(diagnostic);
     }
   }
 
@@ -1609,6 +2106,17 @@ export async function importMasterDataFromCsv(
     }
   }
 
+  // Stage 5: Sinkronisasi akun & data lokal... (90% - 99%)
+  onProgress?.({
+    stage: 'Sinkronisasi akun & data lokal...',
+    percentage: 95,
+    currentBatch: totalBatches,
+    totalBatches,
+    processedRows: totalRows,
+    totalRows
+  });
+  await new Promise(r => setTimeout(r, 10));
+
   // 4. AUTO-SYNC TEACHER ACCOUNTS (data_guru)
   if (tableName === 'data_guru' && rows.length > 0) {
     try {
@@ -1644,6 +2152,17 @@ export async function importMasterDataFromCsv(
     }
   }
 
+  // Stage 6: Selesai (100%)
+  onProgress?.({
+    stage: 'Selesai',
+    percentage: 100,
+    currentBatch: totalBatches,
+    totalBatches,
+    processedRows: totalRows,
+    totalRows
+  });
+
   return { count: rows.length, rows };
 }
+
 

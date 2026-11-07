@@ -74,6 +74,98 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
 
+  // Milestone 3 (R4) - Upload Progress & Diagnostic State
+  const [isClassUploading, setIsClassUploading] = useState<boolean>(false);
+  const [classUploadProgress, setClassUploadProgress] = useState<number>(0);
+  const [classUploadStage, setClassUploadStage] = useState<string>('');
+  const [classBatchInfo, setClassBatchInfo] = useState<{
+    currentBatch: number;
+    totalBatches: number;
+    processedRows: number;
+    totalRows: number;
+  } | null>(null);
+
+  const escapeHtml = (str?: string) => {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+
+  const showMasterDataDiagnosticModal = (err: any) => {
+    const detail = err?.detail || (typeof err === 'object' && err?.message ? {
+      message: err.message,
+      row: err.message.match(/Baris (\d+)/)?.[1],
+      column: err.message.match(/Kolom "([^"]+)"/)?.[1] || err.message.match(/kolom '([^']+)'/)?.[1],
+      remediation: 'Periksa kembali berkas CSV Anda sesuai format template dan pastikan seluruh relasi master data sudah terdaftar.'
+    } : { message: String(err) });
+
+    Swal.fire({
+      icon: 'error',
+      title: 'Gagal Mengunggah Data Kelas',
+      html: `
+        <div class="text-left text-xs space-y-3 text-gray-700 dark:text-gray-300">
+          <div class="flex items-center gap-2 p-2.5 bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800/80 rounded-xl">
+            <div class="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/60 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+              <i class="fa-solid fa-triangle-exclamation text-base"></i>
+            </div>
+            <div>
+              <h4 class="font-bold text-red-700 dark:text-red-300 text-xs">Kesalahan Validasi Unggahan</h4>
+              <p class="text-[11px] text-red-600 dark:text-red-400 font-mono">
+                ${detail.code ? `Kode Error: ${detail.code}` : 'Format/Relasi Data Tidak Valid'}
+              </p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-[11px]">
+            ${detail.row ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Lokasi Baris</span>
+                <span class="font-bold text-red-600 dark:text-red-400 font-mono">Baris ${detail.row}</span>
+              </div>
+            ` : ''}
+            ${detail.column ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Kolom Terkait</span>
+                <span class="font-bold text-purple-600 dark:text-purple-400 font-mono">${escapeHtml(detail.column)}</span>
+              </div>
+            ` : ''}
+            ${detail.receivedValue ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Nilai Diterima</span>
+                <span class="font-semibold text-rose-600 dark:text-rose-400 font-mono text-[10.5px]">${escapeHtml(detail.receivedValue)}</span>
+              </div>
+            ` : ''}
+            ${detail.referenceTable ? `
+              <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
+                <span class="text-gray-400 text-[10px] block uppercase font-semibold">Tabel Referensi</span>
+                <span class="font-semibold text-indigo-600 dark:text-indigo-400 font-mono text-[10.5px]">${escapeHtml(detail.referenceTable)}</span>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="p-3 bg-red-50/70 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-xl font-mono text-[11px] text-red-800 dark:text-red-300 break-words">
+            ${escapeHtml(detail.message)}
+          </div>
+
+          <div class="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl space-y-1">
+            <div class="flex items-center gap-1.5 font-bold text-amber-800 dark:text-amber-300 text-[11px]">
+              <i class="fa-solid fa-lightbulb text-amber-500"></i> Saran Perbaikan:
+            </div>
+            <p class="text-[11px] text-amber-700 dark:text-amber-300 leading-relaxed">
+              ${escapeHtml(detail.remediation || 'Periksa berkas CSV Anda sesuai panduan template resmi, pastikan seluruh data master terkait telah dibuat.')}
+            </p>
+          </div>
+        </div>
+      `,
+      confirmButtonText: 'Tutup & Perbaiki',
+      confirmButtonColor: '#7C3AED'
+    });
+  };
+
   // Primary data pools
   const [allStudents, setAllStudents] = useState<StudentItem[]>([]);
   const [waliKelasList, setWaliKelasList] = useState<WaliKelasItem[]>([]);
@@ -449,6 +541,10 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       return;
     }
 
+    setIsClassUploading(true);
+    setClassUploadProgress(0);
+    setClassUploadStage('Mempersiapkan berkas CSV...');
+    setClassBatchInfo(null);
     setActionLoading(true);
     try {
       const text = await file.text();
@@ -459,7 +555,25 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       const isStudentCsv = lowerHeader.includes('nama_siswa') || (lowerHeader.includes('nisn') && lowerHeader.includes('kelas'));
 
       if (isStudentCsv) {
-        const { count, rows } = await importMasterDataFromCsv(supabase, text, 'data_siswa', user);
+        // Auto-route student CSV: importMasterDataFromCsv(supabase, text, 'data_siswa', user)
+        const { count, rows } = await importMasterDataFromCsv(
+          supabase,
+          text,
+          'data_siswa',
+          user,
+          (p) => {
+            setClassUploadProgress(p.percentage);
+            setClassUploadStage(p.stage);
+            if (p.totalBatches > 0) {
+              setClassBatchInfo({
+                currentBatch: p.currentBatch,
+                totalBatches: p.totalBatches,
+                processedRows: p.processedRows,
+                totalRows: p.totalRows
+              });
+            }
+          }
+        );
 
         // Reflect student classes in customClasses and customClassesMeta
         if (Array.isArray(rows) && rows.length > 0) {
@@ -510,7 +624,24 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         return;
       }
 
-      const { count, rows } = await importMasterDataFromCsv(supabase, text, 'data_kelas', user);
+      const { count, rows } = await importMasterDataFromCsv(
+        supabase,
+        text,
+        'data_kelas',
+        user,
+        (p) => {
+          setClassUploadProgress(p.percentage);
+          setClassUploadStage(p.stage);
+          if (p.totalBatches > 0) {
+            setClassBatchInfo({
+              currentBatch: p.currentBatch,
+              totalBatches: p.totalBatches,
+              processedRows: p.processedRows,
+              totalRows: p.totalRows
+            });
+          }
+        }
+      );
 
       // Immediately reflect imported classes in local state
       if (Array.isArray(rows) && rows.length > 0) {
@@ -544,30 +675,15 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     } catch (err: any) {
       const errorMsg = err.message || 'Terjadi kesalahan saat memproses CSV kelas.';
       showToast('Gagal Impor CSV', errorMsg, 'error');
-
-      if (errorMsg.includes('Baris ') || errorMsg.includes('Kolom ') || errorMsg.includes('wajib') || errorMsg.includes('dilarang')) {
-        Swal.fire({
-          icon: 'error',
-          title: 'Validasi CSV Kelas Gagal',
-          html: `
-            <div class="text-left text-xs space-y-2 text-gray-700 dark:text-gray-300">
-              <p class="font-bold text-red-600 dark:text-red-400">
-                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Kesalahan pada berkas CSV Kelas:
-              </p>
-              <div class="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl font-mono text-[11px] text-red-800 dark:text-red-300 break-words">
-                ${errorMsg}
-              </div>
-              <p class="text-[11px] text-gray-500 dark:text-gray-400">
-                Pastikan kolom "nama_kelas" terisi dan sesuai format template.
-              </p>
-            </div>
-          `,
-          confirmButtonText: 'Tutup & Perbaiki',
-          confirmButtonColor: '#7C3AED'
-        });
-      }
+      showMasterDataDiagnosticModal(err);
     } finally {
       setActionLoading(false);
+      setTimeout(() => {
+        setIsClassUploading(false);
+        setClassUploadProgress(0);
+        setClassUploadStage('');
+        setClassBatchInfo(null);
+      }, 600);
       if (classFileInputRef.current) classFileInputRef.current.value = '';
       if (e?.target) e.target.value = '';
     }
@@ -1190,6 +1306,38 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           </button>
         </div>
       </div>
+
+      {/* Animated Class Upload Progress Bar */}
+      {isClassUploading && (
+        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-sm animate-fade-in">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <i className="fa-solid fa-circle-notch fa-spin text-purple-600 dark:text-purple-400 text-sm"></i>
+              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                {classUploadStage || 'Sedang memproses unggahan kelas...'}
+              </span>
+            </div>
+            <span className="text-xs font-black text-purple-700 dark:text-purple-300 font-mono">
+              {classUploadProgress}%
+            </span>
+          </div>
+
+          {/* Progress Bar Container */}
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner p-0.5">
+            <div
+              className="bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${Math.min(100, Math.max(0, classUploadProgress))}%` }}
+            />
+          </div>
+
+          {classBatchInfo && classBatchInfo.totalRows > 0 && (
+            <div className="flex justify-between items-center mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+              <span>Batch {classBatchInfo.currentBatch} dari {classBatchInfo.totalBatches}</span>
+              <span>{classBatchInfo.processedRows} dari {classBatchInfo.totalRows} baris</span>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ======================================================== */}
       {/* 4. RESPONSIVE GRID OF CLASS DIRECTORY CARDS */}
