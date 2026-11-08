@@ -1,60 +1,71 @@
-# Final Orchestrator Handoff Report — Student CSV Upload & Master Table Loading
+# Handoff Report: Fitur Admin Status Kepala Sekolah (Definitif, Plt, Plh)
 
-## 1. Observation
-- **Task Objective**:
-  Memperbaiki proses unggah data siswa dari berkas CSV template yang di-download dari aplikasi sesuai data master yang telah diisi agar data berhasil dimuat dan ditampilkan pada tabel master data siswa, tanpa mengubah fitur dan logika lain yang ada di aplikasi yang tidak terdampak.
-- **Root Cause Analysis**:
-  1. Tab aliasing in `AdminDataView.tsx`: Tab keys were case-sensitive (`'Data_Siswa'`), causing variants like `'siswa'`, `'students'`, or `'data_siswa'` to abort loading routines.
-  2. Race condition on upload: Asynchronous database fetch wiped component state (`setDataList([])`), hiding newly parsed CSV rows while network requests were pending.
-  3. Non-idempotent upserts: Student rows with `nisn = null` in the database were not matched with incoming CSV records having valid NISNs, resulting in potential duplicates.
-  4. Number formatting & excel scientific notation: Excel mangling phone numbers and NISN strings into exponential notation (e.g. `1.06436E+08`) caused validation failures or corrupted phone numbers.
-  5. Cross-view cache desynchronization: When navigating between `AdminDataView` and `AdminKelasView`, uploaded students were lost if background database queries returned partial data.
-  6. TypeScript export scope: An initial reviewer change re-exported cache helpers without importing them into the local module scope, producing TS2304 and TS2322 build errors.
-- **Git Commit History on `origin/main`**:
-  - `7bed952`: Initial implementation of student CSV template download and upload loading.
-  - `803f77d`: Reviewer round 1 fixes (idempotent matching, duplicate NISN guard, storage cache persistence).
-  - `186eafd`: Reviewer round 2 fixes (id-based student merge on refresh, excel format sanitization, cross-view cache hydration).
-  - `2e76273`: Reviewer round 3 fixes (student csv aliases, phone formatting sanitization, cross-view class roster sync).
-  - `b7ef8f7`: Audit remediation resolving TypeScript compilation errors and button onClick handler in `AdminDataView.tsx`.
-  - All commits are pushed directly to `origin/main` per the repository Git Workflow Rule.
+**Tanggal:** 2026-11-08  
+**Orchestrator:** teamwork_swe (`swe_1`)  
+**Parent Conv ID:** 8f60a9ca-10d9-49cc-97cd-d2f8dc7015da  
+**Status:** Hard Handoff — Task Completed & Verified (VICTORY CONFIRMED)
 
-## 2. Logic Chain
-1. **Template Alignment**:
-   `Template_Data_Siswa` in `AdminDataView.tsx` defines headers `['nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu']`, exactly matching the user's dataset headers character-for-character.
-2. **Robust CSV Ingestion & Validation**:
-   `parseAndValidateMasterCsv` in `src/lib/dataIntegrityGuard.ts`:
-   - Automatically detects delimiters (comma, semicolon, tab, pipe).
-   - Normalizes header aliases (`siswa`, `nama_murid`, `no_hp`, `no_wa`).
-   - Expands scientific notation for NISN and phone numbers.
-   - Cleans formatted phone numbers (`-`, ` `) and restores missing leading zeroes (`08...`).
-   - Accurately treats `no_hp_ortu` as optional (`''`), preventing rejection when omitted.
-   - Preserves special characters in names (apostrophes like `Ma'arif`, dots like `.a .Gogerino`).
-3. **Idempotent Database Resolution**:
-   Matches incoming rows against existing DB records by NISN (tolerant of leading zeroes) and by normalized `(nama_siswa, kelas)`, preventing duplicate rows. Batch upsert processes records in chunks of 50.
-4. **Immediate Rendering Without Blank State**:
-   Newly uploaded records are cached in `uploadedRowsCacheRef` and persistent browser storage (`sessionStorage` / `localStorage`). `dataList` is populated immediately with search/filters reset, and background reloads merge existing rows by ID instead of clearing the table.
-5. **Independent 3-Phase Victory Audit**:
-   `teamwork_victory_auditor` verified the codebase independently with clean exit code 0 across:
-   - `npx tsc --noEmit` (0 errors)
-   - `npm run build` (Next.js Turbopack succeeded in 1.8s, 13 routes)
-   - `npx tsx tests/test_user_exact_student_csv.ts` (392/392 students parsed & verified)
-   - `npx tsx tests/adversarial_student_csv_review.test.ts` (15/15 adversarial suites passed)
-   - `npm test` (58/58 test suites passed with zero regressions)
+---
 
-## 3. Caveats
-- None. All requirements (R1, R2) and acceptance criteria have been fully met and confirmed by independent post-victory audit.
+## 1. Milestone State
 
-## 4. Conclusion
-**Verdict: VICTORY CONFIRMED**
-The student CSV template download, upload processing, and master table display flow is completely fixed, hardened, and verified with zero regression to other application modules.
+| Requirement / Milestone | Status | Details |
+|---|---|---|
+| **R1. Konfigurasi Status Kepala Sekolah oleh Admin** | Completed | Kontrol dropdown `<select id="status_kepala_sekolah">` dengan opsi Definitif, Plt, Plh tersedia di AdminConfigView. Tersimpan persisten di tabel `pengaturan` (key-value) dan tabel `sekolah` dengan fallback schema cache. |
+| **R2. Penyesuaian Tampilan Label Kepala Sekolah** | Completed | Label "Plt. Kepala Sekolah" untuk status Plt, "Plh. Kepala Sekolah" untuk Plh, dan "Kepala Sekolah" untuk Definitif pada seluruh tampilan UI (sidebar, header badge, admin view, alert/modal) dan dokumen cetak (PrintHeader, PrintSignature, Rapor, Rekap Siswa, Rekap Jurnal, Gradebook, Dokumen, Piket, Admin Rekap). |
+| **R3. Preservasi Logika & Fungsionalitas Eksisting** | Completed | Zero regression across the entire application. Title non-principal ("Wakil Kepala Sekolah", "Kepala TU", "Wali Kelas") dipertahankan tanpa korupsi. RBAC dan seluruh alur kerja normal. |
+| **R4. Pengujian Otomatis** | Completed | 88/88 automated assertions lulus 100% pada `tests/status_kepala_sekolah.test.ts`. Seluruh 71 suite tes proyek pada `npm test` lulus tanpa kegagalan. Production build Next.js (Turbopack) dan linting lulus 100%. |
 
-## 5. Verification Method
-To reproduce the verification results:
-```powershell
-npx tsc --noEmit
-npm run build
-npx tsx tests/test_user_exact_student_csv.ts
-npx tsx tests/adversarial_student_csv_review.test.ts
-npm test
-```
-All commands complete with exit code 0.
+---
+
+## 2. Active Subagents
+- Semua subagent telah menyelesaikan tugasnya dan tidak ada subagent yang masih berjalan.
+  - `implementer_ks_1` (Conv ID: `83a62b81-03c4-4e4f-9261-00dd49eee812`): Completed
+  - `reviewer_ks_r1` (Conv ID: `902e1620-163e-4e0c-9e45-9784a3bf4c87`): Completed
+  - `reviewer_ks_r2` (Conv ID: `5c6d591f-c697-4846-9518-92424284e7c7`): Completed
+  - `reviewer_ks_r3` (Conv ID: `63f3d609-1bb5-4ef0-b950-0fb88d173e81`): Completed
+  - `auditor_ks_1` (Conv ID: `0ff9fc24-bf91-4f5f-b009-69524909cb54`): Completed (VICTORY CONFIRMED)
+
+---
+
+## 3. Observation & Logic Chain
+
+### Observation
+Kebutuhan produksi sipjam-app memerlukan pengelolaan status jabatan Kepala Sekolah (Definitif, Plt, Plh). Ketika status adalah Plt atau Plh, seluruh tampilan label pada antarmuka dan dokumen cetak harus menyematkan awalan "Plt. Kepala Sekolah" atau "Plh. Kepala Sekolah". Untuk status Definitif, tulisan tetap "Kepala Sekolah" tanpa awalan tambahan. Seluruh logika eksisting (RBAC, tanda tangan wakil/TU/wali kelas, cetak rapor, rekapitulasi) harus tetap utuh.
+
+### Logic Chain
+1. **Pondasi Teks & Database**:
+   - `src/utils/textUtils.ts`: Menambahkan `StatusKepalaSekolah` type (`'Definitif' | 'Plt' | 'Plh'`), `normalizeStatusKepalaSekolah`, `normalizeStatusPrefix`, `formatKepalaSekolahLabel`, dan `formatKepalaSekolahTitle` dengan pembersihan prefix duplikat dan isolasi judul non-kepala sekolah.
+   - `src/types/database.ts` & `supabase/SETUP_NEW_SCHOOL_TEMPLATE.sql`: Menambahkan kolom opsional `status_kepala_sekolah` pada tabel `sekolah`.
+2. **Antarmuka Konfigurasi Admin**:
+   - `src/components/AdminConfigView.tsx`: Form pengaturan sekolah memiliki state dan input select dengan opsi Definitif, Plt, Plh, dynamic labels, serta dual-persistence (`pengaturan` dan `sekolah`) dengan graceful error handling.
+3. **Dokumen Cetak & Header/Signature**:
+   - `src/components/PrintHeader.tsx`: `resolveDisplayRightTitle` dan `resolveDisplayLeftSubtitle` memformat label kepala sekolah secara dinamis tanpa mengganggu jabatan non-kepala sekolah ("Wakil Kepala Sekolah", "Kepala TU", "Wali Kelas"). Fallback nama penandatangan diselaraskan dengan status jabatan. Multi-tab storage sync diimplementasikan.
+4. **Distribusi Status ke Seluruh Subview**:
+   - Forwarding prop `statusKepalaSekolah` dari `AppScreen` ke `PiketView`, `DokumenView`, `GradebookView`, `RekapJurnalView`, `RekapSiswaView`, `RaporView`, dan `AdminRekapView`.
+5. **Reaktivitas & RBAC**:
+   - `src/hooks/useKepalaSekolah.ts` & `src/lib/navigation.ts`: Mengenali alias role kepala sekolah (`pltkepalasekolah`, `plhkepalasekolah`), mengecualikan `wakil`, dan menyinkronkan status secara reaktif via custom event dan storage listener.
+
+---
+
+## 4. Caveats
+- Perbedaan margin cetak hardware fisik antar sistem operasi dan driver printer bergantung pada emulasi print engine browser pengguna (`@media print`).
+- Pada kondisi sekolah belum mengisi nama kepala sekolah di database, nama penandatangan secara aman menampilkan label jabatannya (misalnya "Plt. Kepala Sekolah"), sesuai konvensi administrasi dokumen dinas.
+
+---
+
+## 5. Verification Method & Results
+1. `npx tsx tests/status_kepala_sekolah.test.ts`: **88 PASSED, 0 FAILED** (100% pass across 9 suites).
+2. `npm test`: **Seluruh 71 test suites proyek lulus 100%** tanpa kegagalan atau regresi fungsional.
+3. `npm run build`: **Next.js Turbopack production build berhasil 100%** (0 errors).
+4. `npm run lint`: **ESLint lulus 100%** (0 errors).
+5. Git commits: 4 commit deskriptif telah dibuat dan di-push ke branch utama `origin main` (`116dcd0`, `380222b`, `aff940f`, `d8a0f91`).
+
+---
+
+## 6. Key Artifacts
+- `.agents/teamwork/ORIGINAL_REQUEST.md`: Permintaan asli pengguna
+- `.agents/teamwork/swe_1/progress.md`: Catatan progres dan retrospeksi
+- `.agents/teamwork/swe_1/BRIEFING.md`: Memori persisten briefing
+- `.agents/teamwork/auditor_ks_1/report.md`: Laporan audit independen (VICTORY CONFIRMED)
+- `tests/status_kepala_sekolah.test.ts`: Rangkaian pengujian otomatis fitur baru
