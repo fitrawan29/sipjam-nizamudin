@@ -20,9 +20,6 @@ interface TeacherStatusRow {
   nip: string;
   nama_guru: string;
   mata_pelajaran: string;
-  isTeacherExempt?: boolean;
-  isExemptNonTeaching?: boolean;
-  targetCount?: number;
   presensiDatang: {
     status: string;
     color: 'green' | 'amber' | 'blue' | 'rose' | 'gray';
@@ -162,7 +159,7 @@ export default function HomeViewAdmin({
   const [adminLoading, setAdminLoading] = useState(false);
   const [matrixList, setMatrixList] = useState<TeacherStatusRow[]>([]);
   const [matrixSearch, setMatrixSearch] = useState('');
-  const [matrixFilter, setMatrixFilter] = useState<'Semua' | 'Tugas Lengkap' | 'Belum Lengkap' | 'Hanya Hari KBM'>('Semua');
+  const [matrixFilter, setMatrixFilter] = useState<'Semua' | 'Tugas Lengkap' | 'Belum Lengkap'>('Semua');
   const [activeBlokToday, setActiveBlokToday] = useState<any | null>(null);
 
 
@@ -582,9 +579,6 @@ export default function HomeViewAdmin({
           nip,
           nama_guru: nama,
           mata_pelajaran: mapel,
-          isTeacherExempt,
-          isExemptNonTeaching,
-          targetCount,
           presensiDatang: {
             status: presensiDatangStatus,
             color: presensiDatangColor as any,
@@ -638,7 +632,6 @@ export default function HomeViewAdmin({
       // 2. Pill filter
       if (matrixFilter === 'Tugas Lengkap') return row.isTugasLengkap;
       if (matrixFilter === 'Belum Lengkap') return !row.isTugasLengkap;
-      if (matrixFilter === 'Hanya Hari KBM') return Boolean(row.isTeacherExempt);
       return true;
     });
   }, [matrixList, matrixSearch, matrixFilter]);
@@ -880,7 +873,7 @@ export default function HomeViewAdmin({
 
               {/* Filter Pills */}
               <div className="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1 sm:pb-0 shrink-0">
-                {(['Semua', 'Tugas Lengkap', 'Belum Lengkap', 'Hanya Hari KBM'] as const).map(f => (
+                {(['Semua', 'Tugas Lengkap', 'Belum Lengkap'] as const).map(f => (
                   <button
                     key={f}
                     type="button"
@@ -952,31 +945,12 @@ export default function HomeViewAdmin({
                                 <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0">
                                   {row.nama_guru.charAt(0)}
                                 </div>
-                                <div className="min-w-0 max-w-[260px] sm:max-w-xs">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <p className="font-bold text-gray-900 dark:text-white leading-tight truncate">
-                                      {row.nama_guru}
-                                    </p>
-                                    {row.isTeacherExempt && (
-                                      <span
-                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shrink-0 shadow-xs"
-                                        title="Kebijakan: Hanya wajib hadir saat ada jadwal KBM atau tugas piket"
-                                      >
-                                        <i className="fa-solid fa-graduation-cap text-[8px]"></i>
-                                        Hanya Hari KBM
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate mt-0.5" title={`${row.nip !== '-' ? row.nip : ''} ${row.mata_pelajaran && row.mata_pelajaran !== '-' ? `• ${row.mata_pelajaran}` : ''}`}>
-                                    {row.nip && row.nip !== '-' ? (
-                                      /^\d{8,25}$/.test(row.nip.replace(/[-.\s]/g, '')) ? (
-                                        <span>NIP: {row.nip}{row.mata_pelajaran && row.mata_pelajaran !== '-' ? ` • ${row.mata_pelajaran}` : ''}</span>
-                                      ) : (
-                                        <span>@{row.nip}{row.mata_pelajaran && row.mata_pelajaran !== '-' ? ` • ${row.mata_pelajaran}` : ''}</span>
-                                      )
-                                    ) : (
-                                      row.mata_pelajaran && row.mata_pelajaran !== '-' ? row.mata_pelajaran : 'Guru'
-                                    )}
+                                <div className="min-w-0">
+                                  <p className="font-bold text-gray-900 dark:text-white leading-tight truncate">
+                                    {row.nama_guru}
+                                  </p>
+                                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate">
+                                    {row.nip !== '-' ? row.nip : row.mata_pelajaran}
                                   </p>
                                 </div>
                               </div>
