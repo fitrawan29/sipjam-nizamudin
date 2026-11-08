@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { formatTimestampWita } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
+import { processPendingUploads } from '@/lib/presensiUploadPersistence';
 
 export interface HistoryViewProps {
   user: any;
@@ -39,6 +40,16 @@ export default function HistoryView({
 
   useEffect(() => {
     loadData();
+    processPendingUploads().catch(() => {});
+
+    const handlePresensiUpdated = () => {
+      loadData();
+    };
+
+    window.addEventListener('sipjam:presensi_updated', handlePresensiUpdated);
+    return () => {
+      window.removeEventListener('sipjam:presensi_updated', handlePresensiUpdated);
+    };
   }, [activeTab]);
 
   const loadData = async () => {
@@ -245,20 +256,34 @@ export default function HistoryView({
                         {/* Presensi Attachment Link ("Lihat Bukti") */}
                         {item.link_bukti && item.link_bukti !== '-' && (
                           <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-                            <img 
-                              src={transformGoogleDriveUrl(item.link_bukti)} 
-                              alt="Bukti Presensi" 
-                              className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
-                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            />
-                            <a 
-                              href={item.link_bukti} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
-                            >
-                              <i className="fa-solid fa-paperclip text-[9px]"></i> Lihat Bukti Presensi
-                            </a>
+                            {item.link_bukti === 'pending:uploading' ? (
+                              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                                <i className="fa-solid fa-cloud-arrow-up animate-pulse text-[9px]"></i>
+                                <span>Sedang mengunggah dokumen... (Swipe ke bawah / F5 untuk pembaruan)</span>
+                              </div>
+                            ) : item.link_bukti === 'gagal_upload' ? (
+                              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded border border-red-200 dark:border-red-800">
+                                <i className="fa-solid fa-circle-exclamation text-[9px]"></i>
+                                <span>Upload dokumen tertunda</span>
+                              </div>
+                            ) : (
+                              <>
+                                <img 
+                                  src={transformGoogleDriveUrl(item.link_bukti)} 
+                                  alt="Bukti Presensi" 
+                                  className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                />
+                                <a 
+                                  href={item.link_bukti} 
+                                  target="_blank" 
+                                  rel="noreferrer" 
+                                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
+                                >
+                                  <i className="fa-solid fa-paperclip text-[9px]"></i> Lihat Bukti Presensi
+                                </a>
+                              </>
+                            )}
                           </div>
                         )}
                       </>

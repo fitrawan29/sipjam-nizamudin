@@ -1482,15 +1482,27 @@ export default function AdminVerifView({
                     )}
                     {item.link_bukti && item.link_bukti !== '-' && (
                       <div className="mt-2 flex items-center gap-2">
-                        <img 
-                          src={transformGoogleDriveUrl(item.link_bukti)} 
-                          alt="Bukti Presensi" 
-                          className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
-                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        />
-                        <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
-                          <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
-                        </a>
+                        {item.link_bukti === 'pending:uploading' ? (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                            <i className="fa-solid fa-cloud-arrow-up animate-pulse text-[10px]"></i> Sedang diunggah ke Drive...
+                          </span>
+                        ) : item.link_bukti === 'gagal_upload' ? (
+                          <span className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-800">
+                            <i className="fa-solid fa-circle-exclamation text-[10px]"></i> Upload dokumen tertunda
+                          </span>
+                        ) : (
+                          <>
+                            <img 
+                              src={transformGoogleDriveUrl(item.link_bukti)} 
+                              alt="Bukti Presensi" 
+                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                            <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                              <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
+                            </a>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

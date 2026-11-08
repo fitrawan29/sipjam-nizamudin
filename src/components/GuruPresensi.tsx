@@ -6,7 +6,15 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { recordUnfilledJournalsAndPiket, autoFillKbmJournalsForLeave } from '@/lib/attendanceAlpa';
-import { uploadToDrive } from '@/lib/driveUpload';
+import { uploadToDrive, detectMimeType } from '@/lib/driveUpload';
+import {
+  savePresensiFileDraft,
+  getPresensiFileDraft,
+  clearPresensiFileDraft,
+  queuePendingUpload,
+  removePendingUpload,
+  processPendingUploads
+} from '@/lib/presensiUploadPersistence';
 import { getWitaTimestamp, getWitaDayName, getWitaDateStr } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
@@ -258,6 +266,18 @@ export default function GuruPresensi({
       }
     };
     initConfig();
+
+    // Restore persistent file draft across reloads (survives F5 and mobile pull-to-refresh swipe down)
+    getPresensiFileDraft().then((draftFile) => {
+      if (draftFile && isMountedRef.current) {
+        setFile(draftFile);
+      }
+    }).catch(() => {});
+
+    // Resume any pending upload that was interrupted by a page reload / swipe down
+    processPendingUploads().catch((err) => {
+      console.warn("[GuruPresensi] Resume pending uploads warning:", err);
+    });
   }, [user.nama, user.username]);
 
   // Clean up legacy offline queue keys to enforce online-only cloud transactions
@@ -697,6 +717,26 @@ export default function GuruPresensi({
     const isSelfie = isSelfieRequired;
     const currentJenis = jenisPresensi;
 
+    // Queue pending upload task in persistent IndexedDB so that even if the page refreshes (F5 / swipe down),
+    // the upload survives and resumes immediately upon page reload
+    if (fileToUpload) {
+      await queuePendingUpload({
+        id: presensiId,
+        blob: fileToUpload,
+        name: fileToUpload.name,
+        mimeType: detectMimeType(fileToUpload),
+        teacherName: currentTeacher,
+        folderName: currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru',
+        prefix: isSelfie ? 'Selfie' : 'Dokumen',
+        tanggalMulai: tanggalMulai || getWitaDateStr(),
+        durasiHari: durasiHari || 1,
+        currentJenis: currentJenis,
+        detailIzin: detailIzin,
+        keterangan: keterangan,
+        createdAt: Date.now()
+      });
+    }
+
     let driveUrl: string | null = null;
     if (fileToUpload) {
       try {
@@ -709,6 +749,9 @@ export default function GuruPresensi({
           .from('presensi_guru')
           .update({ link_bukti: driveUrl })
           .eq('id', presensiId);
+
+        // Upload succeeded: remove from persistent pending queue
+        await removePendingUpload(presensiId);
 
         if (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar') {
           const startD = tanggalMulai || getWitaDateStr();
@@ -784,6 +827,7 @@ export default function GuruPresensi({
     setKeterangan('');
     setFile(null);
     setPhotoPreviewUrl(null);
+    clearPresensiFileDraft().catch(() => {});
     if (typeof window !== 'undefined') {
       try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
     }
@@ -1139,9 +1183,15 @@ export default function GuruPresensi({
                       <input 
                         type="file" 
                         accept="image/*,.pdf" 
-                        onChange={e => {
-                          setFile(e.target.files ? e.target.files[0] : null);
+                        onChange={async (e) => {
+                          const selected = e.target.files ? e.target.files[0] : null;
+                          setFile(selected);
                           setPhotoPreviewUrl(null);
+                          if (selected) {
+                            await savePresensiFileDraft(selected);
+                          } else {
+                            await clearPresensiFileDraft();
+                          }
                         }} 
                         required={!file} 
                         className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
