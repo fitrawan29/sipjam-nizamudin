@@ -61,15 +61,28 @@ export function capitalizeEachWord(input: string): string {
   return formattedWords.join(' ');
 }
 
+export type StatusKepalaSekolah = 'Definitif' | 'Plt' | 'Plh';
+
+/**
+ * Normalizes appointment status to canonical StatusKepalaSekolah ('Definitif' | 'Plt' | 'Plh').
+ * Handles case variations, extra whitespace, abbreviations, and spelled-out descriptions.
+ */
+export function normalizeStatusKepalaSekolah(status?: string | null): StatusKepalaSekolah {
+  if (!status || typeof status !== 'string') return 'Definitif';
+  const clean = status.trim().toUpperCase();
+  if (clean === 'PLT' || clean.startsWith('PLT') || clean.includes('PELAKSANA TUGAS')) return 'Plt';
+  if (clean === 'PLH' || clean.startsWith('PLH') || clean.includes('PELAKSANA HARIAN')) return 'Plh';
+  return 'Definitif';
+}
+
 /**
  * Normalizes appointment status prefix.
  * Returns 'Plt. ' for Plt, 'Plh. ' for Plh, and '' for Definitif or empty/null.
  */
 export function normalizeStatusPrefix(status?: string | null): string {
-  if (!status || typeof status !== 'string') return '';
-  const clean = status.trim().toUpperCase();
-  if (clean === 'PLT' || clean.startsWith('PLT') || clean.includes('PELAKSANA TUGAS')) return 'Plt. ';
-  if (clean === 'PLH' || clean.startsWith('PLH') || clean.includes('PELAKSANA HARIAN')) return 'Plh. ';
+  const norm = normalizeStatusKepalaSekolah(status);
+  if (norm === 'Plt') return 'Plt. ';
+  if (norm === 'Plh') return 'Plh. ';
   return '';
 }
 

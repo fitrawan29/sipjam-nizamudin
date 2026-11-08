@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS public.sekolah (
     logo_kanan_url TEXT,
     nama_kepala_sekolah TEXT,
     nip_kepala_sekolah TEXT,
+    status_kepala_sekolah TEXT DEFAULT 'Definitif',
     status TEXT NOT NULL DEFAULT 'aktif' CHECK (status IN ('aktif', 'nonaktif')),
     mode_presensi_siswa TEXT DEFAULT 'mandiri_qr',
     created_at TIMESTAMPTZ DEFAULT now(),

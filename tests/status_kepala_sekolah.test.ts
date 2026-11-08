@@ -6,7 +6,8 @@ import path from 'path';
 import {
   formatKepalaSekolahLabel,
   formatKepalaSekolahTitle,
-  normalizeStatusPrefix
+  normalizeStatusPrefix,
+  normalizeStatusKepalaSekolah
 } from '../src/utils/textUtils';
 import { PrintSignature } from '../src/components/PrintHeader';
 import { checkIsKepalaSekolah } from '../src/hooks/useKepalaSekolah';
@@ -718,8 +719,132 @@ check(
 
 
 // =========================================================================
-// SUMMARY
+// SUITE 9: Adversarial Case Resilience, Corrupted Value Defense & SQL Schema Verification
 // =========================================================================
+console.log('\n--- Suite 9: Adversarial Case Resilience, Corrupted Value Defense & SQL Schema Verification ---');
+
+// 9.1 normalizeStatusKepalaSekolah canonicalization
+check(
+  '9.1.1 normalizeStatusKepalaSekolah canonicalizes Plt variations to "Plt"',
+  normalizeStatusKepalaSekolah('Plt') === 'Plt' &&
+  normalizeStatusKepalaSekolah('plt') === 'Plt' &&
+  normalizeStatusKepalaSekolah('PLT') === 'Plt' &&
+  normalizeStatusKepalaSekolah('  plt  ') === 'Plt' &&
+  normalizeStatusKepalaSekolah('Plt (Pelaksana Tugas)') === 'Plt' &&
+  normalizeStatusKepalaSekolah('Pelaksana Tugas') === 'Plt'
+);
+
+check(
+  '9.1.2 normalizeStatusKepalaSekolah canonicalizes Plh variations to "Plh"',
+  normalizeStatusKepalaSekolah('Plh') === 'Plh' &&
+  normalizeStatusKepalaSekolah('plh') === 'Plh' &&
+  normalizeStatusKepalaSekolah('PLH') === 'Plh' &&
+  normalizeStatusKepalaSekolah('  plh  ') === 'Plh' &&
+  normalizeStatusKepalaSekolah('Plh (Pelaksana Harian)') === 'Plh' &&
+  normalizeStatusKepalaSekolah('Pelaksana Harian') === 'Plh'
+);
+
+check(
+  '9.1.3 normalizeStatusKepalaSekolah canonicalizes Definitif, empty, corrupted, or null to "Definitif"',
+  normalizeStatusKepalaSekolah('Definitif') === 'Definitif' &&
+  normalizeStatusKepalaSekolah('definitif') === 'Definitif' &&
+  normalizeStatusKepalaSekolah('DEFINITIF') === 'Definitif' &&
+  normalizeStatusKepalaSekolah('') === 'Definitif' &&
+  normalizeStatusKepalaSekolah('   ') === 'Definitif' &&
+  normalizeStatusKepalaSekolah(null) === 'Definitif' &&
+  normalizeStatusKepalaSekolah(undefined) === 'Definitif' &&
+  normalizeStatusKepalaSekolah('CORRUPTED_VALUE_123') === 'Definitif' &&
+  normalizeStatusKepalaSekolah('INVALID_STATUS') === 'Definitif'
+);
+
+// 9.2 Robustness of formatting functions with invalid/corrupted inputs
+check(
+  '9.2.1 formatKepalaSekolahLabel with corrupted status string returns "Kepala Sekolah"',
+  formatKepalaSekolahLabel('CORRUPTED_VALUE') === 'Kepala Sekolah' &&
+  formatKepalaSekolahLabel('RANDOM_JUNK') === 'Kepala Sekolah' &&
+  formatKepalaSekolahLabel('12345') === 'Kepala Sekolah'
+);
+
+check(
+  '9.2.2 formatKepalaSekolahTitle with corrupted status string returns standard title',
+  formatKepalaSekolahTitle('SMAN 1 Modayag', 'CORRUPTED') === 'Kepala SMAN 1 Modayag' &&
+  formatKepalaSekolahTitle('SMAN 1 Modayag', 'plt') === 'Plt. Kepala SMAN 1 Modayag' &&
+  formatKepalaSekolahTitle('SMAN 1 Modayag', 'plh') === 'Plh. Kepala SMAN 1 Modayag'
+);
+
+check(
+  '9.2.3 normalizeStatusPrefix with corrupted status string returns empty string',
+  normalizeStatusPrefix('CORRUPTED') === '' &&
+  normalizeStatusPrefix('RANDOM_INPUT') === ''
+);
+
+// 9.3 PrintSignature rendering with casing variants and edge cases
+const htmlLowerPlt = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'plt',
+    rightName: 'Drs. Ahmad, M.Pd',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '9.3.1 PrintSignature renders "Plt. Kepala Sekolah" when statusKepalaSekolah is lowercase "plt"',
+  htmlLowerPlt.includes('Plt. Kepala Sekolah')
+);
+
+const htmlLowerPlh = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'plh',
+    rightName: 'Dra. Siti, M.Pd',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '9.3.2 PrintSignature renders "Plh. Kepala Sekolah" when statusKepalaSekolah is lowercase "plh"',
+  htmlLowerPlh.includes('Plh. Kepala Sekolah')
+);
+
+const htmlLowerDefinitif = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'definitif',
+    rightName: 'Drs. Budi, M.Pd',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '9.3.3 PrintSignature renders "Kepala Sekolah" without prefix when status is lowercase "definitif"',
+  htmlLowerDefinitif.includes('Kepala Sekolah') &&
+  !htmlLowerDefinitif.includes('Plt.') &&
+  !htmlLowerDefinitif.includes('Plh.')
+);
+
+const htmlCorruptedStatus = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'CORRUPTED_VALUE',
+    rightName: 'Drs. Joko, M.Pd',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '9.3.4 PrintSignature safely defaults to "Kepala Sekolah" when status is corrupted',
+  htmlCorruptedStatus.includes('Kepala Sekolah') &&
+  !htmlCorruptedStatus.includes('CORRUPTED')
+);
+
+// 9.4 Multi-Tenant Database Schema Provisioning
+const sqlTemplatePath = path.resolve(__dirname, '../supabase/SETUP_NEW_SCHOOL_TEMPLATE.sql');
+const sqlTemplateSrc = fs.readFileSync(sqlTemplatePath, 'utf8');
+check(
+  '9.4.1 SETUP_NEW_SCHOOL_TEMPLATE.sql defines status_kepala_sekolah column in public.sekolah',
+  sqlTemplateSrc.includes('status_kepala_sekolah TEXT DEFAULT \'Definitif\'')
+);
+
+const freshPrintHeaderSrc = fs.readFileSync(printHeaderPath, 'utf8');
+check(
+  '9.4.2 PrintHeader re-exports normalizeStatusKepalaSekolah helper function',
+  freshPrintHeaderSrc.includes('normalizeStatusKepalaSekolah')
+);
+
+
 console.log('\n========================================================================');
 console.log(`TOTAL CHECKS: ${passCount + failCount} | PASSED: ${passCount} | FAILED: ${failCount}`);
 console.log('========================================================================\n');

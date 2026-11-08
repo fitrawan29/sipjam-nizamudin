@@ -9,7 +9,7 @@ import AccountSettingsModal from './AccountSettingsModal';
 import AdminBackupView from './AdminBackupView';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import { isMasterDataModificationAllowed, getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
-import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+import { formatKepalaSekolahLabel, normalizeStatusKepalaSekolah } from '@/utils/textUtils';
 
 export interface AdminConfigViewProps {
   user: any;
@@ -128,6 +128,7 @@ export default function AdminConfigView({
             }
             if (item.key === 'status_kepala_sekolah' || item.key === 'STATUS_KEPALA_SEKOLAH') {
               newConfig.status_kepala_sekolah = item.value;
+              newConfig.status_kepala_sekolah = normalizeStatusKepalaSekolah(item.value);
             }
             if (item.aturan_kehadiran_guru) {
               newConfig.aturan_kehadiran_guru = item.aturan_kehadiran_guru;
@@ -235,7 +236,7 @@ export default function AdminConfigView({
                   newConfig.ttd_kepsek_nip = schoolProfile.nip_kepala_sekolah;
                 }
                 if (!newConfig.status_kepala_sekolah && (schoolProfile as any).status_kepala_sekolah) {
-                  newConfig.status_kepala_sekolah = (schoolProfile as any).status_kepala_sekolah;
+                  newConfig.status_kepala_sekolah = normalizeStatusKepalaSekolah((schoolProfile as any).status_kepala_sekolah);
                 }
               }
             } catch (_) {}
@@ -1108,7 +1109,7 @@ export default function AdminConfigView({
                         <select
                           id="status_kepala_sekolah"
                           name="status_kepala_sekolah"
-                          value={config.status_kepala_sekolah || 'Definitif'}
+                          value={normalizeStatusKepalaSekolah(config.status_kepala_sekolah || 'Definitif')}
                           onChange={handleChange}
                           className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
                           data-testid="select-status-kepala-sekolah"

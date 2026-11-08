@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
-import { formatKepalaSekolahTitle, formatKepalaSekolahLabel, normalizeStatusPrefix } from '@/utils/textUtils';
+import { formatKepalaSekolahTitle, formatKepalaSekolahLabel, normalizeStatusPrefix, normalizeStatusKepalaSekolah } from '@/utils/textUtils';
 
-export { formatKepalaSekolahTitle, formatKepalaSekolahLabel, normalizeStatusPrefix };
+export { formatKepalaSekolahTitle, formatKepalaSekolahLabel, normalizeStatusPrefix, normalizeStatusKepalaSekolah };
 
 export interface PrintHeaderProps {
   sekolahId?: string;
@@ -377,10 +377,10 @@ export function PrintSignature({
 
   const region = getRegion();
   const schoolName = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || '';
-  const statusKepsek = statusKepalaSekolah || config.status_kepala_sekolah || config.STATUS_KEPALA_SEKOLAH || schoolInfo?.status_kepala_sekolah || 'Definitif';
+  const statusKepsek = normalizeStatusKepalaSekolah(statusKepalaSekolah || config.status_kepala_sekolah || config.STATUS_KEPALA_SEKOLAH || schoolInfo?.status_kepala_sekolah);
   const defaultKepalaTitle = formatKepalaSekolahTitle(schoolName);
   const kepsekLabel = formatKepalaSekolahLabel(statusKepsek);
-  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || (statusKepsek && statusKepsek !== 'Definitif' ? kepsekLabel : 'Kepala Sekolah');
+  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || (statusKepsek !== 'Definitif' ? kepsekLabel : 'Kepala Sekolah');
   const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah || '';
   const resolveDisplayRightTitle = () => {
     if (!rightTitle) return kepsekLabel;
@@ -549,7 +549,7 @@ export function PrintSignature({
           <div className="h-16 sm:h-20" />
           <div className="inline-block text-left">
             <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
-              {config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || (statusKepsek && statusKepsek !== 'Definitif' ? kepsekLabel : 'Kepala Sekolah')}
+              {config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || (statusKepsek !== 'Definitif' ? kepsekLabel : 'Kepala Sekolah')}
             </span>
             <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
               {config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah ? `NIP. ${config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah}` : 'NIP. -'}
