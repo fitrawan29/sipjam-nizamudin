@@ -1,40 +1,29 @@
 # Sentinel Handoff Report
 
 ## Observation
-The user reported that after downloading the student template CSV, filling it with student records, and uploading it back to the application, the master student table displayed "tabel ini kosong dan data belum bisa dimuat" without rendering the student records.
-The task interview was executed and produced an approved task prompt requesting a focused fix to ensure the downloaded template aligns with master data, uploads parse and import cleanly (handling empty phone numbers and 200+ student records), and table rows render immediately without empty-table warnings, while preserving zero regression on existing features.
-The run was routed to the SWE Light path (`teamwork_swe`).
+User requested administrative capability to designate the school principal status as `Definitif`, `Plt` (Pelaksana Tugas), or `Plh` (Pelaksana Harian), with dynamic label prefixing ("Plt. Kepala Sekolah", "Plh. Kepala Sekolah", or "Kepala Sekolah") across all views and printed documents, while preserving all existing system logic and preventing regression.
+Following task interview approval, the task was routed to `teamwork_swe` (SWE Light path) for small, focused, single-change execution with sequential refinement and adversarial review.
+The orchestrator completed 1 implementation round and 3 adversarial review rounds. An independent victory audit was dispatched by Sentinel, returning a **VICTORY CONFIRMED** verdict.
 
 ## Logic Chain
-1. **Root Cause Analysis**:
-   - `AdminDataView.tsx` suffered from a post-upload race condition: after inserting records, an asynchronous `loadData()` call queried Supabase before database triggers/replication finished, or returned empty/null, which overwrote the freshly parsed table state and wiped out loaded rows.
-   - Column normalization for tab resolution lacked common aliases for `Data_Siswa` (`data_siswa`, `siswa`, `students`).
-   - Phone numbers left empty triggered false invalidations or unhandled null checks in certain parser paths.
-   - Excel CSV formatting frequently dropped leading zeros from 8-9 digit NISN values or formatted phone numbers with spaces/hyphens.
-2. **Implementation & Refinement**:
-   - `src/components/AdminDataView.tsx`: Synchronized student template headers (`nisn,nama_siswa,kelas,gender,status,no_hp_ortu`), implemented in-memory and `sessionStorage`/`localStorage` cache (`uploadedRowsCacheRef` & `getStorageCache`), and ensured background refresh performs an ID-based merge rather than blanking the table.
-   - `src/lib/dataIntegrityGuard.ts`: Enhanced RFC 4180 parsing with delimiter autodetection, optional empty phone number handling, Excel scientific notation sanitization, leading zero auto-restoration for 8/9-digit NISNs, duplicate NISN detection, and whitespace-normalized name+class ID resolution.
-   - `src/components/AdminKelasView.tsx`: Added cross-view cache hydration so newly uploaded student rosters immediately populate class views without waiting for DB roundtrips.
-3. **Multi-Round Adversarial Review**:
-   - Round 1 (Implementer): Applied initial fixes and created reproduction test suite `tests/test_user_exact_student_csv.ts`.
-   - Round 2 (Reviewer 1): Idempotent name-class matching, intra-file duplicate NISN guard, and storage cache persistence (Commit `803f77d`).
-   - Round 3 (Reviewer 2): ID-based merge on background refresh, Excel scientific notation expansion, and cross-view cache hydration in `AdminKelasView` (Commit `186eafd`).
-   - Round 4 (Reviewer 3): Added 15 adversarial test suites covering leading-zero NISN restoration, header aliases, and phone sanitization (Commit `2e76273`).
-   - Round 5 (Reviewer 4 - Remediation): Resolved TypeScript compiler errors (`npx tsc --noEmit` 0 errors, Next.js build success in commit `b7ef8f7`).
-4. **Independent Post-Victory Audit**:
-   - Independent victory auditor (`f7d4cb59-6bb4-478b-9a71-dfb831de0bff`) executed a zero-context 3-phase audit (Phase A timeline, Phase B anti-cheating, Phase C independent execution of build & all 58 test suites).
-   - Verdict: **VICTORY CONFIRMED**.
+1. **Task Interview & Routing**: Interview conducted and approved prompt received. Routed to SWE Light path (`teamwork_swe`) per the explicit "single self-contained fix; keep it small and focused" request.
+2. **Implementation (Round 1)**: `teamwork_implementer` implemented core formatting helpers in `src/utils/textUtils.ts`, updated DB types in `src/types/database.ts`, created admin controls in `src/components/AdminConfigView.tsx`, and built 42 test assertions in `tests/status_kepala_sekolah.test.ts`.
+3. **Adversarial Review (Round 1)**: `teamwork_reviewer` identified and patched title corruption on non-principal titles (e.g., "Wakil Kepala Sekolah"), `useKepalaSekolah` early-return hydration bugs, and expanded test coverage to 56 tests.
+4. **Adversarial Review (Round 2)**: Resolved unconfigured principal fallback names in `PrintHeader.tsx`, dynamicized UI headers/placeholders in `AdminConfigView.tsx`, and verified template coverage across all views (`RekapSiswaView`, `RekapJurnalView`, `AdminRekapView`, `GradebookView`, `DokumenView`, `PiketView`, `RaporView`), reaching 76 tests.
+5. **Adversarial Review (Round 3)**: Hardened status canonicalization (`normalizeStatusKepalaSekolah`), added status column to `SETUP_NEW_SCHOOL_TEMPLATE.sql`, and brought automated test suite to 88 assertions.
+6. **Independent Victory Audit**: Sentinel spawned independent `teamwork_victory_auditor` with zero implementation context. The auditor independently executed all test suites, Next.js build, and TypeScript typecheck, confirming VICTORY CONFIRMED across all phases.
+7. **Cleanup**: Background crons and subagents terminated.
 
 ## Caveats
-- Browser-level drag-and-drop and OS file picker dialog interactions are verified via simulated DOM file input and event tests in Node/tsx.
-- If a school exceeds 2,000 students in a single query, the CSV batch upsert handles arbitrary numbers in chunks of 50, but pagination/infinite scroll limits single-page queries to 2,000 items.
+- Physical paper printing margins remain subject to browser/operating system `@media print` drivers, though CSS styling and layout elements adhere to standard print formatting.
+- Dual-table persistence (`pengaturan` and `sekolah`) provides graceful fallback if the Supabase Postgres schema cache has not yet refreshed the column definition in the active session.
 
 ## Conclusion
-The issue is completely resolved. The student CSV template download aligns with master data, uploaded CSV files (including the user's 392 student dataset with empty phone numbers) import and render immediately in the master table without displaying empty warnings, and all 58 project test suites continue to pass with zero regressions. All commits are pushed to `origin/main`.
+The school principal status feature is fully implemented, verified, tested (88/88 test suite passing, 100% full repo test suites passing), built without errors, committed, and pushed to `main`. All requirements (R1-R4) and acceptance criteria are completely satisfied.
 
 ## Verification Method
-- `npx tsc --noEmit`: 0 errors
-- `npm run build`: Next.js production build succeeded in 2.2s
-- `npx tsx tests/test_user_exact_student_csv.ts`: 392/392 students parsed, validated, and rendered
-- `npx tsx tests/adversarial_student_csv_review.test.ts`: 15/15 adversarial suites passed (100%)
-- `npm test`: 58/58 test suites passed
+- `npx tsx tests/status_kepala_sekolah.test.ts` (88/88 assertions pass)
+- `npx tsc --noEmit` (clean typecheck, 0 errors)
+- `npm test` (all project unit and integration test suites pass, 0 regressions)
+- `npm run build` (Next.js production build succeeds, exit code 0)
+- `git status` / `git log -n 5` (commits `116dcd0`, `380222b`, `aff940f`, `d8a0f91`, `6a4d0b7` present on `origin/main`)
