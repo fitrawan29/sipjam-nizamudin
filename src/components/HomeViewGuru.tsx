@@ -566,6 +566,11 @@ export default function HomeViewGuru({
                 <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
                   {user?.role || 'Guru'}
                 </span>
+                {(dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja' || dailyState?.isNonTeachingDay) && (
+                  <span className="bg-white/20 text-white border border-white/30 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-xs shrink-0" title="Kebijakan Guru: Wajib Hadir Hanya Saat Hari Mengajar / Piket">
+                    Hanya Hari KBM
+                  </span>
+                )}
               </div>
               <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
                 <span>{user?.username || ''}</span>
