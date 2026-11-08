@@ -4,6 +4,7 @@ import React from 'react';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
 import ClayCard from './ClayCard';
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 
 export interface MenuItem {
   id: string;
@@ -28,6 +29,7 @@ export interface ClaySidebarProps {
   isAdmin?: boolean;
   isTataUsaha?: boolean;
   isKepalaSekolah?: boolean;
+  statusKepalaSekolah?: string;
   isWaliKelas?: boolean;
   satelliteSchools?: any[];
   activeTargetSchool?: any;
@@ -53,6 +55,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   isAdmin = false,
   isTataUsaha = false,
   isKepalaSekolah = false,
+  statusKepalaSekolah = 'Definitif',
   isWaliKelas = false,
   satelliteSchools = [],
   activeTargetSchool = null,
@@ -91,7 +94,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     : isTU
     ? 'Tata Usaha'
     : isKepalaSekolah
-    ? 'Kepala Sekolah'
+    ? formatKepalaSekolahLabel(statusKepalaSekolah)
     : isWaliKelas
     ? 'Guru (Wali Kelas)'
     : 'Guru';

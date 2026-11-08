@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
-import { formatKepalaSekolahTitle } from '@/utils/textUtils';
+import { formatKepalaSekolahTitle, formatKepalaSekolahLabel, normalizeStatusPrefix } from '@/utils/textUtils';
 
-export { formatKepalaSekolahTitle };
+export { formatKepalaSekolahTitle, formatKepalaSekolahLabel, normalizeStatusPrefix };
 
 export interface PrintHeaderProps {
   sekolahId?: string;
@@ -203,6 +203,7 @@ export interface PrintSignatureProps {
   pengawasJabatan?: string;
   sekolahId?: string;
   user?: any;
+  statusKepalaSekolah?: string;
   gpsCoordinates?: {
     latitude: number;
     longitude: number;
@@ -228,6 +229,7 @@ export function PrintSignature({
   pengawasJabatan,
   sekolahId,
   user,
+  statusKepalaSekolah,
   gpsCoordinates
 }: PrintSignatureProps = {}) {
   const [config, setConfig] = useState<any>({});
@@ -332,10 +334,12 @@ export function PrintSignature({
   const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || 'Kepala Sekolah';
   const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah || '';
   const schoolName = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || '';
+  const statusKepsek = statusKepalaSekolah || config.status_kepala_sekolah || config.STATUS_KEPALA_SEKOLAH || schoolInfo?.status_kepala_sekolah || 'Definitif';
   const defaultKepalaTitle = formatKepalaSekolahTitle(schoolName);
+  const kepsekLabel = formatKepalaSekolahLabel(statusKepsek);
   const displayRightTitle = rightTitle
-    ? (rightTitle.toLowerCase().includes('kepala') ? formatKepalaSekolahTitle(rightTitle) : rightTitle)
-    : defaultKepalaTitle;
+    ? (rightTitle.toLowerCase().includes('kepala') ? formatKepalaSekolahTitle(rightTitle, statusKepsek) : rightTitle)
+    : kepsekLabel;
 
   const isPengawasActive = Boolean(
     showPengawas !== undefined
@@ -465,7 +469,7 @@ export function PrintSignature({
             Mengetahui,
           </span>
           <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
-            {defaultKepalaTitle}
+            {kepsekLabel}
           </span>
           <div className="h-16 sm:h-20" />
           <div className="inline-block text-left">

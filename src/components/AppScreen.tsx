@@ -60,6 +60,7 @@ import { useWaliKelas } from '@/hooks/useWaliKelas';
 import { usePiket } from '@/hooks/usePiket';
 import { useBroadcasts } from '@/hooks/useBroadcasts';
 import { useKepalaSekolah } from '@/hooks/useKepalaSekolah';
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 
 declare module '@/components/AIAssistant' {
   interface AIAssistantProps {
@@ -278,7 +279,7 @@ export default function AppScreen({
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, isAdmin, syncKey);
   const { isPiketHariIni } = usePiket(user, isAdmin, isSuperadmin, syncKey);
-  const { isKepalaSekolah } = useKepalaSekolah(user, schoolData, syncKey);
+  const { isKepalaSekolah, statusKepalaSekolah } = useKepalaSekolah(user, schoolData, syncKey);
   const {
     unreadCount,
     broadcastModalOpen,
@@ -957,7 +958,7 @@ export default function AppScreen({
                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
                     }`}>
                       <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
-                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isKepalaSekolah ? 'Kepala Sekolah' : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isKepalaSekolah ? formatKepalaSekolahLabel(statusKepalaSekolah) : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
                     </span>
                     {(user?.username || user?.nip) && (
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>

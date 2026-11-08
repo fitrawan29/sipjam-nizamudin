@@ -28,8 +28,15 @@ export function checkIsKepalaSekolah(
   if (!user) return false;
 
   // 1. Direct role check
-  const roleNorm = (user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-  if (roleNorm === 'kepalasekolah' || roleNorm === 'kepsek') {
+  const roleNorm = (user.role || '').toLowerCase().replace(/[\s_.-]+/g, '');
+  if (
+    roleNorm === 'kepalasekolah' || 
+    roleNorm === 'kepsek' ||
+    roleNorm === 'pltkepalasekolah' ||
+    roleNorm === 'plhkepalasekolah' ||
+    roleNorm.includes('kepalasekolah') || 
+    roleNorm.includes('kepsek')
+  ) {
     return true;
   }
   if (user.is_kepala_sekolah === true || user.isKepalaSekolah === true) {
@@ -68,6 +75,7 @@ export function checkIsKepalaSekolah(
 
 /**
  * React hook to reactively resolve whether the active user is Kepala Sekolah
+ * and their appointment status (Definitif, Plt, Plh).
  */
 export function useKepalaSekolah(
   user: AppUser | null,
@@ -76,6 +84,18 @@ export function useKepalaSekolah(
 ) {
   const [isKepalaSekolah, setIsKepalaSekolah] = useState<boolean>(() => {
     return checkIsKepalaSekolah(user, schoolData);
+  });
+  const [statusKepalaSekolah, setStatusKepalaSekolah] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('sipjam_config_sync');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.config?.status_kepala_sekolah) return parsed.config.status_kepala_sekolah;
+        }
+      } catch (_) {}
+    }
+    return schoolData?.status_kepala_sekolah || 'Definitif';
   });
 
   useEffect(() => {
@@ -104,6 +124,9 @@ export function useKepalaSekolah(
             configMap[item.key] = item.value;
           });
         }
+
+        const resolvedStatus = configMap.status_kepala_sekolah || configMap.STATUS_KEPALA_SEKOLAH || schoolData?.status_kepala_sekolah || 'Definitif';
+        if (isMounted) setStatusKepalaSekolah(resolvedStatus);
 
         if (checkIsKepalaSekolah(user, schoolData, configMap)) {
           if (isMounted) setIsKepalaSekolah(true);
@@ -141,7 +164,10 @@ export function useKepalaSekolah(
 
     verifyFromDatabase();
 
-    const handleConfigUpdate = () => {
+    const handleConfigUpdate = (e?: any) => {
+      if (e?.detail?.config?.status_kepala_sekolah) {
+        setStatusKepalaSekolah(e.detail.config.status_kepala_sekolah);
+      }
       verifyFromDatabase();
     };
 
@@ -159,5 +185,5 @@ export function useKepalaSekolah(
     };
   }, [user?.id, user?.role, user?.nama, user?.username, user?.sekolah_id, schoolData, syncKey]);
 
-  return { isKepalaSekolah };
+  return { isKepalaSekolah, statusKepalaSekolah };
 }

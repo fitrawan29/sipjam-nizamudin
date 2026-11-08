@@ -1,62 +1,43 @@
 # Original User Request
 
-## Approved Task Prompt — 2026-11-07T21:45:14Z
+## Initial Request — 2026-11-08T14:10:32Z
 
-Penyesuaian fungsionalitas dan navigasi pada role Tata Usaha (TU), pengelolaan penugasan/pembuatan akun TU oleh Admin, serta pemisahan rekapitulasi presensi per halaman antara Guru dan TU pada role Admin di sipjam-app untuk kebutuhan produksi, menggunakan pendekatan /ponytail (solusi paling ringkas, sederhana, dan tepat guna tanpa over-engineering).
+This is a single self-contained fix; keep it small and focused. Penambahan fitur admin untuk menentukan kepala sekolah dengan status Plt, Plh, atau Definitif pada aplikasi sipjam-app untuk kebutuhan produksi, di mana selain status definitif, awalan status ditambahkan di depan tulisan kepala sekolah ("Plt. Kepala Sekolah" atau "Plh. Kepala Sekolah") pada seluruh tampilan terkait tanpa mengubah atau mempengaruhi logika dan fitur eksisting.
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. Penyesuaian Menu Navigasi Role TU
-Menu navigasi untuk role Tata Usaha (TU) harus dibatasi dan hanya terdiri dari:
-1. Presensi TU
-2. Jurnal Kegiatan
-3. Asesmen (mode read-only)
-4. Rapor (mode read-only)
-5. Informasi Sekolah
-6. Pengaturan Akun
-Menu navigasi lain di luar daftar tersebut tidak boleh ditampilkan untuk role TU.
+### R1. Konfigurasi Status Kepala Sekolah oleh Admin
+Admin dapat mengatur dan menentukan status jabatan Kepala Sekolah melalui antarmuka admin atau pengaturan sekolah dengan tiga pilihan status: Definitif, Plt (Pelaksana Tugas), atau Plh (Pelaksana Harian). Pilihan status ini harus tersimpan secara persisten pada sistem/basis data.
 
-### R2. Hak Akses Read-Only Asesmen dan Rapor untuk TU
-Pengguna dengan role TU dapat melihat dan meninjau data asesmen dan rapor untuk semua tingkatan kelas dan semua guru. Seluruh elemen aksi yang memodifikasi, menambah, mengubah, atau menghapus nilai dan data rapor/asesmen dinonaktifkan atau disembunyikan bagi role TU sehingga murni read-only.
+### R2. Penyesuaian Tampilan Label Kepala Sekolah
+Pada seluruh tampilan antarmuka dan dokumen cetak yang memuat tulisan "Kepala Sekolah" (termasuk Informasi/Profil Sekolah, cetak dokumen rapor, rekapitulasi presensi, dan lembar tanda tangan):
+- Jika status adalah Plt, tampilkan teks: "Plt. Kepala Sekolah".
+- Jika status adalah Plh, tampilkan teks: "Plh. Kepala Sekolah".
+- Jika status adalah Definitif, tetap tampilkan teks: "Kepala Sekolah" tanpa penambahan status di depan tulisan.
 
-### R3. Pemisahan Halaman Rekap Presensi Guru dan TU pada Role Admin
-Ketika Admin menarik atau mencetak rekapitulasi presensi:
-1. Daftar presensi antara Guru dan TU disajikan terpisah pada tampilan tabel antarmuka.
-2. Saat dokumen dicetak atau diekspor ke PDF/kertas, terdapat pemisah halaman (page-break) yang memastikan daftar Guru dan daftar TU tercetak pada halaman terpisah.
+### R3. Preservasi Logika dan Fungsionalitas Eksisting
+Perubahan ini tidak boleh merusak, mengubah, atau mendegradasi logika alur kerja dan fungsionalitas yang sudah ada pada aplikasi sipjam-app. Semua fitur eksisting harus tetap berfungsi normal.
 
-### R4. Pengelolaan dan Penugasan Akun TU oleh Admin
-Admin dapat mengelola penugasan akun TU dengan dua mekanisme:
-1. Menunjuk akun TU dari data guru yang sudah ada.
-2. Membuat akun baru khusus role TU. Untuk pembuatan akun baru TU, formulir pendaftaran wajib mengisi data: NIP, nama lengkap, nomor HP, dan email aktif.
-
-### R5. Preservasi Logika dan Fungsionalitas Eksisting
-Perubahan pada role TU dan Admin tidak boleh mempengaruhi, merusak, atau mengubah fungsionalitas dan logika fitur lain yang sudah berjalan di aplikasi.
-
-### R6. Pengujian dan Verifikasi Otomatis
-Implementasi harus diverifikasi dengan pengujian otomatis (automated unit/integration tests) yang menguji batasan menu role TU, hak akses read-only asesmen/rapor, alur penunjukan/pembuatan akun baru TU, dan pemisahan rekap presensi guru dan TU.
+### R4. Pengujian Otomatis
+Implementasi harus disertai pengujian otomatis (automated unit/integration tests) menggunakan infrastruktur test eksisting di proyek yang memverifikasi:
+- Penyimpanan dan pembaruan status kepala sekolah oleh admin.
+- Format teks label kepala sekolah untuk status Definitif, Plt, dan Plh pada komponen tampilan dan cetak.
+- Integritas fungsionalitas untuk memastikan tidak ada regresi pada modul lain di aplikasi.
 
 ## Acceptance Criteria
 
-### Navigasi Role TU
-- [ ] Pengguna login dengan role TU hanya melihat menu: Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, dan Pengaturan Akun di navigasi aplikasi.
-- [ ] Menu yang diperuntukkan bagi peran lain tidak muncul pada akun TU.
+### Pengaturan Admin Status Kepala Sekolah
+- [ ] Tersedia kontrol pemilihan status Kepala Sekolah dengan pilihan Definitif, Plt, dan Plh pada halaman pengaturan/admin.
+- [ ] Admin dapat memilih dan menyimpan status Kepala Sekolah, dan nilai status tersimpan secara persisten di database/sistem.
 
-### Hak Akses Read-Only Asesmen & Rapor Role TU
-- [ ] Role TU dapat mengakses tampilan Asesmen untuk seluruh tingkatan kelas dan guru tanpa tombol simpan/edit nilai yang aktif.
-- [ ] Role TU dapat mengakses tampilan Rapor untuk seluruh tingkatan kelas dan guru dalam mode lihat (read-only) tanpa tombol manipulasi data rapor.
+### Format Tampilan Label Kepala Sekolah
+- [ ] Ketika status adalah Plt, seluruh tampilan label yang relevan (halaman informasi sekolah, cetak rapor, rekap presensi, dokumen tanda tangan) menampilkan teks "Plt. Kepala Sekolah".
+- [ ] Ketika status adalah Plh, seluruh tampilan label yang relevan menampilkan teks "Plh. Kepala Sekolah".
+- [ ] Ketika status adalah Definitif, teks label tetap ditampilkan sebagai "Kepala Sekolah" tanpa awalan status tambahan.
 
-### Pengelolaan Akun Role TU oleh Admin
-- [ ] Admin dapat menunjuk TU dari data guru yang ada.
-- [ ] Admin dapat membuat akun baru role TU dengan formulir yang mewajibkan input NIP, nama lengkap, nomor HP, dan email aktif.
-- [ ] Validasi form pembuatan akun baru TU memastikan keempat field wajib terisi sebelum data tersimpan.
-
-### Rekap Presensi Admin (Guru vs TU)
-- [ ] Pada rekap presensi admin, data guru dan data TU terpisah secara visual dalam tabel atau seksi masing-masing.
-- [ ] Saat rekap presensi dicetak (print view / print preview), daftar guru dan daftar TU tercetak pada halaman yang terpisah (terdapat page-break yang memisahkan kedua kelompok).
-
-### Integritas dan Pengujian
-- [ ] Automated test (misalnya skrip pengujian berbasis Vitest/Jest) dijalankan dan lulus 100%, memverifikasi struktur menu role TU, read-only mode, form/penugasan akun TU, dan pemisahan rekap admin.
-- [ ] Fitur presensi, jurnal guru, dan alur aplikasi eksisting lainnya tetap berfungsi normal tanpa regresi.
+### Integritas dan Pengujian Otomatis
+- [ ] Automated tests dijalankan dan lulus 100%, memverifikasi logika penentuan status kepala sekolah dan pemformatan teks label.
+- [ ] Seluruh test suite eksisting di proyek tetap lulus tanpa kegagalan atau regresi fungsional.

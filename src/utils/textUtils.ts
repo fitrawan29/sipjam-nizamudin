@@ -62,30 +62,70 @@ export function capitalizeEachWord(input: string): string {
 }
 
 /**
- * Formats a school name into a standardized "Kepala [Nama Sekolah]" designation.
+ * Normalizes appointment status prefix.
+ * Returns 'Plt. ' for Plt, 'Plh. ' for Plh, and '' for Definitif or empty/null.
+ */
+export function normalizeStatusPrefix(status?: string | null): string {
+  if (!status || typeof status !== 'string') return '';
+  const clean = status.trim().toUpperCase();
+  if (clean === 'PLT' || clean.startsWith('PLT')) return 'Plt. ';
+  if (clean === 'PLH' || clean.startsWith('PLH')) return 'Plh. ';
+  return '';
+}
+
+/**
+ * Formats a Kepala Sekolah label based on appointment status (Definitif, Plt, Plh).
+ * 
+ * Rules:
+ * - If status is Plt (case-insensitive) -> "Plt. Kepala Sekolah"
+ * - If status is Plh (case-insensitive) -> "Plh. Kepala Sekolah"
+ * - Otherwise (Definitif, null, undefined, empty) -> "Kepala Sekolah"
+ * 
+ * Examples:
+ * - "Plt" -> "Plt. Kepala Sekolah"
+ * - "Plh" -> "Plh. Kepala Sekolah"
+ * - "Definitif" -> "Kepala Sekolah"
+ * - "" / null -> "Kepala Sekolah"
+ */
+export function formatKepalaSekolahLabel(status?: string | null): string {
+  const prefix = normalizeStatusPrefix(status);
+  return prefix ? `${prefix}Kepala Sekolah` : 'Kepala Sekolah';
+}
+
+/**
+ * Formats a school name into a standardized "Kepala [Nama Sekolah]" designation,
+ * with optional appointment status (Definitif, Plt, Plh).
  * 
  * Rules:
  * 1. Trims whitespace and normalizes spaces.
- * 2. If empty or missing, returns "Kepala Sekolah".
- * 3. Strips existing leading "Kepala " or "Kepala Sekolah " if present to avoid duplication.
+ * 2. If empty or missing, returns "[Prefix]Kepala Sekolah".
+ * 3. Strips existing leading "Plt.", "Plh.", "Kepala ", or "Kepala Sekolah " if present to avoid duplication.
  * 4. Converts school name to Capitalize Each Word while preserving Indonesian educational acronyms (SMA, SMK, SMP, SD, MA, MTS, MI, SLB, SMAN, SMKN, SMPN, SDN, MAN).
- * 5. Prepends "Kepala ".
+ * 5. Prepends "[Prefix]Kepala ".
  * 
  * Examples:
  * - "SMA NIZAMUDIN " -> "Kepala SMA Nizamudin"
  * - "smk negeri 2 mataram" -> "Kepala SMK Negeri 2 Mataram"
  * - "Kepala SMA NIZAMUDIN" -> "Kepala SMA Nizamudin"
  * - "" -> "Kepala Sekolah"
+ * - ("", "Plt") -> "Plt. Kepala Sekolah"
+ * - ("SMA NIZAMUDIN", "Plt") -> "Plt. Kepala SMA Nizamudin"
+ * - ("Kepala Sekolah", "Plh") -> "Plh. Kepala Sekolah"
  */
-export function formatKepalaSekolahTitle(schoolName?: string | null): string {
+export function formatKepalaSekolahTitle(schoolName?: string | null, status?: string | null): string {
+  const prefix = normalizeStatusPrefix(status);
+
   if (!schoolName || typeof schoolName !== 'string') {
-    return 'Kepala Sekolah';
+    return prefix ? `${prefix}Kepala Sekolah` : 'Kepala Sekolah';
   }
 
   let clean = schoolName.trim().replace(/\s+/g, ' ');
   if (!clean) {
-    return 'Kepala Sekolah';
+    return prefix ? `${prefix}Kepala Sekolah` : 'Kepala Sekolah';
   }
+
+  // Strip existing Plt. / Plh. prefixes to avoid duplication
+  clean = clean.replace(/^(plt|plh)\.?\s*/i, '').trim();
 
   // Remove leading "Kepala Sekolah" or "Kepala" if already present
   if (/^kepala\s+sekolah(\s+|$)/i.test(clean)) {
@@ -94,11 +134,12 @@ export function formatKepalaSekolahTitle(schoolName?: string | null): string {
     clean = clean.replace(/^kepala\s*/i, '').trim();
   }
 
-  // If after stripping it's empty, fallback to "Kepala Sekolah"
+  // If after stripping it's empty, fallback to "[Prefix]Kepala Sekolah"
   if (!clean) {
-    return 'Kepala Sekolah';
+    return prefix ? `${prefix}Kepala Sekolah` : 'Kepala Sekolah';
   }
 
   const formattedSchool = capitalizeEachWord(clean);
-  return `Kepala ${formattedSchool}`;
+  return `${prefix}Kepala ${formattedSchool}`;
 }
+

@@ -1308,6 +1308,7 @@ export type Database = {
           nama: string
           nama_kepala_sekolah: string | null
           nip_kepala_sekolah: string | null
+          status_kepala_sekolah?: string | null
           npsn: string | null
           provinsi: string | null
           status: string
@@ -1332,6 +1333,7 @@ export type Database = {
           nama: string
           nama_kepala_sekolah?: string | null
           nip_kepala_sekolah?: string | null
+          status_kepala_sekolah?: string | null
           npsn?: string | null
           provinsi?: string | null
           status?: string
@@ -1356,6 +1358,7 @@ export type Database = {
           nama?: string
           nama_kepala_sekolah?: string | null
           nip_kepala_sekolah?: string | null
+          status_kepala_sekolah?: string | null
           npsn?: string | null
           provinsi?: string | null
           status?: string

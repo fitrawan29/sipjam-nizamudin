@@ -9,6 +9,7 @@ import AccountSettingsModal from './AccountSettingsModal';
 import AdminBackupView from './AdminBackupView';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import { isMasterDataModificationAllowed, getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 
 export interface AdminConfigViewProps {
   user: any;
@@ -47,6 +48,7 @@ export default function AdminConfigView({
     logo_kanan: '',
     ttd_kepsek_nama: '',
     ttd_kepsek_nip: '',
+    status_kepala_sekolah: 'Definitif',
     kepala_sekolah_id: '',
     ttd_pengawas_aktif: 'false',
     ttd_pengawas_nama: '',
@@ -123,6 +125,9 @@ export default function AdminConfigView({
             }
             if (item.key === 'NIP_KEPALA_SEKOLAH' && !newConfig.ttd_kepsek_nip) {
               newConfig.ttd_kepsek_nip = item.value;
+            }
+            if (item.key === 'status_kepala_sekolah' || item.key === 'STATUS_KEPALA_SEKOLAH') {
+              newConfig.status_kepala_sekolah = item.value;
             }
             if (item.aturan_kehadiran_guru) {
               newConfig.aturan_kehadiran_guru = item.aturan_kehadiran_guru;
@@ -205,7 +210,7 @@ export default function AdminConfigView({
             try {
               const { data: schoolProfile } = await supabase
                 .from('sekolah')
-                .select('nama, alamat, npsn, kota_kabupaten, logo_url, logo_kiri_url, logo_kanan_url, nama_kepala_sekolah, nip_kepala_sekolah')
+                .select('*')
                 .eq('id', user.sekolah_id)
                 .maybeSingle();
 
@@ -228,6 +233,9 @@ export default function AdminConfigView({
                 }
                 if (!newConfig.ttd_kepsek_nip && schoolProfile.nip_kepala_sekolah) {
                   newConfig.ttd_kepsek_nip = schoolProfile.nip_kepala_sekolah;
+                }
+                if (!newConfig.status_kepala_sekolah && (schoolProfile as any).status_kepala_sekolah) {
+                  newConfig.status_kepala_sekolah = (schoolProfile as any).status_kepala_sekolah;
                 }
               }
             } catch (_) {}
@@ -328,6 +336,7 @@ export default function AdminConfigView({
     const cityVal = config.kota_kabupaten || config.kota_ttd || '';
     const saveConfig = {
       ...config,
+      status_kepala_sekolah: config.status_kepala_sekolah || 'Definitif',
       jam_pulang_jumat: config.jam_pulang_jumat || '11:00',
       kota_kabupaten: cityVal,
       kota_ttd: cityVal
@@ -402,7 +411,8 @@ export default function AdminConfigView({
       try {
         const updatePayload: Record<string, any> = {
           nama_kepala_sekolah: saveConfig.ttd_kepsek_nama,
-          nip_kepala_sekolah: saveConfig.ttd_kepsek_nip
+          nip_kepala_sekolah: saveConfig.ttd_kepsek_nip,
+          status_kepala_sekolah: saveConfig.status_kepala_sekolah || 'Definitif'
         };
         updatePayload.kepala_sekolah_id = saveConfig.kepala_sekolah_id || null;
         if (saveConfig.kop_sekolah) {
@@ -432,6 +442,11 @@ export default function AdminConfigView({
           .from('sekolah')
           .update(updatePayload)
           .eq('id', targetSekolahId);
+
+        if (sekolahError && (sekolahError.code === 'PGRST204' || sekolahError.message?.includes('status_kepala_sekolah') || sekolahError.message?.includes('column'))) {
+          delete updatePayload.status_kepala_sekolah;
+          sekolahError = (await supabase.from('sekolah').update(updatePayload).eq('id', targetSekolahId)).error;
+        }
 
         if (sekolahError) {
           console.warn('[AdminConfigView] Error updating sekolah table with client, retrying with masterSupabase:', sekolahError.message);
@@ -1084,13 +1099,39 @@ export default function AdminConfigView({
                         </p>
                     </div>
 
+                    {/* Status Jabatan Kepala Sekolah: Definitif, Plt, Plh */}
+                    <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5" htmlFor="status_kepala_sekolah">
+                          Status Jabatan Kepala Sekolah
+                        </label>
+                        <select
+                          id="status_kepala_sekolah"
+                          name="status_kepala_sekolah"
+                          value={config.status_kepala_sekolah || 'Definitif'}
+                          onChange={handleChange}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                          data-testid="select-status-kepala-sekolah"
+                        >
+                          <option value="Definitif">Definitif</option>
+                          <option value="Plt">Plt (Pelaksana Tugas)</option>
+                          <option value="Plh">Plh (Pelaksana Harian)</option>
+                        </select>
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                          Tentukan status jabatan Kepala Sekolah (Definitif, Plt, atau Plh). Selain status definitif, awalan status otomatis ditambahkan di depan tulisan Kepala Sekolah pada lembar cetak dokumen, rapor, dan rekapitulasi.
+                        </p>
+                    </div>
+
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Nama Kepala Sekolah</label>
+                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                              {config.status_kepala_sekolah && config.status_kepala_sekolah !== 'Definitif' ? `Nama ${formatKepalaSekolahLabel(config.status_kepala_sekolah)}` : 'Nama Kepala Sekolah'}
+                            </label>
                             <input type="text" name="ttd_kepsek_nama" value={config.ttd_kepsek_nama} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">NIP Kepala Sekolah</label>
+                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                              {config.status_kepala_sekolah && config.status_kepala_sekolah !== 'Definitif' ? `NIP ${formatKepalaSekolahLabel(config.status_kepala_sekolah)}` : 'NIP Kepala Sekolah'}
+                            </label>
                             <input type="text" name="ttd_kepsek_nip" value={config.ttd_kepsek_nip} onChange={handleChange} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Kosongkan jika tidak ada" />
                         </div>
                     </div>
