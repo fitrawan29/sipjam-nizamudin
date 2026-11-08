@@ -458,7 +458,7 @@ export default function GuruPresensi({
     if (!isSelfieRequired && !file) {
       const docType = requiredDocName.toLowerCase();
       return showToast(
-        'Lampiran Wajib',
+        'Surat Keterangan Wajib',
         `Silakan lampirkan ${docType}.`,
         'warning'
       );
@@ -487,17 +487,21 @@ export default function GuruPresensi({
 
     let keterlambatanDetik = 0;
     const isTerlambat = jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat';
+    const isLeave = jenisPresensi === 'Izin' || jenisPresensi === 'Sakit';
 
     if (tipeAbsen === 'Datang') {
       const startVal = parseTime(jamPresensi.datangMulai);
       const batasVal = parseTime(jamPresensi.datangBatas);
       const akhirVal = parseTime(jamPresensi.datangAkhir);
 
-      if (currTimeVal < startVal) {
-        return showToast('Belum Waktunya', `Presensi datang baru dibuka jam ${jamPresensi.datangMulai} WITA.`, 'warning');
-      }
-      if (currTimeVal > akhirVal && !isTerlambat) {
-        return showToast('Ditutup', `Presensi datang sudah ditutup jam ${jamPresensi.datangAkhir} WITA. Silakan hubungi admin.`, 'error');
+      // Gate schedule only applies to physical school attendance, not leave/sick applications
+      if (!isLeave) {
+        if (currTimeVal < startVal) {
+          return showToast('Belum Waktunya', `Presensi datang baru dibuka jam ${jamPresensi.datangMulai} WITA.`, 'warning');
+        }
+        if (currTimeVal > akhirVal && !isTerlambat) {
+          return showToast('Ditutup', `Presensi datang sudah ditutup jam ${jamPresensi.datangAkhir} WITA. Silakan hubungi admin.`, 'error');
+        }
       }
 
       if (currTimeVal > batasVal && (jenisPresensi === 'Sekolah' || isTerlambat)) {
@@ -687,17 +691,56 @@ export default function GuruPresensi({
       await supabase.from('presensi_guru').delete().eq('id', rejectedRecord.id);
     }
 
-    // Keep references for background upload task
+    // Keep references for upload task
     const fileToUpload = file;
     const currentTeacher = user.nama;
     const isSelfie = isSelfieRequired;
     const currentJenis = jenisPresensi;
 
+    let driveUrl: string | null = null;
+    if (fileToUpload) {
+      try {
+        // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
+        const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
+        const prefix = isSelfie ? 'Selfie' : 'Dokumen';
+        driveUrl = await uploadToDrive(fileToUpload, currentTeacher, folderName, prefix);
+        
+        await supabase
+          .from('presensi_guru')
+          .update({ link_bukti: driveUrl })
+          .eq('id', presensiId);
+
+        if (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar') {
+          const startD = tanggalMulai || getWitaDateStr();
+          const daysCount = durasiHari || 1;
+          for (let dayOffset = 0; dayOffset < daysCount; dayOffset++) {
+            const targetD = addDaysToDateStr(startD, dayOffset);
+            await supabase
+              .from('jurnal_pembelajaran')
+              .update({ foto_kegiatan: driveUrl, link_bukti_foto: driveUrl })
+              .eq('nama_guru', currentTeacher)
+              .eq('tanggal', targetD)
+              .in('status_verifikasi', ['Sakit', 'Izin', 'Dinas Luar']);
+          }
+        }
+
+        console.log(`[GuruPresensi] Background GAS upload complete for presensi ${presensiId}:`, driveUrl);
+      } catch (uploadErr: any) {
+        console.error(`[GuruPresensi] Background GAS upload failed for presensi ${presensiId}:`, uploadErr);
+        await supabase
+          .from('presensi_guru')
+          .update({ link_bukti: 'gagal_upload' })
+          .eq('id', presensiId);
+        showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
+        // showToast('Sinkronisasi Tertunda', 'Foto bukti gagal diunggah ke Google Drive.', 'warning');
+      }
+    }
+
     // Instant UI Success Feedback (Non-blocking Toast)
     showToast(
       'Presensi Berhasil Dicatat!',
       fileToUpload 
-        ? 'Data kehadiran tersimpan. Foto sedang diunggah ke Google Drive di latar belakang.' 
+        ? (driveUrl ? 'Data presensi dan file bukti berhasil disimpan ke cloud.' : 'Data kehadiran tersimpan. Foto sedang diunggah ke Google Drive di latar belakang.') 
         : 'Presensi berhasil direkam!',
       'success',
       { toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }
@@ -723,7 +766,7 @@ export default function GuruPresensi({
           { nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id },
           targetD,
           leaveType,
-          { detail_izin: detailIzin, keterangan: keterangan, link_bukti: fileToUpload ? undefined : '-' }
+          { detail_izin: detailIzin, keterangan: keterangan, link_bukti: driveUrl || (fileToUpload ? undefined : '-') }
         ).catch(e => console.warn('[GuruPresensi] Auto-fill KBM journal on leave error:', e));
       }
     }
@@ -764,46 +807,6 @@ export default function GuruPresensi({
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-
-    // Fire background upload to GAS webhook asynchronously
-    if (fileToUpload) {
-      (async () => {
-        try {
-          // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
-          const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
-          const prefix = isSelfie ? 'Selfie' : 'Dokumen';
-          const driveUrl = await uploadToDrive(fileToUpload, currentTeacher, folderName, prefix);
-          
-          await supabase
-            .from('presensi_guru')
-            .update({ link_bukti: driveUrl })
-            .eq('id', presensiId);
-
-          if (currentJenis === 'Sakit' || currentJenis === 'Izin' || currentJenis === 'Dinas Luar') {
-            const startD = tanggalMulai || getWitaDateStr();
-            const daysCount = durasiHari || 1;
-            for (let dayOffset = 0; dayOffset < daysCount; dayOffset++) {
-              const targetD = addDaysToDateStr(startD, dayOffset);
-              await supabase
-                .from('jurnal_pembelajaran')
-                .update({ foto_kegiatan: driveUrl, link_bukti_foto: driveUrl })
-                .eq('nama_guru', currentTeacher)
-                .eq('tanggal', targetD)
-                .in('status_verifikasi', ['Sakit', 'Izin', 'Dinas Luar']);
-            }
-          }
-
-          console.log(`[GuruPresensi] Background GAS upload complete for presensi ${presensiId}:`, driveUrl);
-        } catch (uploadErr: any) {
-          console.error(`[GuruPresensi] Background GAS upload failed for presensi ${presensiId}:`, uploadErr);
-          await supabase
-            .from('presensi_guru')
-            .update({ link_bukti: 'gagal_upload' })
-            .eq('id', presensiId);
-          showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
-        }
-      })();
-    }
   };
 
   const isPulangLocked = tipeAbsen === 'Pulang' && dailyState && !dailyState.canPresensiPulang;
@@ -811,6 +814,7 @@ export default function GuruPresensi({
   // Pulang options for Multi-State Transitions:
   // Teachers can select between "Hadir di Sekolah" and "Dinas Luar" when checking out,
   // supporting all 4 state transitions ("Hadir di Sekolah" <-> "Dinas Luar").
+  // tipeAbsen === 'Pulang' && dailyState?.isDinasLuar
   const isJenisDropdownDisabled = false;
 
   const tabItems: TabItem[] = [
@@ -1147,6 +1151,7 @@ export default function GuruPresensi({
                           <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
                             <i className="fa-solid fa-file-lines text-amber-500 text-base"></i>
                             <div>
+                              {/* File surat izin terpasang */}
                               <div>File {requiredDocName} terpasang</div>
                               <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
                                 {file.name} ({(file.size / 1024).toFixed(0)} KB)
@@ -1156,6 +1161,7 @@ export default function GuruPresensi({
                           <button
                             type="button"
                             onClick={() => {
+                              {/* Ganti Surat Izin? */}
                               if (confirm(`Ganti file ${requiredDocName}?`)) {
                                 setFile(null);
                                 setPhotoPreviewUrl(null);
@@ -1267,7 +1273,7 @@ export default function GuruPresensi({
 
                 <div className="pt-2">
                     <button type="submit" disabled={loading || isPulangLocked || dailyState?.isLibur} className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                        {loading ? 'Menyimpan Presensi...' : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
+                        {loading ? 'Menyimpan & Mengunggah File...' : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
                     </button>
                 </div>
             </form>

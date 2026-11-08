@@ -39,8 +39,28 @@ async function getTargetEmail(): Promise<string | undefined> {
 }
 
 
+export function detectMimeType(file: File): string {
+  if (file.type && file.type !== 'application/octet-stream') {
+    return file.type;
+  }
+  const name = (file.name || '').toLowerCase();
+  if (name.endsWith('.pdf')) return 'application/pdf';
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.heic')) return 'image/heic';
+  if (name.endsWith('.heif')) return 'image/heif';
+  return file.type || 'application/octet-stream';
+}
+
+export function isImageFile(file: File): boolean {
+  const mime = detectMimeType(file);
+  if (mime.startsWith('image/')) return true;
+  return /\.(jpe?g|png|webp|bmp|gif)$/i.test(file.name || '');
+}
+
 async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promise<File> {
-  if (!file.type.startsWith('image/')) return file;
+  if (!isImageFile(file)) return file;
   
   return new Promise((resolve) => {
     const reader = new FileReader();
@@ -66,17 +86,21 @@ async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promis
           return;
         }
         ctx.drawImage(img, 0, 0, width, height);
+        // Force 'image/jpeg' so canvas compresses reliably (PNG ignores quality in canvas.toBlob)
+        const targetType = 'image/jpeg';
         canvas.toBlob((blob) => {
           if (!blob) {
             resolve(file);
             return;
           }
-          const compressedFile = new File([blob], file.name, {
-            type: file.type,
+          const baseName = (file.name || 'image').replace(/\.[^/.]+$/, "");
+          const newName = `${baseName}.jpg`;
+          const compressedFile = new File([blob], newName, {
+            type: targetType,
             lastModified: Date.now(),
           });
           resolve(compressedFile);
-        }, file.type, quality);
+        }, targetType, quality);
       };
       img.onerror = () => resolve(file);
     };
@@ -147,10 +171,12 @@ export async function uploadToDrive(
       const timestamp = new Date().getTime();
       const filename = `${prefix}_${timestamp}_${file.name}`;
 
+      const effectiveMime = detectMimeType(file);
+
       try {
         const payload: Record<string, any> = {
           filename: filename,
-          mimeType: file.type,
+          mimeType: effectiveMime,
           base64Data: base64Data,
           rootFolder: rootFolder,
           namaGuru: guruFolder,
@@ -166,16 +192,36 @@ export async function uploadToDrive(
           payload.email_tujuan_upload = resolvedEmail;
         }
 
-        const response = await fetch(DRIVE_WEBHOOK_URL, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-        });
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timeoutId = controller ? setTimeout(() => controller.abort(), 60000) : null;
 
-        const json = await response.json();
+        let response: Response;
+        try {
+          response = await fetch(DRIVE_WEBHOOK_URL, {
+            method: 'POST',
+            mode: 'cors',
+            body: JSON.stringify(payload),
+            signal: controller?.signal,
+          });
+        } finally {
+          if (timeoutId) clearTimeout(timeoutId);
+        }
+
+        const rawText = await response.text();
+        let json: any = {};
+        try {
+          json = JSON.parse(rawText);
+        } catch {
+          const match = rawText.match(/https:\/\/drive\.google\.com\/[^\s"']+/);
+          if (match) {
+            json = { success: true, url: match[0] };
+          }
+        }
+
         if (json.success && json.url) {
           resolve(json.url);
         } else {
-          reject(new Error(json.error || 'Gagal mengupload file ke Google Drive.'));
+          reject(new Error(json.error || json.message || 'Gagal mengupload file ke Google Drive.'));
         }
       } catch (err: any) {
         reject(new Error('Koneksi terputus saat mengupload file: ' + err.message));
