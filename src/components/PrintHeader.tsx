@@ -232,8 +232,30 @@ export function PrintSignature({
   statusKepalaSekolah,
   gpsCoordinates
 }: PrintSignatureProps = {}) {
-  const [config, setConfig] = useState<any>({});
-  const [schoolInfo, setSchoolInfo] = useState<any>(null);
+  const [config, setConfig] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('sipjam_config_sync');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.config) return parsed.config;
+        }
+      } catch (_) {}
+    }
+    return {};
+  });
+  const [schoolInfo, setSchoolInfo] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('sipjam_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed?.sekolah_nama) return { nama: parsed.sekolah_nama, status_kepala_sekolah: parsed.status_kepala_sekolah };
+        }
+      } catch (_) {}
+    }
+    return null;
+  });
   const [dateStr, setDateStr] = useState('');
 
   useEffect(() => {
@@ -246,6 +268,11 @@ export function PrintSignature({
           if (stored) {
             const parsed = JSON.parse(stored);
             if (parsed?.sekolah_id) return parsed.sekolah_id;
+          }
+          const syncStored = localStorage.getItem('sipjam_config_sync');
+          if (syncStored) {
+            const parsedSync = JSON.parse(syncStored);
+            if (parsedSync?.sekolah_id) return parsedSync.sekolah_id;
           }
         } catch {
           // ignore parsing error
@@ -297,10 +324,28 @@ export function PrintSignature({
     setDateStr(formattedDate);
 
     if (typeof window !== 'undefined') {
-      const handleConfigUpdate = () => fetchConfig();
+      const handleConfigUpdate = (e?: any) => {
+        if (e?.detail?.config) {
+          setConfig((prev: any) => ({ ...prev, ...e.detail.config }));
+        }
+        fetchConfig();
+      };
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === 'sipjam_config_sync' && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            if (parsed?.config) {
+              setConfig((prev: any) => ({ ...prev, ...parsed.config }));
+            }
+          } catch (_) {}
+          fetchConfig();
+        }
+      };
       window.addEventListener('sipjam:config_updated', handleConfigUpdate);
+      window.addEventListener('storage', handleStorage);
       return () => {
         window.removeEventListener('sipjam:config_updated', handleConfigUpdate);
+        window.removeEventListener('storage', handleStorage);
       };
     }
   }, [sekolahId, user?.sekolah_id]);
@@ -337,9 +382,22 @@ export function PrintSignature({
   const statusKepsek = statusKepalaSekolah || config.status_kepala_sekolah || config.STATUS_KEPALA_SEKOLAH || schoolInfo?.status_kepala_sekolah || 'Definitif';
   const defaultKepalaTitle = formatKepalaSekolahTitle(schoolName);
   const kepsekLabel = formatKepalaSekolahLabel(statusKepsek);
-  const displayRightTitle = rightTitle
-    ? (rightTitle.toLowerCase().includes('kepala') ? formatKepalaSekolahTitle(rightTitle, statusKepsek) : rightTitle)
-    : kepsekLabel;
+  const resolveDisplayRightTitle = () => {
+    if (!rightTitle) return kepsekLabel;
+    const cleanRight = rightTitle.trim();
+    const lowerRight = cleanRight.toLowerCase();
+    if (lowerRight === 'kepala sekolah' || lowerRight === 'kepalasekolah') {
+      return kepsekLabel;
+    }
+    if (/^(plt|plh)\.?\s*kepala\s*sekolah$/i.test(cleanRight)) {
+      return kepsekLabel;
+    }
+    if (/^kepala\s+[a-z0-9]/i.test(cleanRight) && !/^kepala\s+(tu|tata usaha|perpustakaan|lab|laboratorium|bengkel)/i.test(cleanRight)) {
+      return formatKepalaSekolahTitle(cleanRight, statusKepsek);
+    }
+    return rightTitle;
+  };
+  const displayRightTitle = resolveDisplayRightTitle();
 
   const isPengawasActive = Boolean(
     showPengawas !== undefined

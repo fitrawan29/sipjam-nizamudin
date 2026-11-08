@@ -100,7 +100,7 @@ export function getConsolidatedMenuItems(params: {
   const isSuperadmin = normRole === 'superadmin';
   const isDinas = normRole === 'dinaspendidikan';
   const isAdmin = isSuperadmin || normRole === 'admin';
-  const isKepsek = params.isKepalaSekolah || normRole === 'kepalasekolah';
+  const isKepsek = params.isKepalaSekolah || normRole === 'kepalasekolah' || normRole === 'pltkepalasekolah' || normRole === 'plhkepalasekolah';
 
   if (isSuperadmin) {
     if (params.activeTargetSchool) {
@@ -211,12 +211,12 @@ export function getConsolidatedMenuItems(params: {
 export function evaluateTabRBAC(
   viewId: string,
   tabId: string,
-  user: { role?: string; isWaliKelas?: boolean }
+  user: { role?: string; isWaliKelas?: boolean; is_kepala_sekolah?: boolean; isKepalaSekolah?: boolean }
 ): { allowed: boolean; fallbackTab?: string; reason?: string } {
   const rawRole = (user?.role || '').toLowerCase();
   const normRole = rawRole.replace(/[\s_-]+/g, '');
   const isAdmin = normRole === 'admin' || normRole === 'superadmin';
-  const isKepalaSekolah = normRole === 'kepalasekolah' || rawRole === 'kepala sekolah';
+  const isKepalaSekolah = normRole === 'kepalasekolah' || rawRole === 'kepala sekolah' || normRole === 'pltkepalasekolah' || normRole === 'plhkepalasekolah' || user?.is_kepala_sekolah === true || user?.isKepalaSekolah === true;
   const isDinas = normRole === 'dinaspendidikan' || rawRole === 'dinas pendidikan';
   const isWali = !!user?.isWaliKelas;
   const isSiswa = normRole === 'siswa';

@@ -37,7 +37,9 @@ export function checkIsKepalaSekolah(
     roleNorm.includes('kepalasekolah') || 
     roleNorm.includes('kepsek')
   ) {
-    return true;
+    if (!roleNorm.startsWith('wakil') && !roleNorm.includes('wakilkepala')) {
+      return true;
+    }
   }
   if (user.is_kepala_sekolah === true || user.isKepalaSekolah === true) {
     return true;
@@ -95,17 +97,16 @@ export function useKepalaSekolah(
         }
       } catch (_) {}
     }
-    return schoolData?.status_kepala_sekolah || 'Definitif';
+    return (user as any)?.status_kepala_sekolah || (user as any)?.statusKepalaSekolah || schoolData?.status_kepala_sekolah || 'Definitif';
   });
 
   useEffect(() => {
-    // Initial direct synchronous check
+    let isMounted = true;
+
+    // Direct synchronous check to ensure instant state resolution
     if (checkIsKepalaSekolah(user, schoolData)) {
       setIsKepalaSekolah(true);
-      return;
     }
-
-    let isMounted = true;
 
     const verifyFromDatabase = async () => {
       try {
@@ -125,8 +126,24 @@ export function useKepalaSekolah(
           });
         }
 
-        const resolvedStatus = configMap.status_kepala_sekolah || configMap.STATUS_KEPALA_SEKOLAH || schoolData?.status_kepala_sekolah || 'Definitif';
-        if (isMounted) setStatusKepalaSekolah(resolvedStatus);
+        let resolvedStatus = configMap.status_kepala_sekolah || configMap.STATUS_KEPALA_SEKOLAH || schoolData?.status_kepala_sekolah;
+
+        if (!resolvedStatus) {
+          try {
+            const { data: sData } = await supabase
+              .from('sekolah')
+              .select('status_kepala_sekolah')
+              .eq('id', sekolahId)
+              .maybeSingle();
+            if (sData?.status_kepala_sekolah) {
+              resolvedStatus = sData.status_kepala_sekolah;
+            }
+          } catch (_) {}
+        }
+
+        if (isMounted && resolvedStatus) {
+          setStatusKepalaSekolah(resolvedStatus);
+        }
 
         if (checkIsKepalaSekolah(user, schoolData, configMap)) {
           if (isMounted) setIsKepalaSekolah(true);
@@ -171,9 +188,22 @@ export function useKepalaSekolah(
       verifyFromDatabase();
     };
 
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed?.config?.status_kepala_sekolah) {
+            setStatusKepalaSekolah(parsed.config.status_kepala_sekolah);
+          }
+        } catch (_) {}
+        verifyFromDatabase();
+      }
+    };
+
     if (typeof window !== 'undefined') {
       window.addEventListener('sipjam:config_updated', handleConfigUpdate);
       window.addEventListener('sipjam:guru_updated', handleConfigUpdate);
+      window.addEventListener('storage', handleStorage);
     }
 
     return () => {
@@ -181,6 +211,7 @@ export function useKepalaSekolah(
       if (typeof window !== 'undefined') {
         window.removeEventListener('sipjam:config_updated', handleConfigUpdate);
         window.removeEventListener('sipjam:guru_updated', handleConfigUpdate);
+        window.removeEventListener('storage', handleStorage);
       }
     };
   }, [user?.id, user?.role, user?.nama, user?.username, user?.sekolah_id, schoolData, syncKey]);

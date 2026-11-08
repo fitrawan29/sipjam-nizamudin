@@ -68,8 +68,8 @@ export function capitalizeEachWord(input: string): string {
 export function normalizeStatusPrefix(status?: string | null): string {
   if (!status || typeof status !== 'string') return '';
   const clean = status.trim().toUpperCase();
-  if (clean === 'PLT' || clean.startsWith('PLT')) return 'Plt. ';
-  if (clean === 'PLH' || clean.startsWith('PLH')) return 'Plh. ';
+  if (clean === 'PLT' || clean.startsWith('PLT') || clean.includes('PELAKSANA TUGAS')) return 'Plt. ';
+  if (clean === 'PLH' || clean.startsWith('PLH') || clean.includes('PELAKSANA HARIAN')) return 'Plh. ';
   return '';
 }
 

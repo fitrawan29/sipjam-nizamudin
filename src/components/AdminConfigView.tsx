@@ -458,12 +458,13 @@ export default function AdminConfigView({
           } catch (_) {}
         }
 
-        if (saveConfig.kop_sekolah && typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
           try {
             const rawUser = localStorage.getItem('sipjam_user');
             if (rawUser) {
               const u = JSON.parse(rawUser);
-              u.sekolah_nama = saveConfig.kop_sekolah;
+              if (saveConfig.kop_sekolah) u.sekolah_nama = saveConfig.kop_sekolah;
+              u.status_kepala_sekolah = saveConfig.status_kepala_sekolah;
               localStorage.setItem('sipjam_user', JSON.stringify(u));
             }
           } catch (_) {}

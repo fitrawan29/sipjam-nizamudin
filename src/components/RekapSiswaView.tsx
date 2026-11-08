@@ -9,6 +9,7 @@ import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalInterven
 import { getWitaDateStr, formatPresensiTime } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
+import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 
 export interface RekapSiswaViewProps {
   user: any; 
@@ -25,12 +26,7 @@ export default function RekapSiswaView({
 }: RekapSiswaViewProps) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
-  const isKepalaSekolah = Boolean(
-    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'kepalasekolah' ||
-    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'kepsek' ||
-    user?.is_kepala_sekolah === true ||
-    user?.isKepalaSekolah === true
-  );
+  const isKepalaSekolah = checkIsKepalaSekolah(user);
   const isGlobalReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin && isKepalaSekolah);
 
   const [startDate, setStartDate] = useState('');

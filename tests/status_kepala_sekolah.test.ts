@@ -428,6 +428,127 @@ check(
 );
 
 // =========================================================================
+// SUITE 7: Adversarial Probing, Edge Cases & Multi-Tab Sync
+// =========================================================================
+console.log('\n--- Suite 7: Adversarial Probing, Edge Cases & Multi-Tab Sync ---');
+
+// 7.1 False positive prevention: "Wakil Kepala Sekolah"
+check(
+  '7.1 checkIsKepalaSekolah strictly rejects "Wakil Kepala Sekolah" role',
+  !checkIsKepalaSekolah({ role: 'Wakil Kepala Sekolah' }) &&
+  !checkIsKepalaSekolah({ role: 'wakilkepalasekolah' })
+);
+
+// 7.2 Spelled-out status terms support
+check(
+  '7.2.1 normalizeStatusPrefix supports spelled-out "Pelaksana Tugas"',
+  normalizeStatusPrefix('Pelaksana Tugas') === 'Plt. ' &&
+  normalizeStatusPrefix('pelaksana tugas') === 'Plt. '
+);
+
+check(
+  '7.2.2 normalizeStatusPrefix supports spelled-out "Pelaksana Harian"',
+  normalizeStatusPrefix('Pelaksana Harian') === 'Plh. ' &&
+  normalizeStatusPrefix('pelaksana harian') === 'Plh. '
+);
+
+check(
+  '7.2.3 formatKepalaSekolahLabel formats spelled-out "Pelaksana Tugas" to "Plt. Kepala Sekolah"',
+  formatKepalaSekolahLabel('Pelaksana Tugas') === 'Plt. Kepala Sekolah'
+);
+
+check(
+  '7.2.4 formatKepalaSekolahLabel formats spelled-out "Pelaksana Harian" to "Plh. Kepala Sekolah"',
+  formatKepalaSekolahLabel('Pelaksana Harian') === 'Plh. Kepala Sekolah'
+);
+
+// 7.3 Non-principal rightTitle preservation in PrintSignature
+const htmlWakilKepsek = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'Plt',
+    rightTitle: 'Wakil Kepala Sekolah',
+    rightName: 'Drs. Wakil',
+    user: { role: 'guru' }
+  })
+);
+
+check(
+  '7.3.1 PrintSignature preserves "Wakil Kepala Sekolah" verbatim without "Plt. Kepala Wakil" corruption',
+  htmlWakilKepsek.includes('Wakil Kepala Sekolah') &&
+  !htmlWakilKepsek.includes('Plt. Kepala Wakil Kepala Sekolah')
+);
+
+const htmlKepalaTU = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'Plt',
+    rightTitle: 'Kepala TU',
+    rightName: 'H. Tata Usaha',
+    user: { role: 'guru' }
+  })
+);
+
+check(
+  '7.3.2 PrintSignature preserves "Kepala TU" without treat as school designation',
+  htmlKepalaTU.includes('Kepala TU') &&
+  !htmlKepalaTU.includes('Plt. Kepala TU')
+);
+
+const htmlKepalaSMAN = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'Plt',
+    rightTitle: 'Kepala SMAN 1 Jakarta',
+    rightName: 'Drs. Pimpinan',
+    user: { role: 'guru' }
+  })
+);
+
+check(
+  '7.3.3 PrintSignature formats "Kepala SMAN 1 Jakarta" to "Plt. Kepala SMAN 1 Jakarta"',
+  htmlKepalaSMAN.includes('Plt. Kepala SMAN 1 Jakarta')
+);
+
+// 7.4 navigation.ts role recognizing
+const navSrcPath = path.resolve(__dirname, '../src/lib/navigation.ts');
+const navSrc = fs.readFileSync(navSrcPath, 'utf8');
+
+check(
+  '7.4.1 navigation.ts supports "pltkepalasekolah" in getNavigationItems',
+  navSrc.includes("normRole === 'pltkepalasekolah'")
+);
+
+check(
+  '7.4.2 navigation.ts supports "pltkepalasekolah" in validateNavigationGuard',
+  navSrc.includes("normRole === 'pltkepalasekolah'")
+);
+
+// 7.5 RekapSiswaView.tsx uses checkIsKepalaSekolah
+const rekapSiswaPath = path.resolve(__dirname, '../src/components/RekapSiswaView.tsx');
+const rekapSiswaSrc = fs.readFileSync(rekapSiswaPath, 'utf8');
+
+check(
+  '7.5 RekapSiswaView imports and uses checkIsKepalaSekolah helper',
+  rekapSiswaSrc.includes('checkIsKepalaSekolah') &&
+  rekapSiswaSrc.includes('const isKepalaSekolah = checkIsKepalaSekolah(user)')
+);
+
+// 7.6 Cross-tab storage synchronization in hooks & print
+check(
+  '7.6.1 useKepalaSekolah listens to "storage" event for multi-tab sync',
+  useKepsekSrc.includes("window.addEventListener('storage', handleStorage)")
+);
+
+check(
+  '7.6.2 PrintSignature listens to "storage" event for multi-tab sync',
+  printHeaderSrc.includes("window.addEventListener('storage', handleStorage)")
+);
+
+check(
+  '7.6.3 PrintSignature initializes config from localStorage synchronously',
+  printHeaderSrc.includes("localStorage.getItem('sipjam_config_sync')")
+);
+
+
+// =========================================================================
 // SUMMARY
 // =========================================================================
 console.log('\n========================================================================');
