@@ -13,6 +13,7 @@ import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 interface RaporViewProps {
   user: any;
   assignedKelas: string | null;
+  statusKepalaSekolah?: string;
 }
 
 interface StudentItem {
@@ -36,11 +37,12 @@ interface WaliKelasInfo {
   nip: string | null;
 }
 
-export default function RaporView({ user, assignedKelas }: RaporViewProps) {
+export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: RaporViewProps) {
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const isSuperadmin = user?.role === 'Superadmin' || user?.role === 'superadmin';
   const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
   const sekolahId = user?.sekolah_id || null;
+  const effectiveStatus = statusKepalaSekolah || user?.status_kepala_sekolah || user?.statusKepalaSekolah || (typeof window !== 'undefined' && (() => { try { const s = localStorage.getItem('sipjam_config_sync'); if (s) return JSON.parse(s)?.config?.status_kepala_sekolah; } catch {} })()) || 'Definitif';
 
   // View state
   const [activeTab, setActiveTab] = useState<'ringkasan' | 'cetak-individu'>('ringkasan');
@@ -1592,6 +1594,7 @@ export default function RaporView({ user, assignedKelas }: RaporViewProps) {
               showKepalaSekolah={true}
               user={user}
               sekolahId={sekolahId || undefined}
+              statusKepalaSekolah={statusKepalaSekolah}
             />
 
             {/* ACTION BAR AT BOTTOM */}

@@ -1075,12 +1075,12 @@ export default function AdminConfigView({
                     </div>
                 </div>
                 <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs text-blue-600 dark:text-blue-400"></i> Tanda Tangan Laporan & Kepala Sekolah</h3>
+                    <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs text-blue-600 dark:text-blue-400"></i> Tanda Tangan Laporan & {formatKepalaSekolahLabel(config.status_kepala_sekolah)}</h3>
                     
                     {/* Penunjukan Akun Kepala Sekolah */}
                     <div className="mb-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40">
                         <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-1.5">
-                          <i className="fa-solid fa-user-tie text-blue-600 dark:text-blue-400"></i> Penunjukan Kepala Sekolah (Dari Data Guru)
+                          <i className="fa-solid fa-user-tie text-blue-600 dark:text-blue-400"></i> Penunjukan {formatKepalaSekolahLabel(config.status_kepala_sekolah)} (Dari Data Guru)
                         </label>
                         <select
                           name="kepala_sekolah_id"
@@ -1088,7 +1088,7 @@ export default function AdminConfigView({
                           onChange={handleKepsekChange}
                           className="w-full px-2.5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
                         >
-                          <option value="">-- Pilih Guru yang Ditunjuk sebagai Kepala Sekolah --</option>
+                          <option value="">-- Pilih Guru yang Ditunjuk sebagai {formatKepalaSekolahLabel(config.status_kepala_sekolah)} --</option>
                           {guruList.map(g => (
                             <option key={g.id} value={g.id}>
                               {g.nama_guru} {g.nip ? `(NIP: ${g.nip})` : ''}
@@ -1096,7 +1096,7 @@ export default function AdminConfigView({
                           ))}
                         </select>
                         <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                          Guru yang ditunjuk sebagai Kepala Sekolah memperoleh akses peninjauan/monitoring fitur Administrator (antara lain Rekap Presensi, Verifikasi, Analitik, Jurnal, dan Presensi Siswa) dalam mode read-only.
+                          Guru yang ditunjuk sebagai {formatKepalaSekolahLabel(config.status_kepala_sekolah)} memperoleh akses peninjauan/monitoring fitur Administrator (antara lain Rekap Presensi, Verifikasi, Analitik, Jurnal, dan Presensi Siswa) dalam mode read-only.
                         </p>
                     </div>
 

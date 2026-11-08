@@ -644,7 +644,7 @@ export default function AppScreen({
           Swal.fire({
             icon: 'warning',
             title: 'Akses Ditolak',
-            text: 'Akses Terblokir: Fitur monitoring administrasi hanya dapat diakses oleh Administrator dan Kepala Sekolah.',
+            text: `Akses Terblokir: Fitur monitoring administrasi hanya dapat diakses oleh Administrator dan ${formatKepalaSekolahLabel(statusKepalaSekolah)}.`,
             confirmButtonColor: '#0B4619'
           });
           return;
@@ -1177,7 +1177,7 @@ export default function AppScreen({
               )}
               {currentView === 'view-piket' && (
                 isAdmin || isSuperadmin || isPiketHariIni ? (
-                  <PiketView user={user} />
+                  <PiketView user={user} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1199,7 +1199,7 @@ export default function AppScreen({
               )}
               {currentView === 'view-dokumen' && (
                 !isTataUsaha ? (
-                  <DokumenView user={user} />
+                  <DokumenView user={user} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1225,6 +1225,7 @@ export default function AppScreen({
                   initialTab={urlTab === 'rapor' ? 'rapor' : 'gradebook'}
                   assignedKelas={assignedKelas}
                   isKepalaSekolah={isKepalaSekolah}
+                  statusKepalaSekolah={statusKepalaSekolah}
                 />
               )}
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
@@ -1232,9 +1233,9 @@ export default function AppScreen({
               {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}
               {currentView === 'view-jurnal-kelas' && (
                 isAdmin || isWaliKelas || isDinas ? (
-                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={isKepalaSekolah} isReadOnly={isDinas} />
+                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={isKepalaSekolah} isReadOnly={isDinas} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : isKepalaSekolah ? (
-                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={true} />
+                  <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={true} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1256,9 +1257,9 @@ export default function AppScreen({
               )}
               {currentView === 'view-rekap-siswa' && (
                 isAdmin || isSuperadmin || isWaliKelas || isDinas ? (
-                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isDinas || (isKepalaSekolah && !isAdmin && !isSuperadmin)} initialTab={(urlTab as any) || undefined} />
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={isDinas || (isKepalaSekolah && !isAdmin && !isSuperadmin)} initialTab={(urlTab as any) || undefined} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : isKepalaSekolah ? (
-                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} initialTab={(urlTab as any) || undefined} />
+                  <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} initialTab={(urlTab as any) || undefined} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
@@ -1312,7 +1313,7 @@ export default function AppScreen({
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                      Halaman <strong>Verifikasi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                      Halaman <strong>Verifikasi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
@@ -1332,6 +1333,7 @@ export default function AppScreen({
                     isReadOnly={isDinas}
                     targetSchool={activeTargetSchool}
                     initialTab={urlTab || 'tabel'}
+                    statusKepalaSekolah={statusKepalaSekolah}
                   />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
@@ -1340,7 +1342,7 @@ export default function AppScreen({
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                      Halaman <strong>Rekap Presensi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                      Halaman <strong>Rekap Presensi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
@@ -1360,6 +1362,7 @@ export default function AppScreen({
                     isReadOnly={true}
                     targetSchool={activeTargetSchool}
                     initialTab="tabel"
+                    statusKepalaSekolah={statusKepalaSekolah}
                   />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
@@ -1368,7 +1371,7 @@ export default function AppScreen({
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                      Halaman <strong>Rekap Presensi Guru</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                      Halaman <strong>Rekap Presensi Guru</strong> secara eksklusif hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
@@ -1490,7 +1493,7 @@ export default function AppScreen({
                     </div>
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
                     <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
-                      Halaman <strong>Analitik</strong> hanya dapat diakses oleh Administrator dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                      Halaman <strong>Analitik</strong> hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"

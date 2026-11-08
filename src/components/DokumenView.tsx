@@ -374,9 +374,10 @@ export function resolveTeacherSubjects(
 export interface DokumenViewProps {
   user: any;
   isReadOnly?: boolean;
+  statusKepalaSekolah?: string;
 }
 
-export default function DokumenView({ user, isReadOnly = false }: DokumenViewProps) {
+export default function DokumenView({ user, isReadOnly = false, statusKepalaSekolah }: DokumenViewProps) {
   const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const isAdmin = normRole === 'admin' || normRole === 'superadmin';
   const effectiveSekolahId = getActiveTargetSchool()?.id || user?.sekolah_id;
@@ -2185,6 +2186,7 @@ export default function DokumenView({ user, isReadOnly = false }: DokumenViewPro
           leftNip={user?.nip}
           user={user}
           sekolahId={user?.sekolah_id}
+          statusKepalaSekolah={statusKepalaSekolah}
         />
       </div>
 

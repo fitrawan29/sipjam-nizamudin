@@ -11,6 +11,7 @@ import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { showToast } from '@/lib/toast';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 
 function addDaysToDateStr(dateStr: string, days: number): string {
   try {
@@ -33,7 +34,8 @@ export default function RekapJurnalView({
   hideTabSwitch = false,
   assignedKelas: propAssignedKelas = null,
   isKepalaSekolah: propIsKepalaSekolah,
-  isReadOnly = false
+  isReadOnly = false,
+  statusKepalaSekolah
 }: { 
   user: any;
   initialMode?: 'pribadi' | 'kelas';
@@ -42,12 +44,15 @@ export default function RekapJurnalView({
   assignedKelas?: string | null;
   isKepalaSekolah?: boolean;
   isReadOnly?: boolean;
+  statusKepalaSekolah?: string;
 }) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
   const isKepalaSekolah = propIsKepalaSekolah !== undefined 
     ? propIsKepalaSekolah 
     : checkIsKepalaSekolah(user);
+  const effectiveStatus = statusKepalaSekolah || user?.status_kepala_sekolah || user?.statusKepalaSekolah || (typeof window !== 'undefined' && (() => { try { const s = localStorage.getItem('sipjam_config_sync'); if (s) return JSON.parse(s)?.config?.status_kepala_sekolah; } catch {} })()) || 'Definitif';
+  const ksLabel = formatKepalaSekolahLabel(effectiveStatus);
   const effectiveMode = controlledMode || initialMode;
   const [tabMode, setTabMode] = useState<'pribadi' | 'kelas'>(effectiveMode);
   const [isWaliKelas, setIsWaliKelas] = useState<boolean>(isAdmin || isKepalaSekolah || Boolean(isReadOnly));
@@ -541,7 +546,7 @@ export default function RekapJurnalView({
     if (newMode === 'kelas' && !isAdmin && !isKepalaSekolah && !isWaliKelas && waliClasses.length === 0) {
       showToast(
         'Akses Terblokir',
-        'Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator, Kepala Sekolah, dan Wali Kelas yang ditugaskan.',
+        `Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator, ${ksLabel}, dan Wali Kelas yang ditugaskan.`,
         'warning'
       );
       return;
@@ -1318,6 +1323,7 @@ export default function RekapJurnalView({
                   leftNip={signerNip}
                   user={user}
                   sekolahId={user?.sekolah_id}
+                  statusKepalaSekolah={effectiveStatus}
                 />
               );
             })()}

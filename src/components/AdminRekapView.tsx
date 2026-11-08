@@ -105,6 +105,7 @@ export interface AdminRekapViewProps {
   isReadOnly?: boolean;
   targetSchool?: any;
   initialTab?: string;
+  statusKepalaSekolah?: string;
 }
 
 export default function AdminRekapView({
@@ -112,7 +113,8 @@ export default function AdminRekapView({
   isKepalaSekolah,
   isReadOnly = false,
   targetSchool,
-  initialTab = 'tabel'
+  initialTab = 'tabel',
+  statusKepalaSekolah
 }: AdminRekapViewProps) {
   // Requirement R2: Redirect legacy 'cetak' subtab cleanly to 'tabel'
   const normalizedInitialTab = initialTab === 'cetak' ? 'tabel' : initialTab;
@@ -1063,6 +1065,7 @@ export default function AdminRekapView({
                           leftNip={isKepalaSekolah ? '-' : user?.nip}
                           user={user}
                           sekolahId={user?.sekolah_id}
+                          statusKepalaSekolah={statusKepalaSekolah}
                         />
                       </div>
 
@@ -1148,6 +1151,7 @@ export default function AdminRekapView({
                             leftNip={isKepalaSekolah ? '-' : user?.nip}
                             user={user}
                             sekolahId={user?.sekolah_id}
+                            statusKepalaSekolah={statusKepalaSekolah}
                           />
                         </div>
                       </div>

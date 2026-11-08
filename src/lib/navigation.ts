@@ -3,6 +3,8 @@
  * Part of Milestone 3: Comprehensive Feature and Menu Consolidation
  */
 
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+
 export interface MenuItem {
   id: string;
   icon: string;
@@ -211,7 +213,7 @@ export function getConsolidatedMenuItems(params: {
 export function evaluateTabRBAC(
   viewId: string,
   tabId: string,
-  user: { role?: string; isWaliKelas?: boolean; is_kepala_sekolah?: boolean; isKepalaSekolah?: boolean }
+  user: { role?: string; isWaliKelas?: boolean; is_kepala_sekolah?: boolean; isKepalaSekolah?: boolean; status_kepala_sekolah?: string; statusKepalaSekolah?: string }
 ): { allowed: boolean; fallbackTab?: string; reason?: string } {
   const rawRole = (user?.role || '').toLowerCase();
   const normRole = rawRole.replace(/[\s_-]+/g, '');
@@ -235,7 +237,8 @@ export function evaluateTabRBAC(
   // Cluster 1: Jurnal Mengajar
   if (viewId === 'view-guru-jurnal' && tabId === 'supervisi-kelas') {
     if (!isWali && !isAdmin && !isKepalaSekolah && !isDinas) {
-      return { allowed: false, fallbackTab: 'input', reason: 'Hanya Wali Kelas, Admin & Kepala Sekolah yang dapat mengakses supervisi kelas.' };
+      const ksLabel = formatKepalaSekolahLabel(user?.status_kepala_sekolah || user?.statusKepalaSekolah);
+      return { allowed: false, fallbackTab: 'input', reason: `Hanya Wali Kelas, Admin & ${ksLabel} yang dapat mengakses supervisi kelas.` };
     }
   }
 

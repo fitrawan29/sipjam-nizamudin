@@ -10,24 +10,29 @@ import { getWitaDateStr, formatPresensiTime } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 
 export interface RekapSiswaViewProps {
   user: any; 
   assignedKelas?: string | null; 
   isReadOnly?: boolean;
   initialTab?: 'gerbang' | 'rekap';
+  statusKepalaSekolah?: string;
 }
 
 export default function RekapSiswaView({ 
   user, 
   assignedKelas: propAssignedKelas,
   isReadOnly: propReadOnly,
-  initialTab
+  initialTab,
+  statusKepalaSekolah
 }: RekapSiswaViewProps) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/\s+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
   const isKepalaSekolah = checkIsKepalaSekolah(user);
   const isGlobalReadOnly = propReadOnly !== undefined ? propReadOnly : (!isAdmin && !isSuperadmin && isKepalaSekolah);
+  const effectiveStatus = statusKepalaSekolah || user?.status_kepala_sekolah || user?.statusKepalaSekolah || (typeof window !== 'undefined' && (() => { try { const s = localStorage.getItem('sipjam_config_sync'); if (s) return JSON.parse(s)?.config?.status_kepala_sekolah; } catch {} })()) || 'Definitif';
+  const ksLabel = formatKepalaSekolahLabel(effectiveStatus);
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -452,19 +457,21 @@ export default function RekapSiswaView({
   };
 
   const handleSaveWaliAttendance = async () => {
-    if (isReadOnly) {
-      return Swal.fire({
-        icon: 'info',
-        title: 'Mode Monitoring',
-        text: 'Aksi simpan presensi dinonaktifkan dalam mode pemantauan Kepala Sekolah.',
-        confirmButtonColor: '#0d9488'
-      });
-    }
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return Swal.fire({
         icon: 'warning',
         title: 'Koneksi Internet Diperlukan',
         text: 'Perangkat Anda sedang offline. Koneksi internet aktif diwajibkan untuk menyimpan presensi siswa.',
+        confirmButtonColor: '#0d9488'
+      });
+    }
+    if (isReadOnly) {
+      return Swal.fire({
+        icon: 'info',
+        title: 'Mode Monitoring',
+        text: ksLabel !== 'Kepala Sekolah'
+          ? `Aksi simpan presensi dinonaktifkan dalam mode pemantauan ${ksLabel}.`
+          : 'Aksi simpan presensi dinonaktifkan dalam mode pemantauan Kepala Sekolah.',
         confirmButtonColor: '#0d9488'
       });
     }
@@ -915,7 +922,7 @@ export default function RekapSiswaView({
                   {isOwnHomeroomClass ? (
                     <><strong>Mode Penugasan Wali Kelas ({activeWaliKelas?.kelas}):</strong> Anda dapat mengelola presensi siswa kelas binaan Anda. Untuk kelas lainnya, akses Anda adalah peninjauan (read-only).</>
                   ) : (
-                    <><strong>Mode Monitoring:</strong> Anda masuk sebagai pemantau (Kepala Sekolah). Data presensi siswa bersifat hanya-baca (read-only).</>
+                    <><strong>Mode Monitoring:</strong> Anda masuk sebagai pemantau ({ksLabel}). Data presensi siswa bersifat hanya-baca (read-only).</>
                   )}
                 </span>
               </div>
@@ -1533,11 +1540,12 @@ export default function RekapSiswaView({
 
                 <PrintSignature
                   leftTitle="Mengetahui,"
-                  leftSubtitle={user?.role === 'guru' ? 'Wali Kelas' : 'Kepala Sekolah / Admin'}
+                  leftSubtitle={user?.role === 'guru' ? 'Wali Kelas' : (isKepalaSekolah ? ksLabel : 'Pengelola Data / Admin')}
                   leftName={isOwnHomeroomClass ? user?.nama : (activeWaliKelas?.nama_guru || user?.nama)}
                   leftNip={isOwnHomeroomClass ? user?.nip : (activeWaliKelas?.nip || user?.nip)}
                   user={user}
                   sekolahId={user?.sekolah_id}
+                  statusKepalaSekolah={effectiveStatus}
                 />
 
                 {/* Export buttons */}
@@ -1777,6 +1785,7 @@ export default function RekapSiswaView({
                     leftNip={mapel ? user?.nip : (isOwnHomeroomClass ? user?.nip : (activeWaliKelas?.nip || user?.nip))}
                     user={user}
                     sekolahId={user?.sekolah_id}
+                    statusKepalaSekolah={effectiveStatus}
                   />
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 no-print">

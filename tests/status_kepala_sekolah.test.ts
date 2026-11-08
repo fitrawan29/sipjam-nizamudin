@@ -547,6 +547,175 @@ check(
   printHeaderSrc.includes("localStorage.getItem('sipjam_config_sync')")
 );
 
+// =========================================================================
+// SUITE 8: End-to-End Comprehensive View & Print Pipeline Verification
+// =========================================================================
+console.log('\n--- Suite 8: End-to-End Comprehensive View & Print Pipeline Verification ---');
+
+// 8.1 Left Subtitle formatting in PrintSignature
+const htmlLeftPlt = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftSubtitle: 'Kepala Sekolah',
+    statusKepalaSekolah: 'Plt',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '8.1.1 PrintSignature formats leftSubtitle="Kepala Sekolah" with status="Plt" to "Plt. Kepala Sekolah"',
+  htmlLeftPlt.includes('Plt. Kepala Sekolah')
+);
+
+const htmlLeftAdminPlh = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftSubtitle: 'Kepala Sekolah / Admin',
+    statusKepalaSekolah: 'Plh',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '8.1.2 PrintSignature formats leftSubtitle="Kepala Sekolah / Admin" with status="Plh" to "Plh. Kepala Sekolah / Admin"',
+  htmlLeftAdminPlh.includes('Plh. Kepala Sekolah / Admin')
+);
+
+const htmlLeftWali = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    leftSubtitle: 'Wali Kelas',
+    statusKepalaSekolah: 'Plt',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '8.1.3 PrintSignature preserves non-principal leftSubtitle="Wali Kelas" without corruption',
+  htmlLeftWali.includes('Wali Kelas') && !htmlLeftWali.includes('Plt. Wali Kelas')
+);
+
+// 8.2 Fallback principal name when no name configured in DB
+const htmlFallbackPltName = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    statusKepalaSekolah: 'Plt',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '8.2.1 PrintSignature fallback principal name uses "Plt. Kepala Sekolah" when status is Plt and no DB name set',
+  htmlFallbackPltName.includes('Plt. Kepala Sekolah')
+);
+
+const htmlShowKepsekFallbackPlh = renderToStaticMarkup(
+  React.createElement(PrintSignature, {
+    showKepalaSekolah: true,
+    statusKepalaSekolah: 'Plh',
+    user: { role: 'guru' }
+  })
+);
+check(
+  '8.2.2 showKepalaSekolah fallback principal name uses "Plh. Kepala Sekolah" when status is Plh and no DB name set',
+  htmlShowKepsekFallbackPlh.includes('Plh. Kepala Sekolah')
+);
+
+// 8.3 AdminConfigView dynamic labels
+const freshAdminConfigSrc = fs.readFileSync(adminConfigPath, 'utf8');
+check(
+  '8.3.1 AdminConfigView dynamically formats Tanda Tangan Laporan header with formatKepalaSekolahLabel',
+  freshAdminConfigSrc.includes('Tanda Tangan Laporan & {formatKepalaSekolahLabel(config.status_kepala_sekolah)}')
+);
+
+check(
+  '8.3.2 AdminConfigView dynamically formats Penunjukan option with formatKepalaSekolahLabel',
+  freshAdminConfigSrc.includes('-- Pilih Guru yang Ditunjuk sebagai {formatKepalaSekolahLabel(config.status_kepala_sekolah)} --')
+);
+
+// 8.4 AppScreen blocked notices & prop forwarding
+const freshAppScreenSrc = fs.readFileSync(appScreenPath, 'utf8');
+check(
+  '8.4.1 AppScreen dynamically formats verification blocked modal with formatKepalaSekolahLabel',
+  freshAppScreenSrc.includes('Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}')
+);
+
+check(
+  '8.4.2 AppScreen dynamically formats alert Swal message with formatKepalaSekolahLabel',
+  freshAppScreenSrc.includes('Administrator dan ${formatKepalaSekolahLabel(statusKepalaSekolah)}')
+);
+
+check(
+  '8.4.3 AppScreen forwards statusKepalaSekolah to all print-rendering views',
+  freshAppScreenSrc.includes('<PiketView user={user} statusKepalaSekolah={statusKepalaSekolah} />') &&
+  freshAppScreenSrc.includes('<DokumenView user={user} statusKepalaSekolah={statusKepalaSekolah} />') &&
+  freshAppScreenSrc.includes('statusKepalaSekolah={statusKepalaSekolah}')
+);
+
+// 8.5 Subviews prop interfaces & implementations
+const freshRekapSiswaSrc = fs.readFileSync(rekapSiswaPath, 'utf8');
+check(
+  '8.5.1 RekapSiswaView accepts statusKepalaSekolah prop and passes to PrintSignature',
+  freshRekapSiswaSrc.includes('statusKepalaSekolah?: string') &&
+  freshRekapSiswaSrc.includes('statusKepalaSekolah={effectiveStatus}')
+);
+
+check(
+  '8.5.2 RekapSiswaView uses formatKepalaSekolahLabel in Mode Monitoring banner',
+  freshRekapSiswaSrc.includes('Mode Monitoring:</strong> Anda masuk sebagai pemantau ({ksLabel})')
+);
+
+const rekapJurnalPath = path.resolve(__dirname, '../src/components/RekapJurnalView.tsx');
+const rekapJurnalSrc = fs.readFileSync(rekapJurnalPath, 'utf8');
+check(
+  '8.5.3 RekapJurnalView accepts statusKepalaSekolah prop and passes to PrintSignature',
+  rekapJurnalSrc.includes('statusKepalaSekolah?: string') &&
+  rekapJurnalSrc.includes('statusKepalaSekolah={effectiveStatus}')
+);
+
+check(
+  '8.5.4 RekapJurnalView uses formatKepalaSekolahLabel in blocked access toast',
+  rekapJurnalSrc.includes('Menu Rekapan Jurnal Per Kelas secara eksklusif hanya dapat diakses oleh Administrator, ${ksLabel}, dan Wali Kelas yang ditugaskan.')
+);
+
+const raporPath = path.resolve(__dirname, '../src/components/RaporView.tsx');
+const raporSrc = fs.readFileSync(raporPath, 'utf8');
+check(
+  '8.5.5 RaporView accepts statusKepalaSekolah prop and forwards to PrintSignature',
+  raporSrc.includes('statusKepalaSekolah?: string') &&
+  raporSrc.includes('statusKepalaSekolah={statusKepalaSekolah}')
+);
+
+const gradebookPath = path.resolve(__dirname, '../src/components/GradebookView.tsx');
+const gradebookSrc = fs.readFileSync(gradebookPath, 'utf8');
+check(
+  '8.5.6 GradebookView accepts statusKepalaSekolah prop and forwards to PrintSignature & RaporView',
+  gradebookSrc.includes('statusKepalaSekolah?: string') &&
+  gradebookSrc.includes('statusKepalaSekolah={statusKepalaSekolah}')
+);
+
+const dokumenPath = path.resolve(__dirname, '../src/components/DokumenView.tsx');
+const dokumenSrc = fs.readFileSync(dokumenPath, 'utf8');
+check(
+  '8.5.7 DokumenView accepts statusKepalaSekolah prop and forwards to PrintSignature',
+  dokumenSrc.includes('statusKepalaSekolah?: string') &&
+  dokumenSrc.includes('statusKepalaSekolah={statusKepalaSekolah}')
+);
+
+const piketPath = path.resolve(__dirname, '../src/components/PiketView.tsx');
+const piketSrc = fs.readFileSync(piketPath, 'utf8');
+check(
+  '8.5.8 PiketView accepts statusKepalaSekolah prop and forwards to PrintSignature',
+  piketSrc.includes('statusKepalaSekolah?: string') &&
+  piketSrc.includes('statusKepalaSekolah={statusKepalaSekolah}')
+);
+
+const adminRekapPath = path.resolve(__dirname, '../src/components/AdminRekapView.tsx');
+const adminRekapSrc = fs.readFileSync(adminRekapPath, 'utf8');
+check(
+  '8.5.9 AdminRekapView accepts statusKepalaSekolah prop and forwards to PrintSignature',
+  adminRekapSrc.includes('statusKepalaSekolah?: string') &&
+  adminRekapSrc.includes('statusKepalaSekolah={statusKepalaSekolah}')
+);
+
+const freshNavSrc = fs.readFileSync(navSrcPath, 'utf8');
+check(
+  '8.6 navigation.ts evaluateTabRBAC uses formatKepalaSekolahLabel in reason message',
+  freshNavSrc.includes('Hanya Wali Kelas, Admin & ${ksLabel} yang dapat mengakses supervisi kelas.')
+);
+
 
 // =========================================================================
 // SUMMARY

@@ -28,7 +28,7 @@ import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 
 const HARI_PIKET_LIST = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'] as const;
 
-export default function PiketView({ user }: { user: any }) {
+export default function PiketView({ user, statusKepalaSekolah }: { user: any; statusKepalaSekolah?: string }) {
   const roleNormalized = (user?.role || '').toLowerCase().replace(/\s+/g, '');
   const isAdmin = roleNormalized === 'admin' || roleNormalized === 'superadmin';
   const isGuru = roleNormalized === 'guru';
@@ -4193,6 +4193,7 @@ export default function PiketView({ user }: { user: any }) {
                     leftNip={user?.nip}
                     user={user}
                     sekolahId={user?.sekolah_id}
+                    statusKepalaSekolah={statusKepalaSekolah}
                   />
                   {/* <PrintSignature user={user} sekolahId={user?.sekolah_id} /> */}
 

@@ -160,6 +160,7 @@ export interface GradebookViewProps {
   initialTab?: 'gradebook' | 'rapor';
   assignedKelas?: string | null;
   isKepalaSekolah?: boolean;
+  statusKepalaSekolah?: string;
 }
 
 interface StudentItem {
@@ -271,7 +272,8 @@ export default function GradebookView({
   user,
   initialTab = 'gradebook',
   assignedKelas,
-  isKepalaSekolah: _isKepalaSekolah
+  isKepalaSekolah: _isKepalaSekolah,
+  statusKepalaSekolah
 }: GradebookViewProps) {
   // Mode & Tenant Resolution
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
@@ -4453,6 +4455,7 @@ export default function GradebookView({
             leftNip={teachersList.find(t => t.nama_guru === selectedGuru)?.nip || user?.nip}
             user={user}
             sekolahId={sekolahId || undefined}
+            statusKepalaSekolah={statusKepalaSekolah}
           />
         </div>
       )}
@@ -4599,6 +4602,7 @@ export default function GradebookView({
             leftNip={user?.nip}
             user={user}
             sekolahId={sekolahId || undefined}
+            statusKepalaSekolah={statusKepalaSekolah}
           />
         </div>
       )}
@@ -4747,6 +4751,7 @@ export default function GradebookView({
             leftNip={teachersList.find(t => t.nama_guru === selectedGuru)?.nip || user?.nip}
             user={user}
             sekolahId={sekolahId || undefined}
+            statusKepalaSekolah={statusKepalaSekolah}
           />
         </div>
       )}
@@ -5282,7 +5287,7 @@ export default function GradebookView({
       {/* Sub-Tab 2: Rapor Kelas Binaan (In-Memory Keep-Alive + RBAC) */}
       <div className={activeTab === 'rapor' ? 'block' : 'hidden'}>
         {canAccessRapor ? (
-          <RaporView user={user} assignedKelas={assignedKelas || null} />
+          <RaporView user={user} assignedKelas={assignedKelas || null} statusKepalaSekolah={statusKepalaSekolah} />
         ) : (
           <AccessDeniedCard
             title="Akses Terblokir"

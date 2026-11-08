@@ -376,12 +376,12 @@ export function PrintSignature({
   };
 
   const region = getRegion();
-  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || 'Kepala Sekolah';
-  const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah || '';
   const schoolName = config.kop_sekolah || config.NAMA_SEKOLAH || schoolInfo?.nama || '';
   const statusKepsek = statusKepalaSekolah || config.status_kepala_sekolah || config.STATUS_KEPALA_SEKOLAH || schoolInfo?.status_kepala_sekolah || 'Definitif';
   const defaultKepalaTitle = formatKepalaSekolahTitle(schoolName);
   const kepsekLabel = formatKepalaSekolahLabel(statusKepsek);
+  const kepsekNama = rightName || config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || (statusKepsek && statusKepsek !== 'Definitif' ? kepsekLabel : 'Kepala Sekolah');
+  const kepsekNip = rightNip || config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah || '';
   const resolveDisplayRightTitle = () => {
     if (!rightTitle) return kepsekLabel;
     const cleanRight = rightTitle.trim();
@@ -398,6 +398,23 @@ export function PrintSignature({
     return rightTitle;
   };
   const displayRightTitle = resolveDisplayRightTitle();
+
+  const resolveDisplayLeftSubtitle = () => {
+    if (!leftSubtitle) return 'Guru Mata Pelajaran';
+    const cleanLeft = leftSubtitle.trim();
+    const lowerLeft = cleanLeft.toLowerCase();
+    if (lowerLeft === 'kepala sekolah' || lowerLeft === 'kepalasekolah') {
+      return kepsekLabel;
+    }
+    if (/^(plt|plh)\.?\s*kepala\s*sekolah$/i.test(cleanLeft)) {
+      return kepsekLabel;
+    }
+    if (lowerLeft.includes('kepala sekolah')) {
+      const prefix = normalizeStatusPrefix(statusKepsek);
+      return cleanLeft.replace(/(?:plt\.|plh\.)?\s*kepala\s*sekolah/gi, `${prefix}Kepala Sekolah`);
+    }
+    return leftSubtitle;
+  };
 
   const isPengawasActive = Boolean(
     showPengawas !== undefined
@@ -445,7 +462,7 @@ export function PrintSignature({
               {leftTitle || 'Mengetahui,'}
             </span>
             <span className="block whitespace-nowrap text-xs sm:text-sm leading-normal">
-              {leftSubtitle || 'Guru Mata Pelajaran'}
+              {resolveDisplayLeftSubtitle()}
             </span>
             <div className="h-20 sm:h-24" />
             <div className="inline-block text-left">
@@ -532,7 +549,7 @@ export function PrintSignature({
           <div className="h-16 sm:h-20" />
           <div className="inline-block text-left">
             <span className="block whitespace-nowrap font-bold underline text-xs sm:text-sm leading-normal">
-              {config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || 'Kepala Sekolah'}
+              {config.ttd_kepsek_nama || config.NAMA_KEPALA_SEKOLAH || schoolInfo?.nama_kepala_sekolah || (statusKepsek && statusKepsek !== 'Definitif' ? kepsekLabel : 'Kepala Sekolah')}
             </span>
             <span className="block whitespace-nowrap text-[11px] sm:text-xs leading-normal">
               {config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah ? `NIP. ${config.ttd_kepsek_nip || config.NIP_KEPALA_SEKOLAH || schoolInfo?.nip_kepala_sekolah}` : 'NIP. -'}
