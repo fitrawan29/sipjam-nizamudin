@@ -1152,6 +1152,8 @@ export function parseAndValidateMasterCsv(
           if (isInvalidMapel(rawMapel)) {
             throw new Error(`Baris ${i}: Mata pelajaran jadwal "${rawMapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`);
           }
+          row.mata_pelajaran = rawMapel;
+          row.mapel = rawMapel;
         }
       }
     } else if (tableName === 'data_mapel' || tableName === 'mapel') {
@@ -2040,9 +2042,20 @@ export async function importMasterDataFromCsv(
       upsertOptions.onConflict = 'id';
     }
 
-    const { error } = await supabase
+    let { error } = await supabase
       .from(effectiveTableName)
       .upsert(batch, upsertOptions);
+
+    // Schema cache resilience: if jadwal_pelajaran upsert fails due to missing 'mapel' column in schema cache
+    if (error && normTable === 'jadwal_pelajaran' && (error.code === 'PGRST204' || String(error.message).includes('mapel') || String(error.message).includes('schema cache'))) {
+      console.warn('[dataIntegrityGuard] Missing mapel column in schema cache for jadwal_pelajaran, retrying batch without mapel column');
+      const cleanBatch = batch.map(row => {
+        const { mapel: _m, ...rest } = row;
+        return rest;
+      });
+      const retry = await supabase.from(effectiveTableName).upsert(cleanBatch, upsertOptions);
+      error = retry.error;
+    }
 
     if (error) {
       // Check if data_kelas table is missing from schema cache (PGRST205 / 42P01)

@@ -1322,7 +1322,14 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       if (formValues) {
         setLoading(true);
-        const { error } = await supabase.from('jadwal_pelajaran').insert([formValues]);
+        let { error } = await supabase.from('jadwal_pelajaran').insert([formValues]);
+        // Schema cache resilience: if database lacks 'mapel' column or PostgREST schema cache is stale
+        if (error && (error.code === 'PGRST204' || String(error.message).includes('schema cache') || String(error.message).includes('mapel'))) {
+          console.warn('[AdminDataView] Schema cache missing mapel column, retrying insert without mapel:', error.message);
+          const { mapel: _m, ...cleanPayload } = formValues;
+          const retry = await supabase.from('jadwal_pelajaran').insert([cleanPayload]);
+          error = retry.error;
+        }
         setLoading(false);
         if (error) {
           showToast('Gagal Menambah Jadwal', error.message, 'error');
@@ -2178,7 +2185,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         setLoading(true);
         let q = supabase.from('jadwal_pelajaran').update(formValues).eq('id', item.id);
         if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
-        const { error } = await q;
+        let { error } = await q;
+        // Schema cache resilience: if database lacks 'mapel' column or PostgREST schema cache is stale
+        if (error && (error.code === 'PGRST204' || String(error.message).includes('schema cache') || String(error.message).includes('mapel'))) {
+          console.warn('[AdminDataView] Schema cache missing mapel column, retrying update without mapel:', error.message);
+          const { mapel: _m, ...cleanPayload } = formValues;
+          let retryQ = supabase.from('jadwal_pelajaran').update(cleanPayload).eq('id', item.id);
+          if (user?.sekolah_id) retryQ = retryQ.eq('sekolah_id', user.sekolah_id);
+          const retryRes = await retryQ;
+          error = retryRes.error;
+        }
         setLoading(false);
         if (error) {
           showToast('Gagal Mengubah Jadwal', error.message, 'error');

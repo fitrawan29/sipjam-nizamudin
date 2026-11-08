@@ -251,7 +251,17 @@ export default function RekapJurnalView({
         if (mapel) {
           jadwalQ = jadwalQ.or(`mata_pelajaran.eq."${mapel}",mapel.eq."${mapel}"`);
         }
-        const { data: allSchedulesRaw } = await jadwalQ;
+        let { data: allSchedulesRaw, error: jadwalErr } = await jadwalQ;
+        // Schema cache fallback: if or() query fails because 'mapel' column is missing from schema cache
+        if (jadwalErr && (jadwalErr.code === 'PGRST204' || String(jadwalErr.message).includes('mapel') || String(jadwalErr.message).includes('schema cache'))) {
+          console.warn('[RekapJurnalView] Missing mapel column in schema cache, retrying query with mata_pelajaran filter:', jadwalErr.message);
+          let retryQ = supabase.from('jadwal_pelajaran').select('*');
+          if (user?.sekolah_id) retryQ = retryQ.eq('sekolah_id', user.sekolah_id);
+          if (targetKelas) retryQ = retryQ.eq('kelas', targetKelas);
+          if (mapel) retryQ = retryQ.eq('mata_pelajaran', mapel);
+          const retryRes = await retryQ;
+          allSchedulesRaw = retryRes.data;
+        }
         const allSchedules = (allSchedulesRaw || []).filter((s: any) => !isInvalidMapel(s.mata_pelajaran || s.mapel));
 
         const todayStr = getWitaDateStr();

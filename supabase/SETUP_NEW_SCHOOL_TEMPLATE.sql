@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS public.jadwal_pelajaran (
     hari TEXT NOT NULL,
     nama_guru TEXT NOT NULL,
     mata_pelajaran TEXT NOT NULL,
+    mapel TEXT,
     kelas TEXT NOT NULL,
     jam_ke TEXT,
     jam_mulai TIME,
@@ -795,6 +796,26 @@ DROP TRIGGER IF EXISTS trg_sync_guru_mapel ON public.data_guru;
 CREATE TRIGGER trg_sync_guru_mapel
 AFTER INSERT OR UPDATE OF mata_pelajaran ON public.data_guru
 FOR EACH ROW EXECUTE FUNCTION public.sync_guru_mapel_from_data_guru();
+
+-- 5.3 Sinkronisasi otomatis mata_pelajaran & mapel pada jadwal_pelajaran
+CREATE OR REPLACE FUNCTION public.sync_jadwal_pelajaran_mapel()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.mata_pelajaran IS NOT NULL AND trim(NEW.mata_pelajaran) <> '')
+       AND (NEW.mapel IS NULL OR trim(NEW.mapel) = '') THEN
+        NEW.mapel := NEW.mata_pelajaran;
+    ELSIF (NEW.mapel IS NOT NULL AND trim(NEW.mapel) <> '')
+       AND (NEW.mata_pelajaran IS NULL OR trim(NEW.mata_pelajaran) <> '') THEN
+        NEW.mata_pelajaran := NEW.mapel;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_sync_jadwal_pelajaran_mapel ON public.jadwal_pelajaran;
+CREATE TRIGGER trg_sync_jadwal_pelajaran_mapel
+BEFORE INSERT OR UPDATE ON public.jadwal_pelajaran
+FOR EACH ROW EXECUTE FUNCTION public.sync_jadwal_pelajaran_mapel();
 
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) & POLICIES

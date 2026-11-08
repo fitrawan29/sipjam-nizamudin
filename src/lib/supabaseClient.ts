@@ -94,19 +94,27 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
   return (
     code === 'PGRST205' || // PostgREST: Table not found in schema cache
     code === '42P01' ||    // PostgreSQL: undefined_table
+    code === '42703' ||    // PostgreSQL: undefined_column
     code === 'PGRST200' || // PostgREST: Schema cache relation error
     code === 'PGRST204' || // PostgREST: Column / schema error
     rawStr.includes('pgrst205') ||
+    rawStr.includes('pgrst204') ||
     rawStr.includes('could not find the table') ||
+    (rawStr.includes('could not find the') && rawStr.includes('column')) ||
     (rawStr.includes('sekolah_registry') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('jadwal_pelajaran') && rawStr.includes('schema cache')) ||
     message.includes('could not find the table') ||
+    (message.includes('could not find the') && message.includes('column')) ||
     (message.includes('sekolah_registry') && message.includes('schema cache')) ||
+    (message.includes('jadwal_pelajaran') && message.includes('schema cache')) ||
     (details.includes('sekolah_registry') && details.includes('schema cache')) ||
     details.includes('could not find the table') ||
     hint.includes('reload schema') ||
     jsonStr.includes('pgrst205') ||
+    jsonStr.includes('pgrst204') ||
     (jsonStr.includes('could not find the table') && jsonStr.includes('sekolah_registry')) ||
     (jsonStr.includes('sekolah_registry') && jsonStr.includes('schema cache')) ||
+    (jsonStr.includes('jadwal_pelajaran') && jsonStr.includes('schema cache')) ||
     isMissingTableOrRelation
   );
 }
