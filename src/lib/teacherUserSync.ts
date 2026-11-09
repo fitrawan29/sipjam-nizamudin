@@ -129,7 +129,7 @@ export async function syncTeacherAccounts(
           sekolah_id: targetSekolahId
         };
 
-        const { data: inserted, error: insErr } = await supabaseClient
+        let { data: inserted, error: insErr } = await supabaseClient
           .from('users')
           .insert([newUserData])
           .select();
