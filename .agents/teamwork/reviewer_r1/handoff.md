@@ -1,89 +1,63 @@
-# Handoff Report: Reviewer Round 1 — Sub Menu Pengguna & Kredensial Guru (Admin)
+> [!WARNING] **Skepticism Disclaimer**
+> Moderate confidence: the religious isolation mechanism for PAI and PAK is strictly verified across all 4 key domains (presensi, jurnal, gradebook, rapor) with 25 passing automated tests, and previous state-bleed and dot-acronym edge cases have been fixed, though edge cases involving non-standard unmigrated legacy database rows with NULL agama remain dependent on manual master data enrichment.
 
-**Reviewer:** Teamwork Reviewer (Round 1)  
-**Date & Timestamp:** 2026-11-06T06:22:00Z  
-**Branch:** main  
-**Target Parent ID:** 0aa00ea1-9c92-421d-8e45-73f63b5e510d  
+## 1. What the prior attempt got wrong
+1. **Attendance State Bleed in `GuruJurnal.tsx` (`prevAbsensi` retained non-eligible student keys)**:
+   - **Input**: Teacher opens GuruJurnal for class "X Merdeka" and selects a general subject (e.g. Matematika with 30 students), then switches `mapel` to "Pendidikan Agama Kristen (PAK)" (5 students).
+   - **Expected**: `absensi` state contains only the 5 eligible PAK students; `absensi_siswa` JSON saved to `jurnal_pembelajaran` in Supabase contains only those 5 PAK students.
+   - **Actual**: `merged = { ...initialAbsensi, ...prevAbsensi }` copied all 30 students from `prevAbsensi`. When the teacher saved the journal, `JSON.stringify(absensi)` wrote attendance records for 25 Muslim students into the PAK journal record in the database.
+   - **Root cause**: Shallow object spread `{ ...initialAbsensi, ...prevAbsensi }` in `GuruJurnal.tsx` without intersecting keys against `filteredData`.
 
----
+2. **Acronym Normalization Failure on Subject Acronyms with Dots in `agamaFilter.ts`**:
+   - **Input**: Subject formatted as `"P.A.I"`, `"P.A.I."`, `"P.A.K"`, `"P.A.K."`, or `"P.A.I. & B.P."`.
+   - **Expected**: `isPaiSubject("P.A.I") === true`, `isPakSubject("P.A.K") === true`.
+   - **Actual**: Both returned `false`.
+   - **Root cause**: `normalizeSubject` replaced hyphens, slashes, and parentheses, but did not strip periods `.`. Hence `"P.A.I"` became `"p.a.i"`, failing both `\b(pai)\b` regex and `'islam'` inclusion checks.
 
-## 1. Executive Summary & Verdict
-Pada Reviewer Round 1, peninjauan adversarial menemukan 3 masalah nyata pada codebase:
-1. **Kegagalan Test Suite `user_standardization_and_cleanup_verification.test.ts` (Fatal Bug / Test Interference)**:
-   Implementer menambahkan auto-sync ke tabel `users` saat `importMasterDataFromCsv` dijalankan untuk data guru. Namun, pada test suite `tests/data_guru_csv_import_sekolah_id_validation.test.ts`, pembersihan test record hanya menghapus dari tabel `data_guru` dan membiarkan user `Muhammad Ridwan Pratama` tertinggal di tabel `users`. Hal ini mengakibatkan duplikasi nama guru di database `users`, sehingga test `user_standardization_and_cleanup_verification.test.ts` gagal (64 passed, 1 failed).
-2. **Kegagalan TypeScript Build `npm run build` (Fatal Compilation Bug)**:
-   `HomeViewAdminProps` tidak mendeklarasikan properti opsional `schoolName?: string;`, padahal `HomeView.tsx` meneruskan `schoolName={schoolName}` ke `<HomeViewAdmin .../>`. Hal ini menyebabkan `npm run build` gagal pada tahap Type Check (`error TS2322: Property 'schoolName' does not exist on type 'IntrinsicAttributes & HomeViewAdminProps'`). Klaim build sukses pada handoff implementer sebelumnya terbukti tidak akurat.
-3. **Penyempurnaan Ketahanan Kredensial & Sinkronisasi**:
-   - `teacherUserSync.ts`: Penambahan sanitasi internal whitespace pada NIP (`replace(/\s+/g, '')`), validasi penolakan username dummy (`isDummyOrTestString`) dan terlarang (`isForbiddenName`), pencarian keunikan case-insensitive menggunakan `.ilike('username', cleanUsername)` (mencegah benturan unik PostgreSQL `uq_users_username_lower`), penerjemahan error kode 23505 ke pesan user-friendly, dan perlindungan agar NIP pada `data_guru` tidak tertimpa nama login sembarangan kecuali jika `syncNipToDataGuru` atau `newNip` dispesifikasikan.
-   - `AdminPenggunaView.tsx`: Penambahan proteksi self-healing saat modal edit atau quick reset diakses pada record guru yang belum memiliki `userId` (langsung membuatkan akun dengan password default NIP27 alih-alih gagal tanpa aksi), serta menampilkan `result.errors` di UI.
-   - `ClaySidebar.tsx`: Sinkronisasi status aktif sub menu pengguna ketika `currentView === 'view-admin-data'` dan `currentTab === 'Pengguna'`.
-   - `AdminDataView.tsx` & `dataIntegrityGuard.ts`: Memusatkan helper `resolveTeacherUsername` dan `getDefaultTeacherPassword` dari `teacherUserSync.ts` dan menggunakan `.ilike()`.
+3. **Missing Sanitization & Standardization of `row.agama` in `dataIntegrityGuard.ts`**:
+   - **Input**: CSV import with raw `agama` values e.g. `" islam "`, `"ISLAM"`, `"kristen protestan"`, `"-"`, or `"null"`.
+   - **Expected**: Values standardized to Title Case canonical values (`"Islam"`, `"Kristen"`, `"Katolik"`, `"Hindu"`, `"Buddha"`, `"Khonghucu"`) or `null`.
+   - **Actual**: Unsanitized raw strings were saved directly to the database.
+   - **Root cause**: Missing standardization block for `row.agama` in `parseAndValidateMasterCsv` (unlike `row.status` and `row.gender` which were already standardized).
 
----
+4. **Inflexible Student Religion Property Support**:
+   - **Input**: Student objects passed from external sources or CSVs with alias keys `status_agama` or `religion`.
+   - **Expected**: Evaluated correctly in `isIslamStudent` and `isKristenStudent`.
+   - **Actual**: Returned `false` because only `student.agama` was inspected.
+   - **Root cause**: Lack of alias fallback (`student.agama || student.status_agama || student.religion`).
 
-## 2. Issues Discovered and Root Cause Analysis
+## 2. What I changed
+- **`src/components/GuruJurnal.tsx`**:
+  - Replaced object spread `{ ...initialAbsensi, ...prevAbsensi }` with strict key pruning where `merged` iterates exclusively over `filteredData`. This guarantees zero cross-religion attendance pollution in `absensi` and `jurnal_pembelajaran.absensi_siswa`.
+- **`src/lib/agamaFilter.ts`**:
+  - Enhanced `normalizeSubject` with `.replace(/\./g, '')` to seamlessly recognize acronyms with dots (`P.A.I`, `P.A.K`, `P.A.I.`, `P.A.K.`, `P.A.I. & B.P.`, `P.A.K. & B.P.`).
+  - Broadened `isIslamStudent`, `isKristenStudent`, `isStudentEligibleForSubject`, and `filterStudentsBySubject` to defensively accept `religion` and `status_agama` alias properties.
+- **`src/lib/dataIntegrityGuard.ts`**:
+  - Added standardization block for `row.agama` in `parseAndValidateMasterCsv` to trim whitespace, map variations to canonical Title Case, and map empty/hyphen/null-strings to `null`.
+- **`tests/agama_pai_pak_isolation.test.ts`**:
+  - Expanded test assertions from 21 to 25 to explicitly test:
+    - Dot acronym variations (`P.A.I`, `P.A.I.`, `P.A.K`, `P.A.K.`, `P.A.I. & B.P.`, `P.A.K. & B.P.`).
+    - Attendance state bleed prevention on subject switching.
+    - `parseAndValidateMasterCsv` standardization of `row.agama`.
+    - Legacy CSV import without `agama` column (graceful fallback).
+    - Student objects with `religion` or `status_agama` alias keys.
 
-### Issue 1: Database Test Pollution & Duplicate User Name Collision
-- **Input:** Menjalankan `npm test` yang mengeksekusi `tests/data_guru_csv_import_sekolah_id_validation.test.ts` lalu `tests/user_standardization_and_cleanup_verification.test.ts`.
-- **Expected:** Seluruh 52 test suites lulus 100% dan tidak meninggalkan orphan rows pada tabel `users`.
-- **Actual:** `user_standardization_and_cleanup_verification.test.ts` gagal dengan: `✖ FAIL: Table users: found 1 duplicate user names: [["a0000000-0000-0000-0000-000000000001::muhammad ridwan pratama",2]]`.
-- **Root Cause:** Penambahan auto-sync pembuatan user pada `importMasterDataFromCsv` menyisipkan akun user setiap kali test import dijalankan, namun cleanup test di line 804 hanya menghapus dari `data_guru` dan tidak menghapus dari `users`.
-- **Fix:** Menambahkan pembersihan pre-clean dan post-clean `users` di `tests/data_guru_csv_import_sekolah_id_validation.test.ts` dalam blok `finally`, serta membersihkan 2 record orphan dari database.
+## 3. Verification Record
+- **Deep Verification (ran actual tests):**
+  - `npx tsx tests/agama_pai_pak_isolation.test.ts`: **25 / 25 PASSED (exit code 0)**.
+  - `npx tsx tests/test_user_exact_student_csv.ts`: **PASSED (exit code 0)** (verifies exact 392-student dataset parsing, template definitions, and empty state avoidance).
+  - `npx tsx tests/adversarial_student_csv_review.test.ts`: **15 / 15 PASSED (exit code 0)**.
+  - `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`: **20 / 20 PASSED (exit code 0)**.
+  - `npx tsx tests/gradebook_teacher_filter_ponytail.test.ts`: **17 / 17 PASSED (exit code 0)**.
+  - `npx tsx tests/m4_academic_merdeka_rapor.test.ts`: **14 / 14 PASSED (exit code 0)**.
+  - `npx tsx tests/adversarial_rapor_wali_security.test.ts`: **28 / 28 PASSED (exit code 0)**.
+- **Shallow Verification (manual only):**
+  - Confirmed UI modal forms in `AdminDataView.tsx` (swal-agama dropdown in add and edit modals) and roster filtering dropdown in `AdminKelasView.tsx`.
+- **Unverified aspects:**
+  - Live PostgreSQL database migration execution on production cloud (`supabase/migrations/20261109_add_agama_to_data_siswa.sql`).
 
-### Issue 2: Next.js Production Build TypeScript Error TS2322
-- **Input:** Menjalankan `npm run build`.
-- **Expected:** TypeScript typecheck selesai 100% tanpa error dan seluruh static pages terkompilasi.
-- **Actual:** `src/components/HomeView.tsx(44,7): error TS2322: Property 'schoolName' does not exist on type 'IntrinsicAttributes & HomeViewAdminProps'`. Build terhenti dengan exit code 1.
-- **Root Cause:** Deklarasi interface `HomeViewAdminProps` di `HomeViewAdmin.tsx` belum menyertakan `schoolName?: string;`.
-- **Fix:** Menambahkan `schoolName?: string;` ke `HomeViewAdminProps` dan parameter `HomeViewAdmin`.
+## 4. Known Issues
+- `Minor Robustness Risk`: Existing students in the database whose `agama` field is `NULL` will be excluded from PAI and PAK classes until an admin updates their `agama` in master data or via CSV re-import. They will continue to appear in all general subjects. This is by design to ensure strict religious isolation.
 
-### Issue 3: Username Collision Vulnerability & Case Sensitivity Bypass
-- **Input:** Admin memperbarui username guru menjadi username yang sudah ada dengan huruf besar/kecil berbeda (misal "Superadmin" vs "superadmin") atau username dummy ("testuser").
-- **Expected:** Validasi ramah menolak input sebelum menabrak exception trigger database atau constraint index PostgreSQL `uq_users_username_lower`.
-- **Actual:** Sebelumnya `updateTeacherCredentials` hanya menggunakan `.eq()` dan melewati cek jika `oldUsername` tidak dioper, serta tidak memeriksa `isDummyOrTestString`.
-- **Root Cause:** Ketiadaan validasi defensif terintegrasi dan ketiadaan `.ilike()`.
-- **Fix:** Mengintegrasikan `isDummyOrTestString` dan `isForbiddenName`, menggunakan query `.ilike()` dengan fallback aman, dan menangkap exception 23505 untuk diterjemahkan ke pesan ramah.
-
----
-
-## 3. Files Modified
-1. `src/lib/teacherUserSync.ts`
-   - Sanitasi internal whitespace untuk NIP dan username.
-   - Integrasi `isDummyOrTestString` dan `isForbiddenName`.
-   - Pemeriksaan keunikan username case-insensitive via `ilike` & `neq`.
-   - Penangkapan error Postgres 23505 untuk pesan ramah.
-   - Proteksi field NIP pada `data_guru`.
-2. `src/components/AdminPenggunaView.tsx`
-   - Self-healing akun pengguna otomatis saat `userId` belum ada pada modal edit maupun quick reset.
-   - Menampilkan notifikasi banner jika sinkronisasi guru menghasilkan errors.
-3. `src/components/ClaySidebar.tsx`
-   - Menambahkan properti `currentTab?: string;` pada `ClaySidebarProps`.
-   - Mengaktifkan highlight sub menu Pengguna saat tab Pengguna aktif di Master Data.
-4. `src/components/AdminDataView.tsx`
-   - Memakai `resolveTeacherUsername` dan `getDefaultTeacherPassword` terpusat.
-   - Menggunakan query `.ilike()` saat validasi user sebelum insert.
-5. `src/components/HomeViewAdmin.tsx`
-   - Menambahkan properti opsional `schoolName?: string;` pada `HomeViewAdminProps` untuk memperbaiki build TypeScript.
-6. `src/lib/dataIntegrityGuard.ts`
-   - Menyelaraskan sanitasi NIP dan username, menggunakan `.ilike()` pada auto-sync import CSV.
-7. `tests/data_guru_csv_import_sekolah_id_validation.test.ts`
-   - Menambahkan pembersihan record `users` pada pre-clean dan blok `finally` pasca-import.
-8. `tests/admin_submenu_pengguna_kredensial_guru.test.ts`
-   - Menambahkan mock `.ilike()` dan `.neq()` pada mockSupabase.
-   - Menambahkan 4 adversarial test checks baru (3.5 s.d. 3.8): penolakan dummy username, penolakan nama terlarang, pencegahan tabrakan username akun lain, dan toleransi sanitasi spasi internal/null/dash.
-
----
-
-## 4. Verification Record
-- **Automated Tests:**
-  - `npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts`: **18/18 checks PASSED** (100%).
-  - `npx tsx tests/user_standardization_and_cleanup_verification.test.ts`: **65/65 checks PASSED** (100%).
-  - `npx tsx tests/data_guru_csv_import_sekolah_id_validation.test.ts`: **31/31 checks PASSED** (100%).
-  - `npm test`: **52 Suites Executed | 52 PASSED | 0 FAILED** (100%).
-- **Production Build:**
-  - `npm run build`: Compiled successfully in 2.2s, Finished TypeScript in 3.4s, Generating static pages (13/13) in 1378ms. 0 errors.
-
----
-
-## 5. Next Steps
-Seluruh bug fatal pada build, interferensi test suite antar-modul, dan celah validasi kredensial telah diperbaiki secara tuntas. Kode siap untuk di-commit dan di-push ke main sesuai Git Workflow Rule.
+## 5. Remaining risk & next step
+The implementation is complete, surgically patched, and comprehensively verified with 25 dedicated assertions and passing existing test suites. The next step is deployment of the database migration script (`supabase/migrations/20261109_add_agama_to_data_siswa.sql`) to production PostgreSQL if not already executed.
