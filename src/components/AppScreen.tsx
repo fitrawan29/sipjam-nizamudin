@@ -451,10 +451,13 @@ export default function AppScreen({
         }
       });
 
-    let lastResume = 0;
-    const handleResumeSync = () => {
+    let lastResume = Date.now();
+    const handleResumeSync = (e?: Event) => {
       const now = Date.now();
-      if (now - lastResume < 800) return;
+      const isOnlineEvent = e?.type === 'online';
+      // Only re-sync on genuine network reconnect or after meaningful idle (>= 30s)
+      // Prevents rapid event thrashing and unwanted state churn when picking files or switching windows
+      if (!isOnlineEvent && (now - lastResume < 30000)) return;
       lastResume = now;
       if (typeof window !== 'undefined' && (!document || document.visibilityState === 'visible')) {
         window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
@@ -1110,7 +1113,7 @@ export default function AppScreen({
           </div>
         )}
 
-        <div key={`${currentView}-${syncKey}`} className="page-transition">
+        <div key={currentView} className="page-transition">
           {isSuperadmin && currentView.startsWith('view-superadmin-') ? (
             <SuperadminView
               user={user}

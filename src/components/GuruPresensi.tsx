@@ -280,10 +280,12 @@ export default function GuruPresensi({
         const savedDraft = typeof window !== 'undefined' ? (() => {
           try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; }
         })() : {};
-        const activeJenis = savedDraft.jenisPresensi || jenisPresensi;
+        const activeJenis = savedDraft.jenisPresensi || (savedDraft.detailIzin ? 'Izin' : jenisPresensi);
         const requiresDoc = activeJenis === 'Izin' || activeJenis === 'Sakit';
         if (requiresDoc) {
           setFile(draftFile);
+          if (savedDraft.jenisPresensi) setJenisPresensi(savedDraft.jenisPresensi);
+          if (savedDraft.detailIzin) setDetailIzin(savedDraft.detailIzin);
         } else {
           clearPresensiFileDraft().catch(() => {});
         }
@@ -889,12 +891,11 @@ export default function GuruPresensi({
 
     // Reset Form & Update local states immediately
     let nextJenisAfterSubmit = (currentJenis === 'Dinas Luar' && tipeAbsen === 'Datang') ? 'Dinas Luar' : 'Sekolah';
-    if (tipeAbsen === 'Datang') {
-      setTipeAbsen('Pulang');
-    }
     if (currentJenis === 'Izin' || currentJenis === 'Sakit') {
       nextJenisAfterSubmit = 'Izin';
       setTipeAbsen('Datang');
+    } else if (tipeAbsen === 'Datang') {
+      setTipeAbsen('Pulang');
     }
     setJenisPresensi(nextJenisAfterSubmit);
     setKeterangan('');
@@ -1061,6 +1062,40 @@ export default function GuruPresensi({
                     Status: {dailyState.presensiDatang?.status_verifikasi || dailyState.activeLeaveRecord?.status_verifikasi || 'Menunggu'}
                   </span>
                 </div>
+                {(() => {
+                  const proofUrl = dailyState.presensiDatang?.link_bukti || dailyState.activeLeaveRecord?.link_bukti;
+                  if (!proofUrl) return null;
+                  if (proofUrl === 'pending:uploading') {
+                    return (
+                      <div className="pl-6 pt-1 text-xs">
+                        <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 rounded-lg">
+                          <i className="fa-solid fa-cloud-arrow-up animate-pulse text-amber-600 dark:text-amber-400"></i> Dokumen bukti sedang diunggah ke Google Drive...
+                        </span>
+                      </div>
+                    );
+                  }
+                  if (proofUrl === 'gagal_upload') {
+                    return (
+                      <div className="pl-6 pt-1 text-xs">
+                        <span className="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-semibold bg-rose-100 dark:bg-rose-900/40 px-2.5 py-1 rounded-lg">
+                          <i className="fa-solid fa-triangle-exclamation text-rose-500"></i> Dokumen bukti tersimpan lokal (akan diunggah ulang otomatis)
+                        </span>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div className="pl-6 pt-1 text-xs">
+                      <a
+                        href={proofUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200 font-bold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg hover:underline transition"
+                      >
+                        <i className="fa-solid fa-file-circle-check text-emerald-600 dark:text-emerald-400"></i> Dokumen Berhasil Terunggah (Buka Dokumen)
+                      </a>
+                    </div>
+                  );
+                })()}
               </div>
             )}
             
@@ -1140,7 +1175,7 @@ export default function GuruPresensi({
                   <div id="row-detail-izin" className="fade-in space-y-4">
                       <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kategori Detail</label>
-                          <select value={detailIzin} onChange={e => { setDetailIzin(e.target.value); saveDraft({ detailIzin: e.target.value }); }} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
+                          <select value={detailIzin} onChange={e => { const val = e.target.value; setDetailIzin(val); saveDraft({ jenisPresensi: 'Izin', detailIzin: val }); }} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
                             <option value="Sakit">Sakit</option>
                             <option value="Izin Pribadi">Izin Pribadi</option>
                             <option value="Izin Khusus">Izin Khusus</option>
@@ -1281,6 +1316,7 @@ export default function GuruPresensi({
                           setFile(selected);
                           setPhotoPreviewUrl(null);
                           if (selected) {
+                            saveDraft({ jenisPresensi: 'Izin', detailIzin });
                             await savePresensiFileDraft(selected);
                           } else {
                             await clearPresensiFileDraft();

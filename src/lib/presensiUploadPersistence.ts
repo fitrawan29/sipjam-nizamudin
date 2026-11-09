@@ -90,6 +90,13 @@ export async function savePresensiFileDraft(file: File): Promise<void> {
   const db = await openDB();
   if (!db) return;
 
+  let buffer: Blob | ArrayBuffer = file;
+  try {
+    if (typeof file.arrayBuffer === 'function') {
+      buffer = await file.arrayBuffer();
+    }
+  } catch {}
+
   return new Promise((resolve) => {
     try {
       const tx = db.transaction(STORE_DRAFT, 'readwrite');
@@ -100,7 +107,7 @@ export async function savePresensiFileDraft(file: File): Promise<void> {
         type: detectMimeType(file),
         size: file.size,
         lastModified: file.lastModified || Date.now(),
-        blob: file,
+        blob: buffer,
         savedAt: Date.now(),
       };
       store.put(record);
@@ -139,7 +146,11 @@ export async function getPresensiFileDraft(): Promise<File | null> {
 
         try {
           const mime = record.type || 'application/octet-stream';
-          const restoredFile = new File([record.blob], record.name, {
+          const rawBlob = record.blob;
+          const blobPart = (typeof ArrayBuffer !== 'undefined' && rawBlob instanceof ArrayBuffer)
+            ? rawBlob
+            : (rawBlob instanceof Blob ? rawBlob : Buffer.from(rawBlob as any));
+          const restoredFile = new File([blobPart], record.name, {
             type: mime,
             lastModified: record.lastModified || Date.now(),
           });
@@ -259,7 +270,11 @@ export async function processPendingUploads(): Promise<{ processed: number; succ
       try {
         // Construct File from stored Blob/ArrayBuffer
         const mime = task.mimeType || 'application/octet-stream';
-        const file = new File([task.blob], task.name, { type: mime, lastModified: task.createdAt });
+        const rawBlob = task.blob;
+        const blobPart = (typeof ArrayBuffer !== 'undefined' && rawBlob instanceof ArrayBuffer)
+          ? rawBlob
+          : (rawBlob instanceof Blob ? rawBlob : Buffer.from(rawBlob as any));
+        const file = new File([blobPart], task.name, { type: mime, lastModified: task.createdAt });
 
         // Execute uploadToDrive
         const driveUrl = await uploadToDrive(file, task.teacherName, task.folderName, task.prefix);
