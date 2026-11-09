@@ -1,73 +1,91 @@
-# Handoff Report: Independent Victory Audit
-
-=== VICTORY AUDIT REPORT ===
-
-VERDICT: VICTORY CONFIRMED
-
-PHASE A — TIMELINE:
-  Result: PASS
-  Anomalies: none
-
-PHASE B — INTEGRITY CHECK:
-  Result: PASS
-  Details: Forensic inspection of src/lib/teacherUserSync.ts, src/lib/dataIntegrityGuard.ts, src/lib/navigation.ts, and src/components/AdminPenggunaView.tsx shows genuine, robust production implementation. Zero hardcoded test outputs, zero facade/dummy implementations, and zero pre-populated test verification artifacts.
-
-PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts && npx tsc --noEmit && npm test && npm run build
-  Your results: 28/28 checks passed; 0 TypeScript errors; 53/53 test suites passed; Next.js 16.3.4 (Turbopack) production build succeeded (13 static pages generated).
-  Claimed results: 28/28 checks passed; 0 TypeScript errors; 53/53 test suites passed; production build succeeded.
-  Match: YES — complete match across all independent test and build runs.
-
-============================
+# Handoff Report — Independent Victory Audit (Sentinel)
 
 ## 1. Observation
-- **Original User Request**: "Pada role admin, pada menu master data dan kalender, tambahkan sub menu pengguna untuk mengatur username dan password setiap akun guru yang ditarik otomatis dari data guru yang ada, dengan username NIP dan password default NIP27."
-- **Scope & Constraints**: Mode development, focused fix without regression to existing modules.
+
+- **Dispatch Mission**:
+  Verification of claimed victory for:
+  "Fitur pemisahan siswa berdasarkan status agama untuk mata pelajaran Pendidikan Agama Islam (PAI) dan Pendidikan Agama Kristen (PAK) dalam satu kelas di aplikasi sipjam-app, di mana siswa yang terbaca di PAI hanya siswa berstatus agama Islam dan di PAK hanya siswa berstatus agama Kristen, tanpa mengubah fitur dan logika lain yang tidak terdampak."
+
 - **Git Commit History**:
-  - `7666712`: Initial implementation of sub menu pengguna, teacher account sync, and NIP27 default password.
-  - `29543c7`: Reviewer R1 fix for TS2322, test isolation, and case-insensitive uniqueness guards.
-  - `de56ae8` & `4ca298b`: Reviewer R2 addition of `isMountedRef` memory leak guards, punctuation/placeholder normalization, and SweetAlert2 password toggle.
-  - `54e91d3`: Reviewer R3 resolution of self-collision on password update, modal formatted NIP normalization, and Excel quote stripping.
-  - `4b61c47`: Orchestrator SWE completion handoff.
-- **Independent Execution Results**:
-  1. `npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts`: Exit code 0, 28/28 checks passed.
-  2. `npx tsc --noEmit`: Exit code 0, 0 type errors.
-  3. `npm test`: Exit code 0, 53/53 test suites passed.
-  4. `npm run build`: Exit code 0, Next.js 16.3.4 build succeeded, 13 static pages generated.
+  Inspected git commit log across the relevant commits:
+  * `27c1e61`: `feat: pemisahan siswa berdasarkan status agama untuk mapel PAI dan PAK` (11:06:25 +08:00)
+  * `55aa185`: `fix(agama): perbaiki isolasi absensi kbm dan normalisasi akronim pai pak` (11:22:41 +08:00)
+  * `c3424f0`: `fix(agama): perbaiki akronim berurutan, sanitasi moslem christian, isolasi payload jurnal dan reset filter` (11:37:44 +08:00)
+  * `16387cf`: `fix(agama): isolasi fallback presensi kbm lintas agama dan evaluasi string polimorfik` (11:54:55 +08:00)
+  * `1f65365`: `chore: complete victory audit and orchestrator handoff for agama separation feature` (12:02:41 +08:00)
+
+- **Source Code Verification**:
+  * `src/lib/agamaFilter.ts`: Implements pure, dynamic classification functions (`isPaiSubject`, `isPakSubject`, `isIslamStudent`, `isKristenStudent`, `isStudentEligibleForSubject`, `filterStudentsBySubject`, `getRequiredReligionForSubject`). Uses regex word boundary `\b(pai|pak)\b` preventing false positives (e.g. `Paket Keahlian` does not match PAK).
+  * `src/components/GuruJurnal.tsx`: Students are filtered upon fetch using `filterStudentsBySubject(data, mapel)`. Dependencies include `[kelas, mapel, tipeJurnal, tanggal, user?.sekolah_id]`. Attendance state merging and save payload `cleanAbsensiForSave` / `absensi_siswa` are strictly restricted to eligible students.
+  * `src/components/GradebookView.tsx`: Student roster is filtered with `filterStudentsBySubject(data || [], selectedMapel)` with dependency `[selectedKelas, selectedMapel, sekolahId]`.
+  * `src/components/RaporView.tsx`: Active subjects on report card are filtered per student using `isStudentEligibleForSubject(student, mapel)`, ensuring Muslim students do not receive PAK and Christian students do not receive PAI.
+  * `src/components/RekapSiswaView.tsx`: Rekap and daily attendance calculations filter students via `filterStudentsBySubject(siswa || [], mapel)`.
+  * `src/lib/presensiIntervensi.ts`: `findLastKbmJournal(journals, student)` and `resolveDailyStudentAttendance` verify student subject eligibility before inheriting attendance, preventing cross-religion fallback attendance bleed.
+  * `src/components/AdminKelasView.tsx` & `src/components/AdminDataView.tsx`: Added mapel/religion filtering for class rosters and student master data forms.
+  * `src/lib/dataIntegrityGuard.ts`: CSV parsing normalizes religion headers (`agama`, `religion`, `status_agama`, `kepercayaan`), standardizes casing (e.g. `Moslem` -> `Islam`, `Christian` -> `Kristen`), and preserves legacy CSVs without religion column.
+  * `src/types/database.ts` & `supabase/migrations/20261109_add_agama_to_data_siswa.sql`: Adds nullable `agama TEXT` column to `public.data_siswa`.
+
+- **Integrity Forensics**:
+  * Zero hardcoded mock results in production code (`src/`). Searched for mock names such as `Ahmad Fauzi` in `src/` — zero results.
+  * No facade functions returning constants or stub exceptions.
+  * Zero pre-populated test log or result files.
+
+- **Independent Test Execution Results**:
+  1. `npx tsx tests/agama_pai_pak_isolation.test.ts`: 29 / 29 checks PASSED (exit code 0).
+  2. `npx tsc --noEmit`: 0 TypeScript errors (exit code 0).
+  3. `npm test`: 77 / 77 test suites PASSED cleanly (exit code 0).
+  4. `npm run build`: Next.js 16.3.4 (Turbopack) production build SUCCEEDED (exit code 0).
 
 ## 2. Logic Chain
-1. **R1 — Sub Menu Pengguna & RBAC**:
-   - `src/lib/navigation.ts` properly registers `view-admin-pengguna` under `view-admin-data`'s `subItems` exclusively for `admin` and `superadmin` with an active target school.
-   - `ClaySidebar.tsx` renders this sub menu inside the Master Data container.
-   - `AppScreen.tsx` routes `view-admin-pengguna` and `view-pengguna` to `view-admin-data` with active tab `Pengguna`.
-   - `evaluateTabRBAC` and navigation guards block non-admin roles (Guru, Siswa, Dinas, Kepsek) with explicit warnings.
-2. **R2 — Penarikan Otomatis & Password NIP27**:
-   - `src/lib/teacherUserSync.ts` (`syncTeacherAccounts`) queries `data_guru` and matches or inserts records into `users` with role `'Guru'`.
-   - `resolveTeacherUsername` sanitizes whitespace, quotes, dashes, dots, and placeholders (`--`, `none`, `N/A`, `tidak ada`, `0`), prioritizing clean NIP digits (or standardized teacher name if NIP is absent).
-   - `getDefaultTeacherPassword` computes `${nip}27` (or `guru27` for placeholders).
-   - Existing customized passwords in `users` are strictly preserved.
-   - CSV import of `data_guru` in `dataIntegrityGuard.ts` also auto-syncs newly imported teachers to `users`.
-3. **R3 — Manajemen Kredensial Pengguna oleh Admin**:
-   - `src/components/AdminPenggunaView.tsx` provides full search, filtering (mapel, status), pagination, and real-time status indicators.
-   - Admin can edit credentials via SweetAlert2 modal featuring password visibility toggle, quick default password filler, and optional NIP synchronization back to `data_guru`.
-   - Password reset to default NIP27 is supported with confirmation.
-   - Self-collision prevention, anti-dummy checks, and illegal character validation are enforced.
-4. **R4 — Non-Regresi & Integritas Sistem**:
-   - All 53 existing test suites pass without regressions.
-   - Next.js production build passes with 0 errors.
+
+1. **Step 1 — Timeline and Provenance Audit**:
+   Examined git history: The implementation began at `27c1e61` and underwent 3 distinct rounds of adversarial reviews (`55aa185`, `c3424f0`, `16387cf`), with commits spaced 15–20 minutes apart addressing concrete edge cases (attendance state bleed, acronym normalization, payload projection, and cross-religion fallback attendance). The progression is authentic and shows iterative refinement.
+
+2. **Step 2 — Forensic Integrity Inspection**:
+   Examined `src/lib/agamaFilter.ts`, `src/lib/presensiIntervensi.ts`, `src/lib/dataIntegrityGuard.ts`, and frontend components. The code contains genuine algorithmic logic, robust sanitization, and defensive null/empty handling. There are no dummy returns, facades, or hardcoded mock data.
+
+3. **Step 3 — Independent Verification of Core Requirements**:
+   - PAI subject filtering: Verified that in PAI classes, only students with status Islam appear across attendance, journals, gradebook, and reports.
+   - PAK subject filtering: Verified that in PAK classes, only students with status Kristen/Katolik appear across attendance, journals, gradebook, and reports.
+   - Non-regression: Verified that general subjects (Matematika, Bahasa Indonesia, PJOK, dsb.) display all students in the class without filtering.
+   - Word boundaries: Verified that non-religious subjects containing matching substrings (e.g., `Paket Keahlian`) are not falsely treated as PAK.
+
+4. **Step 4 — Independent Test & Build Execution**:
+   Re-executed the full project test suite (`npm test`, consisting of 77 suites), the specific isolation suite (`tests/agama_pai_pak_isolation.test.ts`), TypeScript validation (`npx tsc --noEmit`), and the Next.js production build (`npm run build`). All passed without errors or regressions.
+
+5. **Step 5 — Conclusion Formulation**:
+   Because all forensic checks passed, timeline exhibits genuine engineering, requirements are fully satisfied without regressions, and independent test runs matched 100%, the verdict is VICTORY CONFIRMED.
 
 ## 3. Caveats
-- No caveats. The implementation covers edge cases including unmounted component lifecycle protection, multi-tenant school isolation, Excel quote sanitization, and case-insensitive username collision prevention.
+
+- Database migrations (`supabase/migrations/20261109_add_agama_to_data_siswa.sql`) require execution against the live Supabase database if not already applied, to ensure the `agama` column exists in production tables. The application handles missing/legacy columns defensibly with fallback checks.
+- If a school introduces other religious subjects (e.g. Pendidikan Agama Hindu, Buddha, Khonghucu), `agamaFilter.ts` can be expanded following the same modular pattern established for PAI and PAK.
 
 ## 4. Conclusion
-All requirements (R1, R2, R3, R4) and acceptance criteria specified in `ORIGINAL_REQUEST.md` have been fully and genuinely met. Forensic integrity checks confirm zero cheating, zero facades, and zero hardcoded mocks. Independent execution of tests and production build confirms complete stability. Verdict is **VICTORY CONFIRMED**.
+
+The implementation authentically, robustly, and comprehensively fulfills the user's requirements for PAI and PAK student separation by religion while preserving existing functionality and zero regression across general subjects.
+
+**Final Verdict**: **VICTORY CONFIRMED**
 
 ## 5. Verification Method
-To independently reproduce this verification:
-```powershell
-npx tsx tests/admin_submenu_pengguna_kredensial_guru.test.ts
+
+To independently reproduce the audit findings:
+```bash
+# 1. Run the dedicated PAI/PAK isolation test suite (29 checks)
+npx tsx tests/agama_pai_pak_isolation.test.ts
+
+# 2. Run TypeScript type check
 npx tsc --noEmit
+
+# 3. Run full project test suite (77 suites)
 npm test
+
+# 4. Verify production build
 npm run build
 ```
-Verify that all 28 checks pass, TypeScript reports 0 errors, all 53 test suites succeed, and Next.js Turbopack build finishes with exit code 0.
+
+Invalidation conditions:
+- Any failure in `tests/agama_pai_pak_isolation.test.ts`.
+- Non-Islam student appearing in PAI or non-Christian student appearing in PAK.
+- General subjects failing to load all class students.
+- Any TypeScript or Next.js build failure.
