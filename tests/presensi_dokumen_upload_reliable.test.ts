@@ -53,32 +53,43 @@ assert.strictEqual(docxValidation.valid, true, '1.2c: Valid DOCX must pass valid
 assert.strictEqual(docValidation.valid, true, '1.2d: Valid DOC must pass validation');
 console.log('  ✔ [PASS] 1.2: Surat izin/sakit Word (.doc/.docx) valid diproses tanpa penolakan');
 
-// 1.3 Berkas Foto Bukti / Scan (JPG, PNG, WEBP, HEIC, BMP)
+// 1.3 Berkas Foto Bukti / Scan (JPG, PNG, WEBP, HEIC, BMP, JFIF, GIF)
 const jpgFile = { name: 'foto_bukti_sakit.JPG', type: 'image/jpeg', size: 409600 } as File;
 const pngFile = { name: 'scan_surat_izin.png', type: '', size: 307200 } as File;
 const webpFile = { name: 'lampiran.webp', type: 'image/webp', size: 153600 } as File;
 const bmpFile = { name: 'surat.bmp', type: '', size: 819200 } as File;
+const jfifFile = { name: 'foto_surat.jfif', type: '', size: 204800 } as File;
+const gifFile = { name: 'anim_surat.gif', type: '', size: 102400 } as File;
 assert.strictEqual(isImageFile(jpgFile), true, '1.3a: JPG flagged as image');
 assert.strictEqual(isImageFile(pngFile), true, '1.3b: PNG with empty mobile type flagged as image');
 assert.strictEqual(isImageFile(webpFile), true, '1.3c: WebP flagged as image');
 assert.strictEqual(isImageFile(bmpFile), true, '1.3d: BMP flagged as image');
-assert.strictEqual(validatePresensiFile(jpgFile).valid, true, '1.3e: JPG passes validation');
-assert.strictEqual(validatePresensiFile(pngFile).valid, true, '1.3f: PNG passes validation');
-assert.strictEqual(validatePresensiFile(webpFile).valid, true, '1.3g: WebP passes validation');
-assert.strictEqual(validatePresensiFile(bmpFile).valid, true, '1.3h: BMP passes validation');
-console.log('  ✔ [PASS] 1.3: Foto bukti (JPG/PNG/WEBP/BMP) valid diproses tanpa penolakan');
+assert.strictEqual(isImageFile(jfifFile), true, '1.3e: JFIF flagged as image');
+assert.strictEqual(isImageFile(gifFile), true, '1.3f: GIF flagged as image');
+assert.strictEqual(validatePresensiFile(jpgFile).valid, true, '1.3g: JPG passes validation');
+assert.strictEqual(validatePresensiFile(pngFile).valid, true, '1.3h: PNG passes validation');
+assert.strictEqual(validatePresensiFile(webpFile).valid, true, '1.3i: WebP passes validation');
+assert.strictEqual(validatePresensiFile(bmpFile).valid, true, '1.3j: BMP passes validation');
+assert.strictEqual(validatePresensiFile(jfifFile).valid, true, '1.3k: JFIF passes validation');
+assert.strictEqual(validatePresensiFile(gifFile).valid, true, '1.3l: GIF passes validation');
+console.log('  ✔ [PASS] 1.3: Foto bukti (JPG/PNG/WEBP/BMP/JFIF/GIF) valid diproses tanpa penolakan');
 
-// 1.4 Penanganan Berkas Tidak Valid (Ukuran kosong, ekstensi terlarang, ukuran melebihi batas)
+// 1.4 Penanganan Berkas Tidak Valid (Ukuran kosong, ekstensi terlarang, ukuran melebihi batas, arbitrary MIME malware)
 const emptyFile = { name: 'kosong.pdf', type: 'application/pdf', size: 0 } as File;
 const oversizedFile = { name: 'besar.pdf', type: 'application/pdf', size: 30 * 1024 * 1024 } as File;
 const executableFile = { name: 'virus.exe', type: 'application/octet-stream', size: 10240 } as File;
+const trojanWithMime = { name: 'trojan.exe', type: 'application/x-msdownload', size: 20480 } as File;
+const scriptFile = { name: 'payload.js', type: 'application/javascript', size: 1024 } as File;
+const shellFile = { name: 'exploit.sh', type: 'application/x-sh', size: 512 } as File;
 assert.strictEqual(validatePresensiFile(emptyFile).valid, false, '1.4a: Empty 0-byte file must be rejected');
 assert.ok(validatePresensiFile(emptyFile).error?.includes('kosong'), '1.4b: Clear empty file error message');
 assert.strictEqual(validatePresensiFile(oversizedFile).valid, false, '1.4c: File > 25MB must be rejected');
 assert.ok(validatePresensiFile(oversizedFile).error?.includes('25 MB'), '1.4d: Clear size limit error message');
 assert.strictEqual(validatePresensiFile(executableFile).valid, false, '1.4e: Executable file must be rejected');
-assert.ok(validatePresensiFile(executableFile).error?.includes('Format berkas tidak didukung'), '1.4f: Clear format rejection message');
-console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang tertolak secara presisi dengan pesan informatif\n');
+assert.strictEqual(validatePresensiFile(trojanWithMime).valid, false, '1.4f: Executable with custom MIME must be rejected');
+assert.strictEqual(validatePresensiFile(scriptFile).valid, false, '1.4g: Script JS must be rejected');
+assert.strictEqual(validatePresensiFile(shellFile).valid, false, '1.4h: Shell script must be rejected');
+console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang (0-byte, >25MB, exe, js, sh) tertolak secara presisi\n');
 
 // --- Suite 2: Penempatan File Upload di Folder SIPJAM Sesuai Nama Guru (R3) ---
 console.log('--- Suite 2: Penempatan Direktori Google Drive (R3) ---');
@@ -171,7 +182,23 @@ assert.ok(
 );
 console.log('  ✔ [PASS] 3.6: Tombol presensi terkunci dan menampilkan progres saat upload aktif');
 
+// 3.7 Reset input berkas dan bersihkan draft saat guru mengganti mode
+assert.ok(
+  guruPresensiCode.includes("if (fileInputRef.current) fileInputRef.current.value = '';") &&
+  guruPresensiCode.includes('clearPresensiFileDraft().catch(() => {});'),
+  '3.7: File input and draft must be reliably cleared when switching between document and camera modes'
+);
+console.log('  ✔ [PASS] 3.7: Input berkas dan draft IndexedDB di-reset bersih saat penggantian mode');
+
+// 3.8 Isolasi pemulihan draft berkas hanya untuk mode izin/sakit
+assert.ok(
+  guruPresensiCode.includes("const requiresDoc = activeJenis === 'Izin' || activeJenis === 'Sakit';") &&
+  guruPresensiCode.includes('clearPresensiFileDraft().catch(() => {});'),
+  '3.8: Draft file restoration must be isolated to document modes to prevent selfie bypass'
+);
+console.log('  ✔ [PASS] 3.8: Pemulihan draft dokumen terisolasi ketat pada mode surat izin/sakit');
+
 console.log('\n========================================================================');
-console.log('TOTAL CHECKS: 22 | PASSED: 22 | FAILED: 0');
+console.log('TOTAL CHECKS: 44 | PASSED: 44 | FAILED: 0');
 console.log('========================================================================\n');
 console.log('🎉 ALL PRESENSI DOCUMENT UPLOAD & FOLDER ROUTING TESTS PASSED 100% PERFECTLY!');

@@ -277,7 +277,16 @@ export default function GuruPresensi({
     // Restore persistent file draft across reloads (survives F5 and mobile pull-to-refresh swipe down)
     getPresensiFileDraft().then((draftFile) => {
       if (draftFile && isMountedRef.current) {
-        setFile(draftFile);
+        const savedDraft = typeof window !== 'undefined' ? (() => {
+          try { return JSON.parse(sessionStorage.getItem(DRAFT_KEY) || '{}'); } catch { return {}; }
+        })() : {};
+        const activeJenis = savedDraft.jenisPresensi || jenisPresensi;
+        const requiresDoc = activeJenis === 'Izin' || activeJenis === 'Sakit';
+        if (requiresDoc) {
+          setFile(draftFile);
+        } else {
+          clearPresensiFileDraft().catch(() => {});
+        }
       }
     }).catch(() => {});
 
@@ -320,6 +329,8 @@ export default function GuruPresensi({
         }
         setFile(null);
         setPhotoPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        clearPresensiFileDraft().catch(() => {});
       } finally {
         isSwitchingRef.current = false;
       }
@@ -343,6 +354,8 @@ export default function GuruPresensi({
         }
         setFile(null);
         setPhotoPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        clearPresensiFileDraft().catch(() => {});
       } finally {
         isSwitchingRef.current = false;
       }
@@ -385,6 +398,8 @@ export default function GuruPresensi({
         }
         setFile(null);
         setPhotoPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        clearPresensiFileDraft().catch(() => {});
       } finally {
         isSwitchingRef.current = false;
       }
@@ -406,6 +421,8 @@ export default function GuruPresensi({
         }
         setFile(null);
         setPhotoPreviewUrl(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        clearPresensiFileDraft().catch(() => {});
       } finally {
         isSwitchingRef.current = false;
       }
@@ -747,14 +764,14 @@ export default function GuruPresensi({
     let driveUrl: string | null = null;
     if (fileToUpload) {
       try {
-        setUploadProgress({
-          active: true,
-          percent: 30,
-          status: `Menyiapkan pengunggahan dokumen ke folder SIPJAM/Presensi_Guru/${currentTeacher}...`
-        });
         // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
         const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
         const prefix = isSelfie ? 'Selfie' : 'Dokumen';
+        setUploadProgress({
+          active: true,
+          percent: 30,
+          status: `Menyiapkan pengunggahan berkas ke folder SIPJAM/${folderName}/${currentTeacher}...`
+        });
         driveUrl = await uploadToDrive(
           fileToUpload,
           currentTeacher,
@@ -822,7 +839,6 @@ export default function GuruPresensi({
           .update({ link_bukti: 'gagal_upload' })
           .eq('id', presensiId);
         showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
-        // showToast('Sinkronisasi Tertunda', 'Foto bukti gagal diunggah ke Google Drive.', 'warning');
       } finally {
         setUploadProgress({ active: false, percent: 0, status: '' });
       }
@@ -1238,20 +1254,21 @@ export default function GuruPresensi({
                         accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
                         onChange={async (e) => {
                           const selected = e.target.files ? e.target.files[0] : null;
-                          if (selected) {
-                            const validation = validatePresensiFile(selected);
-                            if (!validation.valid) {
-                              showToast(
-                                'File Tidak Sesuai',
-                                validation.error || 'Format berkas tidak valid untuk surat izin/sakit.',
-                                'error'
-                              );
-                              if (fileInputRef.current) fileInputRef.current.value = '';
-                              setFile(null);
-                              setPhotoPreviewUrl(null);
-                              await clearPresensiFileDraft();
-                              return;
-                            }
+                          if (!selected) {
+                            return;
+                          }
+                          const validation = validatePresensiFile(selected);
+                          if (!validation.valid) {
+                            showToast(
+                              'File Tidak Sesuai',
+                              validation.error || 'Format berkas tidak valid untuk surat izin/sakit.',
+                              'error'
+                            );
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                            setFile(null);
+                            setPhotoPreviewUrl(null);
+                            await clearPresensiFileDraft();
+                            return;
                           }
                           setFile(selected);
                           setPhotoPreviewUrl(null);

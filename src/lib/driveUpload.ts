@@ -40,29 +40,32 @@ async function getTargetEmail(): Promise<string | undefined> {
 
 
 export function detectMimeType(file: File): string {
-  if (file.type && file.type !== 'application/octet-stream') {
-    return file.type;
+  const rawType = (file.type || '').trim().toLowerCase().split(';')[0];
+  if (rawType && rawType !== 'application/octet-stream') {
+    return rawType;
   }
   const name = (file.name || '').toLowerCase();
   if (name.endsWith('.pdf')) return 'application/pdf';
-  if (name.endsWith('.jpg') || name.endsWith('.jpeg')) return 'image/jpeg';
+  if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.jfif') || name.endsWith('.pjpeg')) return 'image/jpeg';
   if (name.endsWith('.png')) return 'image/png';
   if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.gif')) return 'image/gif';
   if (name.endsWith('.heic')) return 'image/heic';
   if (name.endsWith('.heif')) return 'image/heif';
   if (name.endsWith('.bmp')) return 'image/bmp';
+  if (name.endsWith('.tif') || name.endsWith('.tiff')) return 'image/tiff';
   if (name.endsWith('.doc')) return 'application/msword';
   if (name.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   if (name.endsWith('.odt')) return 'application/vnd.oasis.opendocument.text';
   if (name.endsWith('.rtf')) return 'application/rtf';
   if (name.endsWith('.txt')) return 'text/plain';
-  return file.type || 'application/octet-stream';
+  return rawType || 'application/octet-stream';
 }
 
 export function isImageFile(file: File): boolean {
   const mime = detectMimeType(file);
   if (mime.startsWith('image/')) return true;
-  return /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(file.name || '');
+  return /\.(jpe?g|jfif|pjpeg|png|webp|bmp|gif|heic|heif|tiff?)$/i.test(file.name || '');
 }
 
 export interface PresensiFileValidationResult {
@@ -83,11 +86,40 @@ export function validatePresensiFile(file: File | null | undefined): PresensiFil
     return { valid: false, mimeType: detectMimeType(file), error: 'Ukuran berkas melebihi batas maksimal 25 MB.' };
   }
 
-  const mime = detectMimeType(file);
   const name = (file.name || '').toLowerCase();
-  const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.bmp', '.doc', '.docx', '.odt', '.rtf', '.txt'];
+  const FORBIDDEN_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.vbs', '.js', '.apk', '.msi', '.scr', '.jar', '.com', '.pif'];
+  if (FORBIDDEN_EXTENSIONS.some(ext => name.endsWith(ext))) {
+    return {
+      valid: false,
+      mimeType: detectMimeType(file),
+      error: 'Format berkas executable/skrip tidak diizinkan demi keamanan.',
+    };
+  }
+
+  const mime = detectMimeType(file);
+  const validExtensions = [
+    '.pdf',
+    '.jpg',
+    '.jpeg',
+    '.jfif',
+    '.pjpeg',
+    '.png',
+    '.webp',
+    '.heic',
+    '.heif',
+    '.bmp',
+    '.gif',
+    '.tif',
+    '.tiff',
+    '.doc',
+    '.docx',
+    '.odt',
+    '.rtf',
+    '.txt',
+  ];
   const hasValidExt = validExtensions.some(ext => name.endsWith(ext));
-  const hasValidMime = mime.startsWith('image/') ||
+  const hasValidMime =
+    mime.startsWith('image/') ||
     mime === 'application/pdf' ||
     mime === 'application/msword' ||
     mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
@@ -95,7 +127,7 @@ export function validatePresensiFile(file: File | null | undefined): PresensiFil
     mime === 'application/rtf' ||
     mime === 'text/plain';
 
-  if (!hasValidExt && !hasValidMime && (mime === 'application/octet-stream' || !mime)) {
+  if (!hasValidExt && !hasValidMime) {
     return {
       valid: false,
       mimeType: mime,
