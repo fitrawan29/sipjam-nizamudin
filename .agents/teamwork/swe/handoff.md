@@ -1,61 +1,46 @@
-# Orchestrator Handoff: Perbaikan Mata Pelajaran Jadwal Pembelajaran & Perlindungan Data Master
+# Orchestrator Handoff Report: Pengunggahan Dokumen Presensi Guru Andal & Folder Routing
+
+**Status:** Task Completed (Victory Confirmed)  
+**Date/Timestamp:** 2026-11-09T01:04:00Z  
+**Branch:** main (commit: dfc35eb)  
+
+---
 
 ## 1. Milestone State
-- [x] Initial Implementer (teamwork_implementer_mapel_r0): Completed
-- [x] Review Round 1 (teamwork_reviewer_mapel_r1): Completed
-- [x] Review Round 2 (teamwork_reviewer_mapel_r2): Completed
-- [x] Review Round 3 (teamwork_reviewer_mapel_r3): Completed
-- [x] Independent Verification & Test Execution: 16/16 Passed, 0 TypeScript Errors
-- [x] Post-Victory Audit (teamwork_victory_auditor_mapel): VICTORY CONFIRMED (Phases A, B, C Passed)
-- [x] Git commits & push to origin/main: Synchronized to branch main
+- [x] **M1: Alur Pengunggahan Dokumen Presensi (R1)** — Pemilihan berkas tidak memicu refresh halaman atau upload langsung secara prematur; berkas ditampung dalam draft lokal/IndexedDB dan diproses saat konfirmasi form tanpa reload/state reset.
+- [x] **M2: Indikator Progres & Validasi Berkas (R2)** — Indikator progres visual interaktif (bar animasi, status teks dinamis, angka persentase, jeda render 100%) tampil saat upload berlangsung; berkas sah (PDF, Word DOC/DOCX, Gambar JPG/PNG/WEBP/BMP/JFIF/GIF, Dokumen ODT/RTF/TXT hingga 25 MB) diterima tanpa error penolakan MIME; proteksi adversarial terhadap spoofed MIME, double extension executable (.php.jpg, .exe.pdf), SVG XSS, dan file 0-byte/rusak.
+- [x] **M3: Penempatan Direktori Penyimpanan Google Drive (R3)** — Berkas tersimpan otomatis pada folder `SIPJAM/Presensi_Guru/<Nama Guru>/` (atau `SIPJAM/Presensi_DinasLuar/<Nama Guru>/`) dengan normalisasi sanitasi karakter, pencegahan directory traversal (`..`), dan penanganan gelar/spasi berlebih secara aman.
+- [x] **M4: Verifikasi & Audit Kemenangan (Acceptance Criteria)** — 3 putaran review adversarial independen (R1, R2, R3), 67 automated checks presensi lolos 100%, 75/75 test suite repositori lolos tanpa regresi, dan audit post-kemenangan oleh `teamwork_victory_auditor` menghasilkan status **CONFIRMED**.
+
+---
 
 ## 2. Active Subagents
-- None (All subagents completed, retired, and audited).
+- All subagents have concluded and are retired:
+  - `4c5c2ca0-8c1a-4b93-8167-edf4d85f6253` (`teamwork_implementer`) — Completed (commit ddb4df5)
+  - `da1183fc-1ce4-4763-b39a-edea77bf5d52` (`teamwork_reviewer` R1) — Completed (commit 1a7b1b3)
+  - `c733a610-376f-4f97-b465-24de5ea6cce4` (`teamwork_reviewer` R2) — Completed (commit a8657c4)
+  - `c79d2972-8f36-4962-b14f-91847589a375` (`teamwork_reviewer` R3) — Completed (commit dfc35eb)
+  - `77e72432-8f36-4962-b14f-91847589a375` / `77e72432-6bf2-4fa8-89d7-63a5d93f59d8` (`teamwork_victory_auditor`) — Completed (Verdict: VICTORY CONFIRMED)
+
+---
 
 ## 3. Pending Decisions
-- None.
+- None. All requirements and acceptance criteria have been achieved and verified.
+
+---
 
 ## 4. Remaining Work
-- None. All requirements (R1 and R2) and acceptance criteria have been fully met and verified.
+- None. The feature is production-ready, verified against regressions, and pushed to `main`.
+
+---
 
 ## 5. Key Artifacts
-- `src/lib/dataIntegrityGuard.ts`: Subject validation rules (`isInvalidMapel`, `normalizeScheduleMapel`, `validateScheduleData`, `validateMapelData`, `validateTeacherData`).
-- `src/components/AdminDataView.tsx`: Mapel validation on CSV upload, manual schedule/mapel/teacher modals, and load filtering.
-- `src/components/AdminVerifView.tsx`: Verification dashboard schedule & teacher subject sanitization.
-- `src/components/DokumenView.tsx`: Curriculum document checklist subject normalization.
-- `src/components/RekapJurnalView.tsx`: Attendance and unfilled KBM recap schedule filtering.
-- `src/components/RekapSiswaView.tsx`: Student attendance subject dropdown filter.
-- `src/components/GuruJurnal.tsx`: Journal submission subject validation and assignment mapping.
-- `src/components/GradebookView.tsx`: Gradebook subject dropdown & teacher verification hardening.
-- `src/components/RaporView.tsx`: Report card universal subject filtering.
-- `src/components/HomeViewAdmin.tsx`: Admin dashboard monitoring matrix schedule filtering.
-- `src/app/api/push/send-reminders/route.ts`: Push notification reminder cron schedule filtering.
-- `src/lib/attendanceAlpa.ts`: Auto-checkout and daily attendance schedule filtering.
-- `src/lib/warningSystem.ts`: Warning and violation disciplinary evaluation schedule filtering.
-- `tests/jadwal_mapel_validity_and_master_integrity.test.ts`: Regression and integrity test suite (16/16 checks).
-- `supabase/migrations/20261102_validate_mapel_jadwal.sql`: SQL migration guard.
-- `.agents/teamwork/teamwork_victory_auditor_mapel/audit_report.md`: Independent victory audit report.
-
-## 6. Observation
-- An erroneous test record (`c0000000-0000-0000-0000-000000000001`, "Teknologi Informasi") existed in `jadwal_pelajaran` and was cleaned up.
-- All 51 uploaded master schedule records from `SIPJAM NIZAMUDIN - Jadwal_Pelajaran.csv`, 14 student records from `Data_Siswa`, 12 teacher records from `Data_Guru`, and 39 subject records from `Data_Mapel` remain 100% intact, untouched, and unedited.
-- "Informatika" is valid, taught by Ade on Saturday in class X Merdeka.
-
-## 7. Logic Chain
-1. Core validation rules in `src/lib/dataIntegrityGuard.ts` intercept all invalid variants ("teknik informasi", "teknologi informasi", "tekinfo", "tik", class prefixes, punctuation).
-2. Normalizers map any variants to official "Informatika" while preserving class prefixes.
-3. Multi-layer defense across all 13 UI views, CSV upload parsers, and background automation services ensures zero leakage of invalid subjects.
-4. Three adversarial review rounds and an independent victory auditor verified code and live database state against master CSV records.
-
-## 8. Caveats
-- Hosted Supabase remote database lacks an open DDL RPC for creating native database triggers directly over REST; full protection is achieved through application-layer and API-layer bulletproof validation.
-
-## 9. Conclusion
-- Requirements R1 (Koreksi Mata Pelajaran pada Jadwal) and R2 (Perlindungan Data Master) are 100% satisfied, tested, verified, and audited with VICTORY CONFIRMED.
-
-## 10. Verification Method
-- Independent test execution:
-  - `npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts` (16/16 passed)
-  - `npx tsc --noEmit` (0 errors)
-  - `npx tsx tests/matrix_teacher_collision_fix.test.ts` (100% passed)
-  - `npx tsx scripts/cleanup_invalid_mapel_jadwal.ts` (0 erroneous rows, 100% master data preserved)
+- **Test File**: `tests/presensi_dokumen_upload_reliable.test.ts` (67 checks)
+- **Modified Source**:
+  - `src/lib/driveUpload.ts` (MIME detection, file validation, progress reporting callback, path traversal sanitization, folder builder)
+  - `src/components/GuruPresensi.tsx` (Progress visual indicator, file draft management, sweetalert2 non-reload modals, folder display normalization)
+- **Metadata**:
+  - `ORIGINAL_REQUEST.md`: User's original instructions verbatim
+  - `swe/BRIEFING.md`: Working memory of orchestrator
+  - `swe/progress.md`: Detailed ledger & review round history
+  - `auditor/audit_report.md`: Independent victory audit report
