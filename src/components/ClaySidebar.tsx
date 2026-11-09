@@ -76,6 +76,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
     (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
     (user?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+    (user?.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
     (user?.mata_pelajaran || '').toLowerCase().trim() === 'bk';
 
   const roleBadgeStyle = isSuperadmin

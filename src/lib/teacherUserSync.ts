@@ -117,7 +117,9 @@ export async function syncTeacherAccounts(
           ? crypto.randomUUID()
           : `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-        const isBkMapel = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') || (guru.mata_pelajaran || '').toLowerCase() === 'bk';
+        const isBkMapel = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+          (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
+          (guru.mata_pelajaran || '').toLowerCase().trim() === 'bk';
         const newUserData = {
           id: newId,
           username: targetUsername,
@@ -160,7 +162,9 @@ export async function syncTeacherAccounts(
         }
       }
 
-      const isTeacherBk = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') || (guru.mata_pelajaran || '').toLowerCase() === 'bk';
+      const isTeacherBk = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+        (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
+        (guru.mata_pelajaran || '').toLowerCase().trim() === 'bk';
       accounts.push({
         guruId: guru.id,
         userId: matchedUser?.id,

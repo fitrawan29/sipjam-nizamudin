@@ -103,6 +103,7 @@ export default function AppScreen({
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
     (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+    (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
     (baseUser?.mata_pelajaran || '').toLowerCase().trim() === 'bk';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
@@ -569,7 +570,12 @@ export default function AppScreen({
           return;
         }
 
-        const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', { role: user?.role, isWaliKelas });
+        const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', {
+          role: isBk ? 'bk' : user?.role,
+          isWaliKelas,
+          mata_pelajaran: user?.mata_pelajaran,
+          isBk
+        });
         if (!rbacCheck.allowed) {
           Swal.fire({
             icon: 'warning',
@@ -732,7 +738,12 @@ export default function AppScreen({
       }
 
       // Defense-in-depth sub-tab RBAC check
-      const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', { role: user?.role, isWaliKelas });
+      const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', {
+        role: isBk ? 'bk' : (isTataUsaha ? 'tata_usaha' : user?.role),
+        isWaliKelas,
+        mata_pelajaran: user?.mata_pelajaran,
+        isBk
+      });
       if (!rbacCheck.allowed) {
         Swal.fire({
           icon: 'warning',

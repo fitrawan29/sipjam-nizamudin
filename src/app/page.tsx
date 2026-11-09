@@ -172,14 +172,15 @@ function MainApp() {
   // Native multi-tab session synchronization & 401 unauthorized listener
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'sipjam_user') {
-        if (!e.newValue) {
+      if (e.key === 'sipjam_user' || !e.key) {
+        const rawVal = e.newValue || (typeof window !== 'undefined' ? localStorage.getItem('sipjam_user') : null);
+        if (!rawVal) {
           clearAllClientSessionState();
           setUser(null);
           setShowSplash(false);
         } else {
           try {
-            const parsed = JSON.parse(e.newValue);
+            const parsed = JSON.parse(rawVal);
             if (parsed?.id && parsed?.session_token) {
               setUser(parsed);
             }

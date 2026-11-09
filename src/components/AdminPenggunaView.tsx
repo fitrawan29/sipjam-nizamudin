@@ -104,7 +104,9 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           }
           const normAcc = (acc.role || '').toLowerCase().replace(/[\s_-]+/g, '');
           const isAccBk = normAcc === 'bk' || normAcc === 'gurubk' || normAcc === 'bimbingankonseling' || normAcc === 'bimbingandankonseling' ||
-            (acc.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') || (acc.mataPelajaran || '').toLowerCase().trim() === 'bk';
+            (acc.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+            (acc.mataPelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
+            (acc.mataPelajaran || '').toLowerCase().trim() === 'bk';
           if (isAccBk) {
             return { ...acc, role: 'bk' };
           }
@@ -426,13 +428,47 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
     }
   };
 
+  // Helper to sync local session if the user being updated matches currently logged-in user
+  const syncLocalSessionIfMatching = (userId?: string, username?: string, targetRole?: string) => {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    try {
+      const stored = localStorage.getItem('sipjam_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if ((userId && parsed.id === userId) || (username && parsed.username === username)) {
+          if (targetRole) {
+            parsed.role = targetRole;
+            if (targetRole === 'bk' || targetRole === 'guru_bk') {
+              parsed.mata_pelajaran = 'Bimbingan Konseling (BK)';
+            } else if (parsed.mata_pelajaran === 'Bimbingan Konseling (BK)') {
+              parsed.mata_pelajaran = '-';
+            }
+          }
+          const serialized = JSON.stringify(parsed);
+          localStorage.setItem('sipjam_user', serialized);
+          try {
+            window.dispatchEvent(new StorageEvent('storage', { key: 'sipjam_user', newValue: serialized }));
+          } catch (_) {
+            window.dispatchEvent(new Event('storage'));
+          }
+        }
+      }
+    } catch (_) {}
+  };
+
   // Handle Toggle BK Role Assignment (Mekanisme 1: Tunjuk BK / Ke Guru)
   const handleToggleBkAssignment = async (item: TeacherAccountItem) => {
     if (!isAdmin) return;
-    const isCurrentlyBk = (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
-      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
-      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
-      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling';
+    const normItemRole = (item.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+    const normItemMapel = (item.mataPelajaran || '').toLowerCase();
+    const isCurrentlyBk =
+      normItemRole === 'bk' ||
+      normItemRole === 'gurubk' ||
+      normItemRole === 'bimbingankonseling' ||
+      normItemRole === 'bimbingandankonseling' ||
+      normItemMapel.includes('bimbingan konseling') ||
+      normItemMapel.includes('bimbingan dan konseling') ||
+      normItemMapel.trim() === 'bk';
     const targetRole = isCurrentlyBk ? 'Guru' : 'bk';
     const actionLabel = isCurrentlyBk ? 'Kembalikan ke Guru' : 'Tunjuk sebagai Guru BK';
 
@@ -477,6 +513,9 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               .update({ mata_pelajaran: newMapel })
               .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
 
+            // Sync active session even in fallback mode
+            syncLocalSessionIfMatching(item.userId, item.username, targetRole);
+
             await Swal.fire({
               icon: 'warning',
               title: 'Constraint Database Perlu Dihapus',
@@ -520,24 +559,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       }
 
       // Sync active session if currently logged-in user is updated
-      if (typeof window !== 'undefined' && window.localStorage) {
-        try {
-          const stored = localStorage.getItem('sipjam_user');
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if ((item.userId && parsed.id === item.userId) || (item.username && parsed.username === item.username)) {
-              parsed.role = targetRole;
-              if (targetRole === 'bk') {
-                parsed.mata_pelajaran = 'Bimbingan Konseling (BK)';
-              } else if (parsed.mata_pelajaran === 'Bimbingan Konseling (BK)') {
-                parsed.mata_pelajaran = '-';
-              }
-              localStorage.setItem('sipjam_user', JSON.stringify(parsed));
-              window.dispatchEvent(new Event('storage'));
-            }
-          }
-        } catch (_) {}
-      }
+      syncLocalSessionIfMatching(item.userId, item.username, targetRole);
 
       showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'bk' ? 'Guru BK' : 'Guru'}.`, 'success');
       handleLoadAndSync(false);
@@ -1110,6 +1132,14 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {paginatedAccounts.map((item, idx) => {
                   const rowNumber = page * ITEMS_PER_PAGE + idx + 1;
+                  const isItemBk =
+                    (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
+                    (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
+                    (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
+                    (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
+                    (item.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+                    (item.mataPelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
+                    (item.mataPelajaran || '').toLowerCase().trim() === 'bk';
                   return (
                     <tr
                       key={item.guruId}
@@ -1181,18 +1211,18 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                             type="button"
                             onClick={() => handleToggleBkAssignment(item)}
                             className={`btn-click px-2 py-1 rounded-lg font-bold text-[11px] border transition flex items-center gap-1 ${
-                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling'
+                              isItemBk
                                 ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/60'
                                 : 'bg-rose-100 hover:bg-rose-200 text-rose-900 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/60'
                             }`}
                             title={
-                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling'
+                              isItemBk
                                 ? 'Kembalikan role ke Guru'
                                 : 'Tunjuk sebagai Guru BK'
                             }
                           >
-                            <i className={`fa-solid ${(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ? 'fa-chalkboard-user' : 'fa-heart-pulse'} text-[10px]`}></i>
-                            <span>{(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ? 'Ke Guru' : 'Tunjuk BK'}</span>
+                            <i className={`fa-solid ${isItemBk ? 'fa-chalkboard-user' : 'fa-heart-pulse'} text-[10px]`}></i>
+                            <span>{isItemBk ? 'Ke Guru' : 'Tunjuk BK'}</span>
                           </button>
                           <button
                             type="button"

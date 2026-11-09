@@ -101,6 +101,7 @@ export function getConsolidatedMenuItems(params: {
   isPiketHariIni?: boolean;
   isKepalaSekolah?: boolean;
   activeTargetSchool?: any;
+  isBk?: boolean;
 }): MenuItem[] {
   const normRole = (params.role || '').toLowerCase().replace(/[\s_-]+/g, '');
   const isSuperadmin = normRole === 'superadmin';
@@ -194,7 +195,7 @@ export function getConsolidatedMenuItems(params: {
     ];
   }
 
-  const isBk = normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling';
+  const isBk = Boolean(params.isBk) || normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling';
   if (isBk) {
     return [
       { id: 'view-home', icon: 'fa-house', label: 'Dashboard', dataTour: 'view-home' },
@@ -229,7 +230,17 @@ export function getConsolidatedMenuItems(params: {
 export function evaluateTabRBAC(
   viewId: string,
   tabId: string,
-  user: { role?: string; isWaliKelas?: boolean; is_kepala_sekolah?: boolean; isKepalaSekolah?: boolean; status_kepala_sekolah?: string; statusKepalaSekolah?: string }
+  user: {
+    role?: string;
+    isWaliKelas?: boolean;
+    is_kepala_sekolah?: boolean;
+    isKepalaSekolah?: boolean;
+    status_kepala_sekolah?: string;
+    statusKepalaSekolah?: string;
+    mata_pelajaran?: string;
+    mataPelajaran?: string;
+    isBk?: boolean;
+  }
 ): { allowed: boolean; fallbackTab?: string; reason?: string } {
   const rawRole = (user?.role || '').toLowerCase();
   const normRole = rawRole.replace(/[\s_-]+/g, '');
@@ -239,7 +250,10 @@ export function evaluateTabRBAC(
   const isWali = !!user?.isWaliKelas;
   const isSiswa = normRole === 'siswa';
   const isTataUsaha = normRole === 'tatausaha';
-  const isBk = normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling';
+  const normMapel = (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase();
+  const isBk = user?.isBk === true ||
+    normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling' ||
+    normMapel.includes('bimbingan konseling') || normMapel.includes('bimbingan dan konseling') || normMapel.trim() === 'bk';
 
   const resolved = resolveCanonicalRoute(viewId, tabId);
   const effectiveView = resolved.canonicalView;
