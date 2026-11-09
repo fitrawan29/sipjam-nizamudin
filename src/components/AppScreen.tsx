@@ -768,7 +768,9 @@ export default function AppScreen({
         const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
         Swal.close();
 
-        if (state.isLibur) {
+        const isRekapTab = targetTab === 'rekap-pribadi' || targetTab === 'supervisi-kelas' || targetId === 'view-guru-rekap-jurnal';
+
+        if (state.isLibur && targetId !== 'view-guru-presensi' && !isRekapTab) {
           Swal.fire('Akses Ditolak', state.lockedReason || 'Hari ini libur.', 'warning');
           return;
         }
@@ -788,9 +790,11 @@ export default function AppScreen({
         }
 
         if (targetId === 'view-guru-jurnal') {
-          if (!state.presensiDatang) return Swal.fire('Akses Ditolak', 'Harap lakukan Presensi Datang terlebih dahulu.', 'warning');
-          if (state.isIzinSakit) return Swal.fire('Akses Ditolak', state.lockedReason || '', 'info');
-          if (!state.canOpenJurnal) return Swal.fire('Akses Ditolak', state.lockedReason || 'Selesaikan tugas lain.', 'warning');
+          if (!isRekapTab) {
+            if (!state.presensiDatang) return Swal.fire('Akses Ditolak', 'Harap lakukan Presensi Datang terlebih dahulu.', 'warning');
+            if (state.isIzinSakit) return Swal.fire('Akses Ditolak', state.lockedReason || '', 'info');
+            if (!state.canOpenJurnal) return Swal.fire('Akses Ditolak', state.lockedReason || 'Selesaikan tugas lain.', 'warning');
+          }
         }
         
         // If target is presensi, we let them open it so they can see the "locked" status for Pulang inside the component
@@ -1125,6 +1129,25 @@ export default function AppScreen({
                     </button>
                   </React.Fragment>
                 ))}
+                {/* Menu Cetak Jurnal KBM untuk Akun Role Guru */}
+                {!isAdmin && !isSuperadmin && !isTataUsaha && !isBk && !isSiswa && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSidebarOpen(false);
+                      handleNavigation('view-guru-jurnal', 'rekap-pribadi');
+                    }}
+                    className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-200 select-none ${
+                      currentView === 'view-guru-jurnal' && urlTab === 'rekap-pribadi'
+                        ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-950 dark:from-blue-900/40 dark:to-indigo-900/30 dark:text-amber-300 border-2 border-white dark:border-blue-700/50 shadow-[3px_3px_8px_rgba(180,200,230,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1'
+                        : 'text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 border-2 border-transparent'
+                    }`}
+                  >
+                    <i className="fa-solid fa-print w-5 text-center text-blue-500 text-sm"></i>
+                    <span>Cetak Jurnal KBM</span>
+                  </button>
+                )}
+
                 {!isTataUsaha && !isBk && (
                   <button
                     type="button"

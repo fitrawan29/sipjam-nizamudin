@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
-import { isJurnalMatchJadwal, isLateArrival } from '@/lib/workflow';
+import { isJurnalMatchJadwal, isLateArrival, connectGuruMapelWithJadwal } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
@@ -35,7 +35,8 @@ export default function RekapJurnalView({
   assignedKelas: propAssignedKelas = null,
   isKepalaSekolah: propIsKepalaSekolah,
   isReadOnly = false,
-  statusKepalaSekolah
+  statusKepalaSekolah,
+  assignments: propAssignments = null
 }: { 
   user: any;
   initialMode?: 'pribadi' | 'kelas';
@@ -45,6 +46,7 @@ export default function RekapJurnalView({
   isKepalaSekolah?: boolean;
   isReadOnly?: boolean;
   statusKepalaSekolah?: string;
+  assignments?: any[] | null;
 }) {
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
   const isAdmin = isSuperadmin || (user?.role || '').toLowerCase() === 'admin' || user?.role === 'Admin';
@@ -72,7 +74,7 @@ export default function RekapJurnalView({
     }
   }, [controlledMode]);
 
-    const [bulan, setBulan] = useState(() => {
+  const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
   });
   const [startDate, setStartDate] = useState('');
@@ -85,10 +87,24 @@ export default function RekapJurnalView({
   
   const [kelasList, setKelasList] = useState<string[]>([]);
   const [mapelList, setMapelList] = useState<string[]>([]);
+  const [assignedMapelList, setAssignedMapelList] = useState<string[]>([]);
+  const [assignedKelasList, setAssignedKelasList] = useState<string[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<any[]>(propAssignments || []);
   const [waliKelasMap, setWaliKelasMap] = useState<Record<string, { nama_guru: string; nip?: string }>>({});
   
   const [loading, setLoading] = useState(false);
   const [jurnalData, setJurnalData] = useState<any[] | null>(null);
+
+  useEffect(() => {
+    if (propAssignments && propAssignments.length > 0) {
+      setTeacherAssignments(propAssignments);
+      const rawMapels = Array.from(new Set(propAssignments.map((a: any) => a.nama_mata_pelajaran || a.nama_mapel).filter(Boolean))) as string[];
+      const validMapels = rawMapels.filter(m => !isInvalidMapel(m));
+      const rawKelas = Array.from(new Set(propAssignments.map((a: any) => a.kelas).filter(Boolean))) as string[];
+      setAssignedMapelList(validMapels);
+      setAssignedKelasList(rawKelas);
+    }
+  }, [propAssignments]);
 
   useEffect(() => {
     const fetchMaster = async () => {
@@ -98,20 +114,89 @@ export default function RekapJurnalView({
           siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
         }
         const { data: siswa } = await siswaQuery;
+        let uniqueKelas: string[] = [];
         if (siswa) {
-          const uniqueKelas = Array.from(new Set(siswa.map(s => s.kelas).filter(Boolean))) as string[];
+          uniqueKelas = Array.from(new Set(siswa.map(s => s.kelas).filter(Boolean))) as string[];
           setKelasList(uniqueKelas);
         }
 
-        let mapelQuery = supabase.from('data_mapel').select('nama_mata_pelajaran');
+        let mapelQuery = supabase.from('data_mapel').select('id, nama_mata_pelajaran, nama_mapel, kategori, kelompok');
         if (user?.sekolah_id) {
           mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
         }
         const { data: mData } = await mapelQuery;
+        let uniqueMapel: string[] = [];
         if (mData) {
-          const uniqueMapel = (Array.from(new Set(mData.map(m => m.nama_mata_pelajaran).filter(Boolean))) as string[])
+          uniqueMapel = (Array.from(new Set(mData.map(m => m.nama_mata_pelajaran || m.nama_mapel).filter(Boolean))) as string[])
             .filter(m => !isInvalidMapel(m));
           setMapelList(uniqueMapel);
+        }
+
+        // Fetch teacher specific assignments (guru_mapel, jadwal_pelajaran, data_guru)
+        if (!isAdmin && !isKepalaSekolah) {
+          try {
+            const cleanNama = (user?.nama || '').split(',')[0].trim();
+            let gmQuery = supabase.from('guru_mapel').select('*');
+            let jdwlQuery = supabase.from('jadwal_pelajaran').select('*');
+            let dgQuery = supabase.from('data_guru').select('*');
+
+            if (user?.sekolah_id) {
+              gmQuery = gmQuery.eq('sekolah_id', user.sekolah_id);
+              jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
+              dgQuery = dgQuery.eq('sekolah_id', user.sekolah_id);
+            }
+
+            if (user?.username && cleanNama) {
+              gmQuery = gmQuery.or(`nip.eq."${user.username}",nama_guru.ilike."%${cleanNama}%"`);
+            } else if (user?.username) {
+              gmQuery = gmQuery.eq('nip', user.username);
+            } else if (cleanNama) {
+              gmQuery = gmQuery.ilike('nama_guru', `%${cleanNama}%`);
+            }
+
+            if (user?.id || cleanNama) {
+              dgQuery = dgQuery.or(`user_id.eq.${user?.id || '00000000-0000-0000-0000-000000000000'},id.eq.${user?.id || '00000000-0000-0000-0000-000000000000'},nama_guru.ilike."%${cleanNama}%"`);
+            }
+
+            const [gmRes, jdwlRes, dgRes] = await Promise.all([
+              gmQuery,
+              jdwlQuery,
+              dgQuery
+            ]);
+
+            const matchedGuruRow = (dgRes.data || []).find((g: any) =>
+              (user?.id && g.user_id === user.id) ||
+              (user?.username && (g.nip || '').toLowerCase() === user.username.toLowerCase()) ||
+              (cleanNama && (g.nama_guru || '').toLowerCase().includes(cleanNama.toLowerCase()))
+            );
+
+            const connected = connectGuruMapelWithJadwal(
+              { id: user?.id, user_id: user?.id, username: user?.username, nama: user?.nama },
+              jdwlRes.data || [],
+              mData || [],
+              gmRes.data || [],
+              matchedGuruRow,
+              uniqueKelas
+            );
+
+            if (connected && connected.length > 0) {
+              setTeacherAssignments(connected);
+              const validAssignedMapels = Array.from(new Set(connected.map(a => a.nama_mata_pelajaran || a.nama_mapel).filter(Boolean))).filter(m => !isInvalidMapel(m));
+              const validAssignedKelas = Array.from(new Set(connected.map(a => a.kelas).filter(Boolean))) as string[];
+              setAssignedMapelList(validAssignedMapels);
+              setAssignedKelasList(validAssignedKelas);
+
+              // Auto-select if teacher only teaches 1 subject or 1 class
+              if (validAssignedMapels.length === 1) {
+                setMapel(prev => prev || validAssignedMapels[0]);
+              }
+              if (validAssignedKelas.length === 1) {
+                setKelas(prev => prev || validAssignedKelas[0]);
+              }
+            }
+          } catch (assignErr) {
+            console.warn('[RekapJurnalView] Failed fetching teacher assignments:', assignErr);
+          }
         }
 
         // Fetch Wali Kelas assignments
@@ -825,7 +910,7 @@ export default function RekapJurnalView({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="flex-1">
                       <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
-                        KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? '(Wali Kelas)' : ''}
+                        KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? '(Wali Kelas)' : (!isAdmin && !isKepalaSekolah && assignedKelasList.length > 0 ? '(Ditugaskan)' : '')}
                       </label>
                       <select 
                         value={kelas} 
@@ -835,8 +920,17 @@ export default function RekapJurnalView({
                       >
                         {isAdmin || isKepalaSekolah || tabMode === 'pribadi' ? (
                           <>
-                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Kelas</option>
-                            {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
+                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">
+                              {!isAdmin && !isKepalaSekolah && assignedKelasList.length > 0
+                                ? (mapel ? `Semua Kelas (${mapel})` : 'Semua Kelas Ditugaskan')
+                                : 'Semua Kelas'}
+                            </option>
+                            {(!isAdmin && !isKepalaSekolah && assignedKelasList.length > 0
+                              ? (mapel && teacherAssignments.length > 0
+                                  ? Array.from(new Set(teacherAssignments.filter(a => (a.nama_mata_pelajaran === mapel || a.nama_mapel === mapel)).map(a => a.kelas).filter(Boolean)))
+                                  : assignedKelasList)
+                              : kelasList
+                            ).map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
                           </>
                         ) : (
                           <>
@@ -850,10 +944,43 @@ export default function RekapJurnalView({
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">MATA PELAJARAN</label>
-                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
-                        <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel</option>
-                        {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
+                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                        MATA PELAJARAN {!isAdmin && !isKepalaSekolah && assignedMapelList.length > 0 ? '(Ditugaskan)' : ''}
+                      </label>
+                      <select 
+                        value={mapel} 
+                        onChange={e => {
+                          const newMapel = e.target.value;
+                          setMapel(newMapel);
+                          if (newMapel && !isAdmin && !isKepalaSekolah && teacherAssignments.length > 0) {
+                            const validClasses = teacherAssignments.filter(a => (a.nama_mata_pelajaran === newMapel || a.nama_mapel === newMapel)).map(a => a.kelas);
+                            if (kelas && !validClasses.includes(kelas)) {
+                              setKelas(validClasses.length === 1 ? validClasses[0] : '');
+                            }
+                          }
+                        }} 
+                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                      >
+                        {!isAdmin && !isKepalaSekolah && tabMode === 'pribadi' && assignedMapelList.length > 0 ? (
+                          <>
+                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">
+                              {kelas ? `Semua Mapel (${kelas})` : 'Semua Mapel Ditugaskan'}
+                            </option>
+                            {(kelas && teacherAssignments.length > 0
+                              ? Array.from(new Set(teacherAssignments.filter(a => a.kelas === kelas).map(a => a.nama_mata_pelajaran || a.nama_mapel).filter(Boolean)))
+                              : assignedMapelList
+                            ).map((m, i) => (
+                              <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">
+                                {m}
+                              </option>
+                            ))}
+                          </>
+                        ) : (
+                          <>
+                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel</option>
+                            {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
+                          </>
+                        )}
                       </select>
                     </div>
                     <div className="flex-1">
@@ -913,7 +1040,7 @@ export default function RekapJurnalView({
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
-                {tabMode === 'kelas' ? `Rekapitulasi Jurnal Pembelajaran Kelas ${kelas || '(Semua Kelas)'}` : 'Rekapitulasi Jurnal Pembelajaran Guru'}
+                {tabMode === 'kelas' ? `Rekapitulasi Jurnal Pembelajaran Kelas ${kelas || '(Semua Kelas)'}` : `Jurnal KBM (Pembelajaran) Guru ${mapel ? `— ${mapel}` : ''} ${kelas ? `Kelas ${kelas}` : ''}`}
               </h3>
               <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
                 {tabMode === 'pribadi' && <span>Guru: <strong>{user?.nama || '-'}</strong></span>}
@@ -925,10 +1052,19 @@ export default function RekapJurnalView({
 
             {/* Print Toolbar Controls */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3 no-print">
-                            {filteredJurnal && filteredJurnal.length > 0 && (
-                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Menampilkan {filteredJurnal.length} entri jurnal {tabMode === 'kelas' ? `kelas ${kelas || ''}` : ''}
-                </div>
+              {filteredJurnal && filteredJurnal.length > 0 && (
+                <>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    Menampilkan {filteredJurnal.length} entri jurnal {tabMode === 'kelas' ? `kelas ${kelas || ''}` : ''}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => triggerPrintWithGps()}
+                    className="btn-click bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition ml-auto"
+                  >
+                    <i className="fa-solid fa-print text-xs"></i> Cetak Dokumen
+                  </button>
+                </>
               )}
             </div>
 

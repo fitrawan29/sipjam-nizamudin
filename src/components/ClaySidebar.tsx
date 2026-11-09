@@ -287,6 +287,27 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
               );
             })}
 
+            {/* Quick action Cetak Jurnal KBM untuk Akun Role Guru */}
+            {!isAdmin && !isSuperadmin && !isTU && !isBkRole && !isDinas && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onNavigate('view-guru-rekap-jurnal');
+                }}
+                className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all select-none ${
+                  (currentView === 'view-guru-jurnal' && currentTab === 'rekap-pribadi') || currentView === 'view-guru-rekap-jurnal'
+                    ? 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-950 dark:from-blue-900/40 dark:to-indigo-900/30 border-2 border-white dark:border-blue-700/50 shadow-sm'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-white/80 dark:hover:bg-gray-800/80 border-2 border-transparent'
+                }`}
+              >
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <i className="fa-solid fa-print text-xs"></i>
+                </div>
+                <span>Cetak Jurnal KBM</span>
+              </button>
+            )}
+
             {/* Quick Actions in Sidebar */}
             {!isTU && !isBkRole && onOpenAccountSettings && (
               <button

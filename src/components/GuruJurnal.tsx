@@ -1343,8 +1343,8 @@ export default function GuruJurnal({
     },
     {
       id: 'rekap-pribadi',
-      label: 'Riwayat & Rekap Saya',
-      icon: 'fa-clipboard-list',
+      label: 'Cetak & Rekap Jurnal KBM',
+      icon: 'fa-print',
     },
     ...(canAccessSupervisi
       ? [
@@ -1391,12 +1391,21 @@ export default function GuruJurnal({
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
                 </h2>
-                {hasDraft && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold shadow-sm">
-                    <i className="fa-solid fa-cloud-arrow-down text-emerald-500"></i>
-                    <span>Draft Lokal Tersimpan</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => handleTabChange('rekap-pribadi')}
+                    className="btn-click text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                  >
+                    <i className="fa-solid fa-print text-xs"></i> Cetak Jurnal KBM
+                  </button>
+                  {hasDraft && (
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold shadow-sm">
+                      <i className="fa-solid fa-cloud-arrow-down text-emerald-500"></i>
+                      <span>Draft Lokal Tersimpan</span>
+                    </div>
+                  )}
+                </div>
             </div>
 
             {isLocked && (
@@ -2101,6 +2110,7 @@ export default function GuruJurnal({
           controlledMode="pribadi"
           hideTabSwitch={true}
           isKepalaSekolah={isKepalaSekolah}
+          assignments={myAssignments.length > 0 ? myAssignments : assignments}
         />
       </div>
 
