@@ -76,7 +76,7 @@ export const TUTORIAL_DATA: TutorialItem[] = [
     ],
     keyTips: [
       'Formulir otomatis tersimpan di penyimpanan lokal browser (auto-save), sehingga aman dari kehilangan data saat jaringan terputus.',
-      'Deteksi otomatis siswa bolos: Sistem membandingkan presensi gerbang piket dengan absensi mapel. Jika ada ketidaksesuaian (Piket Hadir vs Mapel Alpa), badge merah "⚠️ Terindikasi Bolos" muncul dan tercatat ke audit log.',
+      'Deteksi otomatis siswa bolos: Sistem membandingkan presensi datang gerbang dengan absensi mapel. Jika ada ketidaksesuaian (Datang Hadir vs Mapel Alpa), badge merah "⚠️ Terindikasi Bolos" muncul dan tercatat ke audit log.',
       'Saat periode Sistem Blok aktif, formulir beralih otomatis ke Jurnal Kegiatan khusus tanpa absensi kelas reguler.'
     ]
   },
@@ -350,7 +350,7 @@ export const TUTORIAL_DATA: TutorialItem[] = [
       'Buka menu Kelola Piket dari sidebar. Tampilan admin menyajikan versi detail lengkap (jadwal, riwayat, dan laporan).',
       'Atur daftar nama guru piket untuk setiap hari kerja (Senin sampai Sabtu) pada tab Pengaturan Jadwal Piket.',
       'Pantau laporan piket yang disubmit guru piket hari ini, termasuk catatan ketertiban dan dokumentasi foto.',
-      'Akses data presensi siswa yang dicatat piket (QR code maupun manual checklist) secara menyeluruh.'
+      'Akses data presensi siswa yang dicatat di gerbang (QR code maupun manual checklist) secara menyeluruh.'
     ],
     keyTips: [
       'Admin memiliki hak akses membuka seluruh modul piket setiap saat tanpa terikat jadwal piket harian.'

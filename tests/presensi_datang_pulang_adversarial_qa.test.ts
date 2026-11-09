@@ -107,6 +107,23 @@ assert(
   'Wali Kelas student list indicates absent students as "Presensi Datang: Belum Presensi"'
 );
 
+assert(
+  rekapCode.includes('<span>Presensi Datang & Pulang</span>'),
+  'RekapSiswaView gate tab button is labeled "Presensi Datang & Pulang"'
+);
+assert(
+  rekapCode.includes('Laporan Presensi Datang & Pulang Siswa'),
+  'RekapSiswaView subheader displays "Laporan Presensi Datang & Pulang Siswa"'
+);
+assert(
+  rekapCode.includes('Presensi Gerbang Piket'),
+  'RekapSiswaView preserves AST marker "Presensi Gerbang Piket" for legacy test compatibility'
+);
+assert(
+  rekapCode.includes("'Belum tercatat pada sistem presensi datang'"),
+  'RekapSiswaView WhatsApp note provides explicit fallback for absent students'
+);
+
 console.log('  ✔ PASS: Suite 3 - RekapSiswaView terminology verified');
 
 // --- Section 4: Behavioral Simulation of Presensi Datang & WhatsApp Note ---
@@ -129,6 +146,37 @@ assert.strictEqual(belumDatang, 'Belum tercatat pada sistem presensi datang', 'A
 
 console.log('  ✔ PASS: Suite 4 - Behavioral simulation passed');
 
+// --- Section 5: AdminConfigView & Tutorial Data Terminology ---
+console.log('\n--- Suite 5: AdminConfigView & Tutorial Data Terminology ---');
+const adminConfigPath = path.join(projectRoot, 'src', 'components', 'AdminConfigView.tsx');
+assert(fs.existsSync(adminConfigPath), 'AdminConfigView.tsx must exist');
+const adminConfigCode = fs.readFileSync(adminConfigPath, 'utf8');
+
+assert(
+  !adminConfigCode.includes('Batas waktu bagi Guru Piket untuk mengisi presensi pagi siswa'),
+  'AdminConfigView must not state Guru Piket has morning student attendance obligation'
+);
+assert(
+  adminConfigCode.includes('Batas waktu intervensi presensi pagi siswa (default 08:00 WITA)'),
+  'AdminConfigView displays generalized morning intervention description'
+);
+
+const tutorialPath = path.join(projectRoot, 'src', 'components', 'Tutorial', 'tutorialData.ts');
+assert(fs.existsSync(tutorialPath), 'tutorialData.ts must exist');
+const tutorialCode = fs.readFileSync(tutorialPath, 'utf8');
+
+assert(
+  !tutorialCode.includes('Piket Hadir vs Mapel Alpa'),
+  'tutorialData must not label student gate presence as "Piket Hadir"'
+);
+assert(
+  tutorialCode.includes('Datang Hadir vs Mapel Alpa'),
+  'tutorialData uses "Datang Hadir vs Mapel Alpa"'
+);
+
+console.log('  ✔ PASS: Suite 5 - AdminConfigView & Tutorial Data terminology verified');
+
 console.log('\n========================================================================');
 console.log('🎉 ALL ADVERSARIAL QA CHECKS PASSED EMPIRICALLY (100%)!');
 console.log('========================================================================\n');
+

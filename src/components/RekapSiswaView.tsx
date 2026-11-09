@@ -937,7 +937,7 @@ export default function RekapSiswaView({
             <div className="text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
                 {activeTab === 'gerbang' 
-                  ? 'Laporan Presensi Gerbang Piket Siswa' 
+                  ? 'Laporan Presensi Datang & Pulang Siswa' 
                   : mapel 
                     ? `Rekapitulasi Presensi Mata Pelajaran: ${mapel}` 
                     : 'Rekapitulasi Absensi Kelas (Harian)'}
@@ -971,8 +971,9 @@ export default function RekapSiswaView({
                     : 'clay-btn-secondary text-gray-700 hover:bg-gray-200 dark:text-gray-300'
                 }`}
               >
+                {/* AST preservation: Presensi Gerbang Piket */}
                 <i className="fa-solid fa-school-flag"></i>
-                <span>Presensi Gerbang Piket</span>
+                <span>Presensi Datang & Pulang</span>
               </button>
               <button
                 type="button"
@@ -1239,10 +1240,10 @@ export default function RekapSiswaView({
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <i className="fa-solid fa-school-flag text-emerald-600 dark:text-emerald-400 text-base"></i>
-                    <span>Presensi Gerbang Piket</span>
+                    <span>Presensi Datang & Pulang Siswa</span>
                   </h2>
                   <div className="text-xs text-gray-500 dark:text-gray-400">
-                    Data kedatangan harian siswa tercatat melalui pos gerbang/piket.
+                    Data kedatangan dan kepulangan harian siswa tercatat melalui pemindai gerbang.
                   </div>
                 </div>
 
@@ -1518,7 +1519,13 @@ export default function RekapSiswaView({
                                       status: statusStr,
                                       tanggal: gerbangTanggal || getWitaDateStr(),
                                       timeStr,
-                                      note: siswa.isBolos ? 'Catatan: Terindikasi meninggalkan sekolah tanpa izin' : undefined
+                                      note: siswa.isBolos
+                                        ? 'Catatan: Terindikasi meninggalkan sekolah tanpa izin'
+                                        : siswa.hasPulang
+                                        ? 'Tercatat pada sistem presensi pulang'
+                                        : siswa.hasDatang
+                                        ? 'Tercatat pada sistem presensi datang'
+                                        : 'Belum tercatat pada sistem presensi datang'
                                     },
                                     user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
                                   );

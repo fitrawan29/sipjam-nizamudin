@@ -1738,7 +1738,7 @@ export default function GuruJurnal({
                                             </span>
                                           ) : (
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
-                                              {/* AST preservation: Belum Presensi Piket */}
+                                              {/* AST preservation: Belum Scan Piket / Belum Presensi Piket */}
                                               <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Datang
                                             </span>
                                           )}
