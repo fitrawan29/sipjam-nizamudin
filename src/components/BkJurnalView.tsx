@@ -5,6 +5,8 @@ import Swal from 'sweetalert2';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import { PrintHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
+import CameraSelfieCapture from './CameraSelfieCapture';
+import { uploadToDrive } from '@/lib/driveUpload';
 
 export interface BkJurnalViewProps {
   user: any;
@@ -116,6 +118,7 @@ export default function BkJurnalView({
     catatan: string;
     tindak_lanjut: string;
     status: 'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus';
+    link_dokumen: string;
   }>({
     siswa_id: '',
     nisn: '',
@@ -128,8 +131,15 @@ export default function BkJurnalView({
     tempat_layanan: 'Ruang BK',
     catatan: '',
     tindak_lanjut: '',
-    status: 'Dalam Penanganan'
+    status: 'Dalam Penanganan',
+    link_dokumen: ''
   });
+
+  // Documentation States (Live Camera & File Upload)
+  const [docMode, setDocMode] = useState<'none' | 'camera' | 'upload'>('none');
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
+  const [isUploadingDoc, setIsUploadingDoc] = useState<boolean>(false);
 
   // Student Search / Selection in Form
   const [studentSearch, setStudentSearch] = useState<string>('');
@@ -326,13 +336,68 @@ export default function BkJurnalView({
       tempat_layanan: 'Ruang BK',
       catatan: '',
       tindak_lanjut: '',
-      status: 'Dalam Penanganan'
+      status: 'Dalam Penanganan',
+      link_dokumen: ''
     });
     setEditingId(null);
     setIsSelectingStudent(false);
     setStudentSearch('');
+    setDocFile(null);
+    setDocPreviewUrl(null);
+    setDocMode('none');
     if (typeof window !== 'undefined') {
       localStorage.removeItem(draftKey);
+    }
+  };
+
+  // Handle Document Upload (image, pdf, doc)
+  const handleDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Ukuran Berkas Terlalu Besar',
+        text: 'Ukuran berkas maksimal adalah 10 MB.'
+      });
+      return;
+    }
+
+    setDocFile(file);
+    if (file.type.startsWith('image/')) {
+      const preview = URL.createObjectURL(file);
+      setDocPreviewUrl(preview);
+      setFormData(prev => ({ ...prev, link_dokumen: preview }));
+    } else {
+      setDocPreviewUrl(null);
+      setFormData(prev => ({ ...prev, link_dokumen: file.name }));
+    }
+  };
+
+  // View Document in Modal or New Tab
+  const handleViewDocument = (item: JurnalBkEntry) => {
+    if (!item.link_dokumen) return;
+    const url = item.link_dokumen;
+    const isImage = url.startsWith('data:image') || /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(url);
+    if (isImage) {
+      Swal.fire({
+        title: `Dokumentasi: ${item.nama_siswa}`,
+        text: `${item.tanggal} • ${item.jenis_layanan}`,
+        imageUrl: url,
+        imageAlt: 'Dokumentasi BK',
+        imageWidth: 500,
+        confirmButtonText: 'Tutup',
+        confirmButtonColor: '#e11d48',
+        showDenyButton: !url.startsWith('data:'),
+        denyButtonText: 'Buka di Tab Baru'
+      }).then(res => {
+        if (res.isDenied && !url.startsWith('data:')) {
+          window.open(url, '_blank');
+        }
+      });
+    } else {
+      window.open(url, '_blank');
     }
   };
 
@@ -378,6 +443,31 @@ export default function BkJurnalView({
     setSaving(true);
     const nowIso = new Date().toISOString();
 
+    let finalDocUrl: string | null = formData.link_dokumen?.trim() || null;
+    if (docFile) {
+      setIsUploadingDoc(true);
+      try {
+        const driveUrl = await uploadToDrive(docFile, counselorName, 'Jurnal BK', 'BK');
+        if (driveUrl && !driveUrl.startsWith('gagal')) {
+          finalDocUrl = driveUrl;
+        }
+      } catch (uploadErr) {
+        console.warn('[BkJurnalView] uploadToDrive error, using local fallback:', uploadErr);
+        if (docFile.type.startsWith('image/')) {
+          finalDocUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(docFile);
+          });
+        } else {
+          finalDocUrl = `file:${docFile.name}`;
+        }
+      } finally {
+        setIsUploadingDoc(false);
+      }
+    }
+
     const recordPayload: Partial<JurnalBkEntry> = {
       sekolah_id: sekolahId,
       guru_id: userId || null,
@@ -396,6 +486,7 @@ export default function BkJurnalView({
       catatan: formData.catatan.trim(),
       tindak_lanjut: formData.tindak_lanjut.trim(),
       status: formData.status,
+      link_dokumen: finalDocUrl,
       updated_at: nowIso
     };
 
@@ -490,8 +581,12 @@ export default function BkJurnalView({
       tempat_layanan: entry.tempat_layanan || 'Ruang BK',
       catatan: entry.catatan,
       tindak_lanjut: entry.tindak_lanjut,
-      status: entry.status
+      status: entry.status,
+      link_dokumen: entry.link_dokumen || ''
     });
+    setDocFile(null);
+    setDocPreviewUrl(entry.link_dokumen || null);
+    setDocMode(entry.link_dokumen ? 'upload' : 'none');
     setIsSelectingStudent(false);
     setActiveTab('input');
   };
@@ -907,23 +1002,173 @@ export default function BkJurnalView({
               ></textarea>
             </div>
 
+            {/* Dokumentasi Bimbingan Konseling (Live Camera & Upload Dokumen) */}
+            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
+                  <i className="fa-solid fa-camera-retro text-rose-600"></i>
+                  <span>Dokumentasi Layanan BK</span>
+                  <span className="text-[10px] text-gray-400 font-normal">(Foto Live atau Upload Dokumen)</span>
+                </label>
+                {formData.link_dokumen && (
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                    <i className="fa-solid fa-circle-check"></i> Berkas Terlampir
+                  </span>
+                )}
+              </div>
+
+              {/* Mode Selector Toggle */}
+              <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 gap-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDocMode(prev => prev === 'camera' ? 'none' : 'camera')}
+                  className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                    docMode === 'camera'
+                      ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <i className="fa-solid fa-camera"></i> Kamera Live
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDocMode(prev => prev === 'upload' ? 'none' : 'upload')}
+                  className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                    docMode === 'upload'
+                      ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                  }`}
+                >
+                  <i className="fa-solid fa-file-arrow-up"></i> Upload Dokumen / Foto
+                </button>
+              </div>
+
+              {/* Kamera Live Mode */}
+              {docMode === 'camera' && (
+                <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-850">
+                  <CameraSelfieCapture
+                    key="cam-jurnal-bk"
+                    initialFacingMode="environment"
+                    orientation="landscape"
+                    existingPhotoUrl={docPreviewUrl}
+                    onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                      setDocFile(capturedFile);
+                      setDocPreviewUrl(previewUrl);
+                      setFormData(prev => ({ ...prev, link_dokumen: previewUrl }));
+                    }}
+                    onRetake={() => {
+                      setDocFile(null);
+                      setDocPreviewUrl(null);
+                      setFormData(prev => ({ ...prev, link_dokumen: '' }));
+                    }}
+                    onCancel={() => setDocMode('none')}
+                  />
+                </div>
+              )}
+
+              {/* Upload Dokumen Mode */}
+              {docMode === 'upload' && (
+                <div className="space-y-2">
+                  <label
+                    htmlFor="jurnal-bk-doc-file-input"
+                    className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-rose-500 dark:hover:border-rose-500 rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[120px]"
+                  >
+                    <input
+                      id="jurnal-bk-doc-file-input"
+                      type="file"
+                      accept="image/*,.pdf,.doc,.docx"
+                      onClick={e => { (e.target as HTMLInputElement).value = ''; }}
+                      onChange={handleDocUpload}
+                      className="hidden"
+                    />
+                    {docFile ? (
+                      <div className="space-y-1.5">
+                        {docPreviewUrl && docFile.type.startsWith('image/') ? (
+                          <img
+                            src={docPreviewUrl}
+                            alt="Preview Dokumentasi BK"
+                            className="max-h-36 mx-auto rounded-lg object-contain shadow-xs mb-2 border border-gray-200 dark:border-gray-700"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-xl mb-1">
+                            <i className="fa-solid fa-file-lines"></i>
+                          </div>
+                        )}
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                          {docFile.name}
+                        </p>
+                        <p className="text-[10px] text-gray-500 font-mono">
+                          {(docFile.size / 1024).toFixed(0)} KB &bull; Klik untuk ganti berkas
+                        </p>
+                      </div>
+                    ) : docPreviewUrl ? (
+                      <div className="space-y-1.5">
+                        <img
+                          src={docPreviewUrl}
+                          alt="Dokumentasi Tersimpan"
+                          className="max-h-36 mx-auto rounded-lg object-contain shadow-xs mb-2 border border-gray-200 dark:border-gray-700"
+                        />
+                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">Dokumentasi Terlampir</p>
+                        <p className="text-[10px] text-gray-500">Klik untuk memilih file baru pengganti</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center mx-auto text-base">
+                          <i className="fa-solid fa-cloud-arrow-up"></i>
+                        </div>
+                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                          Pilih Dokumen / Foto dari Perangkat
+                        </p>
+                        <p className="text-[10px] text-gray-500">
+                          Mendukung gambar (JPG, PNG, WebP) dan dokumen (PDF, Word) maks. 10MB
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              )}
+
+              {/* Active File / Preview Bar */}
+              {(docFile || docPreviewUrl || formData.link_dokumen) && (
+                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 text-xs">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <i className="fa-solid fa-paperclip text-rose-600 dark:text-rose-400 shrink-0"></i>
+                    <span className="truncate text-[11px] font-medium text-gray-700 dark:text-gray-300">
+                      {docFile ? docFile.name : formData.link_dokumen ? 'Dokumentasi terlampir' : 'Foto siap'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDocFile(null);
+                      setDocPreviewUrl(null);
+                      setFormData(prev => ({ ...prev, link_dokumen: '' }));
+                    }}
+                    className="text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 hover:underline shrink-0 ml-2"
+                  >
+                    <i className="fa-solid fa-trash-can mr-1"></i> Hapus
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Action Buttons */}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
               <button
                 type="button"
                 onClick={handleResetForm}
-                disabled={saving}
-                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                disabled={saving || isUploadingDoc}
+                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
               >
                 Reset
               </button>
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || isUploadingDoc}
                 className="clay-btn px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm flex items-center gap-2 transition disabled:opacity-50"
               >
-                <i className={`fa-solid ${saving ? 'fa-spinner animate-spin' : 'fa-floppy-disk'}`}></i>
-                <span>{saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Jurnal BK'}</span>
+                <i className={`fa-solid ${saving || isUploadingDoc ? 'fa-spinner animate-spin' : 'fa-floppy-disk'}`}></i>
+                <span>{isUploadingDoc ? 'Mengunggah Berkas...' : saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Jurnal BK'}</span>
               </button>
             </div>
           </form>
@@ -1106,6 +1351,7 @@ export default function BkJurnalView({
                       <th className="py-2.5 px-3">Catatan Kasus / Bimbingan</th>
                       <th className="py-2.5 px-3">Rencana Tindak Lanjut</th>
                       <th className="py-2.5 px-3 text-center">Status</th>
+                      <th className="py-2.5 px-3 text-center">Dokumen</th>
                       <th className="py-2.5 px-3">Guru BK</th>
                       {!isReadOnly && <th className="py-2.5 px-3 text-center">Aksi</th>}
                     </tr>
@@ -1148,6 +1394,21 @@ export default function BkJurnalView({
                         </td>
                         <td className="py-2.5 px-3 align-top text-center whitespace-nowrap">
                           {renderStatusBadge(item.status)}
+                        </td>
+                        <td className="py-2.5 px-3 align-top text-center whitespace-nowrap">
+                          {item.link_dokumen ? (
+                            <button
+                              type="button"
+                              onClick={() => handleViewDocument(item)}
+                              className="btn-click inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[11px] font-semibold transition"
+                              title="Lihat berkas dokumentasi"
+                            >
+                              <i className="fa-solid fa-paperclip text-xs"></i>
+                              <span>Lihat</span>
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-[11px]">-</span>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 align-top whitespace-nowrap text-[11px] text-gray-600 dark:text-gray-400">
                           {item.nama_guru}

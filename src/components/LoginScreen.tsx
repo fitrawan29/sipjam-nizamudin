@@ -8,6 +8,7 @@ import { AppUser } from '@/types/user';
 export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user: AppUser) => void }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -94,15 +95,24 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
                 placeholder="ID Pengguna / Username" 
               />
             </div>
-            <div>
+            <div className="relative">
               <input 
-                type="password" 
+                type={showPassword ? 'text' : 'password'} 
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required 
-                className="w-full px-4 py-3.5 input-premium text-sm font-medium text-gray-900 dark:text-white" 
+                className="w-full pl-4 pr-11 py-3.5 input-premium text-sm font-medium text-gray-900 dark:text-white" 
                 placeholder="Kata Sandi" 
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(prev => !prev)}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 focus:outline-none transition-colors"
+                aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+                title={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
+              >
+                <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
+              </button>
             </div>
             <button 
               type="submit" 
