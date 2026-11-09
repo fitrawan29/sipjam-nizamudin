@@ -11,6 +11,7 @@ import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+import { filterStudentsBySubject } from '@/lib/agamaFilter';
 
 export interface RekapSiswaViewProps {
   user: any; 
@@ -603,10 +604,11 @@ export default function RekapSiswaView({
         .order('nama_siswa', { ascending: true });
       if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
       const { data: siswa } = await siswaQuery;
+      const filteredSiswa = filterStudentsBySubject(siswa || [], mapel);
 
       // Process rekap: initialize with hadir: 0
       const rekapMap: Record<string, any> = {};
-      siswa?.forEach(s => {
+      filteredSiswa.forEach(s => {
         rekapMap[s.nama_siswa] = {
           ...s,
           hadir: 0,
@@ -734,7 +736,7 @@ export default function RekapSiswaView({
           const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
 
           if (isSemuaHadir) {
-            siswa?.forEach(s => {
+            filteredSiswa.forEach(s => {
               const target = rekapMap[s.nama_siswa];
               if (target) target.hadir++;
             });
@@ -746,7 +748,7 @@ export default function RekapSiswaView({
             const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
             const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
 
-            siswa?.forEach(s => {
+            filteredSiswa.forEach(s => {
               const target = rekapMap[s.nama_siswa];
               if (!target) return;
               const val = s.nisn && absensiJson![s.nisn] !== undefined 
@@ -771,7 +773,7 @@ export default function RekapSiswaView({
           const absentStatuses: Record<string, 'S' | 'I' | 'A' | 'H'> = {};
           const detail = `${j.detail_absen || ''} ${j.kehadiran_murid || ''}`;
 
-          siswa?.forEach(s => {
+          filteredSiswa.forEach(s => {
             const nama = s.nama_siswa;
             const escaped = nama.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             const match = detail.match(new RegExp(`(?:\\b|^)${escaped}(?:\\b|$)\\s*\\(([HSIAhsia])\\)`, 'i'));
@@ -799,7 +801,7 @@ export default function RekapSiswaView({
           });
 
           // Credit students based on resolved status for this session
-          siswa?.forEach(s => {
+          filteredSiswa.forEach(s => {
             const target = rekapMap[s.nama_siswa];
             if (!target) return;
             const st = absentStatuses[s.nama_siswa];

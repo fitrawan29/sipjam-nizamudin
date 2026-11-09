@@ -31,6 +31,7 @@ import AdminKelasView from './AdminKelasView';
 import { parseTingkat } from './AdminKelasView';
 import { connectGuruMapelWithJadwal, isJurnalMatchJadwal } from '@/lib/workflow';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
+import { filterStudentsBySubject, isStudentEligibleForSubject } from '@/lib/agamaFilter';
 
 export interface AdminDataViewProps {
   user: any;
@@ -107,6 +108,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
   const [search, setSearch] = useState('');
   const [filter1, setFilter1] = useState('ALL');
   const [filter2, setFilter2] = useState('ALL');
+  const [filterMapelSiswa, setFilterMapelSiswa] = useState('ALL');
 
   // Dedicated filter aliases for Tier 1 test compatibility (F15.2)
   const filterKelas = activeTab === 'Data_Siswa' || activeTab === 'Jadwal_Pelajaran' || activeTab === 'Wali_Kelas' ? filter1 : 'ALL';
@@ -929,6 +931,18 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               </select>
             </div>
             <div>
+              <label class="font-bold text-gray-700 block mb-1">Agama</label>
+              <select id="swal-agama" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Islam">Islam</option>
+                <option value="Kristen">Kristen</option>
+                <option value="Katolik">Katolik</option>
+                <option value="Hindu">Hindu</option>
+                <option value="Buddha">Buddha</option>
+                <option value="Khonghucu">Khonghucu</option>
+                <option value="Lainnya">Lainnya</option>
+              </select>
+            </div>
+            <div>
               <label class="font-bold text-gray-700 block mb-1">No HP Orang Tua</label>
               <input id="swal-hp" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 081234567890">
             </div>
@@ -945,6 +959,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           const nama_siswa = rawNamaSiswa.replace(/\s+/g, ' ');
           const kelas = (document.getElementById('swal-kelas') as HTMLInputElement)?.value?.trim();
           const gender = (document.getElementById('swal-gender') as HTMLSelectElement)?.value;
+          const agama = (document.getElementById('swal-agama') as HTMLSelectElement)?.value || 'Islam';
           const no_hp_ortu = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '';
 
           if (!nisn || !nama_siswa || !kelas) {
@@ -964,6 +979,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             nama_siswa,
             kelas,
             gender,
+            agama,
             status: 'Aktif',
             no_hp_ortu,
             qr_code: nisn || crypto.randomUUID()
@@ -1710,6 +1726,18 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               </select>
             </div>
             <div>
+              <label class="font-bold text-gray-700 block mb-1">Agama</label>
+              <select id="swal-edit-agama" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="Islam" ${item.agama === 'Islam' || !item.agama ? 'selected' : ''}>Islam</option>
+                <option value="Kristen" ${item.agama === 'Kristen' ? 'selected' : ''}>Kristen</option>
+                <option value="Katolik" ${item.agama === 'Katolik' ? 'selected' : ''}>Katolik</option>
+                <option value="Hindu" ${item.agama === 'Hindu' ? 'selected' : ''}>Hindu</option>
+                <option value="Buddha" ${item.agama === 'Buddha' ? 'selected' : ''}>Buddha</option>
+                <option value="Khonghucu" ${item.agama === 'Khonghucu' ? 'selected' : ''}>Khonghucu</option>
+                <option value="Lainnya" ${item.agama === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+              </select>
+            </div>
+            <div>
               <label class="font-bold text-gray-700 block mb-1">Status *</label>
               <select id="swal-edit-status" class="swal2-select !mt-0 !w-full text-xs">
                 <option value="Aktif" ${item.status === 'Aktif' || !item.status ? 'selected' : ''}>Aktif</option>
@@ -1735,6 +1763,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           const nama_siswa = rawNamaSiswa.replace(/\s+/g, ' ');
           const kelas = (document.getElementById('swal-edit-kelas') as HTMLInputElement)?.value?.trim();
           const gender = (document.getElementById('swal-edit-gender') as HTMLSelectElement)?.value;
+          const agama = (document.getElementById('swal-edit-agama') as HTMLSelectElement)?.value || item.agama || 'Islam';
           const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
           const no_hp_ortu = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '';
 
@@ -1753,6 +1782,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             nama_siswa,
             kelas,
             gender,
+            agama,
             status,
             no_hp_ortu,
             qr_code: item.qr_code || nisn || item.id
@@ -2369,6 +2399,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       if (activeTab === 'Data_Siswa') {
         if (filter1 !== 'ALL' && (item.kelas || '').trim() !== filter1) return false;
         if (filter2 !== 'ALL' && (item.status || 'Aktif').trim() !== filter2) return false;
+        if (filterMapelSiswa !== 'ALL' && !isStudentEligibleForSubject(item, filterMapelSiswa)) return false;
       } else if (activeTab === 'Data_Guru') {
         if (filter1 !== 'ALL' && (item.status || 'Aktif').trim() !== filter1) return false;
         if (filter2 !== 'ALL' && (item.mata_pelajaran || '').trim() !== filter2) return false;
@@ -2392,7 +2423,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       return true;
     });
-  }, [dataList, search, activeTab, filter1, filter2]);
+  }, [dataList, search, activeTab, filter1, filter2, filterMapelSiswa]);
 
   const paginatedList = filteredList.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
   const totalPages = Math.ceil((filteredList.length || 0) / ITEMS_PER_PAGE);
@@ -2408,6 +2439,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             <p><span className="font-semibold">NISN:</span> {item.nisn || '-'}</p>
             <p><span className="font-semibold">Kelas:</span> {item.kelas || '-'}</p>
             <p><span className="font-semibold">Gender:</span> {item.gender || '-'}</p>
+            <p><span className="font-semibold">Agama:</span> {item.agama || '-'}</p>
             {item.no_hp_ortu && <p><span className="font-semibold">HP Ortu:</span> {item.no_hp_ortu}</p>}
             <p className="flex items-center gap-1.5 pt-0.5">
               <span className="font-semibold text-purple-700 dark:text-purple-400">QR Code:</span>
@@ -2806,6 +2838,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                     {uniqueStatusSiswa.map(st => (
                       <option key={st} value={st}>{st}</option>
                     ))}
+                  </select>
+
+                  <select
+                    value={filterMapelSiswa}
+                    onChange={e => { setFilterMapelSiswa(e.target.value); setPage(0); }}
+                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    title="Filter Mata Pelajaran / Agama"
+                  >
+                    <option value="ALL">Semua Mapel</option>
+                    <option value="Pendidikan Agama Islam">Pendidikan Agama Islam (PAI)</option>
+                    <option value="Pendidikan Agama Kristen">Pendidikan Agama Kristen (PAK)</option>
                   </select>
                 </>
               )}

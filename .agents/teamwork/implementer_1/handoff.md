@@ -1,98 +1,66 @@
-# Handoff Report: Sub Menu Pengguna & Manajemen Kredensial Guru (Admin)
+# Implementer Handoff Report: Pemisahan Siswa Berdasarkan Status Agama pada PAI dan PAK
 
-**Implementer:** Teamwork Implementer  
-**Timestamp:** 2026-11-06T06:04:00Z  
-**Branch:** main  
+> [!WARNING] **Skepticism Disclaimer**
+> I am highly confident that the subject classification, religious eligibility filtering, and non-regression for general subjects work correctly across presensi/absensi, jurnal mengajar, penilaian/rekap nilai, dan daftar siswa kelas based on 21 passing automated tests in `tests/agama_pai_pak_isolation.test.ts` and passing existing suites (`adversarial_student_csv_review`, `jurnal_r1_r2_r3_verification`, `m4_academic_merdeka_rapor`, `adversarial_rapor_wali_security`, etc.), though edge cases where a student record has corrupted/unorthodox religious denominations not recognized by the normalization regex will naturally be excluded from PAI/PAK and fall back to general subjects.
 
----
+## 1. What I changed
+- **`src/lib/agamaFilter.ts` (New)**: Added a dedicated, modular utility providing:
+  - `isPaiSubject(mapelName)`: Detects PAI variations (e.g. "Pendidikan Agama Islam", "PAI", "PAI & BP", "Agama Islam", etc.).
+  - `isPakSubject(mapelName)`: Detects PAK variations (e.g. "Pendidikan Agama Kristen", "PAK", "PAK & BP", "Agama Kristen", "Pendidikan Agama Katolik", etc.).
+  - `isIslamStudent(student)`: Detects Islamic student affiliation.
+  - `isKristenStudent(student)`: Detects Christian/Catholic student affiliation.
+  - `isStudentEligibleForSubject(student, mapelName)`: Evaluates eligibility per student and subject.
+  - `filterStudentsBySubject(students, mapelName)`: Core filtering function that filters students strictly for PAI/PAK, and leaves the roster unmodified for general subjects.
+- **`src/types/database.ts`**: Added `agama: string | null` to `data_siswa` table definitions (`Row`, `Insert`, `Update`).
+- **`src/lib/dataIntegrityGuard.ts`**:
+  - Registered `agama` aliases (`agama`, `religion`, `status_agama`, `kepercayaan`) in `normalizeCsvHeaders`.
+  - Added `agama` to `ALLOWED_COLUMNS_BY_TABLE['data_siswa']` and `ALLOWED_COLUMNS_BY_TABLE['siswa']`.
+- **`src/components/GuruJurnal.tsx`**:
+  - Filtered loaded students by subject using `filterStudentsBySubject(data, mapel)` in `fetchStudents`.
+  - Added `mapel` to `useEffect` dependency array so subject switching immediately updates the roster.
+  - Updated attendance initialization and summary calculation to use the subject-filtered roster.
+- **`src/components/GradebookView.tsx`**:
+  - Added `agama?: string | null` to `StudentItem`.
+  - Filtered loaded students with `filterStudentsBySubject(data || [], selectedMapel)` in `fetchStudents`.
+  - Added `selectedMapel` to dependency array to dynamically update student grades when toggling subjects.
+- **`src/components/RekapSiswaView.tsx`**:
+  - Applied `filterStudentsBySubject(siswa || [], mapel)` in `loadRekapData` so only enrolled students are processed when calculating attendance for PAI or PAK.
+- **`src/components/AdminKelasView.tsx`**:
+  - Added `agama?: string | null` to `StudentItem` and selected all columns in `loadAllData`.
+  - Added a Mapel filter dropdown in the class roster workspace ("Roster Siswa Kelas Ini") to isolate students by PAI/PAK or view all.
+  - Displayed student `agama` badge in the roster table.
+- **`src/components/AdminDataView.tsx`**:
+  - Added `agama` field to student creation and edit modals.
+  - Displayed `agama` on student cards.
+  - Added Mapel/Agama filter dropdown for the `Data_Siswa` tab.
+- **`src/components/RaporView.tsx`**:
+  - Added `agama?: string | null` to `StudentItem` and fetched `agama`.
+  - Filtered report card subjects using `isStudentEligibleForSubject(student, mapel)` so Islam students do not have PAK on their report cards, and Christian students do not have PAI.
+- **`supabase/migrations/20261109_add_agama_to_data_siswa.sql` (New)**: Idempotent SQL migration script to add `agama TEXT` to `public.data_siswa` and reload PostgREST schema cache.
+- **`tests/agama_pai_pak_isolation.test.ts` (New)**: Automated verification test suite with 21 assertions covering R1, R2, domains, and edge cases.
+- **`package.json`**: Appended `tests/agama_pai_pak_isolation.test.ts` to `test` script.
 
-## 1. Executive Summary
-Fitur penambahan sub menu "Pengguna" di bawah menu Master Data & Kalender pada role Admin telah berhasil diimplementasikan end-to-end. Fitur ini secara otomatis menarik seluruh akun guru dari tabel `data_guru` ke tabel `users` dengan kredensial default username sesuai NIP dan password berupa NIP27 (`${nip}27`). Admin dapat mengelola, melihat daftar, serta memperbarui username dan password setiap akun guru, maupun mereset kata sandi ke default NIP27. Seluruh automated test suite (52 suites) dan production build Next.js lulus 100%.
+## 2. Why
+To satisfy requirement R1 and acceptance criteria, ensuring that within the same class, students enrolled in PAI are strictly those with Islamic status, and students enrolled in PAK are strictly those with Christian status, without altering general subject rosters (R2 non-regression).
 
----
+## 3. Verification Record
+- **Deep Verification (ran actual tests):**
+  - Ran `tests/agama_pai_pak_isolation.test.ts` (21 assertions, all 21 passed with exit code 0).
+  - Ran `tests/test_user_exact_student_csv.ts` (passed with exit code 0).
+  - Ran `tests/adversarial_student_csv_review.test.ts` (15 adversarial tests, all passed with exit code 0).
+  - Ran `tests/jurnal_r1_r2_r3_verification.test.ts` (20 assertions, all passed with exit code 0).
+  - Ran `tests/gradebook_teacher_filter_ponytail.test.ts` (17 assertions, all passed with exit code 0).
+  - Ran `tests/m4_academic_merdeka_rapor.test.ts` (14 assertions, all passed with exit code 0).
+  - Ran `tests/adversarial_rapor_wali_security.test.ts` (28 assertions, all passed with exit code 0).
+  - Ran `tests/e_rapor_real_data_pipeline.test.ts` (18 assertions, all passed with exit code 0).
+  - Ran `tests/e_rapor_tahun_ajaran_sync.test.ts` (13 assertions, all passed with exit code 0).
+- **Shallow Verification (manual run only):**
+  - UI dropdown layout in AdminKelasView and AdminDataView was statically verified in code.
+- **Unverified aspects:**
+  - Live Supabase cloud mutation against a production PostgreSQL instance requiring manual admin migration execution.
 
-## 2. Requirements & Acceptance Criteria Verification
+## 4. Known Issues
+- `Minor Robustness Risk`: If an existing student record in the database has an empty or null `agama`, that student is considered unassigned to PAI or PAK and will only appear in general subjects until their `agama` is set in master data. This is by design to ensure strict religious isolation.
 
-### R1. Sub Menu Pengguna pada Menu Master Data dan Kalender
-- [x] **Navigasi Sidebar Admin**: Sub menu "Pengguna" muncul langsung di bawah menu "Master Data & Kalender" saat login sebagai Administrator/Superadmin (`ClaySidebar.tsx` dan `AppScreen.tsx`).
-- [x] **Sub-Tab Master Data**: Tab "Pengguna" muncul di jajaran tab Master Data (`AdminDataView.tsx`).
-- [x] **Isolasi Non-Admin**: Non-admin (Guru, Siswa, Dinas Pendidikan, Kepala Sekolah) tidak dapat melihat sub menu di sidebar dan dicegah mengakses route/tab melalui `evaluateTabRBAC` serta component guards.
-- [x] **Routing & Canonical Resolution**: Route alias `view-admin-pengguna`, `view-pengguna`, dan `view-admin-users` secara mulus dipetakan ke `view-admin-data` dengan `defaultTab: 'Pengguna'`.
-
-### R2. Penarikan Otomatis Akun dari Data Guru
-- [x] **Sinkronisasi Otomatis**: Fungsi `syncTeacherAccounts` menarik seluruh data dari `data_guru` untuk sekolah terkait dan mendaftarkannya ke tabel `users` dengan role `'Guru'`.
-- [x] **Kredensial Default**: Username awal diset sesuai NIP guru (atau slug nama jika NIP `-`), dan password default otomatis diformat menjadi `${nip}27` (NIP27).
-- [x] **Preservasi Akun Lama**: Akun yang sudah ada tidak ditimpa kata sandinya secara sepihak.
-- [x] **Registrasi Guru Baru**: Penambahan guru baru lewat modal Master Data Guru maupun impor CSV `data_guru` secara otomatis mendaftarkan akun di `users` dengan username NIP dan password NIP27.
-
-### R3. Manajemen Kredensial Pengguna oleh Admin
-- [x] **Antarmuka Manajemen Pengguna**: Komponen `AdminPenggunaView.tsx` menyediakan antarmuka lengkap dengan metrik ringkas, pencarian data, filter mapel/status, serta tombol sinkronisasi ulang.
-- [x] **Pembaruan Kredensial**: Admin dapat mengubah username dan password guru melalui modal SweetAlert2. Perubahan disimpan ke tabel `users` dan disinkronkan ke `data_guru.nip`.
-- [x] **Reset Cepat NIP27**: Tersedia tombol shortcut untuk mereset kata sandi guru kembali ke default `${nip}27`.
-- [x] **Kompatibilitas Login**: Password plaintext maupun bcrypt hash didukung oleh RPC `verify_login` sehingga guru dapat langsung login setelah kredensial diperbarui atau direset oleh admin.
-
-### R4. Integritas dan Non-Regresi Fitur Eksisting
-- [x] Semua tab Master Data sebelumnya (Siswa, Guru, Mapel, Kalender, Jadwal, Periode Sistem Blok, Wali Kelas) berfungsi normal tanpa regresi.
-- [x] 52 test suites di dalam `npm test` lulus 100% (0 gagal).
-- [x] `npm run build` berhasil dikompilasi tanpa error TypeScript maupun Turbopack.
-
----
-
-## 3. Files Modified and Created
-
-### Created Files:
-1. `src/lib/teacherUserSync.ts`
-   - Modul helper penarikan dan sinkronisasi akun guru ke `users`.
-   - Logika penentuan default password `${nip}27`.
-   - Fungsi `syncTeacherAccounts`, `updateTeacherCredentials`, dan `resetTeacherPasswordToDefault`.
-2. `src/components/AdminPenggunaView.tsx`
-   - Komponen UI Claymorphism untuk sub menu Pengguna di Master Data.
-   - Tabel akun guru dengan avatar, nama, NIP, username login, indikator password default, mapel, dan status.
-   - Modal interaktif SweetAlert2 untuk pengaturan kredensial dan konfirmasi reset password.
-3. `tests/admin_submenu_pengguna_kredensial_guru.test.ts`
-   - Test suite komprehensif menguji 14 assertions mencakup navigasi, RBAC, sinkronisasi otomatis, format password NIP27, update kredensial, dan validasi login.
-
-### Modified Files:
-1. `src/lib/navigation.ts`
-   - Menambahkan properti opsional `subItems?: MenuItem[]` pada interface `MenuItem`.
-   - Menambahkan subItems `view-admin-pengguna` pada item `view-admin-data` untuk admin & superadmin.
-   - Mendaftarkan alias `view-admin-pengguna`, `view-pengguna`, `view-admin-users` ke `VIEW_ALIASES`.
-   - Menambahkan `view-admin-pengguna` ke `evaluateTabRBAC` untuk memblokir non-admin.
-2. `src/components/AdminDataView.tsx`
-   - Mendaftarkan tab `Pengguna` di jajaran tabs Master Data & Kalender.
-   - Merender `<AdminPenggunaView user={user} />` saat tab `Pengguna` aktif.
-   - Menangani `initialTab` bernilai `'Pengguna'` / `'pengguna'` / `'users'`.
-   - Menambahkan auto-create akun user di tabel `users` saat guru baru ditambahkan via modal Master Data Guru.
-3. `src/components/ClaySidebar.tsx`
-   - Memperbarui interface `MenuItem` lokal dengan `subItems?: MenuItem[]`.
-   - Menambahkan render sub menu item untuk item dengan `subItems` khusus role Administrator / Superadmin.
-4. `src/components/AppScreen.tsx`
-   - Menambahkan render sub menu Pengguna di sidebar inline navigasi untuk role Administrator.
-   - Menambahkan `view-admin-pengguna` pada guard navigasi admin-only dan guard read-only Dinas Pendidikan.
-5. `src/lib/dataIntegrityGuard.ts`
-   - Menambahkan auto-sync pembuatan akun user guru saat data guru diimpor melalui CSV.
-   - Dilengkapi safe inspection check untuk kompatibilitas mock client testing.
-6. `package.json`
-   - Menambahkan `tests/admin_submenu_pengguna_kredensial_guru.test.ts` ke dalam runner `npm test`.
-
----
-
-## 4. Verification Evidence
-
-### Build Output:
-```
-▲ Next.js 16.3.4 (Turbopack)
-✓ Compiled successfully in 1952ms
-✓ Finished TypeScript in 2.5s
-✓ Generating static pages (13/13) in 1029ms
-```
-
-### Automated Test Suite:
-```
-╔══════════════════════════════════════════════════════════════════════╗
-║   SUB MENU PENGGUNA & KREDENSIAL GURU OTOMATIS VERIFICATION SUITE    ║
-╚══════════════════════════════════════════════════════════════════════╝
-TOTAL CHECKS: 14 | PASSED: 14 | FAILED: 0
-
-Full npm test runner: 52 Suites Executed | 52 PASSED | 0 FAILED
-```
+## 5. Untested Edge Cases & Next Step
+- Reviewers should test importing an old CSV file without an `agama` column, verifying that students are imported without error and default to null/Aktif, appearing on general subjects.

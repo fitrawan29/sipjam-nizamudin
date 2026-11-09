@@ -816,6 +816,11 @@ export function normalizeCsvHeaders(rawHeaders: string[], tableName: string): st
       return 'nip';
     }
 
+    // 13. Religion aliases
+    if (clean === 'agama' || clean === 'religion' || clean === 'status_agama' || clean === 'kepercayaan') {
+      return 'agama';
+    }
+
     return clean;
   });
 }
@@ -1258,8 +1263,8 @@ export function parseAndValidateMasterCsv(
     const ALLOWED_COLUMNS_BY_TABLE: Record<string, string[]> = {
       data_kelas: ['id', 'sekolah_id', 'nama_kelas', 'tingkat', 'jurusan'],
       kelas: ['id', 'sekolah_id', 'nama_kelas', 'tingkat', 'jurusan'],
-      data_siswa: ['id', 'sekolah_id', 'nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu', 'qr_code'],
-      siswa: ['id', 'sekolah_id', 'nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu', 'qr_code'],
+      data_siswa: ['id', 'sekolah_id', 'nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu', 'qr_code', 'agama'],
+      siswa: ['id', 'sekolah_id', 'nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu', 'qr_code', 'agama'],
       data_guru: ['id', 'sekolah_id', 'nip', 'nama_guru', 'mata_pelajaran', 'no_hp', 'status', 'email', 'user_id', 'wajib_hadir_hanya_mengajar'],
       guru: ['id', 'sekolah_id', 'nip', 'nama_guru', 'mata_pelajaran', 'no_hp', 'status', 'email', 'user_id', 'wajib_hadir_hanya_mengajar'],
       data_mapel: ['id', 'sekolah_id', 'nama_mata_pelajaran', 'kategori', 'kelompok', 'urutan', 'kode_mapel', 'nama_mapel'],

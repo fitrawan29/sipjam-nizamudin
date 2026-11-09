@@ -327,6 +327,7 @@ export type Database = {
       }
       data_siswa: {
         Row: {
+          agama: string | null
           gender: string | null
           id: string
           kelas: string | null
@@ -338,6 +339,7 @@ export type Database = {
           status: string | null
         }
         Insert: {
+          agama?: string | null
           gender?: string | null
           id?: string
           kelas?: string | null
@@ -349,6 +351,7 @@ export type Database = {
           status?: string | null
         }
         Update: {
+          agama?: string | null
           gender?: string | null
           id?: string
           kelas?: string | null

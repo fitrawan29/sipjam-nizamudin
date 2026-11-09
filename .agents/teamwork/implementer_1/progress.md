@@ -1,23 +1,20 @@
-# Progress Update: Student CSV Template Download & Upload Data Loading
+# Implementer Progress: Pemisahan Siswa Berdasarkan Status Agama pada PAI dan PAK
 
-## Status: Implemented & Verifying
-
-### Summary of Changes:
-1. **src/components/AdminDataView.tsx**:
-   - Updated `normalizeAdminTab` to canonicalize `data_siswa`, `siswa`, `student`, `students` (along with case and whitespace variants) to `'Data_Siswa'`. Also normalized `data_guru`, `guru`, `data_mapel`, `mapel`, `kalender_pendidikan`, `kalender`, `jadwal_pelajaran`, `jadwal`, `wali_kelas`, `wali`.
-   - Added `uploadedRowsCacheRef` to store imported data rows per entity tab.
-   - Updated `loadData` to:
-     - Use `normalizeAdminTab` for reliable lookup in `tabs`.
-     - Seed `dataList` with `cachedRows` when available, eliminating the race condition where `setDataList([])` prematurely blanked out freshly uploaded data before the async fetch completed.
-     - Fall back to preserving uploaded data when the database query returns 0 rows or errors.
-   - Updated `handleDownloadTemplate`:
-     - Normalizes `activeTab` so template for `Data_Siswa` is reliably downloaded as `Template_Data_Siswa.csv` with schema headers `['nisn', 'nama_siswa', 'kelas', 'gender', 'status', 'no_hp_ortu']`.
-   - Updated `handleFileUpload`:
-     - Uses `normalizeAdminTab` to reliably match tab objects.
-     - Populates `uploadedRowsCacheRef` with the imported rows.
-     - Sets `setDataList(rows)`, resets search and filters, resets page to 0, and sets `loading = false` to guarantee uploaded rows render immediately.
-     - Performs non-destructive background refresh using `.then(({ data }) => ...)` updating both `dataList` and cache without wiping out rows.
-
-2. **Verification Suite**:
-   - Created `tests/test_user_exact_student_csv.ts`: Tests exact 392-student dataset parsing, handling optional fields (empty phone numbers, apostrophes, dots in names), auto-generating IDs and QR codes, idempotent import, template consistency, and empty-state avoidance simulation.
-   - Verified that `tests/template_master_data_import_visibility.test.ts`, `tests/m2_csv_templates_and_import_harmonization.test.ts`, `tests/challenger_m2_csv_empirical_stress.test.ts`, and `tests/test_user_exact_student_csv.ts` all pass with 0 failures.
+## Status: Implementation Complete & Verified
+- Implementation complete:
+  1. `src/lib/agamaFilter.ts`: Added helper functions:
+     - `isPaiSubject`, `isPakSubject`
+     - `isIslamStudent`, `isKristenStudent`
+     - `isStudentEligibleForSubject`
+     - `filterStudentsBySubject`
+     - `getRequiredReligionForSubject`
+  2. `src/types/database.ts`: Added `agama: string | null` to `data_siswa` types (Row, Insert, Update).
+  3. `src/lib/dataIntegrityGuard.ts`: Added `agama` aliases in `normalizeCsvHeaders` and added `agama` to `ALLOWED_COLUMNS_BY_TABLE` for `data_siswa` and `siswa`.
+  4. `src/components/GuruJurnal.tsx`: Filtered `students` by subject in `fetchStudents` for teaching journals (Jurnal KBM) and presensi/absensi per mapel. Updated dependency array and attendance summary calculation.
+  5. `src/components/GradebookView.tsx`: Filtered student list by `selectedMapel` in `fetchStudents`. Updated dependency array and `StudentItem` interface.
+  6. `src/components/RekapSiswaView.tsx`: Filtered student roster when `mapel` is selected in `loadRekapData` so only students matching the religion are accounted for.
+  7. `src/components/AdminKelasView.tsx`: Added mapel/religion filtering in the class roster workspace and displayed religion status.
+  8. `src/components/AdminDataView.tsx`: Added `agama` field to student create/edit modals, student cards, and added mapel/religion filter dropdown.
+  9. `src/components/RaporView.tsx`: Filtered active subjects by student religious eligibility so Islam students do not get PAK and Christian students do not get PAI in report cards.
+  10. `supabase/migrations/20261109_add_agama_to_data_siswa.sql`: Idempotent SQL migration for adding `agama` to `data_siswa`.
+  11. `tests/agama_pai_pak_isolation.test.ts`: Added 21 automated tests covering R1 (PAI & PAK separation across presensi, jurnal, penilaian, daftar siswa kelas) and R2 (non-regression of general subjects and edge cases). All 21 tests pass (exit code 0).

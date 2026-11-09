@@ -13,6 +13,7 @@ import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RekapJurnalView from '@/components/RekapJurnalView';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
+import { filterStudentsBySubject } from '@/lib/agamaFilter';
 
 export interface GuruJurnalProps {
   user: any;
@@ -748,7 +749,8 @@ export default function GuruJurnal({
       if (user?.sekolah_id) sQuery = sQuery.eq('sekolah_id', user.sekolah_id);
       const { data } = await sQuery;
       if (data) {
-        setStudents(data);
+        const filteredData = filterStudentsBySubject(data, mapel);
+        setStudents(filteredData);
 
         // Pre-populate attendance from canonical public.absensi for this class and date
         const tgl = tanggal || getWitaDateStr();
@@ -797,7 +799,7 @@ export default function GuruJurnal({
         const initialAbsensi: Record<string, string> = {};
         const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean; isMorningHadir?: boolean }> = {};
 
-        data.forEach(s => {
+        filteredData.forEach(s => {
           const existing = absData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
           if (existing) {
             const rawSt = String(existing.status || '').trim().toLowerCase();
@@ -828,19 +830,19 @@ export default function GuruJurnal({
         setMorningLockedAttendance(lockedMap);
 
         setAbsensi((prevAbsensi) => {
-          const hasMatchingStudent = data.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
+          const hasMatchingStudent = filteredData.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
           if (hasMatchingStudent) {
             const merged = { ...initialAbsensi, ...prevAbsensi };
-            setKehadiranMurid(calculateKehadiranSummary(merged, data));
+            setKehadiranMurid(calculateKehadiranSummary(merged, filteredData));
             return merged;
           }
-          setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, data));
+          setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, filteredData));
           return initialAbsensi;
         });
       }
     };
     fetchStudents();
-  }, [kelas, tipeJurnal, tanggal, user?.sekolah_id]);
+  }, [kelas, mapel, tipeJurnal, tanggal, user?.sekolah_id]);
 
   const handleApplyPiketAttendance = () => {
     if (students.length === 0) return;

@@ -1,0 +1,377 @@
+import assert from 'assert';
+import {
+  isPaiSubject,
+  isPakSubject,
+  isIslamStudent,
+  isKristenStudent,
+  isStudentEligibleForSubject,
+  filterStudentsBySubject,
+  getRequiredReligionForSubject
+} from '../src/lib/agamaFilter';
+import { normalizeCsvHeaders } from '../src/lib/dataIntegrityGuard';
+
+console.log('========================================================================');
+console.log('  TEST SUITE: PEMISAHAN SISWA AGAMA PAI & PAK DAN NON-REGRESI');
+console.log('========================================================================\n');
+
+let totalChecks = 0;
+let passedChecks = 0;
+let failedChecks = 0;
+
+function check(desc: string, fn: () => void) {
+  totalChecks++;
+  try {
+    fn();
+    passedChecks++;
+    console.log(`  ✔ [PASS] ${desc}`);
+  } catch (err: any) {
+    failedChecks++;
+    console.error(`  ✖ [FAIL] ${desc}`);
+    console.error(`     Error: ${err.message}`);
+  }
+}
+
+// Mock student roster in a single class with diverse religious affiliations
+const mockClassStudents = [
+  { id: 's1', nisn: '001', nama_siswa: 'Ahmad Dahlan', kelas: 'X Merdeka', agama: 'Islam', gender: 'Laki-laki' },
+  { id: 's2', nisn: '002', nama_siswa: 'Fatimah Az-Zahra', kelas: 'X Merdeka', agama: 'Islam', gender: 'Perempuan' },
+  { id: 's3', nisn: '003', nama_siswa: 'Muhammad Ali', kelas: 'X Merdeka', agama: 'islam', gender: 'Laki-laki' },
+  { id: 's4', nisn: '004', nama_siswa: 'Siti Khadijah', kelas: 'X Merdeka', agama: 'ISLAM', gender: 'Perempuan' },
+  { id: 's5', nisn: '005', nama_siswa: 'Nur Hidayah', kelas: 'X Merdeka', agama: ' Islam ', gender: 'Perempuan' },
+  { id: 's6', nisn: '006', nama_siswa: 'Yohanes Baptista', kelas: 'X Merdeka', agama: 'Kristen', gender: 'Laki-laki' },
+  { id: 's7', nisn: '007', nama_siswa: 'Maria Magdalena', kelas: 'X Merdeka', agama: 'kristen', gender: 'Perempuan' },
+  { id: 's8', nisn: '008', nama_siswa: 'Petrus Simon', kelas: 'X Merdeka', agama: 'KRISTEN', gender: 'Laki-laki' },
+  { id: 's9', nisn: '009', nama_siswa: 'Daniel Stefanus', kelas: 'X Merdeka', agama: 'Kristen Protestan', gender: 'Laki-laki' },
+  { id: 's10', nisn: '010', nama_siswa: 'Theresia Lisieux', kelas: 'X Merdeka', agama: 'Katolik', gender: 'Perempuan' },
+  { id: 's11', nisn: '011', nama_siswa: 'I Wayan Balik', kelas: 'X Merdeka', agama: 'Hindu', gender: 'Laki-laki' },
+  { id: 's12', nisn: '012', nama_siswa: 'Tanpa Agama Terdata', kelas: 'X Merdeka', agama: null, gender: 'Perempuan' }
+];
+
+// --- SECTION 1: Subject Identification (PAI vs PAK vs Umum) ---
+console.log('--- SECTION 1: Subject Classification (PAI vs PAK vs Umum) ---');
+
+check('Identifies standard PAI subject variations', () => {
+  const paiVariations = [
+    'Pendidikan Agama Islam',
+    'pendidikan agama islam',
+    'PENDIDIKAN AGAMA ISLAM',
+    'PAI',
+    'pai',
+    ' PAI ',
+    'Pendidikan Agama Islam dan Budi Pekerti',
+    'Agama Islam',
+    'PAI & BP',
+    'PAI dan BP',
+    'Pendidikan Agama & Budi Pekerti (Islam)',
+    'Pendidikan Agama Islam X'
+  ];
+
+  paiVariations.forEach(v => {
+    assert.strictEqual(isPaiSubject(v), true, `Expected "${v}" to be recognized as PAI`);
+    assert.strictEqual(isPakSubject(v), false, `Expected "${v}" not to be recognized as PAK`);
+    assert.strictEqual(getRequiredReligionForSubject(v), 'Islam');
+  });
+});
+
+check('Identifies standard PAK subject variations', () => {
+  const pakVariations = [
+    'Pendidikan Agama Kristen',
+    'pendidikan agama kristen',
+    'PENDIDIKAN AGAMA KRISTEN',
+    'PAK',
+    'pak',
+    ' PAK ',
+    'Pendidikan Agama Kristen dan Budi Pekerti',
+    'Agama Kristen',
+    'PAK & BP',
+    'PAK dan BP',
+    'Pendidikan Agama & Budi Pekerti (Kristen)',
+    'Pendidikan Agama Kristen X',
+    'Pendidikan Agama Katolik',
+    'Agama Katolik'
+  ];
+
+  pakVariations.forEach(v => {
+    assert.strictEqual(isPakSubject(v), true, `Expected "${v}" to be recognized as PAK`);
+    assert.strictEqual(isPaiSubject(v), false, `Expected "${v}" not to be recognized as PAI`);
+    assert.strictEqual(getRequiredReligionForSubject(v), 'Kristen');
+  });
+});
+
+check('Preserves general and other subjects (Non-Regresi)', () => {
+  const generalSubjects = [
+    'Matematika',
+    'Bahasa Indonesia',
+    'Bahasa Inggris',
+    'Pendidikan Pancasila',
+    'Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)',
+    'Informatika',
+    'Fisika',
+    'Kimia',
+    'Biologi',
+    'Sejarah',
+    'Seni Budaya',
+    'Prakarya',
+    'Bimbingan Konseling'
+  ];
+
+  generalSubjects.forEach(s => {
+    assert.strictEqual(isPaiSubject(s), false, `General subject "${s}" must NOT match PAI`);
+    assert.strictEqual(isPakSubject(s), false, `General subject "${s}" must NOT match PAK`);
+    assert.strictEqual(getRequiredReligionForSubject(s), null, `General subject "${s}" must require no religion`);
+  });
+});
+
+check('Defensive handling of empty, null, and undefined subjects', () => {
+  assert.strictEqual(isPaiSubject(''), false);
+  assert.strictEqual(isPaiSubject(null), false);
+  assert.strictEqual(isPaiSubject(undefined), false);
+  assert.strictEqual(isPakSubject(''), false);
+  assert.strictEqual(isPakSubject(null), false);
+  assert.strictEqual(isPakSubject(undefined), false);
+  assert.strictEqual(getRequiredReligionForSubject(''), null);
+  assert.strictEqual(getRequiredReligionForSubject(null), null);
+});
+
+// --- SECTION 2: Student Religious Status Verification ---
+console.log('\n--- SECTION 2: Student Religious Status Verification ---');
+
+check('Correctly identifies Islamic student status across casing and whitespace', () => {
+  assert.strictEqual(isIslamStudent({ agama: 'Islam' }), true);
+  assert.strictEqual(isIslamStudent({ agama: 'islam' }), true);
+  assert.strictEqual(isIslamStudent({ agama: 'ISLAM' }), true);
+  assert.strictEqual(isIslamStudent({ agama: ' Islam ' }), true);
+  assert.strictEqual(isIslamStudent({ agama: 'Muslim' }), true);
+
+  assert.strictEqual(isIslamStudent({ agama: 'Kristen' }), false);
+  assert.strictEqual(isIslamStudent({ agama: 'Katolik' }), false);
+  assert.strictEqual(isIslamStudent({ agama: 'Hindu' }), false);
+  assert.strictEqual(isIslamStudent({ agama: null }), false);
+  assert.strictEqual(isIslamStudent({ agama: '' }), false);
+  assert.strictEqual(isIslamStudent(null), false);
+});
+
+check('Correctly identifies Christian/Catholic student status across casing and whitespace', () => {
+  assert.strictEqual(isKristenStudent({ agama: 'Kristen' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'kristen' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'KRISTEN' }), true);
+  assert.strictEqual(isKristenStudent({ agama: ' Kristen ' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'Kristen Protestan' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'Katolik' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'Kristen Katolik' }), true);
+
+  assert.strictEqual(isKristenStudent({ agama: 'Islam' }), false);
+  assert.strictEqual(isKristenStudent({ agama: 'Muslim' }), false);
+  assert.strictEqual(isKristenStudent({ agama: 'Hindu' }), false);
+  assert.strictEqual(isKristenStudent({ agama: null }), false);
+  assert.strictEqual(isKristenStudent({ agama: '' }), false);
+  assert.strictEqual(isKristenStudent(null), false);
+});
+
+// --- SECTION 3: R1 Requirement - Separation in PAI and PAK ---
+console.log('\n--- SECTION 3: R1 Requirement - PAI & PAK Student Separation ---');
+
+check('R1.1: PAI roster strictly includes ONLY students with status Islam', () => {
+  const paiRoster = filterStudentsBySubject(mockClassStudents, 'Pendidikan Agama Islam');
+  assert.strictEqual(paiRoster.length, 5, 'Should strictly load 5 Islam students');
+  
+  // Verify all included students are Islam
+  paiRoster.forEach(s => {
+    assert.strictEqual(isIslamStudent(s), true, `Student ${s.nama_siswa} in PAI must be Islam`);
+  });
+
+  // Verify non-Islam students are strictly excluded
+  const nonIslamIds = ['s6', 's7', 's8', 's9', 's10', 's11', 's12'];
+  nonIslamIds.forEach(id => {
+    assert.strictEqual(paiRoster.some(s => s.id === id), false, `Student ${id} must NOT be in PAI`);
+  });
+});
+
+check('R1.2: PAK roster strictly includes ONLY students with status Kristen/Katolik', () => {
+  const pakRoster = filterStudentsBySubject(mockClassStudents, 'Pendidikan Agama Kristen');
+  assert.strictEqual(pakRoster.length, 5, 'Should strictly load 5 Christian/Catholic students');
+
+  // Verify all included students are Christian
+  pakRoster.forEach(s => {
+    assert.strictEqual(isKristenStudent(s), true, `Student ${s.nama_siswa} in PAK must be Kristen`);
+  });
+
+  // Verify non-Christian students are strictly excluded
+  const nonKristenIds = ['s1', 's2', 's3', 's4', 's5', 's11', 's12'];
+  nonKristenIds.forEach(id => {
+    assert.strictEqual(pakRoster.some(s => s.id === id), false, `Student ${id} must NOT be in PAK`);
+  });
+});
+
+check('R1.3: PAI acronym "PAI" strictly filters to Islam students', () => {
+  const paiRoster = filterStudentsBySubject(mockClassStudents, 'PAI');
+  assert.strictEqual(paiRoster.length, 5);
+  paiRoster.forEach(s => assert.strictEqual(isIslamStudent(s), true));
+});
+
+check('R1.4: PAK acronym "PAK" strictly filters to Christian students', () => {
+  const pakRoster = filterStudentsBySubject(mockClassStudents, 'PAK');
+  assert.strictEqual(pakRoster.length, 5);
+  pakRoster.forEach(s => assert.strictEqual(isKristenStudent(s), true));
+});
+
+// --- SECTION 4: R2 Requirement - Non-Regresi on Other Subjects ---
+console.log('\n--- SECTION 4: R2 Requirement - Non-Regresi on Other Subjects ---');
+
+check('R2.1: General subjects (Matematika) load ALL class students completely', () => {
+  const mtkRoster = filterStudentsBySubject(mockClassStudents, 'Matematika');
+  assert.strictEqual(mtkRoster.length, mockClassStudents.length, 'Matematika must load all 12 students');
+  assert.deepStrictEqual(mtkRoster.map(s => s.id), mockClassStudents.map(s => s.id));
+});
+
+check('R2.2: Bahasa Indonesia loads ALL class students completely without filtering', () => {
+  const bIndoRoster = filterStudentsBySubject(mockClassStudents, 'Bahasa Indonesia');
+  assert.strictEqual(bIndoRoster.length, mockClassStudents.length);
+  assert.deepStrictEqual(bIndoRoster.map(s => s.id), mockClassStudents.map(s => s.id));
+});
+
+check('R2.3: Pendidikan Pancasila loads ALL class students completely without filtering', () => {
+  const ppknRoster = filterStudentsBySubject(mockClassStudents, 'Pendidikan Pancasila');
+  assert.strictEqual(ppknRoster.length, mockClassStudents.length);
+});
+
+check('R2.4: Empty or unselected subject loads ALL class students completely', () => {
+  const all1 = filterStudentsBySubject(mockClassStudents, '');
+  assert.strictEqual(all1.length, mockClassStudents.length);
+
+  const all2 = filterStudentsBySubject(mockClassStudents, null);
+  assert.strictEqual(all2.length, mockClassStudents.length);
+
+  const all3 = filterStudentsBySubject(mockClassStudents, undefined);
+  assert.strictEqual(all3.length, mockClassStudents.length);
+});
+
+// --- SECTION 5: Domain Cross-Verification (Presensi, Jurnal, Penilaian, Roster) ---
+console.log('\n--- SECTION 5: Domain Cross-Verification ---');
+
+check('Domain 1: Presensi / Absensi Attendance Summary Calculation Isolation', () => {
+  // Simulate GuruJurnal attendance summary for PAI
+  const paiStudents = filterStudentsBySubject(mockClassStudents, 'Pendidikan Agama Islam');
+  assert.strictEqual(paiStudents.length, 5);
+
+  const absensiMap: Record<string, string> = {
+    '001': 'H',
+    '002': 'H',
+    '003': 'S',
+    '004': 'I',
+    '005': 'A'
+  };
+
+  let h = 0, s = 0, i = 0, a = 0;
+  paiStudents.forEach(st => {
+    const code = absensiMap[st.nisn] || 'H';
+    if (code === 'H') h++;
+    else if (code === 'S') s++;
+    else if (code === 'I') i++;
+    else if (code === 'A') a++;
+  });
+
+  const summary = `H:${h}|S:${s}|I:${i}|A:${a}`;
+  assert.strictEqual(summary, 'H:2|S:1|I:1|A:1', 'Summary reflects strictly PAI students');
+  assert.strictEqual(h + s + i + a, 5, 'Sum of PAI attendees equals PAI student count (5)');
+});
+
+check('Domain 2: Jurnal KBM Roster Verification for PAI vs PAK in Same Class', () => {
+  const paiStudents = filterStudentsBySubject(mockClassStudents, 'PAI');
+  const pakStudents = filterStudentsBySubject(mockClassStudents, 'PAK');
+
+  // Both subject rosters originate from the same class 'X Merdeka'
+  paiStudents.forEach(s => assert.strictEqual(s.kelas, 'X Merdeka'));
+  pakStudents.forEach(s => assert.strictEqual(s.kelas, 'X Merdeka'));
+
+  // Ensure mutually exclusive sets (intersection is empty)
+  const paiIds = new Set(paiStudents.map(s => s.id));
+  const pakIds = new Set(pakStudents.map(s => s.id));
+  const intersection = [...paiIds].filter(id => pakIds.has(id));
+  assert.strictEqual(intersection.length, 0, 'Zero student overlap between PAI and PAK');
+});
+
+check('Domain 3: Penilaian / Gradebook Student Roster Filtering', () => {
+  // When teacher selects PAI in GradebookView
+  const paiGradebook = filterStudentsBySubject(mockClassStudents, 'Pendidikan Agama Islam');
+  assert.strictEqual(paiGradebook.length, 5);
+
+  // When teacher selects PAK in GradebookView
+  const pakGradebook = filterStudentsBySubject(mockClassStudents, 'Pendidikan Agama Kristen');
+  assert.strictEqual(pakGradebook.length, 5);
+
+  // When teacher selects Matematika in GradebookView
+  const generalGradebook = filterStudentsBySubject(mockClassStudents, 'Matematika');
+  assert.strictEqual(generalGradebook.length, 12);
+});
+
+check('Domain 4: Rapor Subject Score Eligibility per Student', () => {
+  const activeMapels = [
+    'Bahasa Indonesia',
+    'Matematika',
+    'Pendidikan Agama Islam',
+    'Pendidikan Agama Kristen',
+    'Pendidikan Pancasila'
+  ];
+
+  const islamStudent = mockClassStudents.find(s => s.nama_siswa === 'Ahmad Dahlan')!;
+  const kristenStudent = mockClassStudents.find(s => s.nama_siswa === 'Yohanes Baptista')!;
+
+  const islamSubjects = activeMapels.filter(m => isStudentEligibleForSubject(islamStudent, m));
+  const kristenSubjects = activeMapels.filter(m => isStudentEligibleForSubject(kristenStudent, m));
+
+  assert.strictEqual(islamSubjects.includes('Pendidikan Agama Islam'), true);
+  assert.strictEqual(islamSubjects.includes('Pendidikan Agama Kristen'), false, 'Islam student must NOT receive PAK in Rapor');
+  assert.strictEqual(islamSubjects.includes('Matematika'), true);
+
+  assert.strictEqual(kristenSubjects.includes('Pendidikan Agama Kristen'), true);
+  assert.strictEqual(kristenSubjects.includes('Pendidikan Agama Islam'), false, 'Christian student must NOT receive PAI in Rapor');
+  assert.strictEqual(kristenSubjects.includes('Matematika'), true);
+});
+
+// --- SECTION 6: CSV Import and Data Guard Integration ---
+console.log('\n--- SECTION 6: CSV Import & Guard Integration ---');
+
+check('normalizeCsvHeaders handles agama aliases properly', () => {
+  const headers = ['nisn', 'nama_siswa', 'kelas', 'gender', 'agama', 'status', 'no_hp_ortu'];
+  const normalized = normalizeCsvHeaders(headers, 'data_siswa');
+  assert.strictEqual(normalized.includes('agama'), true);
+
+  const aliasHeaders = ['NISN', 'Nama Siswa', 'Kelas', 'Jenis Kelamin', 'Religion', 'Status Agama', 'Kepercayaan'];
+  const normAlias = normalizeCsvHeaders(aliasHeaders, 'data_siswa');
+  assert.strictEqual(normAlias.filter(h => h === 'agama').length, 3, 'Aliases map to agama');
+});
+
+// --- SECTION 7: Boundary & Stress Cases ---
+console.log('\n--- SECTION 7: Boundary & Stress Cases ---');
+
+check('Handles empty student arrays gracefully', () => {
+  assert.deepStrictEqual(filterStudentsBySubject([], 'PAI'), []);
+  assert.deepStrictEqual(filterStudentsBySubject([], 'PAK'), []);
+  assert.deepStrictEqual(filterStudentsBySubject([], 'Matematika'), []);
+});
+
+check('Handles class where all students belong to one religion', () => {
+  const allIslam = mockClassStudents.filter(s => isIslamStudent(s));
+  assert.strictEqual(filterStudentsBySubject(allIslam, 'PAI').length, allIslam.length);
+  assert.strictEqual(filterStudentsBySubject(allIslam, 'PAK').length, 0);
+  assert.strictEqual(filterStudentsBySubject(allIslam, 'Fisika').length, allIslam.length);
+
+  const allKristen = mockClassStudents.filter(s => isKristenStudent(s));
+  assert.strictEqual(filterStudentsBySubject(allKristen, 'PAK').length, allKristen.length);
+  assert.strictEqual(filterStudentsBySubject(allKristen, 'PAI').length, 0);
+  assert.strictEqual(filterStudentsBySubject(allKristen, 'Fisika').length, allKristen.length);
+});
+
+console.log('\n========================================================================');
+console.log(`TOTAL CHECKS: ${totalChecks}`);
+console.log(`PASSED: ${passedChecks}`);
+console.log(`FAILED: ${failedChecks}`);
+console.log('========================================================================');
+
+if (failedChecks > 0) {
+  process.exit(1);
+} else {
+  console.log('\n🎉 ALL PAI & PAK RELIGION SEPARATION CHECKS PASSED PERFECTLY!');
+  process.exit(0);
+}

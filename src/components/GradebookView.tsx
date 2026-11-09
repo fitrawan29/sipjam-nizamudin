@@ -11,6 +11,7 @@ import { getGradebookDraftKey, saveGradebookDraft, loadGradebookDraft, clearGrad
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RaporView from './RaporView';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
+import { filterStudentsBySubject } from '@/lib/agamaFilter';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -170,6 +171,7 @@ interface StudentItem {
   kelas: string;
   gender: string | null;
   status: string | null;
+  agama?: string | null;
 }
 
 export function isTeacherMatch(
@@ -1214,7 +1216,7 @@ export default function GradebookView({
       try {
         let query = supabase
           .from('data_siswa')
-          .select('id, nisn, nama_siswa, kelas, gender, status')
+          .select('*')
           .eq('kelas', selectedKelas)
           .order('nama_siswa', { ascending: true });
 
@@ -1225,13 +1227,16 @@ export default function GradebookView({
         const { data, error } = await query;
         if (error) throw error;
 
-        const cleanList: StudentItem[] = (data || []).map(s => ({
+        const filtered = filterStudentsBySubject(data || [], selectedMapel);
+
+        const cleanList: StudentItem[] = filtered.map(s => ({
           id: s.id,
           nisn: s.nisn || '',
           nama_siswa: s.nama_siswa || '',
           kelas: s.kelas || selectedKelas,
           gender: s.gender,
           status: s.status,
+          agama: s.agama,
         }));
         setStudents(cleanList);
       } catch (err) {
@@ -1240,7 +1245,7 @@ export default function GradebookView({
     };
 
     fetchStudents();
-  }, [selectedKelas, sekolahId]);
+  }, [selectedKelas, selectedMapel, sekolahId]);
 
   // 3. Fetch TPs for Selected Mapel, Kelas, Semester, and Tahun Ajaran
   const fetchTPs = useCallback(async () => {

@@ -9,6 +9,7 @@ import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { generateKurikulumMerdekaDeskripsi } from './GradebookView';
 import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/database';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
+import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 
 interface RaporViewProps {
   user: any;
@@ -22,6 +23,7 @@ interface StudentItem {
   nama_siswa: string;
   kelas: string;
   gender?: string | null;
+  agama?: string | null;
 }
 
 interface SubjectScoreItem {
@@ -526,10 +528,10 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
     }
     setIsLoading(true);
     try {
-      // 1. Fetch Students
+      // 1. Fetch Students: .select('id, nisn, nama_siswa, kelas, gender')
       let sQuery = supabase
         .from('data_siswa')
-        .select('id, nisn, nama_siswa, kelas, gender')
+        .select('id, nisn, nama_siswa, kelas, gender, agama')
         .eq('kelas', selectedKelas);
       if (sekolahId) sQuery = sQuery.eq('sekolah_id', sekolahId);
       const { data: sData, error: sErr } = await sQuery;
@@ -943,7 +945,9 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
     (student: StudentItem): SubjectScoreItem[] => {
       if (activeMapels.length === 0) return [];
 
-      return activeMapels.map(mapel => {
+      const eligibleMapels = activeMapels.filter(mapel => isStudentEligibleForSubject(student, mapel));
+
+      return eligibleMapels.map(mapel => {
         const subjectTps = tpList.filter(
           tp => (tp.nama_mapel || '').trim().toLowerCase() === mapel.trim().toLowerCase()
         );

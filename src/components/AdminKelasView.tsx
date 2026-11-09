@@ -7,6 +7,7 @@ import { showToast } from '@/lib/toast';
 import { isMasterDataModificationAllowed, importMasterDataFromCsv, getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
 import NaikKelasModal from './NaikKelasModal';
 import { AppUser } from '@/types/user';
+import { filterStudentsBySubject, isStudentEligibleForSubject } from '@/lib/agamaFilter';
 
 export interface AdminKelasViewProps {
   user: AppUser | any;
@@ -21,6 +22,7 @@ export interface StudentItem {
   status: string | null;
   no_hp_ortu?: string | null;
   sekolah_id?: string;
+  agama?: string | null;
 }
 
 export interface WaliKelasItem {
@@ -197,6 +199,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
   const [selectedClassForWorkspace, setSelectedClassForWorkspace] = useState<ClassDirectoryItem | null>(null);
   const [workspaceTab, setWorkspaceTab] = useState<'roster' | 'inbound'>('roster');
   const [rosterSearch, setRosterSearch] = useState<string>('');
+  const [rosterMapelFilter, setRosterMapelFilter] = useState<string>('ALL');
   const [selectedRosterStudentIds, setSelectedRosterStudentIds] = useState<string[]>([]);
   const [targetTransferClass, setTargetTransferClass] = useState<string>('');
 
@@ -240,7 +243,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       // 1. Fetch Students
       const { data: sData, error: sErr } = await supabase
         .from('data_siswa')
-        .select('id, nisn, nama_siswa, kelas, gender, status, no_hp_ortu, sekolah_id')
+        .select('*')
         .eq('sekolah_id', sekolahId)
         .order('nama_siswa', { ascending: true });
 
@@ -1592,6 +1595,18 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                         className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
                       />
                     </div>
+                    <div className="w-full sm:w-56 shrink-0">
+                      <select
+                        value={rosterMapelFilter}
+                        onChange={e => setRosterMapelFilter(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-medium"
+                        title="Filter Berdasarkan Mata Pelajaran / Agama"
+                      >
+                        <option value="ALL">Semua Mapel</option>
+                        <option value="Pendidikan Agama Islam">Pendidikan Agama Islam (PAI)</option>
+                        <option value="Pendidikan Agama Kristen">Pendidikan Agama Kristen (PAK)</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Batch Selection Action Bar */}
@@ -1635,6 +1650,9 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                   {/* Roster Table */}
                   {(() => {
                     const filteredRoster = selectedClassForWorkspace.students.filter(s => {
+                      if (rosterMapelFilter !== 'ALL' && !isStudentEligibleForSubject(s, rosterMapelFilter)) {
+                        return false;
+                      }
                       const q = rosterSearch.toLowerCase().trim();
                       if (!q) return true;
                       return (
@@ -1704,7 +1722,14 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                     />
                                   </td>
                                   <td className="p-2.5">
-                                    <div className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
+                                      {s.agama && (
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                          {s.agama}
+                                        </span>
+                                      )}
+                                    </div>
                                     <div className="text-[10px] text-gray-400">NISN: {s.nisn || '-'}</div>
                                   </td>
                                   <td className="p-2.5">
