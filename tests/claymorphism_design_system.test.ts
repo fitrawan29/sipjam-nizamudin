@@ -178,7 +178,7 @@ const jurnalSrc = fs.readFileSync(jurnalPath, 'utf8');
 
 assert(presensiSrc.includes('clay-btn clay-btn-primary'), 'GuruPresensi submit button uses clay-btn-primary');
 assert(presensiSrc.includes('clay-card p-5 sm:p-6 rounded-3xl'), 'GuruPresensi container uses clay-card');
-assert(jurnalSrc.includes('clay-btn clay-btn-blue'), 'GuruJurnal submit button uses clay-btn-blue');
+assert(jurnalSrc.includes('clay-btn clay-btn-primary'), 'GuruJurnal submit button uses clay-btn-primary');
 assert(jurnalSrc.includes('clay-card p-5 sm:p-6 rounded-3xl'), 'GuruJurnal container uses clay-card');
 console.log('  ✔ [PASS] GuruPresensi & GuruJurnal form containers and submit actions refactored');
 
