@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTenantSupabaseClient } from '@/lib/supabaseClient';
+import { getTenantSupabaseClient, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     // Obtain scoped tenant client with tenant headers
     const client = getTenantSupabaseClient(sekolah_id, user_role || 'Guru', user_id);
 
-    const subscriptionRow = {
+    const subscriptionRow: Record<string, any> = {
       endpoint,
       p256dh,
       auth,
@@ -40,11 +40,58 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await client
+    let { data, error } = await client
       .from('push_subscriptions')
       .upsert(subscriptionRow, { onConflict: 'endpoint' })
       .select()
-      .single();
+      .maybeSingle();
+
+    // Graceful fallback if user_agent (or schema cache) fails
+    if (error && (
+      error.message?.includes('user_agent') ||
+      isSchemaCacheOrMissingTableError(error) ||
+      error.code === 'PGRST204' ||
+      error.code === '42703'
+    )) {
+      console.warn('[API /api/push/subscribe] Retrying without user_agent due to schema cache:', error.message);
+      const fallbackRow = { ...subscriptionRow };
+      delete fallbackRow.user_agent;
+
+      const retryRes = await client
+        .from('push_subscriptions')
+        .upsert(fallbackRow, { onConflict: 'endpoint' })
+        .select()
+        .maybeSingle();
+
+      data = retryRes.data;
+      error = retryRes.error;
+
+      // Further fallback if older table also lacks user_nama or user_role
+      if (error && (
+        error.message?.includes('user_nama') ||
+        error.message?.includes('user_role') ||
+        error.code === 'PGRST204' ||
+        error.code === '42703'
+      )) {
+        console.warn('[API /api/push/subscribe] Retrying with core subscription fields:', error.message);
+        const minimalRow = {
+          endpoint,
+          p256dh,
+          auth,
+          user_id: user_id || null,
+          sekolah_id: sekolah_id || null,
+          updated_at: new Date().toISOString()
+        };
+        const minimalRes = await client
+          .from('push_subscriptions')
+          .upsert(minimalRow, { onConflict: 'endpoint' })
+          .select()
+          .maybeSingle();
+
+        data = minimalRes.data;
+        error = minimalRes.error;
+      }
+    }
 
     if (error) {
       console.error('[API /api/push/subscribe] Database error:', error);

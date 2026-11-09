@@ -455,11 +455,14 @@ CREATE TABLE IF NOT EXISTS public.chat_messages (
 -- 2.28 Push Subscriptions (Web Push Notification)
 CREATE TABLE IF NOT EXISTS public.push_subscriptions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    sekolah_id UUID REFERENCES public.sekolah(id) ON DELETE CASCADE,
     user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
-    endpoint TEXT NOT NULL,
+    user_nama TEXT,
+    user_role TEXT,
+    endpoint TEXT NOT NULL UNIQUE,
     p256dh TEXT NOT NULL,
     auth TEXT NOT NULL,
+    user_agent TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
     updated_at TIMESTAMPTZ DEFAULT now()
 );

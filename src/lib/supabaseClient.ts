@@ -103,11 +103,16 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (rawStr.includes('could not find the') && rawStr.includes('column')) ||
     (rawStr.includes('sekolah_registry') && rawStr.includes('schema cache')) ||
     (rawStr.includes('jadwal_pelajaran') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('push_subscriptions') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('user_agent') && rawStr.includes('schema cache')) ||
     message.includes('could not find the table') ||
     (message.includes('could not find the') && message.includes('column')) ||
     (message.includes('sekolah_registry') && message.includes('schema cache')) ||
     (message.includes('jadwal_pelajaran') && message.includes('schema cache')) ||
+    (message.includes('push_subscriptions') && message.includes('schema cache')) ||
+    (message.includes('user_agent') && message.includes('schema cache')) ||
     (details.includes('sekolah_registry') && details.includes('schema cache')) ||
+    (details.includes('push_subscriptions') && details.includes('schema cache')) ||
     details.includes('could not find the table') ||
     hint.includes('reload schema') ||
     jsonStr.includes('pgrst205') ||
@@ -115,6 +120,7 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (jsonStr.includes('could not find the table') && jsonStr.includes('sekolah_registry')) ||
     (jsonStr.includes('sekolah_registry') && jsonStr.includes('schema cache')) ||
     (jsonStr.includes('jadwal_pelajaran') && jsonStr.includes('schema cache')) ||
+    (jsonStr.includes('push_subscriptions') && jsonStr.includes('schema cache')) ||
     isMissingTableOrRelation
   );
 }
