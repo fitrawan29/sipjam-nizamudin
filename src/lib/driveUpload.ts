@@ -50,13 +50,60 @@ export function detectMimeType(file: File): string {
   if (name.endsWith('.webp')) return 'image/webp';
   if (name.endsWith('.heic')) return 'image/heic';
   if (name.endsWith('.heif')) return 'image/heif';
+  if (name.endsWith('.bmp')) return 'image/bmp';
+  if (name.endsWith('.doc')) return 'application/msword';
+  if (name.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (name.endsWith('.odt')) return 'application/vnd.oasis.opendocument.text';
+  if (name.endsWith('.rtf')) return 'application/rtf';
+  if (name.endsWith('.txt')) return 'text/plain';
   return file.type || 'application/octet-stream';
 }
 
 export function isImageFile(file: File): boolean {
   const mime = detectMimeType(file);
   if (mime.startsWith('image/')) return true;
-  return /\.(jpe?g|png|webp|bmp|gif)$/i.test(file.name || '');
+  return /\.(jpe?g|png|webp|bmp|gif|heic|heif)$/i.test(file.name || '');
+}
+
+export interface PresensiFileValidationResult {
+  valid: boolean;
+  mimeType: string;
+  error?: string;
+}
+
+export function validatePresensiFile(file: File | null | undefined): PresensiFileValidationResult {
+  if (!file) {
+    return { valid: false, mimeType: '', error: 'Berkas tidak ditemukan.' };
+  }
+  if (file.size === 0) {
+    return { valid: false, mimeType: '', error: 'Ukuran berkas kosong (0 KB).' };
+  }
+  const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+  if (file.size > MAX_FILE_SIZE) {
+    return { valid: false, mimeType: detectMimeType(file), error: 'Ukuran berkas melebihi batas maksimal 25 MB.' };
+  }
+
+  const mime = detectMimeType(file);
+  const name = (file.name || '').toLowerCase();
+  const validExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.bmp', '.doc', '.docx', '.odt', '.rtf', '.txt'];
+  const hasValidExt = validExtensions.some(ext => name.endsWith(ext));
+  const hasValidMime = mime.startsWith('image/') ||
+    mime === 'application/pdf' ||
+    mime === 'application/msword' ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mime === 'application/vnd.oasis.opendocument.text' ||
+    mime === 'application/rtf' ||
+    mime === 'text/plain';
+
+  if (!hasValidExt && !hasValidMime && (mime === 'application/octet-stream' || !mime)) {
+    return {
+      valid: false,
+      mimeType: mime,
+      error: 'Format berkas tidak didukung. Harap unggah dokumen PDF, Word, atau gambar (JPG/PNG).',
+    };
+  }
+
+  return { valid: true, mimeType: mime };
 }
 
 async function compressImage(file: File, maxWidth = 1600, quality = 0.7): Promise<File> {
@@ -153,9 +200,12 @@ export async function uploadToDrive(
   namaGuru: string,
   folderFitur: string,
   prefix: string = 'Upload',
-  targetEmail?: string
+  targetEmail?: string,
+  onProgress?: (percent: number, status: string) => void
 ): Promise<string> {
+  onProgress?.(10, 'Menyiapkan berkas untuk diunggah...');
   let resolvedEmail = targetEmail;
+  onProgress?.(25, isImageFile(originalFile) ? 'Mengoptimalkan ukuran gambar...' : 'Menyiapkan berkas dokumen...');
   const file = typeof window !== 'undefined' ? await compressImage(originalFile) : originalFile;
   if (!resolvedEmail) {
     resolvedEmail = await getTargetEmail();
@@ -164,6 +214,7 @@ export async function uploadToDrive(
   const { rootFolder, folderFitur: normalizedFitur, guruFolder, folderPath } = buildDriveFolderPath(folderFitur, namaGuru);
 
   return new Promise((resolve, reject) => {
+    onProgress?.(45, 'Membaca data berkas...');
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = async () => {
@@ -192,6 +243,8 @@ export async function uploadToDrive(
           payload.email_tujuan_upload = resolvedEmail;
         }
 
+        onProgress?.(65, `Mengunggah berkas ke Google Drive (${folderPath})...`);
+
         const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
         const timeoutId = controller ? setTimeout(() => controller.abort(), 60000) : null;
 
@@ -207,6 +260,7 @@ export async function uploadToDrive(
           if (timeoutId) clearTimeout(timeoutId);
         }
 
+        onProgress?.(90, 'Memverifikasi respons Google Drive...');
         const rawText = await response.text();
         let json: any = {};
         try {
@@ -219,6 +273,7 @@ export async function uploadToDrive(
         }
 
         if (json.success && json.url) {
+          onProgress?.(100, 'Unggahan berhasil!');
           resolve(json.url);
         } else {
           reject(new Error(json.error || json.message || 'Gagal mengupload file ke Google Drive.'));

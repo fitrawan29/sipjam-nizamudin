@@ -1,72 +1,75 @@
-# BRIEFING — 2026-11-02T06:57:00Z
+# BRIEFING — 2026-11-09T00:04:00Z
 
 ## Mission
-Perbaiki mata pelajaran di jadwal pembelajaran agar mata pelajaran yang tidak ada seperti "teknik informasi" tidak dimasukkan dan hanya mata pelajaran valid seperti "informatika" yang digunakan, serta pastikan seluruh data master yang sudah diupload (data siswa, data guru, data jadwal pembelajaran, dan data kelas) tidak diubah atau disentuh sama sekali.
+Perbaiki masalah pengunggahan dokumen dari presensi untuk surat izin, surat sakit, dan surat-surat lainnya pada aplikasi SIPJAM.
 
 ## 🔒 My Identity
-- Archetype: orchestrator
+- Archetype: teamwork_swe
 - Roles: orchestrator, user_liaison, human_reporter, successor
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe\
 - Original parent: parent
-- Original parent conversation ID: 7e12b170-dd72-4511-919d-6c30e535ce0a
+- Original parent conversation ID: c4e5c67a-04e8-46e4-87cb-c69b8288148b
 
 ## 🔒 My Workflow
 - **Pattern**: SWE Light
-- **Scope document**: docs/KONSEKUENSI_PELANGGARAN.md
-1. **Decompose**: SWE Light pattern - sequential refinement, no decomposition.
-2. **Dispatch & Execute**: Direct iteration loop (teamwork_implementer -> teamwork_reviewer -> ... -> teamwork_victory_auditor).
-3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate.
-4. **Succession**: At 16 spawns, write handoff.md, spawn successor.
+- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe\DISPATCH.md
+1. **Decompose**: Single line of sequential refinement (SWE Light pattern: implementer -> reviewer 1 -> reviewer 2 -> reviewer 3 -> victory auditor)
+2. **Dispatch & Execute**:
+   - teamwork_implementer -> produces working diff
+   - teamwork_reviewer -> tries to break diff, fixes and verifies (at least 3 review rounds)
+   - teamwork_victory_auditor -> post-victory audit
+3. **On failure**:
+   - Retry: nudge stuck agent or re-send task
+   - Replace: spawn fresh agent with partial progress
+   - Skip: proceed without (only if non-critical)
+   - Redistribute: split stuck agent's remaining work
+   - Redesign: re-partition decomposition
+   - Escalate: report to parent
+4. **Succession**: At >=16 spawns, write handoff.md, spawn successor
 - **Work items**:
-  1. Implement policy document docs/KONSEKUENSI_PELANGGARAN.md [completed]
-  2. Koreksi mata pelajaran jadwal pembelajaran & perlindungan data master [in-progress]
-- **Current phase**: 2
-- **Current focus**: Dispatch teamwork_implementer
+  1. teamwork_implementer [in-progress]
+  2. teamwork_reviewer_r1 [pending]
+  3. teamwork_reviewer_r2 [pending]
+  4. teamwork_reviewer_r3 [pending]
+  5. teamwork_victory_auditor [pending]
+- **Current phase**: 1 (Implementation)
+- **Current focus**: teamwork_implementer (conv: 4c5c2ca0-8c1a-4b93-8167-edf4d85f6253)
 
 ## 🔒 Key Constraints
-- NEVER write, modify, or create source code files yourself. Delegate all implementation and all repair to teamwork_implementer and teamwork_reviewer.
+- NEVER write, modify, or create source code files yourself. Delegate all implementation and repair to workers.
 - NEVER explore or debug the codebase in order to solve the task yourself.
-- Propagate task verbatim to workers.
-- Run floor of 3 review rounds and verify independently.
-- Git workflow rule: commit and push to main.
+- Propagate the task verbatim.
+- Floor of 3 review rounds before completion.
+- Re-run tests independently to verify worker claims.
+- Carry open-issues ledger across all rounds.
+- Never reuse a subagent after it has delivered its handoff — always spawn fresh.
+- Git workflow: git status, git add ., git commit, git push origin main upon final completion.
 
 ## Current Parent
-- Conversation ID: 9435d357-8091-4442-bb16-f5ebdc424c44
-- Updated: 2026-11-02T06:56:54Z
+- Conversation ID: c4e5c67a-04e8-46e4-87cb-c69b8288148b
+- Updated: not yet
 
 ## Key Decisions Made
-- Previous task completed and verified.
-- Starting new task: Perbaikan mata pelajaran jadwal pembelajaran dan perlindungan data master.
-- Sequential refinement pattern: teamwork_implementer -> teamwork_reviewer (r1) -> teamwork_reviewer (r2) -> teamwork_reviewer (r3) -> verification -> teamwork_victory_auditor.
+- SWE Light sequential loop initialized.
+- Round 1 dispatched to teamwork_implementer.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| teamwork_implementer_mapel_r0 | teamwork_implementer | Implement fix for mapel and master data protection | completed | c127a6a1-bb82-4322-8413-1d5614b9b2ef |
-| teamwork_reviewer_mapel_r1 | teamwork_reviewer | Review Round 1 | completed | d06fa299-1f8f-4ac7-a70c-ab6999f05369 |
-| teamwork_reviewer_mapel_r2 | teamwork_reviewer | Review Round 2 | completed | 3b0fcf89-66b0-49f4-bcfc-ae16ac3b4568 |
-| teamwork_reviewer_mapel_r3 | teamwork_reviewer | Review Round 3 | completed | d264d1b4-74de-4373-bcda-bfc8b95de1cf |
-| teamwork_victory_auditor | teamwork_victory_auditor | Victory Audit | completed | 0a4b642d-b168-4d11-bfe4-000e10a0aec0 |
+| implementer_1 | teamwork_implementer | Initial implementation & tests | in-progress | 4c5c2ca0-8c1a-4b93-8167-edf4d85f6253 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 5 / 16
-- Pending subagents: none
+- Spawn count: 1 / 16
+- Pending subagents: 4c5c2ca0-8c1a-4b93-8167-edf4d85f6253
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: stopped
-- Safety timer: none
+- Heartbeat cron: cf2b5110-53c4-43a4-a306-b46f2f7556a5/task-12
+- Safety timer: cf2b5110-53c4-43a4-a306-b46f2f7556a5/task-16
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Original user request
-- .agents/teamwork/swe/DISPATCH.md — Dispatch log
-- .agents/teamwork/swe/progress.md — Progress and iteration ledger
-- .agents/teamwork/swe/handoff.md — Orchestrator handoff report
-- .agents/teamwork/teamwork_implementer_mapel_r0/handoff.md — Implementer handoff report
-- .agents/teamwork/teamwork_reviewer_mapel_r1/handoff.md — Reviewer Round 1 handoff report
-- .agents/teamwork/teamwork_reviewer_mapel_r2/handoff.md — Reviewer Round 2 handoff report
-- .agents/teamwork/teamwork_reviewer_mapel_r3/handoff.md — Reviewer Round 3 handoff report
-- .agents/teamwork/teamwork_victory_auditor_mapel/audit_report.md — Victory audit report
-
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe\DISPATCH.md — Dispatch instructions
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original request
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe\progress.md — Progress and ledger

@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { recordUnfilledJournalsAndPiket, autoFillKbmJournalsForLeave } from '@/lib/attendanceAlpa';
-import { uploadToDrive, detectMimeType } from '@/lib/driveUpload';
+import { uploadToDrive, detectMimeType, validatePresensiFile } from '@/lib/driveUpload';
 import {
   savePresensiFileDraft,
   getPresensiFileDraft,
@@ -155,6 +155,13 @@ export default function GuruPresensi({
   const isSakit = detailIzin === 'Sakit' || jenisPresensi === 'Sakit';
   const memerlukanPersetujuanAdmin = (isSakit && durasiHari >= 3) || (!isSakit && (jenisPresensi === 'Izin' || detailIzin === 'Izin' || detailIzin.includes('Izin')) && durasiHari > 3);
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{
+    active: boolean;
+    percent: number;
+    status: string;
+    error?: string | null;
+  }>({ active: false, percent: 0, status: '' });
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
   const [lokasi, setLokasi] = useState('Mendeteksi lokasi...');
   const [userCoords, setUserCoords] = useState<WatermarkCoordinates | null>(null);
@@ -740,11 +747,36 @@ export default function GuruPresensi({
     let driveUrl: string | null = null;
     if (fileToUpload) {
       try {
+        setUploadProgress({
+          active: true,
+          percent: 30,
+          status: `Menyiapkan pengunggahan dokumen ke folder SIPJAM/Presensi_Guru/${currentTeacher}...`
+        });
         // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
         const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
         const prefix = isSelfie ? 'Selfie' : 'Dokumen';
-        driveUrl = await uploadToDrive(fileToUpload, currentTeacher, folderName, prefix);
+        driveUrl = await uploadToDrive(
+          fileToUpload,
+          currentTeacher,
+          folderName,
+          prefix,
+          undefined,
+          (percent, statusText) => {
+            const mappedPercent = Math.min(92, Math.max(30, Math.round(30 + (percent * 0.62))));
+            setUploadProgress({
+              active: true,
+              percent: mappedPercent,
+              status: statusText
+            });
+          }
+        );
         
+        setUploadProgress({
+          active: true,
+          percent: 95,
+          status: 'Menyimpan tautan dokumen ke data presensi...'
+        });
+
         await supabase
           .from('presensi_guru')
           .update({ link_bukti: driveUrl })
@@ -767,6 +799,21 @@ export default function GuruPresensi({
           }
         }
 
+        setUploadProgress({
+          active: true,
+          percent: 100,
+          status: 'Dokumen berhasil tersimpan di Google Drive!'
+        });
+
+        // Notify active UI listeners (e.g. HistoryView) to display fresh Drive link
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('sipjam:presensi_updated', {
+              detail: { presensiId, url: driveUrl },
+            })
+          );
+        }
+
         console.log(`[GuruPresensi] Background GAS upload complete for presensi ${presensiId}:`, driveUrl);
       } catch (uploadErr: any) {
         console.error(`[GuruPresensi] Background GAS upload failed for presensi ${presensiId}:`, uploadErr);
@@ -776,6 +823,8 @@ export default function GuruPresensi({
           .eq('id', presensiId);
         showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
         // showToast('Sinkronisasi Tertunda', 'Foto bukti gagal diunggah ke Google Drive.', 'warning');
+      } finally {
+        setUploadProgress({ active: false, percent: 0, status: '' });
       }
     }
 
@@ -827,6 +876,9 @@ export default function GuruPresensi({
     setKeterangan('');
     setFile(null);
     setPhotoPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     clearPresensiFileDraft().catch(() => {});
     if (typeof window !== 'undefined') {
       try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
@@ -1181,10 +1233,26 @@ export default function GuruPresensi({
                         <i className="fa-solid fa-asterisk"></i> Wajib Upload {requiredDocName}
                       </label>
                       <input 
+                        ref={fileInputRef}
                         type="file" 
-                        accept="image/*,.pdf" 
+                        accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
                         onChange={async (e) => {
                           const selected = e.target.files ? e.target.files[0] : null;
+                          if (selected) {
+                            const validation = validatePresensiFile(selected);
+                            if (!validation.valid) {
+                              showToast(
+                                'File Tidak Sesuai',
+                                validation.error || 'Format berkas tidak valid untuk surat izin/sakit.',
+                                'error'
+                              );
+                              if (fileInputRef.current) fileInputRef.current.value = '';
+                              setFile(null);
+                              setPhotoPreviewUrl(null);
+                              await clearPresensiFileDraft();
+                              return;
+                            }
+                          }
                           setFile(selected);
                           setPhotoPreviewUrl(null);
                           if (selected) {
@@ -1197,24 +1265,40 @@ export default function GuruPresensi({
                         className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
                       />
                       {file && (
-                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 flex items-center justify-between transition-all">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
-                            <i className="fa-solid fa-file-lines text-amber-500 text-base"></i>
+                        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between transition-all shadow-sm">
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
+                            <i className="fa-solid fa-file-circle-check text-emerald-600 dark:text-emerald-400 text-lg"></i>
                             <div>
-                              {/* File surat izin terpasang */}
-                              <div>File {requiredDocName} terpasang</div>
-                              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                                {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                              <div className="font-bold flex items-center gap-1.5">
+                                {/* File surat izin terpasang */}
+                                <span>File {requiredDocName} terpasang</span>
+                                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
+                                  Valid
+                                </span>
+                              </div>
+                              <div className="text-[11px] text-slate-600 dark:text-slate-400 font-normal">
+                                {file.name} ({(file.size / 1024).toFixed(0)} KB) • Tujuan: SIPJAM/Presensi_Guru/{user?.nama || 'Guru'}
                               </div>
                             </div>
                           </div>
                           <button
                             type="button"
-                            onClick={() => {
-                              {/* Ganti Surat Izin? */}
-                              if (confirm(`Ganti file ${requiredDocName}?`)) {
+                            onClick={async () => {
+                              const result = await Swal.fire({
+                                title: 'Ganti File Dokumen?',
+                                text: `Hapus file ${file.name} dan pilih dokumen lain?`,
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#10B981',
+                                cancelButtonColor: '#6B7280',
+                                confirmButtonText: 'Ya, Ganti',
+                                cancelButtonText: 'Batal',
+                              });
+                              if (result.isConfirmed) {
                                 setFile(null);
                                 setPhotoPreviewUrl(null);
+                                if (fileInputRef.current) fileInputRef.current.value = '';
+                                await clearPresensiFileDraft();
                               }
                             }}
                             className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
@@ -1321,9 +1405,37 @@ export default function GuruPresensi({
                     )}
                 </div>
 
+                {/* Indikator Progres Pengunggahan Dokumen */}
+                {uploadProgress.active && (
+                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 space-y-2 fade-in shadow-sm">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                      <span className="flex items-center gap-2">
+                        <i className="fa-solid fa-cloud-arrow-up text-emerald-600 dark:text-emerald-400 animate-pulse text-sm"></i>
+                        <span>{uploadProgress.status}</span>
+                      </span>
+                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-emerald-200/70 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100">
+                        {uploadProgress.percent}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-full overflow-hidden p-0.5">
+                      <div 
+                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-300 ease-out shadow-sm"
+                        style={{ width: `${uploadProgress.percent}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 text-right">
+                      Mohon tidak menutup aplikasi saat pengunggahan berkas berlangsung
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-2">
-                    <button type="submit" disabled={loading || isPulangLocked || dailyState?.isLibur} className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                        {loading ? 'Menyimpan & Mengunggah File...' : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
+                    <button 
+                      type="submit" 
+                      disabled={loading || isPulangLocked || dailyState?.isLibur} 
+                      className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                        {loading ? (uploadProgress.active ? `Mengunggah Dokumen (${uploadProgress.percent}%)...` : 'Menyimpan & Mengunggah File...') : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
                     </button>
                 </div>
             </form>
