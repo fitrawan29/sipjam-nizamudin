@@ -60,6 +60,16 @@ assert(
   'Toggle button provides accessible aria-label for screen readers'
 );
 
+assert(
+  loginContent.includes('z-30') && loginContent.includes('cursor-pointer'),
+  'Toggle button has z-30 and cursor-pointer to elevate above input-premium layer'
+);
+
+assert(
+  loginContent.includes('Tampilkan Kata Sandi') && loginContent.includes('onChange={e => setShowPassword(e.target.checked)}'),
+  'LoginScreen provides explicit Tampilkan Kata Sandi checkbox synchronized with showPassword state'
+);
+
 // Preserved LoginScreen styling & branding
 assert(
   loginContent.includes('clay-card w-full max-w-md'),

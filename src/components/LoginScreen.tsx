@@ -107,12 +107,23 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
               <button
                 type="button"
                 onClick={() => setShowPassword(prev => !prev)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1 focus:outline-none transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 z-30 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 p-1.5 focus:outline-none transition-colors cursor-pointer"
                 aria-label={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
                 title={showPassword ? 'Sembunyikan kata sandi' : 'Lihat kata sandi'}
               >
                 <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
               </button>
+            </div>
+            <div className="flex items-center justify-between px-1">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                <input
+                  type="checkbox"
+                  checked={showPassword}
+                  onChange={e => setShowPassword(e.target.checked)}
+                  className="rounded border-gray-300 text-[#0B4619] focus:ring-[#0B4619] dark:border-gray-600 dark:bg-gray-700 cursor-pointer"
+                />
+                <span>Tampilkan Kata Sandi</span>
+              </label>
             </div>
             <button 
               type="submit" 
