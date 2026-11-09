@@ -102,7 +102,8 @@ export default function AppScreen({
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
-    (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling');
+    (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+    (baseUser?.mata_pelajaran || '').toLowerCase().trim() === 'bk';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
@@ -876,7 +877,7 @@ export default function AppScreen({
 
   // Active consolidated menus generated for Miller's Law ergonomics (7 ± 2 items per role)
   const consolidatedMenuItems = getConsolidatedMenuItems({
-    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : isTataUsaha ? 'tata_usaha' : 'guru'),
+    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : isTataUsaha ? 'tata_usaha' : isBk ? 'bk' : 'guru'),
     isWaliKelas,
     isPiketHariIni,
     isKepalaSekolah,
@@ -1018,14 +1019,16 @@ export default function AppScreen({
                         ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
                         : isTataUsaha
                         ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
+                        : isBk
+                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-300/60'
                         : isKepalaSekolah
                         ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200/50'
                         : isWaliKelas
                         ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
                         : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
                     }`}>
-                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
-                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isKepalaSekolah ? formatKepalaSekolahLabel(statusKepalaSekolah) : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isBk ? 'fa-heart-pulse' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
+                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isBk ? 'Guru BK' : isKepalaSekolah ? formatKepalaSekolahLabel(statusKepalaSekolah) : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
                     </span>
                     {(user?.username || user?.nip) && (
                       <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
@@ -1100,7 +1103,7 @@ export default function AppScreen({
                     </button>
                   </React.Fragment>
                 ))}
-                {!isTataUsaha && (
+                {!isTataUsaha && !isBk && (
                   <button
                     type="button"
                     onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}

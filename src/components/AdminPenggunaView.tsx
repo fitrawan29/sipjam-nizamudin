@@ -75,7 +75,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       const bkAccounts: TeacherAccountItem[] = (tuUsers || [])
         .filter((u: any) => {
           const norm = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-          return norm === 'bk' || norm === 'gurubk';
+          return norm === 'bk' || norm === 'gurubk' || norm === 'bimbingankonseling' || norm === 'bimbingandankonseling';
         })
         .map((u: any) => ({
           guruId: u.id,
@@ -102,7 +102,10 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           if ((acc.mataPelajaran || '').toLowerCase().includes('tata usaha')) {
             return { ...acc, role: 'tata_usaha' };
           }
-          if ((acc.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') || (acc.mataPelajaran || '').toLowerCase() === 'bk') {
+          const normAcc = (acc.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+          const isAccBk = normAcc === 'bk' || normAcc === 'gurubk' || normAcc === 'bimbingankonseling' || normAcc === 'bimbingandankonseling' ||
+            (acc.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') || (acc.mataPelajaran || '').toLowerCase().trim() === 'bk';
+          if (isAccBk) {
             return { ...acc, role: 'bk' };
           }
           return acc;
@@ -427,7 +430,9 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
   const handleToggleBkAssignment = async (item: TeacherAccountItem) => {
     if (!isAdmin) return;
     const isCurrentlyBk = (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
-      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk';
+      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
+      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
+      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling';
     const targetRole = isCurrentlyBk ? 'Guru' : 'bk';
     const actionLabel = isCurrentlyBk ? 'Kembalikan ke Guru' : 'Tunjuk sebagai Guru BK';
 
@@ -448,10 +453,21 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
     setLoading(true);
     try {
       if (item.userId) {
-        const { error: updErr } = await supabase
+        let { error: updErr } = await supabase
           .from('users')
           .update({ role: targetRole })
           .eq('id', item.userId);
+
+        if (updErr && updErr.message?.includes('users_role_check')) {
+          const fallbackRole = targetRole === 'bk' ? 'guru_bk' : 'Guru';
+          const { error: retryErr } = await supabase
+            .from('users')
+            .update({ role: fallbackRole })
+            .eq('id', item.userId);
+          if (!retryErr) {
+            updErr = null;
+          }
+        }
 
         if (updErr) {
           if (updErr.message?.includes('users_role_check')) {
@@ -495,7 +511,34 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           .from('data_guru')
           .update({ mata_pelajaran: newMapel })
           .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+      } else if (item.guruId) {
+        const newMapel = targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-';
+        await supabase
+          .from('data_guru')
+          .update({ mata_pelajaran: newMapel })
+          .eq('id', item.guruId);
       }
+
+      // Sync active session if currently logged-in user is updated
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const stored = localStorage.getItem('sipjam_user');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if ((item.userId && parsed.id === item.userId) || (item.username && parsed.username === item.username)) {
+              parsed.role = targetRole;
+              if (targetRole === 'bk') {
+                parsed.mata_pelajaran = 'Bimbingan Konseling (BK)';
+              } else if (parsed.mata_pelajaran === 'Bimbingan Konseling (BK)') {
+                parsed.mata_pelajaran = '-';
+              }
+              localStorage.setItem('sipjam_user', JSON.stringify(parsed));
+              window.dispatchEvent(new Event('storage'));
+            }
+          }
+        } catch (_) {}
+      }
+
       showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'bk' ? 'Guru BK' : 'Guru'}.`, 'success');
       handleLoadAndSync(false);
     } catch (err: any) {
@@ -1085,7 +1128,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                               {item.nama}
                             </div>
                             <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                              Role: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{item.role}</span>
+                              Role: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{item.role === 'bk' ? 'Guru BK' : item.role === 'tata_usaha' ? 'Tata Usaha' : item.role}</span>
                             </div>
                           </div>
                         </div>
@@ -1138,18 +1181,18 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                             type="button"
                             onClick={() => handleToggleBkAssignment(item)}
                             className={`btn-click px-2 py-1 rounded-lg font-bold text-[11px] border transition flex items-center gap-1 ${
-                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk'
+                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling'
                                 ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/60'
                                 : 'bg-rose-100 hover:bg-rose-200 text-rose-900 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/60'
                             }`}
                             title={
-                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk'
+                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling'
                                 ? 'Kembalikan role ke Guru'
                                 : 'Tunjuk sebagai Guru BK'
                             }
                           >
-                            <i className={`fa-solid ${(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ? 'fa-chalkboard-user' : 'fa-heart-pulse'} text-[10px]`}></i>
-                            <span>{(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ? 'Ke Guru' : 'Tunjuk BK'}</span>
+                            <i className={`fa-solid ${(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ? 'fa-chalkboard-user' : 'fa-heart-pulse'} text-[10px]`}></i>
+                            <span>{(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ? 'Ke Guru' : 'Tunjuk BK'}</span>
                           </button>
                           <button
                             type="button"

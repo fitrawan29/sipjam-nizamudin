@@ -3,7 +3,7 @@
  * Part of Milestone 3: Comprehensive Feature and Menu Consolidation
  */
 
-import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+import { formatKepalaSekolahLabel } from '../utils/textUtils';
 
 export interface MenuItem {
   id: string;

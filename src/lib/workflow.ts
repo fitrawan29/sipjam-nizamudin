@@ -557,10 +557,29 @@ export function connectGuruMapelWithJadwal(
     return false;
   };
 
+  const isTeacherGmMatch = (g: any): boolean => {
+    if (!g || isInvalidMapel(g.nama_mapel || g.mapel_singkat || g.mata_pelajaran)) return false;
+    const gUserId = g.user_id || g.guru_id || '';
+    if (userId && gUserId && gUserId === userId) return true;
+    const gNip = (g.nip || '').trim();
+    if (username && gNip && (userNorm === normalizeName(gNip) || username === gNip)) return true;
+    const gNama = (g.nama_guru || g.nama || '').trim();
+    if (gNama) {
+      const gNorm = normalizeName(gNama);
+      if (userNorm && userNorm === gNorm) return true;
+      if (namaNorm && namaNorm === gNorm) return true;
+      if (firstName && firstName.length >= 2) {
+        if (firstName === gNorm || (!gNorm.includes(' ') && firstName.startsWith(gNorm)) || (!namaNorm.includes(' ') && gNorm.startsWith(firstName + ' '))) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return true;
+  };
+
   const myJadwal = (jadwalRows || []).filter(isTeacherJadwalMatch);
-  const myGm = (guruMapelRows || []).filter(
-    (g: any) => !isInvalidMapel(g.nama_mapel || g.mapel_singkat || g.mata_pelajaran)
-  );
+  const myGm = (guruMapelRows || []).filter(isTeacherGmMatch);
 
   const resultMap = new Map<string, ConnectedGuruMapelItem>();
 

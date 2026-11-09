@@ -1,34 +1,37 @@
 # Original User Request
 
-## Initial Request — 2026-11-09T05:08:18Z
+## Initial Request — 2026-11-09T07:18:07Z
 
-Implementasikan role BK (Bimbingan Konseling) dan fitur jurnal khusus BK yang tidak terikat kelas ke dalam aplikasi SIPJAM untuk kebutuhan produksi, dengan memastikan integritas sistem dan tidak merubah fitur atau logika lain yang tidak terdampak.
+This is a single self-contained fix; keep it small and focused.
+Perbaiki alur dan fungsionalitas Guru BK saat admin menunjuk guru menjadi Guru BK ("Tunjuk BK"), agar guru yang ditunjuk langsung mendapatkan tampilan dan fungsionalitas BK yang sesuai rancangan tanpa merubah fitur dan logika lain yang tidak terdampak oleh perubahan ini, dengan menerapkan pendekatan /ponytail (solusi paling ringkas, langsung ke akar masalah, tanpa over-engineering atau mengubah kode yang tidak perlu).
 
 Integrity mode: development
 
 ## Requirements
 
-### R1. Role BK (Bimbingan Konseling) & Kontrol Akses
-Sediakan role BK dalam sistem SIPJAM dengan hak akses khusus ke fitur bimbingan konseling. Akses terhadap data jurnal BK dibatasi hanya untuk role BK dan Admin / Kepala Sekolah, dan tidak dapat diakses oleh role guru reguler atau pengguna lain tanpa izin.
+### R1. Sinkronisasi dan Penunjukan Role Guru BK
+Perbaiki alur saat guru ditunjuk menjadi Guru BK di `AdminPenggunaView` ("Tunjuk BK"), termasuk penyimpanan role di database/localStorage/auth session, pemetaan role `'bk'` vs `'guru_bk'`, dan sinkronisasi akun guru di `teacherUserSync.ts` / `AdminPenggunaView.tsx` agar pengguna yang ditunjuk secara konsisten terdaftar dan dikenali sebagai Guru BK.
 
-### R2. Fitur Jurnal Khusus BK (Tidak Terikat Kelas)
-Sediakan fitur jurnal khusus untuk BK yang beroperasi secara independen tanpa terikat pada jadwal pelajaran, mata pelajaran, atau rombel kelas tertentu. Jurnal BK memungkinkan pencatatan aktivitas layanan konseling siswa sesuai alur standar BK sekolah (mencakup siswa terkait, tanggal/waktu kegiatan, jenis layanan/bimbingan, catatan, dan tindak lanjut).
+### R2. Tampilan dan Fungsionalitas Role Guru BK
+Pastikan pengguna dengan role Guru BK mendapatkan menu navigasi khusus dan fitur yang dirancang: Dashboard, Presensi BK, Jurnal BK (tidak terikat kelas), Informasi Sekolah, dan Pengaturan Akun. Deteksi role pada antarmuka (`navigation.ts`, `AppScreen.tsx`, dan `ClaySidebar.tsx`) harus bekerja secara tepat sehingga guru yang ditunjuk langsung mendapatkan tampilan dan akses fitur BK.
 
-### R3. Non-Regresi Fitur Eksisting
-Pastikan penambahan role BK dan fitur jurnal BK ini tidak merubah fitur dan logika lain yang tidak terdampak oleh perubahan ini, termasuk fitur jurnal pembelajaran guru mapel, jadwal pelajaran, presensi/piket, dan otorisasi role lainnya.
+### R3. Preservasi Fitur dan Logika Pengguna Lain
+Pastikan perubahan ini tidak merubah fitur dan logika lain yang tidak terdampak: role guru umum/mata pelajaran, wali kelas, guru piket, admin, serta fungsionalitas KBM lainnya harus tetap beroperasi normal tanpa regresi.
+
+## Verification Resources
+- Test suite Vitest proyek: jalankan `tests/adversarial_bk_challenger.test.ts` dan test suite terkait (`npm test`) untuk memverifikasi navigasi, RBAC, sinkronisasi role BK, dan memastikan tidak ada regresi pada role lainnya.
 
 ## Acceptance Criteria
 
-### Role BK & Akses Kontrol
-- [ ] Pengguna dapat memiliki role BK dan dapat login serta mengakses modul atau menu khusus BK.
-- [ ] Data jurnal BK hanya dapat diakses dan dikelola oleh role BK dan Admin / Kepala Sekolah, serta terlindungi dari akses oleh guru reguler atau akun lain.
+### Penunjukan & Sinkronisasi Role BK
+- [ ] Aksi "Tunjuk BK" oleh admin berhasil menyimpan dan menyinkronkan status/role Guru BK secara konsisten di sesi dan penyimpanan data pengguna.
+- [ ] Akun guru yang ditunjuk langsung terdeteksi sebagai role BK tanpa konflik antara format role `'bk'` dan `'guru_bk'`.
 
-### Fungsionalitas Jurnal BK
-- [ ] Pengguna role BK dapat membuat, melihat, memperbarui, dan menghapus (CRUD) entri jurnal BK tanpa memerlukan relasi ke jadwal pelajaran atau jam kelas reguler.
-- [ ] Entri jurnal BK dapat mencatat data konseling siswa dengan field informasi standar (identitas siswa, tanggal/waktu bimbingan, jenis/bidang layanan bimbingan, catatan kasus/konseling, dan rencana tindak lanjut).
-- [ ] Daftar entri jurnal BK dapat ditampilkan dan dicari/difilter berdasarkan tanggal atau nama siswa.
+### Navigasi & Fitur BK
+- [ ] Pengguna Guru BK mendapatkan menu navigasi khusus: Dashboard, Presensi BK, Jurnal BK (tidak terikat kelas), Informasi Sekolah, dan Pengaturan Akun.
+- [ ] Jurnal BK dapat diakses dan berfungsi tanpa keterikatan kelas reguler.
 
-### Non-Regresi & Kualitas Kode
-- [ ] Fitur jurnal pembelajaran guru mapel yang sudah ada tetap berfungsi normal dan tetap terikat jadwal/kelas masing-masing tanpa gangguan.
-- [ ] Alur dan fitur eksisting lainnya (jadwal pelajaran, presensi/piket, manajemen user/guru) tetap berjalan normal tanpa error fungsional.
-- [ ] Seluruh proses verifikasi standar repo (lint, type-check, dan build) berhasil dijalankan tanpa error.
+### Preservasi Sistem & Kualitas Kode
+- [ ] Fitur, navigasi, dan logika role lain (guru reguler, wali kelas, piket, admin) tidak mengalami perubahan dan tetap berfungsi normal.
+- [ ] Seluruh pengujian otomatis proyek (`npm test` / Vitest, termasuk `tests/adversarial_bk_challenger.test.ts`) berjalan sukses tanpa regresi.
+- [ ] Perubahan menerapkan pendekatan /ponytail: ringkas, tepat sasaran ke akar masalah, dan tanpa penambahan dependensi atau kode yang tidak perlu.

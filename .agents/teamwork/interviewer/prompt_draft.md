@@ -1,38 +1,33 @@
 This is a single self-contained fix; keep it small and focused.
-Gunakan prinsip ponytail (solusi paling minimal, bersih, tanpa over-engineering): sesuaikan alur presensi agar petugas piket tidak lagi memiliki kewajiban melakukan presensi/rekap absensi kepada siswa di pagi hari, serta gantikan tulisan/label "presensi piket" untuk siswa menjadi "presensi datang" dan "presensi pulang". Perubahan ini wajib menjaga seluruh fitur dan logika lain yang tidak terdampak agar tetap stabil dan tidak berubah.
+Perbaiki alur dan fungsionalitas Guru BK saat admin menunjuk guru menjadi Guru BK ("Tunjuk BK"), agar guru yang ditunjuk langsung mendapatkan tampilan dan fungsionalitas BK yang sesuai rancangan tanpa merubah fitur dan logika lain yang tidak terdampak oleh perubahan ini, dengan menerapkan pendekatan /ponytail (solusi paling ringkas, langsung ke akar masalah, tanpa over-engineering atau mengubah kode yang tidak perlu).
 
 Integrity mode: development
 
 ## Requirements
 
-### R1. Penyesuaian Alur Presensi Pagi Piket & Penghapusan Beban Rekap Absensi Siswa
-- **Beban Rekap Ditiadakan**: Pada modul dan form Laporan Piket (`PiketView`), guru piket tidak lagi dibebani kewajiban 'Rekap Absensi Sekolah' (mengabsen siswa Hadir/Sakit/Izin/Alpa per kelas di pagi hari). Input absensi kelas manual pagi oleh piket ditiadakan kewajibannya sehingga guru piket fokus pada catatan kejadian dan foto dokumentasi piket.
-- **Presensi Datang Murni**: Presensi siswa di pagi hari murni berfungsi sebagai "Presensi Datang" (melalui pemindaian barcode/QR gerbang atau pencatatan datang mandiri yang sudah ada), tanpa menuntut piket melakukan rekapitulasi absensi kelas pagi.
-- **Penyesuaian Keterangan & Trigger Kewajiban**: Keterangan status terkait kewajiban piket pagi (seperti status "Anda bertugas mengisi Presensi Siswa", tombol "Simpan Presensi Siswa", atau peringatan batas waktu pengisian presensi pagi bagi piket) disesuaikan agar tidak lagi memicu kewajiban presensi pagi bagi guru piket.
-- **Presensi Pulang**: Presensi pulang siswa tetap dapat dicatat sesuai jadwal kepulangan yang berlaku.
+### R1. Sinkronisasi dan Penunjukan Role Guru BK
+Perbaiki alur saat guru ditunjuk menjadi Guru BK di `AdminPenggunaView` ("Tunjuk BK"), termasuk penyimpanan role di database/localStorage/auth session, pemetaan role `'bk'` vs `'guru_bk'`, dan sinkronisasi akun guru di `teacherUserSync.ts` / `AdminPenggunaView.tsx` agar pengguna yang ditunjuk secara konsisten terdaftar dan dikenali sebagai Guru BK.
 
-### R2. Pembaharuan Terminologi dan Teks Presensi Siswa
-Gantikan seluruh teks dan label "Presensi Piket" yang merujuk pada presensi siswa menjadi "Presensi Datang" dan "Presensi Pulang" di seluruh antarmuka yang terdampak, termasuk tombol/badge status sinkronisasi pada Jurnal Guru (seperti penyesuaian istilah "Terapkan Presensi Piket" / "Belum Presensi Piket" menjadi istilah presensi datang/pulang), label kolom/tabel, catatan notifikasi/WhatsApp, dan teks status terkait.
+### R2. Tampilan dan Fungsionalitas Role Guru BK
+Pastikan pengguna dengan role Guru BK mendapatkan menu navigasi khusus dan fitur yang dirancang: Dashboard, Presensi BK, Jurnal BK (tidak terikat kelas), Informasi Sekolah, dan Pengaturan Akun. Deteksi role pada antarmuka (`navigation.ts`, `AppScreen.tsx`, dan `ClaySidebar.tsx`) harus bekerja secara tepat sehingga guru yang ditunjuk langsung mendapatkan tampilan dan akses fitur BK.
 
-### R3. Preservasi Fitur dan Logika yang Tidak Terdampak
-Pastikan seluruh fitur dan logika lain di luar presensi siswa oleh piket (termasuk absensi guru piket, absensi wali kelas, jurnal pembelajaran KBM, catatan kejadian & dokumentasi foto piket harian, dan sistem rekapitulasi) tetap berfungsi normal dan tidak mengalami regresi perilaku.
+### R3. Preservasi Fitur dan Logika Pengguna Lain
+Pastikan perubahan ini tidak merubah fitur dan logika lain yang tidak terdampak: role guru umum/mata pelajaran, wali kelas, guru piket, admin, serta fungsionalitas KBM lainnya harus tetap beroperasi normal tanpa regresi.
 
 ## Verification Resources
-- Existing test suites: `npm test` (Vitest) yang mencakup modul piket, jurnal guru, dan presensi gerbang/wali kelas (`tests/presensi_gerbang_dan_absensi_retensi.test.ts`, `tests/m4_wali_kelas_guru_sync.test.ts`, `tests/adversarial_challenger_2.test.ts`).
+- Test suite Vitest proyek: jalankan `tests/adversarial_bk_challenger.test.ts` dan test suite terkait (`npm test`) untuk memverifikasi navigasi, RBAC, sinkronisasi role BK, dan memastikan tidak ada regresi pada role lainnya.
 
 ## Acceptance Criteria
 
-### Alur Piket & Penyesuaian Presensi Siswa
-- [ ] Pada form Laporan Piket (`PiketView`), guru piket tidak lagi diwajibkan melakukan input/rekap absensi siswa per kelas (H/S/I/A) di pagi hari.
-- [ ] Presensi pagi siswa berjalan sebagai "Presensi Datang" (melalui pemindai QR/barcode gerbang atau log datang yang ada) tanpa mewajibkan rekap manual oleh guru piket.
-- [ ] Status dan instruksi kewajiban piket pagi (seperti "Anda bertugas mengisi Presensi Siswa", tombol "Simpan Presensi Siswa", peringatan/banner kewajiban) telah disesuaikan agar tidak lagi membebani piket.
-- [ ] Presensi Pulang siswa tetap dapat dicatat sesuai jadwal kepulangan normal.
+### Penunjukan & Sinkronisasi Role BK
+- [ ] Aksi "Tunjuk BK" oleh admin berhasil menyimpan dan menyinkronkan status/role Guru BK secara konsisten di sesi dan penyimpanan data pengguna.
+- [ ] Akun guru yang ditunjuk langsung terdeteksi sebagai role BK tanpa konflik antara format role `'bk'` dan `'guru_bk'`.
 
-### UI & Terminologi
-- [ ] Tulisan dan label "Presensi Piket" untuk siswa di UI telah diganti menjadi istilah "Presensi Datang" dan "Presensi Pulang" yang konsisten di modul Piket dan Jurnal Guru.
-- [ ] Tombol dan badge sinkronisasi di Jurnal Guru yang sebelumnya merujuk pada piket telah disesuaikan agar merefleksikan presensi datang/pulang.
+### Navigasi & Fitur BK
+- [ ] Pengguna Guru BK mendapatkan menu navigasi khusus: Dashboard, Presensi BK, Jurnal BK (tidak terikat kelas), Informasi Sekolah, dan Pengaturan Akun.
+- [ ] Jurnal BK dapat diakses dan berfungsi tanpa keterikatan kelas reguler.
 
 ### Preservasi Sistem & Kualitas Kode
-- [ ] Modul Jurnal Guru, absensi wali kelas, catatan kejadian & dokumentasi piket tetap berjalan tanpa regresi logika.
-- [ ] Test suite yang ada (`npm test`) berjalan sukses dan lulus.
-- [ ] Implementasi mengikuti prinsip ponytail: minimal, bersih, tanpa penambahan dependensi atau over-engineering.
+- [ ] Fitur, navigasi, dan logika role lain (guru reguler, wali kelas, piket, admin) tidak mengalami perubahan dan tetap berfungsi normal.
+- [ ] Seluruh pengujian otomatis proyek (`npm test` / Vitest, termasuk `tests/adversarial_bk_challenger.test.ts`) berjalan sukses tanpa regresi.
+- [ ] Perubahan menerapkan pendekatan /ponytail: ringkas, tepat sasaran ke akar masalah, dan tanpa penambahan dependensi atau kode yang tidak perlu.
