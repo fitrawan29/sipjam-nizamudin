@@ -1,120 +1,92 @@
-# 5-Component Forensic Audit Report
-
-**Auditor:** Teamwork Victory Auditor (`auditor_1`)  
-**Target:** Task: Perbaikan Pemrosesan dan Pemuatan Berkas CSV Siswa & Tabel Master Siswa (R1, R2)  
-**Integrity Mode:** Development  
-**Timestamp:** 2026-11-06T08:14:00Z  
-**Verdict:** VICTORY REJECTED  
-
----
+# Handoff Report: Victory Audit for PAI & PAK Religion Separation
 
 ## 1. Observation
 
-### 1.1 Git History & Provenance
-- Repository contains 4 commits during this milestone:
-  - `7bed952`: `fix(master-data): fix student csv template download and upload data loading`
-  - `803f77d`: `fix(master-data): idempotent student matching by name-class, duplicate nisn guard, and storage cache persistence`
-  - `186eafd`: `fix(master-data): id-based student merge on refresh, excel format sanitization, and cross-view cache hydration`
-  - `2e76273`: `fix(master-data): student csv aliases, phone formatting sanitization, and cross-view class roster sync`
-- `git status`: Branch is `main`, up to date with `origin/main`. Working directory clean except teamwork agent tracking files.
+1. **Commit History & Provenance**:
+   - `git log --oneline --grep="agama"` reveals iterative progression:
+     * `27c1e61`: `feat: pemisahan siswa berdasarkan status agama untuk mapel PAI dan PAK`
+     * `55aa185`: `fix(agama): perbaiki isolasi absensi kbm dan normalisasi akronim pai pak`
+     * `c3424f0`: `fix(agama): perbaiki akronim berurutan, sanitasi moslem christian, isolasi payload jurnal dan reset filter`
+     * `16387cf`: `fix(agama): isolasi fallback presensi kbm lintas agama dan evaluasi string polimorfik`
 
-### 1.2 Independent Test Suite Execution
-- `npx tsx tests/test_user_exact_student_csv.ts`: PASSED (100%).
-  - Parsed 392/392 students from the user dataset.
-  - Verified empty phone values (`no_hp_ortu = ''`), apostrophe names (`Ma'arif`), dots (`Melsyan Marceliana .a .Gogerino`).
-  - Idempotent batch upsert simulation of 392 records succeeded.
-  - Table visibility simulation verified empty state warning is bypassed when records exist.
-- `npx tsx tests/adversarial_student_csv_review.test.ts`: PASSED (15/15 tests, 100%).
-- `npm test`: PASSED across all 58 test suites (0 failures).
+2. **Core Logic Implementation**:
+   - `src/lib/agamaFilter.ts` implements:
+     * `isPaiSubject(mapelName)` (lines 26-39) using `/\b(pai)(?:bp|[\d]+|[xvi]+)?\b/i` and `'islam'` inclusion.
+     * `isPakSubject(mapelName)` (lines 44-57) using `/\b(pak)(?:bp|[\d]+|[xvi]+)?\b/i` and `'kristen'`, `'protestan'`, `'katolik'`.
+     * `isIslamStudent(student)` (lines 71-89) supporting polymorphic objects, strings, and case-insensitive aliases (`islam`, `muslim`, `moslem`).
+     * `isKristenStudent(student)` (lines 94-111) supporting polymorphic objects, strings, and case-insensitive aliases (`kristen`, `protestan`, `katolik`, `christian`, `catholic`).
+     * `isStudentEligibleForSubject(student, mapelName)` (lines 119-134) returning `true` for general subjects, isolating PAI to Islam, and PAK to Kristen.
+     * `filterStudentsBySubject(students, mapelName)` (lines 142-158) returning filtered arrays for PAI and PAK, and unchanged arrays for general subjects.
 
-### 1.3 TypeScript Compilation & Production Build Verification
-- Running `npx tsc --noEmit` fails with exit code 1:
-  ```
-  src/components/AdminDataView.tsx(150,20): error TS2304: Cannot find name 'getStorageCache'.
-  src/components/AdminDataView.tsx(203,9): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(452,9): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(470,9): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(519,17): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(2253,43): error TS2322: Type '(tabOverride?: string) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
-    Types of parameters 'tabOverride' and 'event' are incompatible.
-      Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'string'.
-  ```
-- Running `npm run build` fails with exit code 1:
-  ```
-  ▲ Next.js 16.3.4 (Turbopack)
-  - Environments: .env.local
-  ✓ Running next.config.ts took 83ms
+3. **Domain Cross-Wiring**:
+   - `src/components/GuruJurnal.tsx`:
+     * Line 752: `const filteredData = filterStudentsBySubject(data, mapel); setStudents(filteredData);`
+     * Lines 836-841: Attendance state merger preserves only eligible students in `filteredData`.
+     * Lines 995-1002: Save payload `cleanAbsensiForSave` only records eligible student keys.
+   - `src/components/RekapSiswaView.tsx`:
+     * Line 609: `const filteredSiswa = filterStudentsBySubject(siswa || [], mapel);`
+     * Lines 241, 316, 692: `findLastKbmJournal(dayJournals, s)` passes individual student context to prevent cross-religion fallback attendance bleed.
+   - `src/lib/presensiIntervensi.ts`:
+     * Lines 325-330: `findLastKbmJournal` filters candidate journals using `isStudentEligibleForSubject(student, j.mapel)`.
+     * Lines 375-378: `resolveDailyStudentAttendance` nullifies `activeJournal` if student is ineligible for its subject.
+   - `src/components/GradebookView.tsx`:
+     * Line 1230: `const filtered = filterStudentsBySubject(data || [], selectedMapel);`
+   - `src/components/RaporView.tsx`:
+     * Line 948: `const eligibleMapels = activeMapels.filter(mapel => isStudentEligibleForSubject(student, mapel));`
+   - `src/components/AdminKelasView.tsx`:
+     * Lines 1653-1656: `selectedClassForWorkspace.students.filter(s => rosterMapelFilter !== 'ALL' && !isStudentEligibleForSubject(s, rosterMapelFilter) ? false : ...)`
+   - `src/components/AdminDataView.tsx`:
+     * Line 2403: `if (filterMapelSiswa !== 'ALL' && !isStudentEligibleForSubject(item, filterMapelSiswa)) return false;`
 
-    Creating an optimized production build ...
-  ✓ Compiled successfully in 3.0s
-    Running TypeScript ...
-  src/components/AdminDataView.tsx(150,20): error TS2304: Cannot find name 'getStorageCache'.
-  src/components/AdminDataView.tsx(203,9): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(452,9): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(470,9): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(519,17): error TS2304: Cannot find name 'setStorageCache'.
-  src/components/AdminDataView.tsx(2253,43): error TS2322: Type '(tabOverride?: string) => Promise<void>' is not assignable to type 'MouseEventHandler<HTMLButtonElement>'.
-    Types of parameters 'tabOverride' and 'event' are incompatible.
-      Type 'MouseEvent<HTMLButtonElement, MouseEvent>' is not assignable to type 'string'.
-  Failed to type check.
-  ```
-
----
+4. **Independent Execution Results**:
+   - `npx tsx tests/agama_pai_pak_isolation.test.ts`: 29 / 29 checks passed (exit code 0).
+   - `npx tsc --noEmit`: 0 TypeScript errors (exit code 0).
+   - `npm test`: 77 / 77 test suites passed cleanly (exit code 0).
+   - `npm run build`: Next.js 16.3.4 (Turbopack) build completed cleanly (exit code 0).
 
 ## 2. Logic Chain
 
-1. **Rule 4 of Forensic Verification Procedure**: "Build and run: Build the project from source and run its test suite. The build must succeed and tests must execute — a project that doesn't build or whose tests don't run is automatically flagged."
-2. Observation 1.3 demonstrates that `npx tsc --noEmit` and `npm run build` exit with fatal errors on `src/components/AdminDataView.tsx`.
-3. In `src/components/AdminDataView.tsx` line 58, commit `186eafd` added `export { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';`. In ECMAScript/TypeScript module resolution, an `export ... from ...` statement does not bind the exported identifiers in the local file scope. Lines 150, 203, 452, 470, and 519 attempt to invoke `getStorageCache` and `setStorageCache` as bare identifiers, triggering five TS2304 compiler errors.
-4. In `src/components/AdminDataView.tsx` lines 139 and 2253, commit `2e76273` added an optional parameter `tabOverride?: string` to `loadData`. Line 2253 binds `<button type="button" onClick={loadData} ...>`. React's button `onClick` supplies a `MouseEvent<HTMLButtonElement>` as argument 0, which is incompatible with `string`, triggering TS2322.
-5. Because TypeScript compilation fails during Next.js build (`next build`), production deployment and execution of the application are blocked.
-6. Under the Victory Audit profile: "If your independent execution produces different results than the team claimed → VICTORY REJECTED." Therefore, completion cannot be confirmed until these compilation errors are remediated.
-
----
+1. Requirements R1 specifies that in a single class, student rosters for PAI must strictly contain only students with religion Islam, and PAK must strictly contain only students with religion Kristen/Katolik across presensi, jurnal, penilaian, and student lists.
+2. Observation 2 and 3 show that `filterStudentsBySubject` and `isStudentEligibleForSubject` are uniformly deployed across `GuruJurnal.tsx` (presensi & teaching journals), `RekapSiswaView.tsx` (attendance recaps), `GradebookView.tsx` (assessments), `RaporView.tsx` (report cards), and `AdminKelasView.tsx` / `AdminDataView.tsx` (student rosters).
+3. Observation 1 shows an adversarial review cycle in git commits where edge cases (such as fallback attendance bleed, polymorphic string evaluation, word boundary false positives, and CSV aliases) were surfaced and repaired.
+4. Requirement R2 specifies preservation of general subjects without regression. Observation 2 demonstrates that for any subject outside PAI and PAK, `isStudentEligibleForSubject` returns `true` and `filterStudentsBySubject` returns the entire class without modification.
+5. Independent test execution (Observation 4) validates that all 29 targeted assertions pass, all 77 repository test suites pass without regression, the TypeScript compiler passes without errors, and Next.js builds successfully.
+6. Therefore, the implementation is genuine, non-facaded, functionally complete, and satisfies all acceptance criteria.
 
 ## 3. Caveats
 
-- **No Caveats on Root Cause**: The errors are deterministic and reproducible on any clean build of commit `2e76273`.
-- The business logic itself (CSV parsing, template schema matching, idempotent upsert, and display rendering) is correctly written and passed all 58 test suites in tsx execution mode (since tsx bypasses strict type-checking on transpile).
-- The auditor does not fix implementation code, preserving independent auditor boundaries.
-
----
+- Unverified aspects: The SQL migration file `supabase/migrations/20261109_add_agama_to_data_siswa.sql` has been created and verified locally, but applying it to the live hosted PostgreSQL database requires the database administrator to execute the migration or notify PostgREST on the production Supabase cloud instance.
+- Minor Robustness Risk: If a student's `agama` column is `NULL` or empty, that student will be excluded from PAI and PAK classes until their religious status is set in master data. They remain included in all general subjects.
 
 ## 4. Conclusion
 
-**Verdict: VICTORY REJECTED**
-
-The completion claim is rejected due to 6 TypeScript compilation errors in `src/components/AdminDataView.tsx` preventing `npx tsc --noEmit` and `npm run build` from succeeding.
-
-### Concrete Remediation Steps for Implementation Swarm:
-1. In `src/components/AdminDataView.tsx` line 58:
-   Replace:
-   ```ts
-   export { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
-   ```
-   With:
-   ```ts
-   import { getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
-   export { getStorageCache, setStorageCache };
-   ```
-2. In `src/components/AdminDataView.tsx` line 2253:
-   Replace:
-   ```tsx
-   <button type="button" onClick={loadData} disabled={loading} ...>
-   ```
-   With:
-   ```tsx
-   <button type="button" onClick={() => { void loadData(); }} disabled={loading} ...>
-   ```
-3. Run `npx tsc --noEmit` and `npm run build` to confirm 0 errors and successful Next.js static build generation.
-4. Run `npm test` to verify all 58 test suites continue to pass.
-5. Commit and push changes to `main` following the project git workflow rule.
-
----
+**Verdict: VICTORY CONFIRMED.**
+The feature is authentically implemented, free from hardcoded shortcuts or facades, rigorously stress-tested across edge cases, and leaves zero regressions in existing system features.
 
 ## 5. Verification Method
 
-To verify the failure and subsequent remediation:
-1. Execute `npx tsc --noEmit` in repository root. Expected: 0 errors (currently exits with code 1 and 6 errors).
-2. Execute `npm run build` in repository root. Expected: `✓ Compiled successfully`, `✓ Generating static pages (13/13)` (currently exits with code 1 at `Failed to type check`).
-3. Execute `npm test` in repository root. Expected: All 58 suites passing (100%).
+To independently verify this result:
+1. Run the isolation test suite:
+   ```bash
+   npx tsx tests/agama_pai_pak_isolation.test.ts
+   ```
+   *Expected*: Total Checks: 29 | Passed: 29 | Failed: 0 (exit code 0).
+2. Run the repository-wide regression test suite:
+   ```bash
+   npm test
+   ```
+   *Expected*: All 77 test suites pass cleanly (exit code 0).
+3. Run the TypeScript typecheck:
+   ```bash
+   npx tsc --noEmit
+   ```
+   *Expected*: 0 compilation errors (exit code 0).
+4. Run the production build:
+   ```bash
+   npm run build
+   ```
+   *Expected*: Next.js build succeeds with static pages generated (exit code 0).
+5. Invalidation conditions:
+   - Any check failing in `tests/agama_pai_pak_isolation.test.ts`.
+   - General subjects failing to load all students in a class.
+   - PAI loading non-Islamic students or PAK loading non-Christian students.
