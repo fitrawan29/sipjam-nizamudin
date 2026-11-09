@@ -52,15 +52,10 @@ assert(
 );
 
 assert(
-  homeGuruCode.includes('Cetak Jurnal KBM') &&
-  homeGuruCode.includes("setView('view-guru-rekap-jurnal')"),
-  'HomeViewGuru renders dedicated Quick Access Card for "Cetak Jurnal KBM"'
-);
-
-assert(
-  homeGuruCode.includes('Cetak Jurnal') &&
-  homeGuruCode.includes("url.searchParams.set('tab', 'rekap-pribadi')"),
-  'HomeViewGuru Schedule Widget provides direct "Cetak Jurnal" quick action'
+  !homeGuruCode.includes('Cetak Jurnal KBM') &&
+  !homeGuruCode.includes('Cetak Jurnal') &&
+  !homeGuruCode.includes('Cetak Dokumen'),
+  'HomeViewGuru (Dashboard Guru) strictly does NOT contain Cetak Dokumen or Cetak Jurnal'
 );
 
 assert(

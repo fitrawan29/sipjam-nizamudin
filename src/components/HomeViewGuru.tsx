@@ -792,43 +792,6 @@ export default function HomeViewGuru({
             </div>
           )}
 
-          {/* Kartu Akses Cepat Cetak Jurnal KBM untuk Guru */}
-          {!isBk && (
-            <div className="glass-card clay-card-blue p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-blue-800/60 shadow-[6px_6px_16px_rgba(180,200,230,0.35)]">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
-                    <i className="fa-solid fa-print"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-blue-950 dark:text-blue-200">
-                      Cetak Jurnal KBM
-                    </h3>
-                    <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-0.5">
-                      Rekapitulasi dan cetak dokumen jurnal pembelajaran harian sesuai mata pelajaran dan kelas yang ditugaskan kepada Anda.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof window !== 'undefined') {
-                      const url = new URL(window.location.href);
-                      url.searchParams.set('view', 'view-guru-jurnal');
-                      url.searchParams.set('tab', 'rekap-pribadi');
-                      window.history.pushState(null, '', url.toString());
-                    }
-                    setView('view-guru-rekap-jurnal');
-                  }}
-                  className="clay-btn btn-click px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition shrink-0 bg-blue-600 hover:bg-blue-700 text-white border border-blue-400/50 cursor-pointer"
-                >
-                  <i className="fa-solid fa-print"></i>
-                  <span>Cetak Jurnal KBM</span>
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Kartu Akses Cepat Layanan BK untuk Guru BK */}
           {isBk && (
             <div className="glass-card clay-card-rose p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-rose-800/60 shadow-[6px_6px_16px_rgba(255,180,190,0.35)]">
@@ -1272,30 +1235,13 @@ export default function HomeViewGuru({
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (typeof window !== 'undefined') {
-                          const url = new URL(window.location.href);
-                          url.searchParams.set('view', 'view-guru-jurnal');
-                          url.searchParams.set('tab', 'rekap-pribadi');
-                          window.history.pushState(null, '', url.toString());
-                        }
-                        setView('view-guru-rekap-jurnal');
-                      }}
-                      className="font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 text-[10px]"
-                    >
-                      <i className="fa-solid fa-print text-[9px]"></i> Cetak Jurnal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setView('view-guru-jurnal')}
-                      className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-[10px]"
-                    >
-                      Buka Jurnal <i className="fa-solid fa-arrow-right text-[8px]"></i>
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setView('view-guru-jurnal')}
+                    className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-[10px] shrink-0"
+                  >
+                    Buka Jurnal <i className="fa-solid fa-arrow-right text-[8px]"></i>
+                  </button>
                 </div>
               </div>
             )}
