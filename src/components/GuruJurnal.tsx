@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -341,6 +341,27 @@ export default function GuruJurnal({
 
         // Admin role: full access to all mapel and kelas
         if (user.role === 'Admin') {
+          let siswaQuery = supabase
+            .from('data_siswa')
+            .select('kelas');
+          if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: siswaData } = await siswaQuery;
+
+          let waliQuery = supabase
+            .from('wali_kelas')
+            .select('kelas');
+          if (user?.sekolah_id) waliQuery = waliQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: waliData } = await waliQuery;
+
+          const uniqueKelas = [...new Set([
+            ...(siswaData || []).map(s => s.kelas),
+            ...(waliData || []).map(w => w.kelas)
+          ].filter(Boolean))].sort() as string[];
+
+          if (uniqueKelas.length > 0) {
+            setKelasList(uniqueKelas);
+          }
+
           let mapelQuery = supabase
             .from('data_mapel')
             .select('*')
@@ -348,28 +369,42 @@ export default function GuruJurnal({
           if (user?.sekolah_id) mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
           const { data: mapelData } = await mapelQuery;
           if (mapelData) {
-            const formatted = mapelData.map(m => ({
-              id: m.id,
-              nama_mata_pelajaran: m.nama_mata_pelajaran,
-              nama_mapel: m.nama_mata_pelajaran,
-              kelas: m.kategori || m.nama_mata_pelajaran.split('_')[0]
-            }));
+            const formatted = mapelData.map(m => {
+              const canonicalKelas = resolveCanonicalClass(
+                m.kategori || (m.nama_mata_pelajaran.includes('_') ? m.nama_mata_pelajaran.split('_')[0] : ''),
+                m.nama_mata_pelajaran,
+                uniqueKelas
+              );
+              return {
+                id: m.id,
+                nama_mata_pelajaran: m.nama_mata_pelajaran,
+                nama_mapel: m.nama_mata_pelajaran,
+                kelas: canonicalKelas
+              };
+            });
             setMapelList(formatted);
             setAssignments(formatted);
-          }
-
-          let siswaQuery = supabase
-            .from('data_siswa')
-            .select('kelas');
-          if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
-          const { data: siswaData } = await siswaQuery;
-          if (siswaData) {
-            const uniqueKelas = [...new Set(siswaData.map(s => s.kelas).filter(Boolean))].sort();
-            setKelasList(uniqueKelas as string[]);
           }
           setIsFetchingAssignments(false);
           return;
         }
+
+        let siswaQuery = supabase
+          .from('data_siswa')
+          .select('kelas');
+        if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: siswaData } = await siswaQuery;
+
+        let waliQuery = supabase
+          .from('wali_kelas')
+          .select('kelas');
+        if (user?.sekolah_id) waliQuery = waliQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: waliData } = await waliQuery;
+
+        const schoolClasses = [...new Set([
+          ...(siswaData || []).map(s => s.kelas),
+          ...(waliData || []).map(w => w.kelas)
+        ].filter(Boolean))].sort() as string[];
 
         // Teacher role: connect data_mapel, data_guru, guru_mapel, and jadwal_pelajaran
         const cleanNama = (user.nama || '').split(',')[0].trim();
@@ -417,7 +452,8 @@ export default function GuruJurnal({
           jdwlRes.data || [],
           mapelMasterRes.data || [],
           queryRes.data || [],
-          matchedGuruRow
+          matchedGuruRow,
+          schoolClasses
         );
 
         if (connectedAll.length > 0) {
@@ -467,7 +503,7 @@ export default function GuruJurnal({
     // Set default date
     setTanggal(getWitaDateStr());
 
-  }, [user?.username, user?.nama, user?.role]);
+  }, [user?.username, user?.nama, user?.role, user?.sekolah_id]);
 
   // R4: Get GPS once on mount for journal photo watermark
   useEffect(() => {
@@ -1196,7 +1232,8 @@ export default function GuruJurnal({
       jdwlRes.data || [],
       mapelMasterRes.data || [],
       gmRes.data || [],
-      selected
+      selected,
+      kelasList
     );
     const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
     const mapels = filterGuruMapelByHari(connectedInval, activeHari);
@@ -1231,9 +1268,14 @@ export default function GuruJurnal({
       if (matched && matched.kelas) {
         setKelas(matched.kelas);
       } else {
-        const prefix = val.split('_')[0];
-        if (prefix && kelasList.includes(prefix)) {
-          setKelas(prefix);
+        const canonical = resolveCanonicalClass('', val, kelasList);
+        if (canonical && kelasList.includes(canonical)) {
+          setKelas(canonical);
+        } else {
+          const prefix = val.split('_')[0];
+          if (prefix && kelasList.includes(prefix)) {
+            setKelas(prefix);
+          }
         }
       }
     }
@@ -1584,7 +1626,7 @@ export default function GuruJurnal({
                             className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                           >
                             <option value="" disabled>Pilih Kelas...</option>
-                            {kelasList.map(k => (
+                            {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => (
                               <option key={k} value={k}>{k}</option>
                             ))}
                           </select>

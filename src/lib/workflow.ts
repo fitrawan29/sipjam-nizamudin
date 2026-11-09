@@ -389,7 +389,33 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   if (!jKelas || !jdKelas) return false;
 
   const normKelas = (k: string) => k.replace(/^kelas\s+/i, '').replace(/[\s\-_.]/g, '');
-  if (jKelas !== jdKelas && normKelas(jKelas) !== normKelas(jdKelas)) return false;
+  const nJKelas = normKelas(jKelas);
+  const nJdKelas = normKelas(jdKelas);
+
+  let classMatches = (jKelas === jdKelas || nJKelas === nJdKelas);
+
+  if (!classMatches) {
+    // Check parallel class alignment between broad grade (e.g. "XII Merdeka") and parallel class ("XII Merdeka C")
+    const getSuffixLetter = (s: string) =>
+      s.match(/-\s*(?:XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])[\s._-]*([A-Za-z0-9])\s*$/i)?.[1]?.toLowerCase();
+    const getParallelLetter = (k: string) =>
+      k.match(/[\s._-]+([A-Za-z0-9])$/i)?.[1]?.toLowerCase();
+
+    const jLetter = getParallelLetter(jKelas);
+    const jdLetter = getParallelLetter(jdKelas) || getSuffixLetter(jdMapel) || getSuffixLetter(jMapel);
+
+    if (jLetter && jdLetter && jLetter === jdLetter) {
+      const getGrade = (k: string) =>
+        k.match(/^(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])\b/i)?.[1]?.toLowerCase();
+      const jGrade = getGrade(jKelas);
+      const jdGrade = getGrade(jdKelas);
+      if (jGrade && jdGrade && jGrade === jdGrade) {
+        classMatches = true;
+      }
+    }
+  }
+
+  if (!classMatches) return false;
 
   // Mapel tidak boleh kosong agar tidak terjadi false-positive match terhadap string kosong
   if (!jMapel || !jdMapel) return false;
@@ -422,6 +448,66 @@ export interface ConnectedGuruMapelItem {
 }
 
 /**
+ * Resolves the canonical class name for a subject and schedule/assignment entry.
+ * Accurately detects and maps parallel class formats across Indonesian schools:
+ * - Parallel suffix format: "B. Indonesia - XII C" -> "XII Merdeka C" (or "XII C")
+ * - Parallel prefix format: "X Merdeka A_Matematika" -> "X Merdeka A"
+ * - Standard grade format: "X Merdeka_MTK" -> "X Merdeka" (e.g. SMA Nizamudin)
+ * If validClasses is provided (from school data_siswa / data_kelas), strictly matches against authentic school classes.
+ */
+export function resolveCanonicalClass(
+  rawKelas?: string | null,
+  mapelName?: string | null,
+  validClasses: string[] = []
+): string {
+  const m = (mapelName || '').trim();
+  const k = (rawKelas || '').trim();
+
+  // 1. If validClasses is provided and k is already an exact valid parallel class (not just generic grade)
+  if (validClasses.length > 0 && validClasses.includes(k) && !/^(X|XI|XII)\s+Merdeka$/i.test(k)) {
+    return k;
+  }
+
+  // 2. Check suffix format: e.g. 'B. Indonesia - XII C', 'IPS Sosiologi - X A', 'PJOK - XI D'
+  const suffixMatch = m.match(/-\s*(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])[\s._-]*([A-Za-z0-9])\s*$/i);
+  if (suffixMatch) {
+    const tingkat = suffixMatch[1].toUpperCase();
+    const parallel = suffixMatch[2].toUpperCase();
+
+    // Match against validClasses if provided
+    if (validClasses.length > 0) {
+      const found = validClasses.find(vc => {
+        const vcTrim = vc.trim();
+        const vcTingkat = vcTrim.match(/^(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])\b/i)?.[1]?.toUpperCase();
+        const vcParallel = vcTrim.match(/[\s._-]+([A-Za-z0-9])$/i)?.[1]?.toUpperCase();
+        return vcTingkat === tingkat && vcParallel === parallel;
+      });
+      if (found) return found;
+    }
+
+    // Fallback if validClasses is not provided: check if rawKelas has 'Merdeka'
+    if (/merdeka/i.test(k)) {
+      return `${tingkat} Merdeka ${parallel}`;
+    }
+    return `${tingkat} ${parallel}`;
+  }
+
+  // 3. Check prefix format: e.g. 'X Merdeka A_Matematika' or 'X Merdeka_MTK'
+  if (m.includes('_')) {
+    const prefix = m.split('_')[0].trim();
+    if (validClasses.length > 0 && validClasses.includes(prefix)) {
+      return prefix;
+    }
+    if (prefix && (!k || k === prefix)) return prefix;
+  }
+
+  // 4. Default to rawKelas if present
+  if (k) return k;
+
+  return '';
+}
+
+/**
  * Menghubungkan data_mapel, data_guru, guru_mapel, dan jadwal_pelajaran
  * sehingga setiap guru mendapatkan daftar mata pelajaran & kelas yang terkoneksi
  * lengkap dengan daftar hari jadwal mengajarnya (hariList).
@@ -438,7 +524,8 @@ export function connectGuruMapelWithJadwal(
   jadwalRows: any[] = [],
   dataMapelRows: any[] = [],
   guruMapelRows: any[] = [],
-  dataGuruRow?: any
+  dataGuruRow?: any,
+  schoolClasses: string[] = []
 ): ConnectedGuruMapelItem[] {
   const normalizeName = (s: string) => (s || '').split(',')[0].toLowerCase().trim().replace(/z/g, 's');
 
@@ -511,7 +598,8 @@ export function connectGuruMapelWithJadwal(
     );
 
     const finalNama = dm?.nama_mata_pelajaran || dm?.nama_mapel || gm?.nama_mapel || canonicalCandidate;
-    const finalKelas = kls || dm?.kategori || dm?.kelompok || gm?.kelas || (finalNama.includes('_') ? finalNama.split('_')[0].trim() : '');
+    const candidateKelas = kls || dm?.kategori || dm?.kelompok || gm?.kelas || (finalNama.includes('_') ? finalNama.split('_')[0].trim() : '');
+    const finalKelas = resolveCanonicalClass(candidateKelas, finalNama, schoolClasses);
     const finalId = String(dm?.id || gm?.mapel_id || gm?.id || finalNama);
     const finalSingkat = gm?.mapel_singkat || shortM || finalNama;
 

@@ -820,7 +820,7 @@ export default function GuruPresensi({
         setUploadProgress({
           active: true,
           percent: 100,
-          status: 'Dokumen berhasil tersimpan di Google Drive!'
+          status: isSelfie ? 'Foto berhasil tersimpan di Google Drive!' : 'Dokumen berhasil tersimpan di Google Drive!'
         });
         await new Promise((resolve) => setTimeout(resolve, 600));
 
@@ -840,7 +840,11 @@ export default function GuruPresensi({
           .from('presensi_guru')
           .update({ link_bukti: 'gagal_upload' })
           .eq('id', presensiId);
-        showToast('Upload Foto Tertunda', isSelfie ? 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.' : 'Data presensi telah tersimpan di cloud Supabase, namun dokumen bukti gagal diunggah ke Google Drive.', 'warning');
+        if (isSelfie) {
+          showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
+        } else {
+          showToast('Upload Dokumen Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun dokumen bukti gagal diunggah ke Google Drive.', 'warning');
+        }
       } finally {
         setUploadProgress({ active: false, percent: 0, status: '' });
       }
@@ -1255,7 +1259,7 @@ export default function GuruPresensi({
                       <input 
                         ref={fileInputRef}
                         type="file" 
-                        accept="image/*,.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+                        accept="image/*,.pdf,.doc,.docx,.odt,.rtf,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text,application/rtf,text/plain" 
                         onChange={async (e) => {
                           const selected = e.target.files ? e.target.files[0] : null;
                           if (!selected) {
@@ -1456,7 +1460,7 @@ export default function GuruPresensi({
                       disabled={loading || isPulangLocked || dailyState?.isLibur} 
                       className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
-                        {loading ? (uploadProgress.active ? `Mengunggah Dokumen (${uploadProgress.percent}%)...` : 'Menyimpan & Mengunggah File...') : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
+                        {loading ? (uploadProgress.active ? (isSelfieRequired ? `Mengunggah Foto (${uploadProgress.percent}%)...` : `Mengunggah Dokumen (${uploadProgress.percent}%)...`) : 'Menyimpan & Mengunggah File...') : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
                     </button>
                 </div>
             </form>

@@ -87,6 +87,15 @@ const phpFile = { name: 'webshell.php', type: 'application/x-httpd-php', size: 1
 const svgFile = { name: 'xss.svg', type: 'image/svg+xml', size: 1024 } as File;
 const spoofedZip = { name: 'exploit.zip', type: 'image/jpeg', size: 2048 } as File;
 const cameraBlob = { name: 'camera_capture', type: 'image/jpeg', size: 204800 } as File;
+const embeddedPhpFile = { name: 'surat.php.jpg', type: 'image/jpeg', size: 2048 } as File;
+const embeddedExeFile = { name: 'dokumen.exe.pdf', type: 'application/pdf', size: 4096 } as File;
+const embeddedJsFile = { name: 'surat.js.docx', type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', size: 2048 } as File;
+const trailingDotExe = { name: 'trojan.exe.', type: 'application/octet-stream', size: 2048 } as File;
+const trailingDotPdf = { name: 'surat_sah.pdf.', type: 'application/pdf', size: 4096 } as File;
+const odtDoc = { name: 'surat_izin.odt', type: 'application/vnd.oasis.opendocument.text', size: 8192 } as File;
+const rtfDoc = { name: 'surat_keterangan.rtf', type: 'application/rtf', size: 4096 } as File;
+const txtDoc = { name: 'keterangan.txt', type: 'text/plain', size: 1024 } as File;
+
 assert.strictEqual(validatePresensiFile(emptyFile).valid, false, '1.4a: Empty 0-byte file must be rejected');
 assert.ok(validatePresensiFile(emptyFile).error?.includes('kosong'), '1.4b: Clear empty file error message');
 assert.strictEqual(validatePresensiFile(oversizedFile).valid, false, '1.4c: File > 25MB must be rejected');
@@ -101,7 +110,15 @@ assert.strictEqual(validatePresensiFile(phpFile).valid, false, '1.4k: PHP webshe
 assert.strictEqual(validatePresensiFile(svgFile).valid, false, '1.4l: SVG file must be rejected');
 assert.strictEqual(validatePresensiFile(spoofedZip).valid, false, '1.4m: Spoofed zip with image/jpeg must be rejected');
 assert.strictEqual(validatePresensiFile(cameraBlob).valid, true, '1.4n: Extensionless camera blob with image/jpeg must pass');
-console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang (0-byte, >25MB, exe, js, sh, ps1, php, svg, spoofed zip) tertolak secara presisi\n');
+assert.strictEqual(validatePresensiFile(embeddedPhpFile).valid, false, '1.4o: Embedded executable .php.jpg must be rejected');
+assert.strictEqual(validatePresensiFile(embeddedExeFile).valid, false, '1.4p: Embedded executable .exe.pdf must be rejected');
+assert.strictEqual(validatePresensiFile(embeddedJsFile).valid, false, '1.4q: Embedded executable .js.docx must be rejected');
+assert.strictEqual(validatePresensiFile(trailingDotExe).valid, false, '1.4r: Trailing dot trojan.exe. must be rejected');
+assert.strictEqual(validatePresensiFile(trailingDotPdf).valid, true, '1.4s: Trailing dot surat_sah.pdf. must pass');
+assert.strictEqual(validatePresensiFile(odtDoc).valid, true, '1.4t: Valid ODT document must pass');
+assert.strictEqual(validatePresensiFile(rtfDoc).valid, true, '1.4u: Valid RTF document must pass');
+assert.strictEqual(validatePresensiFile(txtDoc).valid, true, '1.4v: Valid TXT document must pass');
+console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang (0-byte, >25MB, exe, js, sh, ps1, php, svg, spoofed zip, double-ext) tertolak secara presisi\n');
 
 // --- Suite 2: Penempatan File Upload di Folder SIPJAM Sesuai Nama Guru (R3) ---
 console.log('--- Suite 2: Penempatan Direktori Google Drive (R3) ---');
@@ -120,6 +137,17 @@ const guruGelar = '  Dra. Hj. Nur Aini, M.Pd.  ';
 const pathGelar = buildDriveFolderPath('Presensi_Guru', guruGelar);
 assert.strictEqual(pathGelar.guruFolder, 'Dra. Hj. Nur Aini, M.Pd.', '2.2a: Normalized teacher name trims whitespace');
 assert.strictEqual(pathGelar.folderPath, 'SIPJAM/Presensi_Guru/Dra. Hj. Nur Aini, M.Pd.', '2.2b: Path formats cleanly');
+
+// Path traversal attack in teacher name: ../../Fitra Suryazana Mamonto
+const guruTraversal = '../../Fitra Suryazana Mamonto';
+const pathTraversal = buildDriveFolderPath('Presensi_Guru', guruTraversal);
+assert.strictEqual(pathTraversal.guruFolder, 'Fitra Suryazana Mamonto', '2.2c: Path traversal dots are stripped from teacher folder name');
+const emptyTraversal = '..';
+assert.strictEqual(normalizeDriveTeacherFolder(emptyTraversal), 'Guru_Umum', '2.2d: Bare traversal dots safely fallback to Guru_Umum');
+
+// Feature folder aliases: izin and sakit normalize to Presensi_Guru
+assert.strictEqual(normalizeDriveFeatureFolder('izin'), 'Presensi_Guru', '2.2e: izin feature folder normalizes to Presensi_Guru');
+assert.strictEqual(normalizeDriveFeatureFolder('sakit'), 'Presensi_Guru', '2.2f: sakit feature folder normalizes to Presensi_Guru');
 console.log('  ✔ [PASS] 2.2: Nama guru dengan gelar dan spasi dinormalisasi secara aman');
 
 // 2.3 Presensi Dinas Luar terpisah di Presensi_DinasLuar/<Nama Guru>
@@ -211,6 +239,6 @@ assert.ok(
 console.log('  ✔ [PASS] 3.8: Pemulihan draft dokumen terisolasi ketat pada mode surat izin/sakit');
 
 console.log('\n========================================================================');
-console.log('TOTAL CHECKS: 50 | PASSED: 50 | FAILED: 0');
+console.log('TOTAL CHECKS: 67 | PASSED: 67 | FAILED: 0');
 console.log('========================================================================\n');
 console.log('🎉 ALL PRESENSI DOCUMENT UPLOAD & FOLDER ROUTING TESTS PASSED 100% PERFECTLY!');

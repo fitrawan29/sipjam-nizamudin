@@ -41,7 +41,7 @@ async function getTargetEmail(): Promise<string | undefined> {
 
 export function detectMimeType(file: File): string {
   const rawType = (file.type || '').trim().toLowerCase().split(';')[0];
-  const name = (file.name || '').trim().toLowerCase();
+  const name = (file.name || '').trim().replace(/\.+$/, '').toLowerCase();
 
   // If name has known extension, prioritize matching MIME to prevent spoofed/generic MIME
   if (name.endsWith('.pdf')) return 'application/pdf';
@@ -90,13 +90,13 @@ export function validatePresensiFile(file: File | null | undefined): PresensiFil
     return { valid: false, mimeType: detectMimeType(file), error: 'Ukuran berkas melebihi batas maksimal 25 MB.' };
   }
 
-  const name = (file.name || '').trim().toLowerCase();
+  const name = (file.name || '').trim().replace(/\.+$/, '').toLowerCase();
   const FORBIDDEN_EXTENSIONS = [
     '.exe', '.bat', '.cmd', '.sh', '.vbs', '.js', '.apk', '.msi',
     '.scr', '.jar', '.com', '.pif', '.ps1', '.py', '.php', '.phtml',
     '.html', '.htm', '.hta', '.vbe', '.wsf', '.wsh', '.reg', '.svg'
   ];
-  if (FORBIDDEN_EXTENSIONS.some(ext => name.endsWith(ext))) {
+  if (FORBIDDEN_EXTENSIONS.some(ext => name.endsWith(ext) || name.includes(`${ext}.`))) {
     return {
       valid: false,
       mimeType: detectMimeType(file),
@@ -220,7 +220,7 @@ export function normalizeDriveFeatureFolder(rawFitur: string): string {
   const clean = (rawFitur || 'Umum').trim();
   if (!clean) return 'Umum';
   const lower = clean.toLowerCase().replace(/[\s_-]+/g, '_');
-  if (lower === 'presensi' || lower === 'presensi_guru') return 'Presensi_Guru';
+  if (lower === 'presensi' || lower === 'presensi_guru' || lower === 'izin' || lower === 'sakit') return 'Presensi_Guru';
   if (lower === 'presensi_dinasluar' || lower === 'presensi_dinas_luar' || lower === 'dinas_luar') return 'Presensi_DinasLuar';
   if (lower === 'jurnal_kbm' || lower === 'jurnal') return 'Jurnal_KBM';
   if (lower === 'jurnal_kegiatan') return 'Jurnal_Kegiatan';
@@ -230,7 +230,12 @@ export function normalizeDriveFeatureFolder(rawFitur: string): string {
 }
 
 export function normalizeDriveTeacherFolder(rawNama: string): string {
-  const clean = (rawNama || 'Guru_Umum').replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+  let clean = (rawNama || 'Guru_Umum')
+    .replace(/(?:^|[\\/])\.\.(?=[\\/]|$)/g, '')
+    .replace(/[\\/:*?"<>|]/g, ' ')
+    .replace(/(?:^|\s)\.+(?=\s|$)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return clean || 'Guru_Umum';
 }
 
