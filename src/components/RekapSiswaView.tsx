@@ -1147,12 +1147,12 @@ export default function RekapSiswaView({
                                   {waliGateLogs[siswa.nisn || siswa.id]?.datang ? (
                                     <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
                                       <i className="fa-solid fa-circle-check text-[8px]"></i>
-                                      Piket: Hadir ({formatPresensiTime(waliGateLogs[siswa.nisn || siswa.id].datang.jam) || 'Masuk'})
+                                      Presensi Datang: Hadir ({formatPresensiTime(waliGateLogs[siswa.nisn || siswa.id].datang.jam) || 'Masuk'})
                                     </div>
                                   ) : (
                                     <div className="text-[9px] text-amber-600 dark:text-amber-400 font-semibold mt-0.5 flex items-center gap-1">
                                       <i className="fa-solid fa-clock text-[8px]"></i>
-                                      Piket: Belum Presensi
+                                      Presensi Datang: Belum Presensi
                                     </div>
                                   )}
                                   {currentRec.logs && currentRec.logs.length > 0 && (

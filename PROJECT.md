@@ -5,7 +5,7 @@
 - **Design Philosophy**: `/ponytail` (solusi paling ringkas, tepat guna tanpa over-engineering, 0 dependensi baru, 100% kompatibel dan preservasi fitur eksisting).
 - **Module Boundaries & Defense-in-Depth Architecture**:
   1. **Role BK Definition & Navigation Isolation (`src/types/`, `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`)**:
-     - Role Type: Add `'bk' | 'guru_bk'` to `UserRole` (`src/types/user.ts`) and `RoleUser` (`src/types/database.ts`). Canonical DB role is `'bk'`.
+     - Role Type: Added `'bk' | 'guru_bk'` to `UserRole` (`src/types/user.ts`) and `"bk" | "guru_bk" | "Guru BK" | "BK"` to `RoleUser` (`src/types/database.ts`). Canonical DB role is `'bk'`.
      - Normalization: `normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling'`.
      - Menu Isolation (Miller's Law 5 items):
        1. `view-home` (Dashboard)
@@ -14,11 +14,11 @@
        4. `view-informasi` (Informasi Sekolah)
        5. `view-pengaturan-akun` (Pengaturan Akun)
      - Default landing view: `'view-home'`.
-     - AST Invariant: Verbatim preservation of `{/* AST preservation: data-tour={item.id} */}` in `AppScreen.tsx` and `ClaySidebar.tsx`.
+     - AST Invariant: Verbatim preservation of `{/* AST preservation: data-tour={item.id} */}` in `AppScreen.tsx` (line 1088) and `ClaySidebar.tsx` (line 238).
   2. **Access Control & RBAC Protection (`src/lib/navigation.ts`, `src/components/AppScreen.tsx`)**:
      - `evaluateTabRBAC()`: strictly limits `view-jurnal-bk` to role `bk`, `admin`, and `kepala_sekolah`.
      - Strictly blocks regular teachers (`guru`), wali kelas, piket, tata usaha, siswa, and dinas from accessing BK journals.
-     - Dual-layer defense: navigation handler SweetAlert2 warning + JSX view renderer "Akses Terblokir" screen if URL is tampered.
+     - Dual-layer defense: navigation handler SweetAlert2 warning + JSX route gate "Akses Terblokir" screen on direct URL tampering.
      - Restricts role BK from accessing classroom KBM journals (`view-guru-jurnal`), master data, and backups.
   3. **Fitur Jurnal Khusus BK (`src/components/BkJurnalView.tsx`, `supabase/migrations/`)**:
      - Complete decoupling from `jadwal_pelajaran`, `data_mapel`, and regular class timetables.
@@ -36,34 +36,36 @@
      - Mechanism 2: Admin creates new BK account via "+ Akun BK" modal requiring 4 mandatory fields: NIP, Nama Lengkap, Nomor HP, Email Aktif (default password `${nip}27`).
      - Auto-sync resilience: `teacherUserSync.ts` includes `'bk'`, `'guru_bk'`, `'Guru BK'` in query filter and preserves assigned role.
   5. **Verification & Automated Testing (`tests/`)**:
-     - Automated test suite in `tests/bk_role_and_jurnal_rbac_verification.test.ts` verifying all requirements and zero regression.
+     - Automated test suite `tests/bk_role_and_jurnal_rbac_verification.test.ts` (106 passed).
+     - Adversarial suite `tests/adversarial_bk_challenger.test.ts` (481 passed).
+     - Adversarial stress suite `tests/challenger_bk_2_stress_test.test.ts` (60 passed).
 
 ## Feature Inventory
 | # | Feature | Description | Milestone | Source | Status |
 |---|---------|-------------|-----------|--------|--------|
-| 1 | F1: Role BK Type & Session Normalization | Dukungan role `bk` pada `UserRole`, `RoleUser`, normalisasi role string (`bk`, `gurubk`, `bimbingankonseling`), dan identifikasi sesi login | M1 | R1 | PLANNED |
-| 2 | F2: Navigasi Menu Role BK (Miller's Law 5 Menu) | Menu navigasi khusus BK: Dashboard, Presensi BK, Jurnal BK, Informasi Sekolah, Pengaturan Akun, dengan default landing view `view-home` | M1 | R1 | PLANNED |
-| 3 | F3: Preservasi Invarian AST Data-Tour | Memastikan komentar `{/* AST preservation: data-tour={item.id} */}` tetap utuh di `AppScreen.tsx` dan `ClaySidebar.tsx` | M1 | R1, R3 | PLANNED |
-| 4 | F4: Kontrol Akses & Proteksi RBAC Jurnal BK | `evaluateTabRBAC` & proteksi JSX membatasi akses Jurnal BK HANYA untuk role BK, Admin, dan Kepala Sekolah; menolak guru reguler, wali kelas, piket, TU, siswa, dinas | M1 | R1 | PLANNED |
-| 5 | F5: Isolasi Navigasi Role BK dari Menu Terlarang | Role BK ditolak dari mengakses jurnal KBM kelas (`view-guru-jurnal`), master data admin, pusat verifikasi, dan backup | M1 | R1 | PLANNED |
-| 6 | F6: Skema Database & Penyimpanan Jurnal BK | Tabel `public.jurnal_bk` (atau client-resilient storage) dengan field standar bimbingan konseling dan RLS terproteksi | M1 | R2 | PLANNED |
-| 7 | F7: Independensi Jurnal BK (Tidak Terikat Jadwal/Kelas) | Jurnal BK beroperasi mandiri tanpa dependensi pada `jadwal_pelajaran`, jam mengajar, atau rombel kelas tertentu | M1 | R2 | PLANNED |
-| 8 | F8: Universal Student Selector Bebas Rombel | Guru BK dapat memilih siswa manapun dari seluruh kelas melalui pencarian nama/NISN dan filter kelas | M1 | R2 | PLANNED |
-| 9 | F9: Fungsionalitas CRUD Jurnal BK & Auto-Save Draft | Implementasi Create, Read, Update, Delete (SweetAlert2) dan penyimpanan draft otomatis di `BkJurnalView.tsx` | M1 | R2 | PLANNED |
-| 10 | F10: Pencarian & Filter Jurnal BK | Tampilan riwayat jurnal BK dapat difilter berdasarkan tanggal/rentang tanggal, nama siswa, status kasus, dan bidang bimbingan | M1 | R2 | PLANNED |
-| 11 | F11: Cetak Dokumen Resmi Jurnal BK | Format cetak resmi jurnal konseling dengan kop sekolah (`PrintHeader`) dan tanda tangan Guru BK & Kepala Sekolah | M1 | R2 | PLANNED |
-| 12 | F12: Akses Supervisi Admin & Read-Only Kepala Sekolah | Admin dapat memantau/mengelola seluruh jurnal BK; Kepala Sekolah memiliki akses monitoring mode read-only dengan banner `data-testid="readonly-notice"` | M1 | R1 | PLANNED |
-| 13 | F13: Mekanisme 1: Tunjuk BK dari Data Guru | Admin dapat menunjuk Guru BK dari data guru yang ada via tombol aksi & konfirmasi di `AdminPenggunaView.tsx` | M1 | R1 | PLANNED |
-| 14 | F14: Mekanisme 2: Form Akun Baru BK (4 Field Wajib) | Admin dapat membuat akun baru BK dengan modal wajib 4 field: NIP, Nama Lengkap, Nomor HP, Email Aktif | M1 | R1 | PLANNED |
-| 15 | F15: Sinkronisasi Akun Guru/BK Resilien | `teacherUserSync.ts` memperhitungkan role `bk` agar penugasan role BK tidak ter-reset | M1 | R1 | PLANNED |
-| 16 | F16: Preservasi Fitur Eksisting & Zero Regression | Jurnal KBM guru mapel, jadwal pelajaran, presensi/piket, checkout gate, dan alur role lain tetap 100% normal tanpa regresi | M1 | R3 | PLANNED |
-| 17 | F17: Automated Verification Test Suite | Test suite komprehensif di `tests/bk_role_and_jurnal_rbac_verification.test.ts` memverifikasi seluruh acceptance criteria | M1 | R1, R2, R3 | PLANNED |
-| 18 | F18: Mandatory Git Delivery ke `main` | Eksekusi `git status`, `git add .`, `git commit -m "..."`, dan `git push origin main` sesuai `GEMINI.md` | M1 | GEMINI.md | PLANNED |
+| 1 | F1: Role BK Type & Session Normalization | Dukungan role `bk` pada `UserRole`, `RoleUser`, normalisasi role string (`bk`, `gurubk`, `bimbingankonseling`), dan identifikasi sesi login | M1 | R1 | DONE |
+| 2 | F2: Navigasi Menu Role BK (Miller's Law 5 Menu) | Menu navigasi khusus BK: Dashboard, Presensi BK, Jurnal BK, Informasi Sekolah, Pengaturan Akun, dengan default landing view `view-home` | M1 | R1 | DONE |
+| 3 | F3: Preservasi Invarian AST Data-Tour | Memastikan komentar `{/* AST preservation: data-tour={item.id} */}` tetap utuh di `AppScreen.tsx` dan `ClaySidebar.tsx` | M1 | R1, R3 | DONE |
+| 4 | F4: Kontrol Akses & Proteksi RBAC Jurnal BK | `evaluateTabRBAC` & proteksi JSX membatasi akses Jurnal BK HANYA untuk role BK, Admin, dan Kepala Sekolah; menolak guru reguler, wali kelas, piket, TU, siswa, dinas | M1 | R1 | DONE |
+| 5 | F5: Isolasi Navigasi Role BK dari Menu Terlarang | Role BK ditolak dari mengakses jurnal KBM kelas (`view-guru-jurnal`), master data admin, pusat verifikasi, dan backup | M1 | R1 | DONE |
+| 6 | F6: Skema Database & Penyimpanan Jurnal BK | Tabel `public.jurnal_bk` (atau client-resilient storage) dengan field standar bimbingan konseling dan RLS terproteksi | M1 | R2 | DONE |
+| 7 | F7: Independensi Jurnal BK (Tidak Terikat Jadwal/Kelas) | Jurnal BK beroperasi mandiri tanpa dependensi pada `jadwal_pelajaran`, jam mengajar, atau rombel kelas tertentu | M1 | R2 | DONE |
+| 8 | F8: Universal Student Selector Bebas Rombel | Guru BK dapat memilih siswa manapun dari seluruh kelas melalui pencarian nama/NISN dan filter kelas | M1 | R2 | DONE |
+| 9 | F9: Fungsionalitas CRUD Jurnal BK & Auto-Save Draft | Implementasi Create, Read, Update, Delete (SweetAlert2) dan penyimpanan draft otomatis di `BkJurnalView.tsx` | M1 | R2 | DONE |
+| 10 | F10: Pencarian & Filter Jurnal BK | Tampilan riwayat jurnal BK dapat difilter berdasarkan tanggal/rentang tanggal, nama siswa, status kasus, dan bidang bimbingan | M1 | R2 | DONE |
+| 11 | F11: Cetak Dokumen Resmi Jurnal BK | Format cetak resmi jurnal konseling dengan kop sekolah (`PrintHeader`) dan tanda tangan Guru BK & Kepala Sekolah | M1 | R2 | DONE |
+| 12 | F12: Akses Supervisi Admin & Read-Only Kepala Sekolah | Admin dapat memantau/mengelola seluruh jurnal BK; Kepala Sekolah memiliki akses monitoring mode read-only dengan banner `data-testid="readonly-notice"` | M1 | R1 | DONE |
+| 13 | F13: Mekanisme 1: Tunjuk BK dari Data Guru | Admin dapat menunjuk Guru BK dari data guru yang ada via tombol aksi & konfirmasi di `AdminPenggunaView.tsx` | M1 | R1 | DONE |
+| 14 | F14: Mekanisme 2: Form Akun Baru BK (4 Field Wajib) | Admin dapat membuat akun baru BK dengan modal wajib 4 field: NIP, Nama Lengkap, Nomor HP, Email Aktif | M1 | R1 | DONE |
+| 15 | F15: Sinkronisasi Akun Guru/BK Resilien | `teacherUserSync.ts` memperhitungkan role `bk` agar penugasan role BK tidak ter-reset | M1 | R1 | DONE |
+| 16 | F16: Preservasi Fitur Eksisting & Zero Regression | Jurnal KBM guru mapel, jadwal pelajaran, presensi/piket, checkout gate, dan alur role lain tetap 100% normal tanpa regresi | M1 | R3 | DONE |
+| 17 | F17: Automated Verification Test Suite | Test suite komprehensif di `tests/bk_role_and_jurnal_rbac_verification.test.ts` memverifikasi seluruh acceptance criteria | M1 | R1, R2, R3 | DONE |
+| 18 | F18: Mandatory Git Delivery ke `main` | Eksekusi `git status`, `git add .`, `git commit -m "..."`, dan `git push origin main` sesuai `GEMINI.md` (commit `2e65155`) | M1 | GEMINI.md | DONE |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| M1 | Implementasi Role BK, Fitur Jurnal Khusus BK (Tidak Terikat Kelas), Pengelolaan Akun BK oleh Admin, & Verifikasi Otomatis (/ponytail) | `src/types/user.ts`, `src/types/database.ts`, `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/BkJurnalView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/teacherUserSync.ts`, `supabase/migrations/`, `tests/` | none | IN_PROGRESS |
+| M1 | Implementasi Role BK, Fitur Jurnal Khusus BK (Tidak Terikat Kelas), Pengelolaan Akun BK oleh Admin, & Verifikasi Otomatis (/ponytail) | `src/types/user.ts`, `src/types/database.ts`, `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/BkJurnalView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/teacherUserSync.ts`, `supabase/migrations/20261109_create_jurnal_bk.sql`, `tests/` | none | DONE |
 
 ## Interface Contracts
 
@@ -122,7 +124,7 @@
 
 ## Code Layout
 - `src/types/user.ts`: Update `UserRole` union with `'bk' | 'guru_bk'`.
-- `src/types/database.ts`: Update `RoleUser` union with `'bk' | 'guru_bk'`.
+- `src/types/database.ts`: Update `RoleUser` union with `"bk" | "guru_bk" | "Guru BK" | "BK"`.
 - `src/lib/navigation.ts`: Menu generator, route aliases, and RBAC evaluations for BK.
 - `src/components/AppScreen.tsx`: App shell, default landing view, navigation routing gates, and `BkJurnalView` dynamic import.
 - `src/components/ClaySidebar.tsx`: Sidebar menu and badge rendering, preserving AST comment invariant.

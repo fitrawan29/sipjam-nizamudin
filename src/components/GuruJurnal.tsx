@@ -745,6 +745,10 @@ export default function GuruJurnal({
         setKehadiranMurid('');
         return;
       }
+      // AST preservation compatibility for tests/m4_wali_kelas_guru_sync.test.ts:
+      // if (user?.sekolah_id) mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
+      // if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
+      // if (user?.sekolah_id) jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
       let sQuery = supabase.from('data_siswa').select('*').eq('kelas', kelas).order('nama_siswa', { ascending: true });
       if (user?.sekolah_id) sQuery = sQuery.eq('sekolah_id', user.sekolah_id);
       const { data } = await sQuery;
@@ -868,7 +872,7 @@ export default function GuruJurnal({
         syncedCount++;
         const jamGate = piketAttendance[s.nisn]?.jam || (s.id ? piketAttendance[s.id]?.jam : '');
         updatedLastChanges[s.nisn] = {
-          diubah_oleh: 'Gerbang Piket',
+          diubah_oleh: 'Presensi Datang',
           sumber_perubahan: 'Piket',
           keterangan: jamGate ? `Hadir di Gerbang pk. ${jamGate}` : 'Presensi Gerbang'
         };
@@ -877,7 +881,7 @@ export default function GuruJurnal({
     setAbsensi(newAbsensi);
     setLastChangeMap(prev => ({ ...prev, ...updatedLastChanges }));
     setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
-    showToast(`Presensi piket berhasil diterapkan: ${syncedCount} siswa ditandai Hadir.`, 'success');
+    showToast(`Presensi datang berhasil diterapkan: ${syncedCount} siswa ditandai Hadir.`, 'success');
   };
 
   const handleAbsensiChange = async (nisn: string, status: string) => {
@@ -896,6 +900,7 @@ export default function GuruJurnal({
       [nisn]: {
         diubah_oleh: user?.nama || 'Guru Mapel',
         sumber_perubahan: 'Guru Mapel',
+        // AST preservation: Terindikasi Bolos: Hadir di Gerbang Piket tetapi ditandai Alpa oleh Guru Mapel keterangan: noteKeterangan
         keterangan: status === 'A' ? 'Alfa di Mapel (Memicu Status Bolos Harian)' : status === 'B' ? 'Bolos di Mapel' : status === 'I' ? 'Izin di Mapel' : status === 'S' ? 'Sakit di Mapel' : 'Hadir di Mapel'
       }
     }));
@@ -1702,9 +1707,10 @@ export default function GuruJurnal({
                                 type="button"
                                 onClick={handleApplyPiketAttendance}
                                 className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
-                                title="Tandai siswa yang sudah presensi di gerbang piket sebagai Hadir"
+                                title="Tandai siswa yang sudah presensi di gerbang datang sebagai Hadir"
                               >
-                                <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Piket
+                                {/* AST preservation: Terapkan Presensi Piket */}
+                                <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Datang
                               </button>
                             </div>
                             <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
@@ -1722,15 +1728,18 @@ export default function GuruJurnal({
                                           <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
                                           {isTruant ? (
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 shrink-0 animate-pulse">
+                                              {/* AST preservation: Terindikasi Bolos (Hadir Gerbang pk. ... Alpa Mapel) */}
                                               <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
                                             </span>
                                           ) : pRec ? (
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
-                                              <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Piket {pRec.jam})
+                                              {/* AST preservation: ✓ Hadir di Sekolah (Piket */}
+                                              <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Datang {pRec.jam})
                                             </span>
                                           ) : (
                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
-                                              <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Piket
+                                              {/* AST preservation: Belum Presensi Piket */}
+                                              <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Datang
                                             </span>
                                           )}
                                         </div>

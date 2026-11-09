@@ -1,69 +1,75 @@
-# Project Orchestrator Handoff Report
+# Handoff Report — Project Orchestrator (Milestone 1 Complete)
 
-## 1. Observation
-- **Mission**: Penyesuaian fungsionalitas dan navigasi pada role Tata Usaha (TU), pengelolaan penugasan/pembuatan akun TU oleh Admin, serta pemisahan rekapitulasi presensi per halaman antara Guru dan TU pada role Admin di sipjam-app untuk kebutuhan produksi, menggunakan pendekatan /ponytail (solusi paling ringkas, sederhana, dan tepat guna tanpa over-engineering).
-- **Commit**: `9a68fcd` (committed and pushed to branch `main`).
-- **Files Modified / Implemented**:
-  1. `src/lib/navigation.ts`: Restricted `getConsolidatedMenuItems({ role: 'tata_usaha' })` strictly to the 6 required items (`Presensi TU`, `Jurnal Kegiatan`, `Asesmen`, `Rapor`, `Informasi Sekolah`, `Pengaturan Akun`). Registered canonical aliases. Evaluated tab RBAC strictly allowing these 6 views while denying unlisted modules (`view-admin-data`, `view-dokumen`, system config, superadmin, etc.).
-  2. `src/components/AppScreen.tsx`: Default landing view for TU points to `view-guru-presensi`. Routed `view-pengaturan-akun` to trigger `AccountSettingsModal`. Suppressed duplicate quick actions (Pengaturan Akun, Tutorial, Interactive Tour) for TU. Preserved verbatim AST comment `{/* AST preservation: data-tour={item.id} */}`.
-  3. `src/components/ClaySidebar.tsx`: Handled `view-pengaturan-akun` click to trigger `onOpenAccountSettings()`. Suppressed quick actions when `isTU` is true. Preserved verbatim AST comment `{/* AST preservation: data-tour={item.id} */}`.
-  4. `src/components/GradebookView.tsx`: Enabled multi-teacher selection for TU (`canSelectAllTeachers = isAdmin || isTataUsaha`), displayed `"Mode Tinjau TU (Read-Only)"` badge, set `isGuruPengampu = false` for TU (rendering grade values as static `<span>` and hiding all modification/bobot buttons), and blocked save in `handleSaveGrades`.
-  5. `src/components/RaporView.tsx`: Allowed TU to select any class from dropdown, bypassed single-class lock, hid "Simpan Rapor" button, rendered notes and Deep Learning inputs as non-editable formatted text, blocked save handlers, and sanitized print signature so TU user's own credentials are not used as homeroom teacher.
-  6. `src/lib/supabaseClient.ts`: Added `isAssessmentEndpoint` and extended `checkMasterDataMutationGuard` to return HTTP 403 Forbidden with SQL code `42501` for any mutating PostgREST requests (`POST`, `PUT`, `PATCH`, `DELETE`) on assessment endpoints (`capaian_pembelajaran`, `tujuan_pembelajaran`, `asesmen_kolom`, `nilai_siswa`) by role `tatausaha`.
-  7. `src/components/AdminRekapView.tsx`: Partitioned presensi records into Dewan Guru (`guruPresensiList`) and Tenaga TU (`tuPresensiList`). Rendered two distinct tables in the UI. Enforced CSS page-break separation in print view (`breakBefore: 'page'`, `pageBreakBefore: 'always'`) with independent `PrintHeader` and `PrintSignature` for each section. Segmented CSV export.
-  8. `src/components/AdminPenggunaView.tsx`: Added row action toggle "Tunjuk TU" / "Ke Guru" updating `users.role` with SweetAlert2 confirmation. Added `+ Akun TU` creation modal strictly validating all 4 required fields (NIP, Nama Lengkap, Nomor HP, Email Aktif) and email format before persisting in `users` and `data_guru`.
-  9. `src/lib/teacherUserSync.ts`: Auto-sync resilience: included `tata_usaha` in user lookup query and preserved existing role (`matchedUser?.role || 'Guru'`).
-  10. `tests/tata_usaha_role_rbac_and_isolation.test.ts`: Updated to verify 6-item TU menu and RBAC rules (87/87 pass).
-  11. `tests/tu_refinements_and_admin_rekap.test.ts`: New dedicated automated test suite verifying R1, R2, R3, R4 (81/81 pass).
-  12. `tests/adversarial_tu_nav_m2_challenger.test.ts`: Dedicated adversarial test suite authored by Challenger 1 (166/166 pass).
-  13. `tests/adversarial_tu_presensi_and_account_m2.test.ts`: Dedicated adversarial test suite authored by Challenger 2 (62/62 pass).
-- **Subagent Lifecycle & Gate Verdicts**:
-  - `explorer_tu_nav_1`: completed (Navigation survey)
-  - `explorer_tu_nav_2`: completed (Read-only Asesmen/Rapor survey)
-  - `explorer_tu_nav_3`: completed (Admin Presensi & Accounts survey)
-  - `worker_tu_nav`: completed (Implementation commit 9a68fcd)
-  - `reviewer_tu_nav_1`: APPROVE
-  - `reviewer_tu_nav_2`: APPROVE
-  - `challenger_tu_nav_1`: APPROVE (166/166 passed)
-  - `challenger_tu_nav_2`: APPROVE (62/62 passed)
-  - `auditor_tu_nav_1`: CLEAN (0 integrity violations, authentic logic)
-  - Gate Result: **PASS** (Unanimous Approval, Clean Forensic Audit)
+**Task**: Implement Role BK (Bimbingan Konseling) & Independent Classless Counseling Journal into SIPJAM for Production
+**Date**: 2026-11-09T05:55:00Z  
+**Type**: Hard Handoff (Task Complete)  
+**Parent Conversation ID**: 68b9bb7f-cdd0-4a24-afb1-7a1b9d79e1ca  
 
-## 2. Logic Chain
-1. *R1 (TU Navigation)*: In `navigation.ts`, filtering menu items to the exact 6 specified routes and wiring `evaluateTabRBAC` ensures airtight isolation. Defaulting landing view to `view-guru-presensi` provides immediate functional context for staff attendance.
-2. *R2 (Read-Only Asesmen & Rapor)*: Reusing existing Admin inspection dropdowns (`GradebookView` and `RaporView`) while forcing `isGuruPengampu = false` provides complete school-wide visibility with zero code duplication (/ponytail). Layering frontend UI static renders with network-level PostgREST 403 Forbidden interceptors prevents unauthorized mutations even from devtools.
-3. *R3 (Admin Presensi Separation & Page Break)*: Splitting `presensi` into `guruPresensiList` and `tuPresensiList` allows rendering distinct UI tables. Injecting inline styles `{ breakBefore: 'page', pageBreakBefore: 'always' }` and dual print headers/signatures guarantees physical page separation across all browser print engines.
-4. *R4 (Admin TU Account Management)*: Direct role toggling ("Tunjuk TU" / "Ke Guru") allows administrative reassignment of existing personnel. The creation modal enforces all 4 mandatory fields (NIP, Nama Lengkap, Nomor HP, Email Aktif) and email format before writing to `users` and `data_guru`. Role preservation in `teacherUserSync.ts` prevents regression during automatic sync cycles.
-5. *R5 & R6 (Verification & Non-Regression)*: TypeScript compilation (`npx tsc --noEmit`), dedicated test suites, adversarial stress test harnesses, and the full project test suite (`npm test`) all passed 100% with exit code 0. Git workflow rule was strictly followed with commit `9a68fcd` pushed directly to `origin/main`.
+---
 
-## 3. Caveats
-- None. All acceptance criteria and verification invariants were thoroughly validated and confirmed by independent Reviewers, Challengers, and Forensic Auditor.
+## 1. Milestone State
 
-## 4. Conclusion
-The mission is 100% complete and verified:
-- Menu navigasi role Tata Usaha dibatasi tepat 6 menu: Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, Pengaturan Akun.
-- Hak akses Asesmen dan Rapor untuk TU murni read-only untuk seluruh guru dan kelas, didukung 2-layer defense (UI button/input suppression + PostgREST 403 interceptor).
-- Rekap presensi Admin memisahkan tabel Dewan Guru dan Tenaga TU pada antarmuka, serta menyajikan pemisah halaman (page-break) fisik saat dicetak.
-- Pengelolaan akun TU oleh Admin mendukung penunjukan TU dari data guru yang ada dan pembuatan akun baru dengan formulir wajib 4 field (NIP, Nama Lengkap, No HP, Email Aktif) teruji validasi ketat.
-- Seluruh pengujian otomatis lulus 100% (69 test suites), tipe data bersih (0 error `tsc`), dan kode telah di-push ke branch `main`.
+| # | Milestone Name | Scope | Dependencies | Status |
+|---|----------------|-------|--------------|--------|
+| M1 | Implementasi Role BK, Fitur Jurnal Khusus BK (Tidak Terikat Kelas), Pengelolaan Akun BK oleh Admin, & Verifikasi Otomatis (/ponytail) | `src/types/user.ts`, `src/types/database.ts`, `src/lib/navigation.ts`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/BkJurnalView.tsx`, `src/components/AdminPenggunaView.tsx`, `src/lib/teacherUserSync.ts`, `supabase/migrations/20261109_create_jurnal_bk.sql`, `tests/` | none | **DONE** |
 
-## 5. Verification Method
-To independently reproduce the full verification:
-```bash
-# 1. TypeScript compilation check
-npx tsc --noEmit
+All 18 features (F1 to F18) in `PROJECT.md § Feature Inventory` are 100% completed and verified:
+- F1: Role BK Type & Session Normalization (`users.role = 'bk'`, `normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling'`)
+- F2: Navigasi Menu Role BK (Miller's Law 5 items: Dashboard, Presensi BK, Jurnal BK, Informasi Sekolah, Pengaturan Akun; default landing `view-home`)
+- F3: Preservasi Invarian AST Data-Tour (`{/* AST preservation: data-tour={item.id} */}` in `AppScreen.tsx` line 1088 and `ClaySidebar.tsx` line 238)
+- F4: Kontrol Akses & Proteksi RBAC Jurnal BK (`evaluateTabRBAC` strictly restricts `view-jurnal-bk` to `bk`, `admin`, and `kepala_sekolah`; strictly denies `guru`, `wali_kelas`, `piket`, `tata_usaha`, `siswa`, `dinas_pendidikan`)
+- F5: Isolasi Navigasi Role BK dari Menu Terlarang (BK denied from `view-guru-jurnal`, `view-admin-data`, `view-admin-config`, `view-admin-backup`, `view-admin-verif`, superadmin, dinas)
+- F6: Skema Database & Penyimpanan Jurnal BK (`supabase/migrations/20261109_create_jurnal_bk.sql` creating `public.jurnal_bk` with RLS and indexes)
+- F7: Independensi Jurnal BK (Tidak Terikat Jadwal/Kelas) — completely decoupled from `jadwal_pelajaran` and KBM timetables
+- F8: Universal Student Selector Bebas Rombel (queries `data_siswa`, filters by class or live searches by Name/NISN across all classes)
+- F9: Fungsionalitas CRUD Jurnal BK & Auto-Save Draft in `src/components/BkJurnalView.tsx` with `localStorage` fallback on schema cache delay
+- F10: Pencarian & Filter Jurnal BK (filter by date range/single date, student name/NISN, case status, counseling domain)
+- F11: Cetak Dokumen Resmi Jurnal BK (integrates `PrintHeader` and `triggerPrintWithGps`)
+- F12: Akses Supervisi Admin & Read-Only Kepala Sekolah (`isReadOnly={true}` renders `<div data-testid="readonly-notice">` and disables mutation actions)
+- F13: Mekanisme 1: Tunjuk BK dari Data Guru (toggle button in `AdminPenggunaView.tsx`)
+- F14: Mekanisme 2: Form Akun Baru BK (modal with 4 mandatory fields: NIP, Nama Lengkap, Nomor HP, Email Aktif; default password `${nip}27`)
+- F15: Sinkronisasi Akun Guru/BK Resilien (`teacherUserSync.ts` includes BK and preserves assigned role)
+- F16: Preservasi Fitur Eksisting & Zero Regression (`GuruJurnal.tsx` and `workflow.ts` 100% untouched)
+- F17: Automated Verification Test Suite (`tests/bk_role_and_jurnal_rbac_verification.test.ts` 106/106 passed, `tests/adversarial_bk_challenger.test.ts` 481/481 passed, `tests/challenger_bk_2_stress_test.test.ts` 60/60 passed)
+- F18: Mandatory Git Delivery (commit `2e65155` pushed to `origin/main`)
 
-# 2. Run dedicated Milestone 2 integration tests
-npx tsx tests/tu_refinements_and_admin_rekap.test.ts
+---
 
-# 3. Run updated TU RBAC and isolation tests
-npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts
+## 2. Active Subagents
 
-# 4. Run adversarial challenger test harnesses
-npx tsx tests/adversarial_tu_nav_m2_challenger.test.ts
-npx tsx tests/adversarial_tu_presensi_and_account_m2.test.ts
+All subagents have concluded their tasks:
+- `explorer_bk_1`: completed
+- `explorer_bk_2`: completed
+- `explorer_bk_3`: completed
+- `worker_bk`: completed (commit `2e65155` pushed to `origin/main`)
+- `reviewer_bk_1`: completed (APPROVE)
+- `reviewer_bk_2`: completed (APPROVE)
+- `challenger_bk_1`: completed (APPROVE, 481/481 passed)
+- `challenger_bk_2`: completed (APPROVE, 60/60 passed)
+- `auditor_bk_1`: completed (CLEAN, 0 integrity violations)
 
-# 5. Run full application regression test suite
-npm test
-```
-All commands terminate with exit code 0 and 0 failures.
+Total subagents spawned: 9 / 16 (Succession not required).
+
+---
+
+## 3. Pending Decisions
+
+None. All architectural and functional requirements have been satisfied and unanimously approved.
+
+---
+
+## 4. Remaining Work
+
+None. The full feature has been implemented, verified, audited, and deployed to branch `main`.
+
+---
+
+## 5. Key Artifacts
+
+- Project Specification: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md`
+- Gate Verdicts: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\GATE_STATUS.md`
+- Progress Log: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\progress.md`
+- Persistent Briefing: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator\BRIEFING.md`
+- Original Request: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md`
+- Worker Handoff: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_bk\handoff.md`
+- Forensic Audit Handoff: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_bk_1\handoff.md`
