@@ -41,10 +41,9 @@ async function getTargetEmail(): Promise<string | undefined> {
 
 export function detectMimeType(file: File): string {
   const rawType = (file.type || '').trim().toLowerCase().split(';')[0];
-  if (rawType && rawType !== 'application/octet-stream') {
-    return rawType;
-  }
-  const name = (file.name || '').toLowerCase();
+  const name = (file.name || '').trim().toLowerCase();
+
+  // If name has known extension, prioritize matching MIME to prevent spoofed/generic MIME
   if (name.endsWith('.pdf')) return 'application/pdf';
   if (name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.jfif') || name.endsWith('.pjpeg')) return 'image/jpeg';
   if (name.endsWith('.png')) return 'image/png';
@@ -59,11 +58,16 @@ export function detectMimeType(file: File): string {
   if (name.endsWith('.odt')) return 'application/vnd.oasis.opendocument.text';
   if (name.endsWith('.rtf')) return 'application/rtf';
   if (name.endsWith('.txt')) return 'text/plain';
+
+  if (rawType && rawType !== 'application/octet-stream') {
+    return rawType;
+  }
   return rawType || 'application/octet-stream';
 }
 
 export function isImageFile(file: File): boolean {
   const mime = detectMimeType(file);
+  if (mime === 'image/svg+xml') return false;
   if (mime.startsWith('image/')) return true;
   return /\.(jpe?g|jfif|pjpeg|png|webp|bmp|gif|heic|heif|tiff?)$/i.test(file.name || '');
 }
@@ -86,8 +90,12 @@ export function validatePresensiFile(file: File | null | undefined): PresensiFil
     return { valid: false, mimeType: detectMimeType(file), error: 'Ukuran berkas melebihi batas maksimal 25 MB.' };
   }
 
-  const name = (file.name || '').toLowerCase();
-  const FORBIDDEN_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.vbs', '.js', '.apk', '.msi', '.scr', '.jar', '.com', '.pif'];
+  const name = (file.name || '').trim().toLowerCase();
+  const FORBIDDEN_EXTENSIONS = [
+    '.exe', '.bat', '.cmd', '.sh', '.vbs', '.js', '.apk', '.msi',
+    '.scr', '.jar', '.com', '.pif', '.ps1', '.py', '.php', '.phtml',
+    '.html', '.htm', '.hta', '.vbe', '.wsf', '.wsh', '.reg', '.svg'
+  ];
   if (FORBIDDEN_EXTENSIONS.some(ext => name.endsWith(ext))) {
     return {
       valid: false,
@@ -119,7 +127,7 @@ export function validatePresensiFile(file: File | null | undefined): PresensiFil
   ];
   const hasValidExt = validExtensions.some(ext => name.endsWith(ext));
   const hasValidMime =
-    mime.startsWith('image/') ||
+    (mime.startsWith('image/') && mime !== 'image/svg+xml') ||
     mime === 'application/pdf' ||
     mime === 'application/msword' ||
     mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
@@ -127,6 +135,16 @@ export function validatePresensiFile(file: File | null | undefined): PresensiFil
     mime === 'application/rtf' ||
     mime === 'text/plain';
 
+  // If the file name specifies an extension, it MUST be one of the supported document/image extensions
+  if (name.includes('.') && !hasValidExt) {
+    return {
+      valid: false,
+      mimeType: mime,
+      error: 'Format berkas tidak didukung. Harap unggah dokumen PDF, Word, atau gambar (JPG/PNG).',
+    };
+  }
+
+  // If the file has no extension (e.g. camera blob), it must have a valid MIME type
   if (!hasValidExt && !hasValidMime) {
     return {
       valid: false,

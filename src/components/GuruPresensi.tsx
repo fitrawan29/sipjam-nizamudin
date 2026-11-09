@@ -6,7 +6,7 @@ import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState } from '@/lib/workflow';
 import { recordUnfilledJournalsAndPiket, autoFillKbmJournalsForLeave } from '@/lib/attendanceAlpa';
-import { uploadToDrive, detectMimeType, validatePresensiFile } from '@/lib/driveUpload';
+import { uploadToDrive, detectMimeType, validatePresensiFile, normalizeDriveTeacherFolder } from '@/lib/driveUpload';
 import {
   savePresensiFileDraft,
   getPresensiFileDraft,
@@ -767,10 +767,11 @@ export default function GuruPresensi({
         // Storage folder routing: jenisPresensi === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru'
         const folderName = currentJenis === 'Dinas Luar' ? 'Presensi_DinasLuar' : 'Presensi_Guru';
         const prefix = isSelfie ? 'Selfie' : 'Dokumen';
+        const normalizedTeacher = normalizeDriveTeacherFolder(currentTeacher);
         setUploadProgress({
           active: true,
           percent: 30,
-          status: `Menyiapkan pengunggahan berkas ke folder SIPJAM/${folderName}/${currentTeacher}...`
+          status: `Menyiapkan pengunggahan berkas ke folder SIPJAM/${folderName}/${normalizedTeacher}...`
         });
         driveUrl = await uploadToDrive(
           fileToUpload,
@@ -821,6 +822,7 @@ export default function GuruPresensi({
           percent: 100,
           status: 'Dokumen berhasil tersimpan di Google Drive!'
         });
+        await new Promise((resolve) => setTimeout(resolve, 600));
 
         // Notify active UI listeners (e.g. HistoryView) to display fresh Drive link
         if (typeof window !== 'undefined') {
@@ -838,21 +840,23 @@ export default function GuruPresensi({
           .from('presensi_guru')
           .update({ link_bukti: 'gagal_upload' })
           .eq('id', presensiId);
-        showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
+        showToast('Upload Foto Tertunda', isSelfie ? 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.' : 'Data presensi telah tersimpan di cloud Supabase, namun dokumen bukti gagal diunggah ke Google Drive.', 'warning');
       } finally {
         setUploadProgress({ active: false, percent: 0, status: '' });
       }
     }
 
-    // Instant UI Success Feedback (Non-blocking Toast)
-    showToast(
-      'Presensi Berhasil Dicatat!',
-      fileToUpload 
-        ? (driveUrl ? 'Data presensi dan file bukti berhasil disimpan ke cloud.' : 'Data kehadiran tersimpan. Foto sedang diunggah ke Google Drive di latar belakang.') 
-        : 'Presensi berhasil direkam!',
-      'success',
-      { toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }
-    );
+    // Instant UI Success Feedback (Only when upload succeeded or presensi without upload)
+    if (!fileToUpload || driveUrl) {
+      showToast(
+        'Presensi Berhasil Dicatat!',
+        fileToUpload 
+          ? 'Data presensi dan file bukti berhasil disimpan ke cloud.' 
+          : 'Presensi berhasil direkam!',
+        'success',
+        { toast: true, position: 'top-end', timer: 3000, showConfirmButton: false }
+      );
+    }
 
     // R3: Record unfilled journals and piket automatically upon presensi pulang
     if (tipeAbsen === 'Pulang') {
@@ -1294,7 +1298,7 @@ export default function GuruPresensi({
                                 </span>
                               </div>
                               <div className="text-[11px] text-slate-600 dark:text-slate-400 font-normal">
-                                {file.name} ({(file.size / 1024).toFixed(0)} KB) • Tujuan: SIPJAM/Presensi_Guru/{user?.nama || 'Guru'}
+                                {file.name} ({(file.size / 1024).toFixed(0)} KB) • Tujuan: SIPJAM/Presensi_Guru/{normalizeDriveTeacherFolder(user?.nama || 'Guru')}
                               </div>
                             </div>
                           </div>

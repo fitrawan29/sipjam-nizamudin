@@ -74,13 +74,19 @@ assert.strictEqual(validatePresensiFile(jfifFile).valid, true, '1.3k: JFIF passe
 assert.strictEqual(validatePresensiFile(gifFile).valid, true, '1.3l: GIF passes validation');
 console.log('  ✔ [PASS] 1.3: Foto bukti (JPG/PNG/WEBP/BMP/JFIF/GIF) valid diproses tanpa penolakan');
 
-// 1.4 Penanganan Berkas Tidak Valid (Ukuran kosong, ekstensi terlarang, ukuran melebihi batas, arbitrary MIME malware)
+// 1.4 Penanganan Berkas Tidak Valid (Ukuran kosong, ekstensi terlarang, ukuran melebihi batas, arbitrary MIME malware, spoofed zip, script, SVG)
 const emptyFile = { name: 'kosong.pdf', type: 'application/pdf', size: 0 } as File;
 const oversizedFile = { name: 'besar.pdf', type: 'application/pdf', size: 30 * 1024 * 1024 } as File;
 const executableFile = { name: 'virus.exe', type: 'application/octet-stream', size: 10240 } as File;
 const trojanWithMime = { name: 'trojan.exe', type: 'application/x-msdownload', size: 20480 } as File;
 const scriptFile = { name: 'payload.js', type: 'application/javascript', size: 1024 } as File;
 const shellFile = { name: 'exploit.sh', type: 'application/x-sh', size: 512 } as File;
+const doubleExtFile = { name: 'surat_izin.pdf.exe', type: 'application/octet-stream', size: 2048 } as File;
+const psFile = { name: 'script.ps1', type: 'text/plain', size: 1024 } as File;
+const phpFile = { name: 'webshell.php', type: 'application/x-httpd-php', size: 1024 } as File;
+const svgFile = { name: 'xss.svg', type: 'image/svg+xml', size: 1024 } as File;
+const spoofedZip = { name: 'exploit.zip', type: 'image/jpeg', size: 2048 } as File;
+const cameraBlob = { name: 'camera_capture', type: 'image/jpeg', size: 204800 } as File;
 assert.strictEqual(validatePresensiFile(emptyFile).valid, false, '1.4a: Empty 0-byte file must be rejected');
 assert.ok(validatePresensiFile(emptyFile).error?.includes('kosong'), '1.4b: Clear empty file error message');
 assert.strictEqual(validatePresensiFile(oversizedFile).valid, false, '1.4c: File > 25MB must be rejected');
@@ -89,7 +95,13 @@ assert.strictEqual(validatePresensiFile(executableFile).valid, false, '1.4e: Exe
 assert.strictEqual(validatePresensiFile(trojanWithMime).valid, false, '1.4f: Executable with custom MIME must be rejected');
 assert.strictEqual(validatePresensiFile(scriptFile).valid, false, '1.4g: Script JS must be rejected');
 assert.strictEqual(validatePresensiFile(shellFile).valid, false, '1.4h: Shell script must be rejected');
-console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang (0-byte, >25MB, exe, js, sh) tertolak secara presisi\n');
+assert.strictEqual(validatePresensiFile(doubleExtFile).valid, false, '1.4i: Double extension .pdf.exe must be rejected');
+assert.strictEqual(validatePresensiFile(psFile).valid, false, '1.4j: PowerShell script must be rejected even with text/plain');
+assert.strictEqual(validatePresensiFile(phpFile).valid, false, '1.4k: PHP webshell must be rejected');
+assert.strictEqual(validatePresensiFile(svgFile).valid, false, '1.4l: SVG file must be rejected');
+assert.strictEqual(validatePresensiFile(spoofedZip).valid, false, '1.4m: Spoofed zip with image/jpeg must be rejected');
+assert.strictEqual(validatePresensiFile(cameraBlob).valid, true, '1.4n: Extensionless camera blob with image/jpeg must pass');
+console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang (0-byte, >25MB, exe, js, sh, ps1, php, svg, spoofed zip) tertolak secara presisi\n');
 
 // --- Suite 2: Penempatan File Upload di Folder SIPJAM Sesuai Nama Guru (R3) ---
 console.log('--- Suite 2: Penempatan Direktori Google Drive (R3) ---');
@@ -199,6 +211,6 @@ assert.ok(
 console.log('  ✔ [PASS] 3.8: Pemulihan draft dokumen terisolasi ketat pada mode surat izin/sakit');
 
 console.log('\n========================================================================');
-console.log('TOTAL CHECKS: 44 | PASSED: 44 | FAILED: 0');
+console.log('TOTAL CHECKS: 50 | PASSED: 50 | FAILED: 0');
 console.log('========================================================================\n');
 console.log('🎉 ALL PRESENSI DOCUMENT UPLOAD & FOLDER ROUTING TESTS PASSED 100% PERFECTLY!');
