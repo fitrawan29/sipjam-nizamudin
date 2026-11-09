@@ -46,7 +46,10 @@ export const VIEW_ALIASES: Record<string, { view: string; tab?: string }> = {
   'view-siswa':             { view: 'view-admin-data', tab: 'Data_Siswa' },
   'view-data-guru':         { view: 'view-admin-data', tab: 'Data_Guru' },
   'view-guru':              { view: 'view-admin-data', tab: 'Data_Guru' },
-  'view-admin-backup':      { view: 'view-admin-config', tab: 'backup' }
+  'view-admin-backup':      { view: 'view-admin-config', tab: 'backup' },
+  // Klaster Jurnal BK
+  'view-jurnal-bk':         { view: 'view-jurnal-bk' },
+  'view-bk-jurnal':         { view: 'view-jurnal-bk' }
 };
 
 export const SPEC_VIEW_ALIASES = VIEW_ALIASES;
@@ -57,7 +60,8 @@ export const SIDEBAR_TOUR_ALIASES: Record<string, string> = {
   'view-gradebook': 'view-rapor view-asesmen',
   'view-admin-rekap': 'view-analitik view-rekap-guru',
   'view-admin-data': 'view-sistem-blok view-admin-pengguna view-pengguna view-admin-kelas view-kelas view-data-siswa view-data-guru',
-  'view-admin-config': 'view-admin-backup'
+  'view-admin-config': 'view-admin-backup',
+  'view-jurnal-bk': 'view-bk-jurnal'
 };
 
 export function resolveCanonicalRoute(rawView: string | null | undefined, rawTab?: string | null): RouteResolution {
@@ -190,6 +194,17 @@ export function getConsolidatedMenuItems(params: {
     ];
   }
 
+  const isBk = normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling';
+  if (isBk) {
+    return [
+      { id: 'view-home', icon: 'fa-house', label: 'Dashboard', dataTour: 'view-home' },
+      { id: 'view-guru-presensi', icon: 'fa-clock', label: 'Presensi BK', dataTour: 'view-guru-presensi' },
+      { id: 'view-jurnal-bk', icon: 'fa-heart-pulse', label: 'Jurnal BK', dataTour: 'view-jurnal-bk' },
+      { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi Sekolah', dataTour: 'view-informasi' },
+      { id: 'view-pengaturan-akun', icon: 'fa-user-gear', label: 'Pengaturan Akun', dataTour: 'view-pengaturan-akun' }
+    ];
+  }
+
   // Guru (Reguler, Wali Kelas, Piket)
   const items: MenuItem[] = [
     { id: 'view-home', icon: 'fa-house', label: 'Dashboard' },
@@ -224,6 +239,48 @@ export function evaluateTabRBAC(
   const isWali = !!user?.isWaliKelas;
   const isSiswa = normRole === 'siswa';
   const isTataUsaha = normRole === 'tatausaha';
+  const isBk = normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling';
+
+  const resolved = resolveCanonicalRoute(viewId, tabId);
+  const effectiveView = resolved.canonicalView;
+  const effectiveTab = resolved.defaultTab || tabId;
+
+  // Strict isolation for Jurnal BK: confidential counseling records
+  if (
+    viewId === 'view-jurnal-bk' ||
+    effectiveView === 'view-jurnal-bk' ||
+    viewId === 'view-bk-jurnal' ||
+    effectiveView === 'view-bk-jurnal'
+  ) {
+    if (!isBk && !isAdmin && !isKepalaSekolah) {
+      return {
+        allowed: false,
+        fallbackTab: 'view-home',
+        reason: 'Jurnal BK bersifat rahasia dan hanya dapat diakses oleh Guru BK, Administrator, dan Kepala Sekolah.'
+      };
+    }
+    return { allowed: true };
+  }
+
+  // Strict isolation for Role BK: strictly restricted to 5 dedicated modules
+  if (isBk) {
+    const allowedBkViews = [
+      'view-home',
+      'view-guru-presensi',
+      'view-jurnal-bk',
+      'view-bk-jurnal',
+      'view-informasi',
+      'view-pengaturan-akun'
+    ];
+    if (allowedBkViews.includes(effectiveView) || allowedBkViews.includes(viewId)) {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      fallbackTab: 'view-home',
+      reason: 'Role Guru BK tidak memiliki izin akses ke modul ini.'
+    };
+  }
 
   // Strict isolation for Siswa role: cannot access teacher/admin operational modules
   if (isSiswa && viewId !== 'view-ujian' && viewId !== 'view-informasi') {
@@ -251,9 +308,6 @@ export function evaluateTabRBAC(
   }
 
   // Cluster 5: Master Data & Sistem
-  const resolved = resolveCanonicalRoute(viewId, tabId);
-  const effectiveView = resolved.canonicalView;
-  const effectiveTab = resolved.defaultTab || tabId;
 
   if (isTataUsaha) {
     const allowedTuViews = [

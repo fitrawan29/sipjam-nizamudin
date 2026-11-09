@@ -26,6 +26,7 @@ const GradebookView = dynamic(() => import('./GradebookView'));
 const SistemBlokView = dynamic(() => import('./SistemBlokView'));
 const RaporView = dynamic(() => import('./RaporView'));
 const UjianSiswaView = dynamic(() => import('./UjianSiswaView'));
+const BkJurnalView = dynamic(() => import('./BkJurnalView'));
 import ClayCard from './ClayCard';
 import ClayButton from './ClayButton';
 import AccountSettingsModal from './AccountSettingsModal';
@@ -96,6 +97,12 @@ export default function AppScreen({
   const isTataUsaha =
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha' ||
     (baseUser?.mata_pelajaran || '').toLowerCase().includes('tata usaha');
+  const isBk =
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
+    (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling');
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
@@ -196,6 +203,7 @@ export default function AppScreen({
     if (isDinas) return 'view-dinas-overview';
     if (isSiswa) return 'view-ujian';
     if (isTataUsaha) return 'view-home';
+    if (isBk) return 'view-home';
     return 'view-home';
   });
 
@@ -235,12 +243,13 @@ export default function AppScreen({
         const defaultDinasPopView = isDinas ? 'view-dinas-overview' : 'view-home';
         const defaultSiswaPopView = isSiswa ? 'view-ujian' : 'view-home';
         const defaultTuPopView = isTataUsaha ? 'view-home' : defaultDinasPopView;
-        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultTuPopView));
+        const defaultBkPopView = isBk ? 'view-home' : defaultTuPopView;
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultBkPopView));
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSuperadmin, isDinas, isSiswa, isTataUsaha]);
+  }, [isSuperadmin, isDinas, isSiswa, isTataUsaha, isBk]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -538,6 +547,48 @@ export default function AppScreen({
         return;
       }
 
+      // BK navigation guard: strictly restricted to 5 dedicated modules
+      if (isBk) {
+        const allowedBkViews = [
+          'view-home',
+          'view-guru-presensi',
+          'view-jurnal-bk',
+          'view-bk-jurnal',
+          'view-informasi',
+          'view-pengaturan-akun'
+        ];
+        const resolution = resolveCanonicalRoute(targetId, targetTab);
+        if (!allowedBkViews.includes(targetId) && !allowedBkViews.includes(resolution.canonicalView)) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Role Guru BK tidak memiliki izin akses ke modul ini.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+
+        const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', { role: user?.role, isWaliKelas });
+        if (!rbacCheck.allowed) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: rbacCheck.reason || 'Akses Terblokir: Role Guru BK tidak memiliki izin akses ke modul ini.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+
+        const nextView = resolution.canonicalView;
+        const nextTab = resolution.defaultTab;
+        const url = nextTab ? `?view=${nextView}&tab=${nextTab}` : `?view=${nextView}`;
+        window.history.pushState(null, '', url);
+        setCurrentView(nextView);
+        setUrlTab(nextTab || null);
+        setSidebarOpen(false);
+        return;
+      }
+
       // Dinas Pendidikan navigation guard: strictly read-only, block mutative admin views
       if (isDinas) {
         const blockedMutationViews = [
@@ -577,6 +628,19 @@ export default function AppScreen({
         setUrlTab(nextTab || null);
         setSidebarOpen(false);
         return;
+      }
+
+      // Jurnal BK confidentiality check
+      if (targetId === 'view-jurnal-bk' || targetId === 'view-bk-jurnal') {
+        if (!isBk && !isAdmin && !isSuperadmin && !isKepalaSekolah) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akses Terblokir: Jurnal BK bersifat rahasia dan hanya dapat diakses oleh Guru BK, Administrator, dan Kepala Sekolah.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
       }
 
       // Guru workflow checks
@@ -1177,6 +1241,32 @@ export default function AppScreen({
                   assignedKelas={assignedKelas}
                   isKepalaSekolah={isKepalaSekolah}
                 />
+              )}
+              {(currentView === 'view-jurnal-bk' || currentView === 'view-bk-jurnal') && (
+                isBk || isAdmin || isSuperadmin || isKepalaSekolah ? (
+                  <BkJurnalView
+                    user={user}
+                    isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin}
+                    initialTab={(urlTab as any) || undefined}
+                  />
+                ) : (
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
+                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                      <i className="fa-solid fa-lock"></i>
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                      Halaman <strong>Jurnal BK</strong> bersifat rahasia dan secara eksklusif hanya dapat diakses oleh Guru BK, Administrator, dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
+                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                    >
+                      <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
+                    </button>
+                  </div>
+                )
               )}
               {currentView === 'view-piket' && (
                 isAdmin || isSuperadmin || isPiketHariIni ? (

@@ -71,14 +71,45 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           sekolahId: u.sekolah_id
         }));
 
+      // Load BK accounts
+      const bkAccounts: TeacherAccountItem[] = (tuUsers || [])
+        .filter((u: any) => {
+          const norm = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+          return norm === 'bk' || norm === 'gurubk';
+        })
+        .map((u: any) => ({
+          guruId: u.id,
+          userId: u.id,
+          nama: u.nama,
+          nip: u.nip || '-',
+          username: u.username,
+          defaultPassword: '-',
+          role: 'bk',
+          mataPelajaran: 'Bimbingan Konseling (BK)',
+          status: 'Aktif',
+          hasAccount: true,
+          sekolahId: u.sekolah_id
+        }));
+
       if (!isMountedRef.current) return;
 
-      const combinedAccounts = [...(result.accounts || []).map((acc: TeacherAccountItem) => {
-        if ((acc.mataPelajaran || '').toLowerCase().includes('tata usaha')) {
-          return { ...acc, role: 'tata_usaha' };
-        }
-        return acc;
-      }), ...tuAccounts];
+      const existingUserIds = new Set((result.accounts || []).map(a => a.userId).filter(Boolean));
+      const filteredTuAccounts = tuAccounts.filter(a => !existingUserIds.has(a.userId));
+      const filteredBkAccounts = bkAccounts.filter(a => !existingUserIds.has(a.userId));
+
+      const combinedAccounts = [
+        ...(result.accounts || []).map((acc: TeacherAccountItem) => {
+          if ((acc.mataPelajaran || '').toLowerCase().includes('tata usaha')) {
+            return { ...acc, role: 'tata_usaha' };
+          }
+          if ((acc.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') || (acc.mataPelajaran || '').toLowerCase() === 'bk') {
+            return { ...acc, role: 'bk' };
+          }
+          return acc;
+        }),
+        ...filteredTuAccounts,
+        ...filteredBkAccounts
+      ];
       setAccounts(combinedAccounts);
 
       if (result.errors && result.errors.length > 0) {
@@ -392,6 +423,217 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
     }
   };
 
+  // Handle Toggle BK Role Assignment (Mekanisme 1: Tunjuk BK / Ke Guru)
+  const handleToggleBkAssignment = async (item: TeacherAccountItem) => {
+    if (!isAdmin) return;
+    const isCurrentlyBk = (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
+      (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk';
+    const targetRole = isCurrentlyBk ? 'Guru' : 'bk';
+    const actionLabel = isCurrentlyBk ? 'Kembalikan ke Guru' : 'Tunjuk sebagai Guru BK';
+
+    const confirm = await Swal.fire({
+      title: `${actionLabel}?`,
+      text: isCurrentlyBk
+        ? `Akun "${item.nama}" akan dikembalikan ke role Guru.`
+        : `Akun "${item.nama}" akan dialihkan ke role Guru BK (Bimbingan Konseling). Hak akses akan disesuaikan ke modul Jurnal BK.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Lanjutkan',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#E11D48'
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    setLoading(true);
+    try {
+      if (item.userId) {
+        const { error: updErr } = await supabase
+          .from('users')
+          .update({ role: targetRole })
+          .eq('id', item.userId);
+
+        if (updErr) {
+          if (updErr.message?.includes('users_role_check')) {
+            const newMapel = targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-';
+            await supabase
+              .from('data_guru')
+              .update({ mata_pelajaran: newMapel })
+              .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+
+            await Swal.fire({
+              icon: 'warning',
+              title: 'Constraint Database Perlu Dihapus',
+              html: `
+                <div class="text-left text-xs space-y-3">
+                  <p>Database Supabase Anda masih menerapkan constraint <code>users_role_check</code> lama yang membatasi role.</p>
+                  <p class="text-gray-600 dark:text-gray-400">Jalankan perintah SQL berikut di <b>Supabase SQL Editor</b> agar role dapat disimpan di tabel <code>users</code>:</p>
+                  <div class="p-2.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] select-all border border-gray-300 dark:border-gray-700">
+                    ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+                  </div>
+                  <p class="text-[11px] text-rose-700 dark:text-rose-400 font-semibold">Tugas di data guru telah disesuaikan ke "${newMapel}".</p>
+                </div>
+              `,
+              confirmButtonText: 'Salin Perintah SQL',
+              showCancelButton: true,
+              cancelButtonText: 'Tutup',
+              confirmButtonColor: '#E11D48'
+            }).then((res) => {
+              if (res.isConfirmed && typeof navigator !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText('ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;');
+                showToast('Disalin', 'Perintah SQL berhasil disalin ke clipboard.', 'success');
+              }
+            });
+            handleLoadAndSync(false);
+            return;
+          }
+          throw updErr;
+        }
+
+        const newMapel = targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-';
+        await supabase
+          .from('data_guru')
+          .update({ mata_pelajaran: newMapel })
+          .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+      }
+      showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'bk' ? 'Guru BK' : 'Guru'}.`, 'success');
+      handleLoadAndSync(false);
+    } catch (err: any) {
+      showToast('Gagal Mengubah Role', err.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Create BK Account (Mekanisme 2: Form Akun Baru BK - 4 Field Wajib)
+  const handleCreateBkUser = async () => {
+    if (!isAdmin) return;
+    const { value: formValues } = await Swal.fire({
+      title: 'Tambah Akun Guru BK',
+      width: '450px',
+      html: `
+        <div class="text-left space-y-3 text-xs">
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">NIP (Nomor Induk Pegawai) *</label>
+            <input id="swal-bk-nip" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="NIP guru BK...">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nama Lengkap *</label>
+            <input id="swal-bk-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nama lengkap guru BK...">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nomor HP (WhatsApp) *</label>
+            <input id="swal-bk-hp" class="swal2-input !mt-0 !w-full text-xs" placeholder="Contoh: 081234567890...">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Email Aktif *</label>
+            <input id="swal-bk-email" type="email" class="swal2-input !mt-0 !w-full text-xs" placeholder="email@sekolah.sch.id...">
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan Akun BK',
+      confirmButtonColor: '#E11D48',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const nip = (document.getElementById('swal-bk-nip') as HTMLInputElement)?.value?.trim();
+        const nama = (document.getElementById('swal-bk-nama') as HTMLInputElement)?.value?.trim();
+        const no_hp = (document.getElementById('swal-bk-hp') as HTMLInputElement)?.value?.trim();
+        const email = (document.getElementById('swal-bk-email') as HTMLInputElement)?.value?.trim();
+        if (!nip || !nama || !no_hp || !email) {
+          Swal.showValidationMessage('Semua 4 data (NIP, Nama Lengkap, Nomor HP, dan Email Aktif) wajib diisi!');
+          return null;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          Swal.showValidationMessage('Format email aktif tidak valid (contoh: user@sekolah.sch.id)!');
+          return null;
+        }
+        return { nip, nama, no_hp, email };
+      }
+    });
+
+    if (formValues) {
+      setLoading(true);
+      const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+      const userId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `usr-bk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+      const defaultPassword = `${formValues.nip}27`;
+
+      let { error: insUserErr } = await supabase.from('users').insert({
+        id: userId,
+        nama: formValues.nama,
+        username: formValues.nip,
+        password: defaultPassword,
+        role: 'bk',
+        sekolah_id: targetSekolahId
+      });
+
+      if (insUserErr && insUserErr.message?.includes('users_role_check')) {
+        const { error: retryErr } = await supabase.from('users').insert({
+          id: userId,
+          nama: formValues.nama,
+          username: formValues.nip,
+          password: defaultPassword,
+          role: 'Guru',
+          sekolah_id: targetSekolahId
+        });
+        if (!retryErr) {
+          insUserErr = null;
+        }
+      }
+
+      if (insUserErr) {
+        setLoading(false);
+        showToast('Gagal Membuat Akun', insUserErr.message, 'error');
+        return;
+      }
+
+      const { error: insGuruErr } = await supabase.from('data_guru').insert({
+        sekolah_id: targetSekolahId,
+        user_id: userId,
+        nip: formValues.nip,
+        nama_guru: formValues.nama,
+        mata_pelajaran: 'Bimbingan Konseling (BK)',
+        no_hp: formValues.no_hp,
+        email: formValues.email,
+        status: 'Aktif'
+      });
+      setLoading(false);
+      if (insGuruErr) {
+        console.warn('data_guru insert note:', insGuruErr.message);
+      }
+      showToast('Berhasil', `Akun Guru BK "${formValues.nama}" berhasil dibuat.`, 'success');
+      handleLoadAndSync(false);
+    }
+  };
+
+  // Handle Delete BK Account
+  const handleDeleteBk = async (item: TeacherAccountItem) => {
+    if (!isAdmin) return;
+    const result = await Swal.fire({
+      title: 'Hapus Akun BK?',
+      text: `Hapus akun "${item.nama}" (${item.username})?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      confirmButtonText: 'Ya, Hapus',
+      cancelButtonText: 'Batal'
+    });
+    if (result.isConfirmed) {
+      setLoading(true);
+      const { error: delErr } = await supabase.from('users').delete().eq('id', item.userId);
+      setLoading(false);
+      if (delErr) {
+        showToast('Gagal Menghapus', delErr.message, 'error');
+      } else {
+        showToast('Berhasil', 'Akun Guru BK berhasil dihapus.', 'success');
+        handleLoadAndSync(false);
+      }
+    }
+  };
+
   // Handle Edit Credentials Modal
   const handleOpenEditModal = async (item: TeacherAccountItem) => {
     if (!isAdmin) {
@@ -399,15 +641,18 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       return;
     }
 
-    if (item.role === 'tata_usaha') {
+    const isBkAccount = item.role === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk';
+    if (item.role === 'tata_usaha' || isBkAccount) {
+      const roleTitle = isBkAccount ? 'Guru BK' : 'Tata Usaha';
+      const btnColor = isBkAccount ? '#E11D48' : '#0D9488';
       const { value: formValues } = await Swal.fire({
-        title: 'Atur Kredensial Akun Tata Usaha',
+        title: `Atur Kredensial Akun ${roleTitle}`,
         width: '450px',
         html: `
           <div class="text-left space-y-3 text-xs">
             <div>
               <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nama Lengkap *</label>
-              <input id="swal-tu-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama}" placeholder="Nama staf TU...">
+              <input id="swal-tu-nama" class="swal2-input !mt-0 !w-full text-xs" value="${item.nama}" placeholder="Nama...">
             </div>
             <div>
               <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Username Login *</label>
@@ -422,7 +667,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan',
-        confirmButtonColor: '#0D9488',
+        confirmButtonColor: btnColor,
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nama = (document.getElementById('swal-tu-nama') as HTMLInputElement)?.value?.trim();
@@ -444,7 +689,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         if (updErr) {
           showToast('Gagal Memperbarui', updErr.message, 'error');
         } else {
-          showToast('Berhasil', 'Akun Tata Usaha berhasil diperbarui.', 'success');
+          showToast('Berhasil', `Akun ${roleTitle} berhasil diperbarui.`, 'success');
           handleLoadAndSync(false);
         }
       }
@@ -700,6 +945,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
             </button>
             <button
               type="button"
+              onClick={handleCreateBkUser}
+              disabled={syncing || loading}
+              className="clay-btn px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              title="Tambah akun pengguna Guru BK baru"
+            >
+              <i className="fa-solid fa-user-plus"></i>
+              <span>+ Akun BK</span>
+            </button>
+            <button
+              type="button"
               onClick={() => handleLoadAndSync(true)}
               disabled={syncing || loading}
               className="clay-btn px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
@@ -881,6 +1136,23 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                           </button>
                           <button
                             type="button"
+                            onClick={() => handleToggleBkAssignment(item)}
+                            className={`btn-click px-2 py-1 rounded-lg font-bold text-[11px] border transition flex items-center gap-1 ${
+                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk'
+                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/60'
+                                : 'bg-rose-100 hover:bg-rose-200 text-rose-900 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/60'
+                            }`}
+                            title={
+                              (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk'
+                                ? 'Kembalikan role ke Guru'
+                                : 'Tunjuk sebagai Guru BK'
+                            }
+                          >
+                            <i className={`fa-solid ${(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ? 'fa-chalkboard-user' : 'fa-heart-pulse'} text-[10px]`}></i>
+                            <span>{(item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ? 'Ke Guru' : 'Tunjuk BK'}</span>
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handleOpenEditModal(item)}
                             className="btn-click px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] shadow-xs flex items-center gap-1 transition"
                             title="Ubah Username & Password"
@@ -894,6 +1166,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                               onClick={() => handleDeleteTu(item)}
                               className="btn-click px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300 font-bold text-[11px] border border-red-300/60 transition"
                               title="Hapus akun Tata Usaha"
+                            >
+                              <i className="fa-solid fa-trash-can text-[10px]"></i>
+                              <span>Hapus</span>
+                            </button>
+                          ) : item.role === 'bk' ? (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBk(item)}
+                              className="btn-click px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300 font-bold text-[11px] border border-red-300/60 transition"
+                              title="Hapus akun Guru BK"
                             >
                               <i className="fa-solid fa-trash-can text-[10px]"></i>
                               <span>Hapus</span>

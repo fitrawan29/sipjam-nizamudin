@@ -1,43 +1,35 @@
-# BRIEFING — 2026-11-09T04:09:00Z
+# BRIEFING — 2026-11-09T05:30:35Z
 
 ## Mission
-Orchestrate SWE Light execution and victory audit for religion-based student filtering in PAI and PAK classes.
+Coordinate implementation of student piket attendance adjustment (remove morning rekap obligation for piket, rename terminology to Presensi Datang & Pulang) via teamwork_swe (SWE Light).
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork
-- Orchestrator: 62f04057-706a-42c7-b730-21f255d96072 (completed)
-- Victory Auditor: 88c07e89-fdba-4131-ab5b-48bfbf2db5eb (completed)
+- Orchestrator: 98fe8e89-a2d2-480c-af0c-96b0a282e4c1
+- Victory Auditor: to be spawned on victory claim
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Route: SWE Light (teamwork_swe) — single self-contained code change explicitly requested small and focused
-- Preserve non-regression for other subjects and unrelated features
+- Preserve existing logic and features (guru mapel journals, schedules, attendance, user management)
+- Ensure production quality, access control, non-regression, and zero lint/type-check/build errors
+- Ponytail principles: minimal, clean, no over-engineering or speculative abstractions
+- Keep changes small and focused on the single self-contained fix
 
 ## User Context
-- **Last user request**: Approved task prompt executed, audited, and verified.
-- **Pending clarifications**: None
-- **Delivered results**:
-  - Centralized religion filtering & subject detection helper `src/lib/agamaFilter.ts`
-  - Integration with attendance & teaching journal (`GuruJurnal.tsx`, `presensiIntervensi.ts`)
-  - Integration with gradebook & rapor (`GradebookView.tsx`, `RaporView.tsx`)
-  - Integration with class roster & master data (`AdminKelasView.tsx`, `AdminDataView.tsx`, `dataIntegrityGuard.ts`)
-  - Database schema migration `supabase/migrations/20261109_add_agama_to_data_siswa.sql`
-  - 29/29 dedicated isolation unit/integration tests passing
-  - Zero regression across all 77 repository test suites and clean Turbopack build
-  - Independent post-victory audit confirmed: VERDICT: VICTORY CONFIRMED
+- **Last user request**: Approved task prompt received for student piket attendance flow & terminology adjustment.
+- **Pending clarifications**: none
+- **Delivered results**: Sent start notification to caller.
 
 ## Project Status
-- **Phase**: complete
+- **Phase**: in progress
+- **Route**: SWE Light (teamwork_swe) — single self-contained fix with explicit lightness/ponytail signal.
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- ORIGINAL_REQUEST.md — Authoritative user intent and approved task prompt
-- .agents/teamwork/swe_1/handoff.md — SWE Light Orchestrator handoff
-- .agents/teamwork/auditor_sentinel/handoff.md — Sentinel Victory Auditor report
-- .agents/teamwork/handoff.md — Sentinel final handoff report
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Authoritative user intent record

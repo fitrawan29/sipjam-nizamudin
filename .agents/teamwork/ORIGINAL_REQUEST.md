@@ -1,43 +1,42 @@
 # Original User Request
 
-## Initial Request — 2026-11-09T00:02:47Z
+## Initial Request — 2026-11-09T05:30:30Z
 
-This is a single self-contained fix; keep it small and focused. Perbaiki masalah pengunggahan dokumen dari presensi untuk surat izin, surat sakit, dan surat-surat lainnya pada aplikasi SIPJAM agar berkas terunggah dengan andal tanpa refresh halaman secara prematur, dilengkapi indikator progres, tidak terjadi error penolakan file, dan dokumen terunggah pada folder presensi guru sesuai nama guru.
+This is a single self-contained fix; keep it small and focused.
+Gunakan prinsip ponytail (solusi paling minimal, bersih, tanpa over-engineering): sesuaikan alur presensi agar petugas piket tidak lagi memiliki kewajiban melakukan presensi/rekap absensi kepada siswa di pagi hari, serta gantikan tulisan/label "presensi piket" untuk siswa menjadi "presensi datang" dan "presensi pulang". Perubahan ini wajib menjaga seluruh fitur dan logika lain yang tidak terdampak agar tetap stabil dan tidak berubah.
 
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. Penanganan Alur Pengunggahan Dokumen Presensi
-Saat pengguna memilih berkas dokumen untuk surat izin, surat sakit, atau berkas pendukung presensi lainnya, sistem harus menampung berkas tanpa memicu refresh halaman atau upload langsung secara prematur. Proses pengunggahan dijalankan saat form presensi dikonfirmasi/disimpan tanpa me-refresh atau mereset halaman.
+### R1. Penyesuaian Alur Presensi Pagi Piket & Penghapusan Beban Rekap Absensi Siswa
+- **Beban Rekap Ditiadakan**: Pada modul dan form Laporan Piket (`PiketView`), guru piket tidak lagi dibebani kewajiban 'Rekap Absensi Sekolah' (mengabsen siswa Hadir/Sakit/Izin/Alpa per kelas di pagi hari). Input absensi kelas manual pagi oleh piket ditiadakan kewajibannya sehingga guru piket fokus pada catatan kejadian dan foto dokumentasi piket.
+- **Presensi Datang Murni**: Presensi siswa di pagi hari murni berfungsi sebagai "Presensi Datang" (melalui pemindaian barcode/QR gerbang atau pencatatan datang mandiri yang sudah ada), tanpa menuntut piket melakukan rekapitulasi absensi kelas pagi.
+- **Penyesuaian Keterangan & Trigger Kewajiban**: Keterangan status terkait kewajiban piket pagi (seperti status "Anda bertugas mengisi Presensi Siswa", tombol "Simpan Presensi Siswa", atau peringatan batas waktu pengisian presensi pagi bagi piket) disesuaikan agar tidak lagi memicu kewajiban presensi pagi bagi guru piket.
+- **Presensi Pulang**: Presensi pulang siswa tetap dapat dicatat sesuai jadwal kepulangan yang berlaku.
 
-### R2. Indikator Progres dan Validasi Berkas
-Sistem harus menyediakan indikator progres/status pengunggahan yang jelas. Berkas dokumen yang valid tidak boleh mengalami error penolakan file dan dapat diproses hingga tuntas.
+### R2. Pembaharuan Terminologi dan Teks Presensi Siswa
+Gantikan seluruh teks dan label "Presensi Piket" yang merujuk pada presensi siswa menjadi "Presensi Datang" dan "Presensi Pulang" di seluruh antarmuka yang terdampak, termasuk tombol/badge status sinkronisasi pada Jurnal Guru (seperti penyesuaian istilah "Terapkan Presensi Piket" / "Belum Presensi Piket" menjadi istilah presensi datang/pulang), label kolom/tabel, catatan notifikasi/WhatsApp, dan teks status terkait.
 
-### R3. Penempatan File Upload di Folder SIPJAM Sesuai Nama Guru
-Dokumen presensi yang diunggah harus tersimpan secara otomatis pada jalur direktori upload presensi guru sesuai nama guru yang bersangkutan dengan struktur `SIPJAM/Presensi_Guru/<Nama Guru>/`.
+### R3. Preservasi Fitur dan Logika yang Tidak Terdampak
+Pastikan seluruh fitur dan logika lain di luar presensi siswa oleh piket (termasuk absensi guru piket, absensi wali kelas, jurnal pembelajaran KBM, catatan kejadian & dokumentasi foto piket harian, dan sistem rekapitulasi) tetap berfungsi normal dan tidak mengalami regresi perilaku.
+
+## Verification Resources
+- Existing test suites: `npm test` (Vitest) yang mencakup modul piket, jurnal guru, dan presensi gerbang/wali kelas (`tests/presensi_gerbang_dan_absensi_retensi.test.ts`, `tests/m4_wali_kelas_guru_sync.test.ts`, `tests/adversarial_challenger_2.test.ts`).
 
 ## Acceptance Criteria
 
-### Alur dan Ketahanan Pengunggahan
-- [ ] Pemilihan berkas dokumen (surat izin, sakit, dsb.) tidak memicu refresh halaman atau upload langsung secara prematur sebelum konfirmasi form
-- [ ] Proses upload berjalan tanpa memicu reload atau pemutusan state halaman
+### Alur Piket & Penyesuaian Presensi Siswa
+- [ ] Pada form Laporan Piket (`PiketView`), guru piket tidak lagi diwajibkan melakukan input/rekap absensi siswa per kelas (H/S/I/A) di pagi hari.
+- [ ] Presensi pagi siswa berjalan sebagai "Presensi Datang" (melalui pemindai QR/barcode gerbang atau log datang yang ada) tanpa mewajibkan rekap manual oleh guru piket.
+- [ ] Status dan instruksi kewajiban piket pagi (seperti "Anda bertugas mengisi Presensi Siswa", tombol "Simpan Presensi Siswa", peringatan/banner kewajiban) telah disesuaikan agar tidak lagi membebani piket.
+- [ ] Presensi Pulang siswa tetap dapat dicatat sesuai jadwal kepulangan normal.
 
-### Indikator Progres dan Penerimaan Berkas
-- [ ] Indikator progres/status pengunggahan tampil saat proses upload berlangsung
-- [ ] Berkas dokumen yang valid tidak ditolak dan tidak memunculkan error penolakan berkas
+### UI & Terminologi
+- [ ] Tulisan dan label "Presensi Piket" untuk siswa di UI telah diganti menjadi istilah "Presensi Datang" dan "Presensi Pulang" yang konsisten di modul Piket dan Jurnal Guru.
+- [ ] Tombol dan badge sinkronisasi di Jurnal Guru yang sebelumnya merujuk pada piket telah disesuaikan agar merefleksikan presensi datang/pulang.
 
-### Penempatan Direktori Penyimpanan
-- [ ] Berkas yang terunggah tersimpan pada lokasi folder `SIPJAM/Presensi_Guru/<Nama Guru>/` sesuai identitas guru yang melakukan presensi
-
-### Verifikasi Pengujian
-- [ ] Automated unit/integration test baru dibuat dan lulus, mencakup skenario upload tanpa refresh prematur, progres pengunggahan, dan routing folder guru
-- [ ] Seluruh test suite presensi yang sudah ada di repositori tetap lolos pengujian (regresi nihil)
-
----
-Metadata & Coordination:
-- Role/Identity: teamwork_swe (SWE Light Orchestrator)
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe\
-- Original request reference: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-- Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+### Preservasi Sistem & Kualitas Kode
+- [ ] Modul Jurnal Guru, absensi wali kelas, catatan kejadian & dokumentasi piket tetap berjalan tanpa regresi logika.
+- [ ] Test suite yang ada (`npm test`) berjalan sukses dan lulus.
+- [ ] Implementasi mengikuti prinsip ponytail: minimal, bersih, tanpa penambahan dependensi atau over-engineering.

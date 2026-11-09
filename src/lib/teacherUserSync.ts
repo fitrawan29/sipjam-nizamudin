@@ -62,10 +62,11 @@ export async function syncTeacherAccounts(
 
     const teacherList = gurus || [];
 
-    // 2. Fetch users accounts with role Guru and Tata Usaha
+    // 2. Fetch users accounts with role Guru, Tata Usaha, and BK
     let userQuery = supabaseClient.from('users').select('*');
     if (typeof (userQuery as any).in === 'function') {
-      userQuery = (userQuery as any).in('role', ['Guru', 'tata_usaha', 'Tata Usaha']);
+      // AST preservation: .in('role', ['Guru', 'tata_usaha', 'Tata Usaha'])
+      userQuery = (userQuery as any).in('role', ['Guru', 'tata_usaha', 'Tata Usaha', 'bk', 'guru_bk', 'Guru BK']);
     } else if (typeof (userQuery as any).eq === 'function') {
       userQuery = (userQuery as any).eq('role', 'Guru');
     }
@@ -116,12 +117,13 @@ export async function syncTeacherAccounts(
           ? crypto.randomUUID()
           : `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
+        const isBkMapel = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') || (guru.mata_pelajaran || '').toLowerCase() === 'bk';
         const newUserData = {
           id: newId,
           username: targetUsername,
           password: defaultPassword,
           nama: nama,
-          role: 'Guru',
+          role: isBkMapel ? 'bk' : 'Guru',
           sekolah_id: targetSekolahId
         };
 
@@ -158,6 +160,7 @@ export async function syncTeacherAccounts(
         }
       }
 
+      const isTeacherBk = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') || (guru.mata_pelajaran || '').toLowerCase() === 'bk';
       accounts.push({
         guruId: guru.id,
         userId: matchedUser?.id,
@@ -165,7 +168,8 @@ export async function syncTeacherAccounts(
         nip: nip || '-',
         username: matchedUser?.username || targetUsername,
         defaultPassword: defaultPassword,
-        role: matchedUser?.role || 'Guru',
+        // AST preservation: role: matchedUser?.role || 'Guru'
+        role: matchedUser?.role || (isTeacherBk ? 'bk' : 'Guru'),
         mataPelajaran: guru.mata_pelajaran || '-',
         status: guru.status || 'Aktif',
         hasAccount: Boolean(matchedUser),

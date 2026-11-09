@@ -70,6 +70,12 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   if (!isOpen) return null;
 
   const isTU = isTataUsaha || (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+  const isBkRole =
+    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
+    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
+    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
+    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
+    (user?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling');
 
   const roleBadgeStyle = isSuperadmin
     ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-300/60'
@@ -79,6 +85,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-300/60'
     : isTU
     ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-300/60'
+    : isBkRole
+    ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-300/60'
     : isKepalaSekolah
     ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-300/60'
     : isWaliKelas
@@ -93,6 +101,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'Administrator'
     : isTU
     ? 'Tata Usaha'
+    : isBkRole
+    ? 'Guru BK'
     : isKepalaSekolah
     ? formatKepalaSekolahLabel(statusKepalaSekolah)
     : isWaliKelas
@@ -107,6 +117,8 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'fa-user-shield'
     : isTU
     ? 'fa-id-card-clip'
+    : isBkRole
+    ? 'fa-heart-pulse'
     : isKepalaSekolah
     ? 'fa-user-tie'
     : 'fa-chalkboard-user';
