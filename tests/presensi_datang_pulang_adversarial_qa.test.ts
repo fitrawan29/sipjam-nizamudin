@@ -45,7 +45,7 @@ assert(
 // 1.5 Presensi Pulang remains fully functional
 assert(
   piketCode.includes("handleManualMark(s, 'pulang')") &&
-  piketCode.includes("status: 'pulang'") &&
+  piketCode.includes("scan.status === 'pulang'") &&
   piketCode.includes("Tandai Pulang"),
   'Presensi Pulang student marking is preserved and operational'
 );
