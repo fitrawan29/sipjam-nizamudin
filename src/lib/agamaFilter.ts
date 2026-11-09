@@ -27,8 +27,8 @@ export function isPaiSubject(mapelName?: string | null): boolean {
   if (!mapelName) return false;
   const norm = normalizeSubject(mapelName);
 
-  // Exact or word-boundary matches for PAI acronym
-  if (/\b(pai)\b/i.test(norm)) return true;
+  // Matches "pai", "paibp", or "pai" followed by class level digits (10, 11, 12) or Roman numerals (x, xi, xii)
+  if (/\b(pai)(?:bp|[\d]+|[xvi]+)?\b/i.test(norm)) return true;
 
   // "agama islam" or "pendidikan agama islam" or subjects explicitly mentioning islam
   if (norm.includes('islam')) {
@@ -45,8 +45,8 @@ export function isPakSubject(mapelName?: string | null): boolean {
   if (!mapelName) return false;
   const norm = normalizeSubject(mapelName);
 
-  // Exact or word-boundary matches for PAK acronym
-  if (/\b(pak)\b/i.test(norm)) return true;
+  // Matches "pak", "pakbp", or "pak" followed by class level digits (10, 11, 12) or Roman numerals (x, xi, xii)
+  if (/\b(pak)(?:bp|[\d]+|[xvi]+)?\b/i.test(norm)) return true;
 
   // "agama kristen", "pendidikan agama kristen", or Christian / Catholic religion studies
   if (norm.includes('kristen') || norm.includes('protestan') || norm.includes('katolik')) {
@@ -73,7 +73,15 @@ export function isIslamStudent(student?: { agama?: string | null; status_agama?:
   const rawAgama = student.agama || student.status_agama || student.religion;
   if (!rawAgama) return false;
   const clean = String(rawAgama).trim().toLowerCase();
-  return clean === 'islam' || clean.startsWith('islam') || clean.includes('islam') || clean === 'muslim';
+  return (
+    clean === 'islam' ||
+    clean.startsWith('islam') ||
+    clean.includes('islam') ||
+    clean === 'muslim' ||
+    clean.includes('muslim') ||
+    clean === 'moslem' ||
+    clean.includes('moslem')
+  );
 }
 
 /**
@@ -88,7 +96,9 @@ export function isKristenStudent(student?: { agama?: string | null; status_agama
     clean === 'kristen' ||
     clean.includes('kristen') ||
     clean.includes('protestan') ||
-    clean.includes('katolik')
+    clean.includes('katolik') ||
+    clean.includes('christian') ||
+    clean.includes('catholic')
   );
 }
 

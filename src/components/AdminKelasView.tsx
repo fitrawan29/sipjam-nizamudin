@@ -1459,6 +1459,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                       setSelectedRosterStudentIds([]);
                       setSelectedInboundStudentIds([]);
                       setRosterSearch('');
+                      setRosterMapelFilter('ALL');
                       setInboundSearch('');
                       setTargetTransferClass('');
                     }}

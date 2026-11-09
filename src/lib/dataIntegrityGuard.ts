@@ -1254,11 +1254,11 @@ export function parseAndValidateMasterCsv(
         const aNorm = aRaw.toLowerCase();
         if (!aRaw || aRaw === '-' || aNorm === 'null' || aNorm === 'undefined') {
           row.agama = null;
-        } else if (aNorm === 'islam' || aNorm.startsWith('islam') || aNorm.includes('islam') || aNorm === 'muslim') {
+        } else if (aNorm === 'islam' || aNorm.startsWith('islam') || aNorm.includes('islam') || aNorm === 'muslim' || aNorm.includes('muslim') || aNorm === 'moslem' || aNorm.includes('moslem')) {
           row.agama = 'Islam';
-        } else if (aNorm === 'kristen' || aNorm.includes('kristen') || aNorm.includes('protestan')) {
+        } else if (aNorm === 'kristen' || aNorm.includes('kristen') || aNorm.includes('protestan') || aNorm.includes('christian')) {
           row.agama = 'Kristen';
-        } else if (aNorm === 'katolik' || aNorm.includes('katolik')) {
+        } else if (aNorm === 'katolik' || aNorm.includes('katolik') || aNorm.includes('catholic')) {
           row.agama = 'Katolik';
         } else if (aNorm === 'hindu' || aNorm.includes('hindu')) {
           row.agama = 'Hindu';

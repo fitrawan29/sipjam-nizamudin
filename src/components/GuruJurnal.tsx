@@ -852,7 +852,12 @@ export default function GuruJurnal({
 
   const handleApplyPiketAttendance = () => {
     if (students.length === 0) return;
-    const newAbsensi = { ...absensi };
+    const newAbsensi: Record<string, string> = {};
+    students.forEach(s => {
+      if (s.nisn) {
+        newAbsensi[s.nisn] = absensi[s.nisn] || 'H';
+      }
+    });
     let syncedCount = 0;
     const updatedLastChanges: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
     students.forEach(s => {
@@ -987,8 +992,17 @@ export default function GuruJurnal({
       return showToast('Gagal Upload', err.message, 'error');
     }
 
+    const cleanAbsensiForSave: Record<string, string> = {};
+    if (tipeJurnal === 'Jurnal KBM' && Array.isArray(students)) {
+      students.forEach(s => {
+        if (s.nisn) {
+          cleanAbsensiForSave[s.nisn] = absensi[s.nisn] || 'H';
+        }
+      });
+    }
+
     const computedKehadiran = tipeJurnal === 'Jurnal KBM'
-      ? (kehadiranMurid || calculateKehadiranSummary(absensi, students))
+      ? (calculateKehadiranSummary(cleanAbsensiForSave, students) || kehadiranMurid || '-')
       : 'Hadir';
 
     const finalKonten = tipeJurnal === 'Jurnal KBM' ? konten : materi;
@@ -1011,7 +1025,7 @@ export default function GuruJurnal({
     const isAbsensiLengkap = tipeJurnal === 'Jurnal KBM'
       ? (
           Boolean(computedKehadiran && computedKehadiran.trim().length > 0 && computedKehadiran !== '-') &&
-          (students && students.length > 0 ? Object.keys(absensi || {}).length > 0 : true)
+          (students && students.length > 0 ? Object.keys(cleanAbsensiForSave).length > 0 : true)
         )
       : Boolean(computedKehadiran && computedKehadiran.trim().length > 0);
 
@@ -1029,7 +1043,7 @@ export default function GuruJurnal({
       tanggal: tanggal,
       materi: finalKonten,
       kegiatan: kegiatan,
-      absensi_siswa: JSON.stringify(absensi),
+      absensi_siswa: tipeJurnal === 'Jurnal KBM' ? JSON.stringify(cleanAbsensiForSave) : JSON.stringify(absensi),
       keterangan: `${invalPrefix}${tipeJurnal}`,
       refleksi: refleksi,
       detail_absen: '',

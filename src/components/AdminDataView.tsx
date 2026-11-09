@@ -256,6 +256,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     setSearch('');
     setFilter1('ALL');
     setFilter2('ALL');
+    setFilterMapelSiswa('ALL');
     setPage(0);
     if (typeof window !== 'undefined' && window.history?.replaceState) {
       window.history.replaceState(null, '', `?view=view-admin-data&tab=${tabId}`);

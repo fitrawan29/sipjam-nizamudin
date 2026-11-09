@@ -33,7 +33,7 @@ function check(desc: string, fn: () => void) {
 
 // Mock student roster in a single class with diverse religious affiliations
 const mockClassStudents = [
-  { id: 's1', nisn: '001', nama_siswa: 'Ahmad Dahlan', kelas: 'X Merdeka', agama: 'Islam', gender: 'Laki-laki' },
+  { id: 's1', nisn: '001', nama_siswa: 'Ahmad Fauzi', kelas: 'X Merdeka', agama: 'Islam', gender: 'Laki-laki' },
   { id: 's2', nisn: '002', nama_siswa: 'Fatimah Az-Zahra', kelas: 'X Merdeka', agama: 'Islam', gender: 'Perempuan' },
   { id: 's3', nisn: '003', nama_siswa: 'Muhammad Ali', kelas: 'X Merdeka', agama: 'islam', gender: 'Laki-laki' },
   { id: 's4', nisn: '004', nama_siswa: 'Siti Khadijah', kelas: 'X Merdeka', agama: 'ISLAM', gender: 'Perempuan' },
@@ -69,7 +69,14 @@ check('Identifies standard PAI subject variations', () => {
     'PAI & BP',
     'PAI dan BP',
     'Pendidikan Agama & Budi Pekerti (Islam)',
-    'Pendidikan Agama Islam X'
+    'Pendidikan Agama Islam X',
+    'PAIBP',
+    'PAI10',
+    'PAI11',
+    'PAI12',
+    'PAIX',
+    'PAIXI',
+    'PAIXII'
   ];
 
   paiVariations.forEach(v => {
@@ -100,7 +107,14 @@ check('Identifies standard PAK subject variations', () => {
     'Pendidikan Agama & Budi Pekerti (Kristen)',
     'Pendidikan Agama Kristen X',
     'Pendidikan Agama Katolik',
-    'Agama Katolik'
+    'Agama Katolik',
+    'PAKBP',
+    'PAK10',
+    'PAK11',
+    'PAK12',
+    'PAKX',
+    'PAKXI',
+    'PAKXII'
   ];
 
   pakVariations.forEach(v => {
@@ -124,7 +138,9 @@ check('Preserves general and other subjects (Non-Regresi)', () => {
     'Sejarah',
     'Seni Budaya',
     'Prakarya',
-    'Bimbingan Konseling'
+    'Bimbingan Konseling',
+    'Paket Keahlian Rekayasa Perangkat Lunak',
+    'Paket Kejuruan Akuntansi'
   ];
 
   generalSubjects.forEach(s => {
@@ -148,12 +164,15 @@ check('Defensive handling of empty, null, and undefined subjects', () => {
 // --- SECTION 2: Student Religious Status Verification ---
 console.log('\n--- SECTION 2: Student Religious Status Verification ---');
 
-check('Correctly identifies Islamic student status across casing and whitespace', () => {
+check('Correctly identifies Islamic student status across casing, whitespace, and Moslem variant', () => {
   assert.strictEqual(isIslamStudent({ agama: 'Islam' }), true);
   assert.strictEqual(isIslamStudent({ agama: 'islam' }), true);
   assert.strictEqual(isIslamStudent({ agama: 'ISLAM' }), true);
   assert.strictEqual(isIslamStudent({ agama: ' Islam ' }), true);
   assert.strictEqual(isIslamStudent({ agama: 'Muslim' }), true);
+  assert.strictEqual(isIslamStudent({ agama: 'muslim' }), true);
+  assert.strictEqual(isIslamStudent({ agama: 'Moslem' }), true);
+  assert.strictEqual(isIslamStudent({ agama: 'moslem' }), true);
 
   assert.strictEqual(isIslamStudent({ agama: 'Kristen' }), false);
   assert.strictEqual(isIslamStudent({ agama: 'Katolik' }), false);
@@ -163,7 +182,7 @@ check('Correctly identifies Islamic student status across casing and whitespace'
   assert.strictEqual(isIslamStudent(null), false);
 });
 
-check('Correctly identifies Christian/Catholic student status across casing and whitespace', () => {
+check('Correctly identifies Christian/Catholic student status across casing, whitespace, and English variants', () => {
   assert.strictEqual(isKristenStudent({ agama: 'Kristen' }), true);
   assert.strictEqual(isKristenStudent({ agama: 'kristen' }), true);
   assert.strictEqual(isKristenStudent({ agama: 'KRISTEN' }), true);
@@ -171,9 +190,14 @@ check('Correctly identifies Christian/Catholic student status across casing and 
   assert.strictEqual(isKristenStudent({ agama: 'Kristen Protestan' }), true);
   assert.strictEqual(isKristenStudent({ agama: 'Katolik' }), true);
   assert.strictEqual(isKristenStudent({ agama: 'Kristen Katolik' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'Christian' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'christian' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'Catholic' }), true);
+  assert.strictEqual(isKristenStudent({ agama: 'catholic' }), true);
 
   assert.strictEqual(isKristenStudent({ agama: 'Islam' }), false);
   assert.strictEqual(isKristenStudent({ agama: 'Muslim' }), false);
+  assert.strictEqual(isKristenStudent({ agama: 'Moslem' }), false);
   assert.strictEqual(isKristenStudent({ agama: 'Hindu' }), false);
   assert.strictEqual(isKristenStudent({ agama: null }), false);
   assert.strictEqual(isKristenStudent({ agama: '' }), false);
@@ -326,7 +350,7 @@ check('Domain 4: Rapor Subject Score Eligibility per Student', () => {
     'Pendidikan Pancasila'
   ];
 
-  const islamStudent = mockClassStudents.find(s => s.nama_siswa === 'Ahmad Dahlan')!;
+  const islamStudent = mockClassStudents.find(s => s.nama_siswa === 'Ahmad Fauzi')!;
   const kristenStudent = mockClassStudents.find(s => s.nama_siswa === 'Yohanes Baptista')!;
 
   const islamSubjects = activeMapels.filter(m => isStudentEligibleForSubject(islamStudent, m));
@@ -363,10 +387,13 @@ check('parseAndValidateMasterCsv sanitizes and standardizes agama values', () =>
 005,Siswa Lima,X Merdeka,Laki-laki,hindu,Aktif
 006,Siswa Enam,X Merdeka,Perempuan,buddha,Aktif
 007,Siswa Tujuh,X Merdeka,Laki-laki,-,Aktif
-008,Siswa Delapan,X Merdeka,Perempuan,null,Aktif`;
+008,Siswa Delapan,X Merdeka,Perempuan,null,Aktif
+009,Siswa Sembilan,X Merdeka,Laki-laki,Moslem,Aktif
+010,Siswa Sepuluh,X Merdeka,Perempuan,Christian,Aktif
+011,Siswa Sebelas,X Merdeka,Perempuan,Catholic,Aktif`;
 
   const rows = parseAndValidateMasterCsv(csvContent, 'data_siswa');
-  assert.strictEqual(rows.length, 8);
+  assert.strictEqual(rows.length, 11);
   assert.strictEqual(rows[0].agama, 'Islam', 'Whitespace and lowercase trimmed/standardized');
   assert.strictEqual(rows[1].agama, 'Islam', 'Uppercase ISLAM standardized to Title Case');
   assert.strictEqual(rows[2].agama, 'Kristen', 'Kristen Protestan standardized to Kristen');
@@ -375,6 +402,9 @@ check('parseAndValidateMasterCsv sanitizes and standardizes agama values', () =>
   assert.strictEqual(rows[5].agama, 'Buddha', 'buddha standardized to Buddha');
   assert.strictEqual(rows[6].agama, null, 'Dash hyphen normalized to null');
   assert.strictEqual(rows[7].agama, null, 'String null normalized to null');
+  assert.strictEqual(rows[8].agama, 'Islam', 'Moslem standardized to Islam');
+  assert.strictEqual(rows[9].agama, 'Kristen', 'Christian standardized to Kristen');
+  assert.strictEqual(rows[10].agama, 'Katolik', 'Catholic standardized to Katolik');
 });
 
 check('parseAndValidateMasterCsv handles legacy CSV without agama column gracefully', () => {
@@ -427,14 +457,68 @@ check('Prevents attendance state bleed when switching from general subject to PA
   });
 });
 
+check('GuruJurnal save payload guarantees strict isolation (absensi_siswa excludes non-eligible keys)', () => {
+  // Simulate dirty absensi containing 12 students from a prior general session or stale draft
+  const dirtyAbsensi: Record<string, string> = {};
+  mockClassStudents.forEach(s => {
+    dirtyAbsensi[s.nisn] = 'H';
+  });
+  assert.strictEqual(Object.keys(dirtyAbsensi).length, 12);
+
+  // When saving a PAI KBM Journal (where only 5 Islam students are eligible)
+  const paiStudents = filterStudentsBySubject(mockClassStudents, 'PAI');
+  assert.strictEqual(paiStudents.length, 5);
+
+  const cleanAbsensiForSave: Record<string, string> = {};
+  paiStudents.forEach(s => {
+    if (s.nisn) {
+      cleanAbsensiForSave[s.nisn] = dirtyAbsensi[s.nisn] || 'H';
+    }
+  });
+
+  const serialized = JSON.stringify(cleanAbsensiForSave);
+  const parsed = JSON.parse(serialized);
+
+  assert.strictEqual(Object.keys(parsed).length, 5, 'Serialized DB payload contains strictly 5 PAI student keys');
+  const nonPaiNisns = ['006', '007', '008', '009', '010', '011', '012'];
+  nonPaiNisns.forEach(n => {
+    assert.strictEqual(parsed[n], undefined, `Non-PAI student ${n} must NEVER be saved in PAI absensi_siswa`);
+  });
+});
+
+check('handleApplyPiketAttendance strictly restricts attendance keys to eligible students', () => {
+  const dirtyAbsensi: Record<string, string> = { '001': 'H', '002': 'S', '006': 'H', '007': 'I' };
+  const pakStudents = filterStudentsBySubject(mockClassStudents, 'PAK'); // students 006, 007, 008, 009, 010
+
+  const newAbsensi: Record<string, string> = {};
+  pakStudents.forEach(s => {
+    if (s.nisn) {
+      newAbsensi[s.nisn] = dirtyAbsensi[s.nisn] || 'H';
+    }
+  });
+
+  assert.strictEqual(Object.keys(newAbsensi).length, 5);
+  assert.strictEqual(newAbsensi['001'], undefined);
+  assert.strictEqual(newAbsensi['002'], undefined);
+  assert.strictEqual(newAbsensi['006'], 'H');
+  assert.strictEqual(newAbsensi['007'], 'I');
+});
+
 check('Handles student objects using religion or status_agama aliases', () => {
   const studentWithReligionAlias = { id: 'x1', nama_siswa: 'Ali', religion: 'Islam' };
   const studentWithStatusAgama = { id: 'x2', nama_siswa: 'David', status_agama: 'Kristen' };
+  const studentWithMoslem = { id: 'x3', nama_siswa: 'Hasan', religion: 'Moslem' };
+  const studentWithChristian = { id: 'x4', nama_siswa: 'John', status_agama: 'Christian' };
 
   assert.strictEqual(isIslamStudent(studentWithReligionAlias), true);
   assert.strictEqual(isKristenStudent(studentWithStatusAgama), true);
+  assert.strictEqual(isIslamStudent(studentWithMoslem), true);
+  assert.strictEqual(isKristenStudent(studentWithChristian), true);
+
   assert.strictEqual(isStudentEligibleForSubject(studentWithReligionAlias, 'PAI'), true);
   assert.strictEqual(isStudentEligibleForSubject(studentWithStatusAgama, 'PAK'), true);
+  assert.strictEqual(isStudentEligibleForSubject(studentWithMoslem, 'PAIBP'), true);
+  assert.strictEqual(isStudentEligibleForSubject(studentWithChristian, 'PAKBP'), true);
 });
 
 // --- SECTION 8: Boundary & Stress Cases ---

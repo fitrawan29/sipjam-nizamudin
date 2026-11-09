@@ -1,2 +1,1 @@
-# Reviewer R2 Working Directory
-Agent working directory for teamwork_preview_reviewer round 2.
+# Reviewer Round 2 Working Directory
