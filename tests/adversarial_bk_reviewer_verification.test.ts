@@ -10,6 +10,7 @@ import assert from 'node:assert';
 import * as fs from 'fs';
 import * as path from 'path';
 import { evaluateTabRBAC, getConsolidatedMenuItems, resolveCanonicalRoute } from '../src/lib/navigation';
+import { canTeacherPresensiPulang, GuruDailyState } from '../src/lib/workflow';
 
 console.log('\n========================================================================');
 console.log('🛡️ ADVERSARIAL REVIEWER VERIFICATION: BK ROLE & SESSION INTEGRITY');
@@ -168,6 +169,124 @@ const homeViewGuru = fs.readFileSync(path.resolve('src/components/HomeViewGuru.t
 assert.ok(homeViewGuru.includes('Layanan Bimbingan & Konseling (Guru BK)'));
 assert.ok(homeViewGuru.includes("label.includes('Jurnal') ? (isBk ? 'view-jurnal-bk' : 'view-guru-jurnal') : null") || homeViewGuru.includes("isBk ? 'view-jurnal-bk' : 'view-guru-jurnal'"));
 pass("HomeViewGuru.tsx contains dedicated Guru BK quick access card and correct journal routing");
+
+// 8. canTeacherPresensiPulang & Checkout Gate for Guru BK
+console.log('\n--- Suite 8: Guru BK Checkout & Presensi Pulang Gate Resolution ---');
+
+for (const mapel of mapelBkVariants) {
+  const bkState: Partial<GuruDailyState> = {
+    presensiDatang: { id: 'datang-bk-1', jenis_presensi: 'Hadir' },
+    jadwalKBM: [],
+    aturanKehadiran: 'Semua_Hari',
+    isNonTeachingDay: false,
+    isPiket: false,
+    isBlok: false,
+    isDinasLuar: false,
+    role: 'Guru',
+    mata_pelajaran: mapel
+  } as any;
+
+  assert.strictEqual(
+    canTeacherPresensiPulang(bkState),
+    true,
+    `Guru BK with mapel '${mapel}' and presensi datang MUST be permitted to presensiPulang`
+  );
+  pass(`Guru BK with mapel '${mapel}' successfully unlocked for presensiPulang`);
+}
+
+// Check with explicit role 'bk' and 'guru_bk'
+const bkRoleState1: Partial<GuruDailyState> = {
+  presensiDatang: { id: 'datang-bk-role' },
+  jadwalKBM: [],
+  aturanKehadiran: 'Semua_Hari',
+  isNonTeachingDay: false,
+  isPiket: false,
+  role: 'bk'
+} as any;
+assert.strictEqual(canTeacherPresensiPulang(bkRoleState1), true);
+pass("Guru BK with role 'bk' successfully unlocked for presensiPulang");
+
+const bkRoleState2: Partial<GuruDailyState> = {
+  presensiDatang: { id: 'datang-guru-bk-role' },
+  jadwalKBM: [],
+  aturanKehadiran: 'Semua_Hari',
+  isNonTeachingDay: false,
+  isPiket: false,
+  role: 'guru_bk'
+} as any;
+assert.strictEqual(canTeacherPresensiPulang(bkRoleState2), true);
+pass("Guru BK with role 'guru_bk' successfully unlocked for presensiPulang");
+
+const bkFlagState: Partial<GuruDailyState> = {
+  presensiDatang: { id: 'datang-is-bk-flag' },
+  jadwalKBM: [],
+  aturanKehadiran: 'Semua_Hari',
+  isNonTeachingDay: false,
+  isPiket: false,
+  isBk: true
+};
+assert.strictEqual(canTeacherPresensiPulang(bkFlagState), true);
+pass("Guru BK with isBk: true successfully unlocked for presensiPulang");
+
+// Guru BK on piket duty MUST complete piket before checkout
+const bkPiketIncomplete: Partial<GuruDailyState> = {
+  presensiDatang: { id: 'datang-bk-piket' },
+  jadwalKBM: [],
+  isPiket: true,
+  laporanPiket: null,
+  isBk: true
+};
+assert.strictEqual(
+  canTeacherPresensiPulang(bkPiketIncomplete),
+  false,
+  "Guru BK assigned to piket MUST still complete piket report before checkout"
+);
+pass("Guru BK with incomplete piket duty is appropriately blocked from presensiPulang");
+
+const bkPiketComplete: Partial<GuruDailyState> = {
+  presensiDatang: { id: 'datang-bk-piket' },
+  jadwalKBM: [],
+  isPiket: true,
+  laporanPiket: { id: 'lp-bk' },
+  isBk: true
+};
+assert.strictEqual(
+  canTeacherPresensiPulang(bkPiketComplete),
+  true,
+  "Guru BK with completed piket report is unlocked for presensiPulang"
+);
+pass("Guru BK with completed piket duty is unlocked for presensiPulang");
+
+// 9. Regular Teacher Non-Regression on Checkout Gate
+console.log('\n--- Suite 9: Non-Regression on Regular Teacher Checkout Gate ---');
+
+const regularTeacherNoScheduleNonExempt: Partial<GuruDailyState> = {
+  presensiDatang: { id: 'datang-reg' },
+  jadwalKBM: [],
+  aturanKehadiran: 'Semua_Hari',
+  isNonTeachingDay: false,
+  isPiket: false,
+  isBlok: false,
+  isDinasLuar: false,
+  role: 'Guru',
+  mata_pelajaran: 'Matematika'
+} as any;
+assert.strictEqual(
+  canTeacherPresensiPulang(regularTeacherNoScheduleNonExempt),
+  false,
+  "Regular teacher without teaching schedule in non-exempt school MUST be blocked from checkout unless exempt/kegiatan"
+);
+pass("Regular non-exempt teacher without schedule is strictly blocked from unearned checkout");
+
+// 10. AdminPenggunaView Role Label Consistency
+console.log('\n--- Suite 10: AdminPenggunaView UI Role Label Consistency ---');
+
+const adminPenggunaViewContent = fs.readFileSync(path.resolve('src/components/AdminPenggunaView.tsx'), 'utf-8');
+assert.ok(
+  adminPenggunaViewContent.includes("{isItemBk ? 'Guru BK' : item.role === 'tata_usaha' ? 'Tata Usaha' : item.role}"),
+  "AdminPenggunaView displays 'Guru BK' consistently for all BK role/mapel variants"
+);
+pass("AdminPenggunaView renders 'Guru BK' consistently across table rows");
 
 console.log('\n========================================================================');
 console.log(`🎉 ALL ${passCount} ADVERSARIAL REVIEWER VERIFICATION CHECKS PASSED EMPIRICALLY!`);

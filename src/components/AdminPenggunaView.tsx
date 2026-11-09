@@ -1187,7 +1187,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                               {item.nama}
                             </div>
                             <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                              Role: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{item.role === 'bk' ? 'Guru BK' : item.role === 'tata_usaha' ? 'Tata Usaha' : item.role}</span>
+                              Role: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{isItemBk ? 'Guru BK' : item.role === 'tata_usaha' ? 'Tata Usaha' : item.role}</span>
                             </div>
                           </div>
                         </div>

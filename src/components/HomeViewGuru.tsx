@@ -536,24 +536,20 @@ export default function HomeViewGuru({
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
-    if (isBk && !dailyState.presensiDatang) return { text: 'Selamat datang Guru BK. Silakan lakukan Presensi BK terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
-    if (isBk) return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi dan konseling siswa.', color: 'text-emerald-600 dark:text-emerald-400' };
     if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isAlpa && dailyState.presensiDatang) return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang dan pulang).', color: 'text-red-600 dark:text-red-400' };
     // Rejection messages take high priority — teacher must know to re-submit
     if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
-    if (!dailyState.presensiDatang) return { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
+    if (!dailyState.presensiDatang) {
+      return isBk
+        ? { text: 'Selamat datang Guru BK. Silakan lakukan Presensi BK terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' }
+        : { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
+    }
     if (dailyState.isPiket && dailyState.laporanPiketDitolak) return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan isi ulang di menu Piket.', color: 'text-red-600 dark:text-red-400' };
     if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${(dailyState.jurnalDitolak || []).length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
     if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
-    if (dailyState.isBlok && !dailyState.isNonTeachingDay && !dailyState.jurnalKegiatan) {
-      return { text: `Periode Sistem Blok: Silakan isi Jurnal Kegiatan (${dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'}).`, color: 'text-amber-600 dark:text-amber-400' };
-    }
-    if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
-    if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
-    if (dailyState.canPresensiPulang && !dailyState.presensiPulang) return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
     if (dailyState.presensiPulang) {
       if (dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat') {
         return { text: '⚠️ Anda tercatat Pulang Cepat karena tidak mengisi jurnal kegiatan dan tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
@@ -563,6 +559,18 @@ export default function HomeViewGuru({
       }
       return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-green-600 dark:text-green-400' };
     }
+    if (isBk) {
+      if (dailyState.canPresensiPulang) {
+        return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi, atau lakukan Presensi Pulang jika jam tugas selesai.', color: 'text-emerald-600 dark:text-emerald-400' };
+      }
+      return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi dan konseling siswa.', color: 'text-emerald-600 dark:text-emerald-400' };
+    }
+    if (dailyState.isBlok && !dailyState.isNonTeachingDay && !dailyState.jurnalKegiatan) {
+      return { text: `Periode Sistem Blok: Silakan isi Jurnal Kegiatan (${dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'}).`, color: 'text-amber-600 dark:text-amber-400' };
+    }
+    if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
+    if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
+    if (dailyState.canPresensiPulang && !dailyState.presensiPulang) return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
     return null;
   };
 

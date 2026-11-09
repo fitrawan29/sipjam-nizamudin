@@ -43,6 +43,7 @@ export type GuruDailyState = {
   // Attendance requirement & exemption fields
   aturanKehadiran?: 'Semua_Hari' | 'Hari_Mengajar_Saja';
   isNonTeachingDay?: boolean;
+  isBk?: boolean;
   bebasAlpa?: boolean;
   isAlpa?: boolean;
 
@@ -794,6 +795,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     lockedReason: null,
     aturanKehadiran: 'Semua_Hari',
     isNonTeachingDay: false,
+    isBk: false,
     bebasAlpa: false,
     isAlpa: false,
     // Rejection tracking
@@ -906,11 +908,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // Cek Pengecualian Kehadiran Guru:
     // Guru yang dikecualikan (wajib hadir HANYA saat hari mengajar)
     let isTeacherExempt = false;
+    let isTeacherBk = false;
     let teacherDataGuruId: string | null = null;
     let teacherDataGuruNip: string | null = null;
     let explicitTeacherSetting: boolean | null = null;
     try {
-      let tQ = supabase.from('data_guru').select('id, nama_guru, nip, wajib_hadir_hanya_mengajar, sekolah_id');
+      let tQ = supabase.from('data_guru').select('id, nama_guru, nip, mata_pelajaran, wajib_hadir_hanya_mengajar, sekolah_id');
       if (sekolahId) {
         tQ = tQ.eq('sekolah_id', sekolahId);
       }
@@ -933,6 +936,14 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         for (const teacher of tData) {
           if (!teacherDataGuruId && teacher.id) teacherDataGuruId = String(teacher.id);
           if (!teacherDataGuruNip && teacher.nip) teacherDataGuruNip = String(teacher.nip);
+          const mapel = (teacher.mata_pelajaran || '').toLowerCase();
+          if (
+            mapel.includes('bimbingan konseling') ||
+            mapel.includes('bimbingan dan konseling') ||
+            mapel.trim() === 'bk'
+          ) {
+            isTeacherBk = true;
+          }
           if (teacher.wajib_hadir_hanya_mengajar !== null && teacher.wajib_hadir_hanya_mengajar !== undefined) {
             explicitTeacherSetting = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true';
           }
@@ -951,6 +962,22 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     } catch (tErr) {
       console.warn('Error checking teacher exemption in data_guru:', tErr);
     }
+
+    if (!isTeacherBk && (userId || username)) {
+      try {
+        let uQ = supabase.from('users').select('role');
+        if (userId) uQ = uQ.eq('id', userId);
+        else if (username) uQ = uQ.eq('username', username);
+        const { data: uData } = await uQ;
+        if (uData && uData.length > 0) {
+          const r = (uData[0].role || '').toLowerCase().replace(/[\s_-]+/g, '');
+          if (r === 'bk' || r === 'gurubk' || r === 'bimbingankonseling' || r === 'bimbingandankonseling') {
+            isTeacherBk = true;
+          }
+        }
+      } catch (_) {}
+    }
+    state.isBk = isTeacherBk;
 
     if (guruHanyaMengajarList.includes(namaGuru) || (username && guruHanyaMengajarList.includes(username))) {
       isTeacherExempt = true;
@@ -1399,6 +1426,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let isJurnalDone = false;
     if (state.isNonTeachingDay) {
       isJurnalDone = true;
+    } else if (state.isBk || isTeacherBk) {
+      isJurnalDone = true;
     } else if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
       if (state.jurnalKegiatan) isJurnalDone = true;
       if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;
@@ -1465,7 +1494,13 @@ export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolea
   if (!isPiketDone) return false;
 
   // Evaluasi jurnal
-  if (state.isNonTeachingDay) {
+  const rawRole = ((state as any).role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const rawMapel = ((state as any).mata_pelajaran || (state as any).mataPelajaran || '').toLowerCase();
+  const isBkState = Boolean(state.isBk) ||
+    rawRole === 'bk' || rawRole === 'gurubk' || rawRole === 'bimbingankonseling' || rawRole === 'bimbingandankonseling' ||
+    rawMapel.includes('bimbingan konseling') || rawMapel.includes('bimbingan dan konseling') || rawMapel.trim() === 'bk';
+
+  if (state.isNonTeachingDay || isBkState) {
     return true;
   }
 
