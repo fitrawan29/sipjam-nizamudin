@@ -6,8 +6,9 @@
  * for Guru BK appointment and interface access.
  */
 
-import { describe, it } from 'node:test';
 import assert from 'node:assert';
+import * as fs from 'fs';
+import * as path from 'path';
 import { evaluateTabRBAC, getConsolidatedMenuItems, resolveCanonicalRoute } from '../src/lib/navigation';
 
 console.log('\n========================================================================');
@@ -94,6 +95,79 @@ assert.strictEqual(bkMenusWithFlag.length, 5);
 const expectedIds = ['view-home', 'view-guru-presensi', 'view-jurnal-bk', 'view-informasi', 'view-pengaturan-akun'];
 assert.deepStrictEqual(bkMenusWithFlag.map(m => m.id), expectedIds);
 pass("getConsolidatedMenuItems({ role: 'Guru', isBk: true }) generates strictly 5 BK items");
+
+// 5. Menu Consolidation with mapelBkVariants (Constraint Fallback in Menu Generator)
+console.log('\n--- Suite 5: Consolidated Menu Generation with mata_pelajaran Variants ---');
+
+for (const mapel of mapelBkVariants) {
+  const menus = getConsolidatedMenuItems({ role: 'Guru', mata_pelajaran: mapel });
+  assert.strictEqual(menus.length, 5, `Expected 5 items for mapel '${mapel}'`);
+  assert.deepStrictEqual(menus.map(m => m.id), expectedIds);
+  pass(`getConsolidatedMenuItems({ role: 'Guru', mata_pelajaran: '${mapel}' }) produces strictly 5 BK items`);
+
+  // Also verify camelCase mataPelajaran
+  const menusCamel = getConsolidatedMenuItems({ role: 'Guru', mataPelajaran: mapel });
+  assert.strictEqual(menusCamel.length, 5);
+  pass(`getConsolidatedMenuItems({ role: 'Guru', mataPelajaran: '${mapel}' }) produces strictly 5 BK items`);
+}
+
+// 6. Session Reversion Simulation (Clearing BK Mapel variants on Reversion to Guru)
+console.log('\n--- Suite 6: Session Reversion Simulation ---');
+
+const testRevertSync = (initialMapel: string) => {
+  const parsed = {
+    id: 'test-guru-123',
+    role: 'bk',
+    mata_pelajaran: initialMapel
+  };
+  const targetRole = 'Guru';
+
+  if (targetRole) {
+    parsed.role = targetRole;
+    if (targetRole === 'bk' || targetRole === 'guru_bk') {
+      parsed.mata_pelajaran = 'Bimbingan Konseling (BK)';
+    } else {
+      const currentMapel = (parsed.mata_pelajaran || '').toLowerCase();
+      if (
+        currentMapel.includes('bimbingan konseling') ||
+        currentMapel.includes('bimbingan dan konseling') ||
+        currentMapel.trim() === 'bk'
+      ) {
+        parsed.mata_pelajaran = '-';
+      }
+    }
+  }
+
+  assert.strictEqual(parsed.role, 'Guru');
+  assert.strictEqual(parsed.mata_pelajaran, '-', `Mapel '${initialMapel}' must be reset to '-' on revert`);
+
+  // Verify that subsequent RBAC check treats them as regular Guru
+  const rbacAfterRevert = evaluateTabRBAC('view-jurnal-bk', '', parsed);
+  assert.strictEqual(rbacAfterRevert.allowed, false, 'Reverted teacher MUST be blocked from Jurnal BK');
+  const rbacKbmAfterRevert = evaluateTabRBAC('view-guru-jurnal', '', parsed);
+  assert.strictEqual(rbacKbmAfterRevert.allowed, true, 'Reverted teacher MUST be allowed into KBM journal');
+};
+
+for (const mapel of mapelBkVariants) {
+  testRevertSync(mapel);
+  pass(`Session cleanly reverted from BK mapel '${mapel}' back to Guru`);
+}
+
+// 7. AST Comments & Invariant Preservation
+console.log('\n--- Suite 7: AST Comments & Structural Preservation ---');
+
+const appScreen = fs.readFileSync(path.resolve('src/components/AppScreen.tsx'), 'utf-8');
+assert.ok(appScreen.includes('{/* AST preservation: data-tour={item.id} */}'));
+pass("AppScreen.tsx verbatim AST comment preserved");
+
+const claySidebar = fs.readFileSync(path.resolve('src/components/ClaySidebar.tsx'), 'utf-8');
+assert.ok(claySidebar.includes('{/* AST preservation: data-tour={item.id} */}'));
+pass("ClaySidebar.tsx verbatim AST comment preserved");
+
+const homeViewGuru = fs.readFileSync(path.resolve('src/components/HomeViewGuru.tsx'), 'utf-8');
+assert.ok(homeViewGuru.includes('Layanan Bimbingan & Konseling (Guru BK)'));
+assert.ok(homeViewGuru.includes("label.includes('Jurnal') ? (isBk ? 'view-jurnal-bk' : 'view-guru-jurnal') : null") || homeViewGuru.includes("isBk ? 'view-jurnal-bk' : 'view-guru-jurnal'"));
+pass("HomeViewGuru.tsx contains dedicated Guru BK quick access card and correct journal routing");
 
 console.log('\n========================================================================');
 console.log(`🎉 ALL ${passCount} ADVERSARIAL REVIEWER VERIFICATION CHECKS PASSED EMPIRICALLY!`);

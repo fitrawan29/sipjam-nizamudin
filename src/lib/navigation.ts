@@ -102,8 +102,11 @@ export function getConsolidatedMenuItems(params: {
   isKepalaSekolah?: boolean;
   activeTargetSchool?: any;
   isBk?: boolean;
+  mata_pelajaran?: string;
+  mataPelajaran?: string;
 }): MenuItem[] {
   const normRole = (params.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const normMapel = (params.mata_pelajaran || params.mataPelajaran || '').toLowerCase();
   const isSuperadmin = normRole === 'superadmin';
   const isDinas = normRole === 'dinaspendidikan';
   const isAdmin = isSuperadmin || normRole === 'admin';
@@ -195,7 +198,8 @@ export function getConsolidatedMenuItems(params: {
     ];
   }
 
-  const isBk = Boolean(params.isBk) || normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling';
+  const isBk = Boolean(params.isBk) || normRole === 'bk' || normRole === 'gurubk' || normRole === 'bimbingankonseling' || normRole === 'bimbingandankonseling' ||
+    normMapel.includes('bimbingan konseling') || normMapel.includes('bimbingan dan konseling') || normMapel.trim() === 'bk';
   if (isBk) {
     return [
       { id: 'view-home', icon: 'fa-house', label: 'Dashboard', dataTour: 'view-home' },

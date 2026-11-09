@@ -134,6 +134,30 @@ export async function syncTeacherAccounts(
           .insert([newUserData])
           .select();
 
+        if (insErr && insErr.message?.includes('users_role_check')) {
+          const fallbackBkData = { ...newUserData, role: 'guru_bk' };
+          const { data: fbData, error: fbErr } = await supabaseClient.from('users').insert([fallbackBkData]).select();
+          if (!fbErr) {
+            insErr = null;
+            newUserData.role = 'guru_bk';
+            createdCount++;
+            const finalUser = (fbData && fbData[0]) ? fbData[0] : fallbackBkData;
+            userByUsername.set(targetUsername.toLowerCase(), finalUser);
+            matchedUser = finalUser;
+          } else if (fbErr.message?.includes('users_role_check')) {
+            const fallbackGuruData = { ...newUserData, role: 'Guru' };
+            const { data: gData, error: gErr } = await supabaseClient.from('users').insert([fallbackGuruData]).select();
+            if (!gErr) {
+              insErr = null;
+              newUserData.role = 'Guru';
+              createdCount++;
+              const finalUser = (gData && gData[0]) ? gData[0] : fallbackGuruData;
+              userByUsername.set(targetUsername.toLowerCase(), finalUser);
+              matchedUser = finalUser;
+            }
+          }
+        }
+
         if (insErr) {
           // If collision occurred on username, attempt safe suffix
           if (insErr.code === '23505' || insErr.message?.includes('duplicate key')) {
@@ -154,7 +178,7 @@ export async function syncTeacherAccounts(
           } else {
             errors.push(`Gagal membuat akun untuk ${nama}: ${insErr.message}`);
           }
-        } else {
+        } else if (!matchedUser) {
           createdCount++;
           const finalUser = (inserted && inserted[0]) ? inserted[0] : newUserData;
           userByUsername.set(targetUsername.toLowerCase(), finalUser);

@@ -100,6 +100,16 @@ export default function HomeViewGuru({
   }, [user?.sekolah_id]);
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, false);
+  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const normMapel = (user?.mata_pelajaran || (user as any)?.mataPelajaran || '').toLowerCase();
+  const isBk =
+    normRole === 'bk' ||
+    normRole === 'gurubk' ||
+    normRole === 'bimbingankonseling' ||
+    normRole === 'bimbingandankonseling' ||
+    normMapel.includes('bimbingan konseling') ||
+    normMapel.includes('bimbingan dan konseling') ||
+    normMapel.trim() === 'bk';
   const [jadwalWali, setJadwalWali] = useState<JadwalIntervensiWali>({
     batasPagi: '12:00',
     jamPulangMulai: '11:00',
@@ -447,7 +457,14 @@ export default function HomeViewGuru({
 
     // Step 3: Jurnal
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
-    if (dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) {
+    if (isBk) {
+      steps.push({
+        label: 'Jurnal BK (Konseling)',
+        status: 'active',
+        detail: 'Layanan Bimbingan & Konseling Siswa Lintas Kelas',
+        icon: 'fa-heart-pulse'
+      });
+    } else if (dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) {
       steps.push({ label: 'Bebas Jurnal', status: 'skipped', detail: 'Tidak ada jadwal mengajar hari ini', icon: 'fa-book-journal-whills' });
     } else if (dailyState.isBlok) {
       if (hasJurnalDitolak) {
@@ -512,13 +529,15 @@ export default function HomeViewGuru({
   const getStepTargetView = (label: string): string | null => {
     if (label.includes('Presensi Datang') || label.includes('Presensi Pulang')) return 'view-guru-presensi';
     if (label.includes('Piket')) return 'view-piket';
-    if (label.includes('Jurnal')) return 'view-guru-jurnal';
+    if (label.includes('Jurnal')) return isBk ? 'view-jurnal-bk' : 'view-guru-jurnal';
     return null;
   };
 
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
+    if (isBk && !dailyState.presensiDatang) return { text: 'Selamat datang Guru BK. Silakan lakukan Presensi BK terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
+    if (isBk) return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi dan konseling siswa.', color: 'text-emerald-600 dark:text-emerald-400' };
     if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isAlpa && dailyState.presensiDatang) return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang dan pulang).', color: 'text-red-600 dark:text-red-400' };
@@ -741,7 +760,7 @@ export default function HomeViewGuru({
                       </h3>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         isWaliIntervensiExpired 
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' 
+                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' 
                           : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
                       }`}>
                         <i className={`fa-solid ${isWaliIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
@@ -760,6 +779,35 @@ export default function HomeViewGuru({
                 >
                   <i className="fa-solid fa-pen-to-square"></i>
                   <span>Input Presensi Siswa</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Kartu Akses Cepat Layanan BK untuk Guru BK */}
+          {isBk && (
+            <div className="glass-card clay-card-rose p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-rose-800/60 shadow-[6px_6px_16px_rgba(255,180,190,0.35)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                    <i className="fa-solid fa-heart-pulse"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-xs sm:text-sm font-bold text-rose-950 dark:text-rose-200">
+                      Layanan Bimbingan & Konseling (Guru BK)
+                    </h3>
+                    <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5">
+                      Kelola catatan konseling siswa lintas kelas & administrasi bimbingan tanpa keterikatan kelas reguler.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setView('view-jurnal-bk')}
+                  className="clay-btn btn-click px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition shrink-0 bg-rose-600 hover:bg-rose-700 text-white border border-rose-400/50 cursor-pointer"
+                >
+                  <i className="fa-solid fa-pen-to-square"></i>
+                  <span>Input Jurnal BK</span>
                 </button>
               </div>
             </div>
@@ -934,19 +982,51 @@ export default function HomeViewGuru({
                 </p>
               </div>
             ) : dailyState?.isNonTeachingDay ? (
-              <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
-                  <i className="fa-solid fa-calendar-check"></i>
+              isBk ? (
+                <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-base">
+                    <i className="fa-solid fa-heart-pulse"></i>
+                  </div>
+                  <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                    Layanan Bimbingan & Konseling Terbuka
+                  </p>
+                  <p className="text-[11px] text-rose-700 dark:text-rose-300 max-w-md mx-auto">
+                    Sebagai Guru BK, Anda memberikan pendampingan dan konseling siswa lintas kelas tanpa jadwal mengajar KBM reguler.
+                  </p>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setView('view-jurnal-bk')}
+                      className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <i className="fa-solid fa-book-medical text-xs"></i>
+                      <span>Buka Jurnal BK</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setView('view-guru-presensi')}
+                      className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    >
+                      <i className="fa-solid fa-clock text-xs"></i>
+                      <span>Presensi BK</span>
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                  {dailyState.presensiDatang ? 'Kehadiran Sukarela · Bebas Jurnal' : 'Bebas Kehadiran & Jurnal'}
-                </p>
-                <p className="text-[11px] text-blue-700 dark:text-blue-300">
-                  {dailyState.presensiDatang
-                    ? 'Hari ini Anda hadir sukarela tanpa jadwal mengajar wajib, sehingga dibebaskan dari pengisian jurnal dan tugas piket.'
-                    : 'Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.'}
-                </p>
-              </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
+                    <i className="fa-solid fa-calendar-check"></i>
+                  </div>
+                  <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                    {dailyState.presensiDatang ? 'Kehadiran Sukarela · Bebas Jurnal' : 'Bebas Kehadiran & Jurnal'}
+                  </p>
+                  <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                    {dailyState.presensiDatang
+                      ? 'Hari ini Anda hadir sukarela tanpa jadwal mengajar wajib, sehingga dibebaskan dari pengisian jurnal dan tugas piket.'
+                      : 'Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.'}
+                  </p>
+                </div>
+              )
             ) : dailyState?.isBlok ? (
               <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200/80 dark:border-amber-800/60">

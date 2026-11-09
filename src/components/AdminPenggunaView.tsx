@@ -440,8 +440,15 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
             parsed.role = targetRole;
             if (targetRole === 'bk' || targetRole === 'guru_bk') {
               parsed.mata_pelajaran = 'Bimbingan Konseling (BK)';
-            } else if (parsed.mata_pelajaran === 'Bimbingan Konseling (BK)') {
-              parsed.mata_pelajaran = '-';
+            } else {
+              const currentMapel = (parsed.mata_pelajaran || '').toLowerCase();
+              if (
+                currentMapel.includes('bimbingan konseling') ||
+                currentMapel.includes('bimbingan dan konseling') ||
+                currentMapel.trim() === 'bk'
+              ) {
+                parsed.mata_pelajaran = '-';
+              }
             }
           }
           const serialized = JSON.stringify(parsed);
@@ -636,16 +643,28 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       });
 
       if (insUserErr && insUserErr.message?.includes('users_role_check')) {
-        const { error: retryErr } = await supabase.from('users').insert({
+        let { error: retryBkErr } = await supabase.from('users').insert({
           id: userId,
           nama: formValues.nama,
           username: formValues.nip,
           password: defaultPassword,
-          role: 'Guru',
+          role: 'guru_bk',
           sekolah_id: targetSekolahId
         });
-        if (!retryErr) {
+        if (!retryBkErr) {
           insUserErr = null;
+        } else if (retryBkErr.message?.includes('users_role_check')) {
+          const { error: retryErr } = await supabase.from('users').insert({
+            id: userId,
+            nama: formValues.nama,
+            username: formValues.nip,
+            password: defaultPassword,
+            role: 'Guru',
+            sekolah_id: targetSekolahId
+          });
+          if (!retryErr) {
+            insUserErr = null;
+          }
         }
       }
 
@@ -706,7 +725,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       return;
     }
 
-    const isBkAccount = item.role === 'bk' || (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk';
+    const normRole = (item.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+    const normMapel = (item.mataPelajaran || '').toLowerCase();
+    const isBkAccount =
+      normRole === 'bk' ||
+      normRole === 'gurubk' ||
+      normRole === 'bimbingankonseling' ||
+      normRole === 'bimbingandankonseling' ||
+      normMapel.includes('bimbingan konseling') ||
+      normMapel.includes('bimbingan dan konseling') ||
+      normMapel.trim() === 'bk';
     if (item.role === 'tata_usaha' || isBkAccount) {
       const roleTitle = isBkAccount ? 'Guru BK' : 'Tata Usaha';
       const btnColor = isBkAccount ? '#E11D48' : '#0D9488';
@@ -754,6 +782,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         if (updErr) {
           showToast('Gagal Memperbarui', updErr.message, 'error');
         } else {
+          syncLocalSessionIfMatching(item.userId, formValues.username);
           showToast('Berhasil', `Akun ${roleTitle} berhasil diperbarui.`, 'success');
           handleLoadAndSync(false);
         }

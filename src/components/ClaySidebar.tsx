@@ -75,9 +75,9 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
     (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
     (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
-    (user?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
-    (user?.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
-    (user?.mata_pelajaran || '').toLowerCase().trim() === 'bk';
+    (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+    (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
+    (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase().trim() === 'bk';
 
   const roleBadgeStyle = isSuperadmin
     ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-300/60'

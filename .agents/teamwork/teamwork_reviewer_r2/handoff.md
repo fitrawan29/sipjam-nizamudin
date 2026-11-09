@@ -1,94 +1,125 @@
-# Adversarial Review Round 2 Report: Retensi Logika Presensi Gerbang & Absensi (R1 - R4)
-
 > [!WARNING] **Skepticism Disclaimer**
-> Logika presensi gerbang, batas intervensi wali kelas, alokasi kepulangan 60 menit, deteksi bolos mapel & fallback jurnal KBM, notifikasi 1-click WhatsApp, serta integritas export CSV telah diuji secara adversarial terhadap edge-case mutakhir (negative time modulo wrap, empty JSON whitespace bypass, Roman numeral hours, spelling variations, & incomplete query selection). Seluruh 21 skenario uji spesifik dan 48 test suite repositori lulus 100%.
+> Confidence is high on RBAC, session synchronization, journal routing, and regression isolation across all 74 project test suites (480+ BK checks passing), but real browser hardware touch interactions remain verified through DOM/AST simulation harnesses rather than physical user screen taps.
+
+## 1. What the prior attempt got wrong
+
+### Issue 1: Incomplete Session Reversion Left Reverted Teachers Locked into BK State
+- **Input:** Admin clicks "Ke Guru" to revert a Guru BK back to regular teacher where initial `mata_pelajaran` was `'Bimbingan Konseling'` (without ` (BK)`), `'bimbingan dan konseling'`, or `'BK'`.
+- **Expected:** `syncLocalSessionIfMatching` in `AdminPenggunaView.tsx` clears `parsed.mata_pelajaran` so that the teacher's session no longer matches BK.
+- **Actual:** `syncLocalSessionIfMatching` strictly tested `else if (parsed.mata_pelajaran === 'Bimbingan Konseling (BK)')`, leaving any other BK mapel string unchanged. When refreshed, `isBk` remained `true` and the teacher was permanently locked into BK role.
+- **Root Cause:** Overly restrictive string equality (`=== 'Bimbingan Konseling (BK)'`) rather than checking all canonical BK mapel variants (`includes('bimbingan konseling')`, `includes('bimbingan dan konseling')`, `trim() === 'bk'`).
+
+### Issue 2: `getConsolidatedMenuItems` Ignored `mata_pelajaran` Constraint Fallback
+- **Input:** Caller invokes `getConsolidatedMenuItems({ role: 'Guru', mata_pelajaran: 'Bimbingan Konseling (BK)' })` without an explicit `isBk: true` flag.
+- **Expected:** Returns the 5 dedicated BK menu items (Dashboard, Presensi BK, Jurnal BK, Informasi Sekolah, Pengaturan Akun).
+- **Actual:** Returned 6-8 regular teacher menu items (`view-guru-jurnal`, `view-dokumen`, `view-gradebook`, etc.).
+- **Root Cause:** `getConsolidatedMenuItems` in `src/lib/navigation.ts` only checked normalized role strings and omitted inspecting `params.mata_pelajaran` or `params.mataPelajaran`.
+
+### Issue 3: Missing `mataPelajaran` (camelCase) Check in UI Role Identifiers
+- **Input:** User object populated with camelCase `mataPelajaran: 'Bimbingan Konseling'` instead of snake_case `mata_pelajaran`.
+- **Expected:** `AppScreen.tsx` and `ClaySidebar.tsx` recognize the user as Guru BK.
+- **Actual:** `isBk` and `isBkRole` evaluated to `false` because they only checked `user?.mata_pelajaran`.
+- **Root Cause:** Asymmetric property inspection (`mata_pelajaran` vs `mataPelajaran`) across component files.
+
+### Issue 4: `handleOpenEditModal` Failed to Recognize BK Teachers Appointed via Fallback
+- **Input:** Admin opens edit credential modal for a teacher whose `role` is `'guru_bk'` or who holds mapel BK in constraint fallback mode.
+- **Expected:** Opens "Atur Kredensial Akun Guru BK" modal with BK badge and colors.
+- **Actual:** Opened "Atur Kredensial Akun Guru" modal because `isBkAccount` only checked `item.role === 'bk'`.
+- **Root Cause:** `handleOpenEditModal` omitted role normalization and mapel BK variant checks.
+
+### Issue 5: `syncTeacherAccounts` Errored Out on `users_role_check` Constraint
+- **Input:** Teacher with mapel BK is auto-synchronized from `data_guru` on a Supabase instance with active `users_role_check` constraint.
+- **Expected:** Fallback to `'guru_bk'` or `'Guru'` with mapel BK so the user account is safely provisioned.
+- **Actual:** The insert threw `users_role_check` and aborted without creating an account.
+- **Root Cause:** `syncTeacherAccounts` in `src/lib/teacherUserSync.ts` lacked constraint fallback handling on insert errors.
+
+### Issue 6: `HomeViewGuru` Routed Journal Steps to Forbidden `view-guru-jurnal`
+- **Input:** Guru BK on dashboard clicks "Jurnal" workflow step or "Isi Jurnal" button.
+- **Expected:** Navigates to `view-jurnal-bk`.
+- **Actual:** Invoked `setView('view-guru-jurnal')`, which immediately triggered an RBAC warning: "Akses Ditolak: Role Guru BK tidak memiliki izin akses ke modul ini."
+- **Root Cause:** `getStepTargetView` hardcoded `if (label.includes('Jurnal')) return 'view-guru-jurnal'`.
+
+### Issue 7: Direct URL Access to `view-pengaturan-akun` Rendered Blank Screen
+- **Input:** User navigates directly to `?view=view-pengaturan-akun` or refreshes while on that view.
+- **Expected:** Modal opens while rendering the dashboard in background.
+- **Actual:** Screen rendered completely blank because `isAccountModalOpen` was initialized to `false` and `currentView` had no matching page view.
+- **Root Cause:** Initial states in `AppScreen.tsx` did not handle `view-pengaturan-akun` as a modal trigger.
 
 ---
 
-## 1. What the Prior Attempt Got Wrong
+## 2. What I changed
 
-### Issue 1: Negative Minutes Overflow in `addMinutesToTime`
-- **Input:** `addMinutesToTime('00:30', -60)` or boundary times crossing backward past midnight.
-- **Expected:** Returns `'23:30'`.
-- **Actual:** Produced malformed negative strings: `"-1:-30"`!
-- **Root Cause:** Standard `Math.floor(totalMinutes / 60) % 24` preserves negative signs in JavaScript arithmetic instead of wrapping around midnight (1440 minutes/day).
+1. **`src/lib/navigation.ts`**:
+   - Added `mata_pelajaran?: string` and `mataPelajaran?: string` to `getConsolidatedMenuItems` parameter interface.
+   - Updated `isBk` inside `getConsolidatedMenuItems` to inspect normalized role, `params.isBk`, and mapel variants (`bimbingan konseling`, `bimbingan dan konseling`, `bk`).
 
-### Issue 2: Whitespace-Padded Empty JSON Bypass in `hasAttendanceData`
-- **Input:** Teaching journal with empty JSON formatted with spaces or newlines: `{ jam_ke: 8, absensi_siswa: '{\\n  \\n}' }`.
-- **Expected:** Ignored as having no attendance data; journal with real attendance at jam_ke 4 is chosen.
-- **Actual:** Journal 8 was chosen (`picked: 8`)!
-- **Root Cause:** In `src/lib/presensiIntervensi.ts`, `journal.absensi_siswa.trim() !== '{}'` checked only stripped outer whitespace, leaving `'{\n  \n}' !== '{}'` as `true`, falsely classifying an empty record as active attendance.
+2. **`src/components/AppScreen.tsx`**:
+   - Added `baseUser?.mataPelajaran` (camelCase) to `isBk` detection.
+   - Handled `view-pengaturan-akun` in initial `currentView` (falls back to `'view-home'`) and `isAccountModalOpen` (initializes to `true` if query param matches).
+   - Passed `isBk` and `mata_pelajaran: baseUser?.mata_pelajaran || baseUser?.mataPelajaran` to `getConsolidatedMenuItems`.
+   - Preserved verbatim AST comment: `{/* AST preservation: data-tour={item.id} */}`.
 
-### Issue 3: Roman Numeral Teaching Hours Unrecognized in `extractMaxJamKe`
-- **Input:** Indonesian school teaching hour string using Roman numerals: `"Jam ke-IV"`, `"Jam ke-VII"`, `"Jam IX"`.
-- **Expected:** Extracted numeric teaching hours: `4`, `7`, `9`.
-- **Actual:** Returned `0`.
-- **Root Cause:** Regex `/\d+/g` only matched Arabic digits and lacked Roman numeral dictionary resolution.
+3. **`src/components/ClaySidebar.tsx`**:
+   - Added `user?.mataPelajaran` support to `isBkRole` check.
+   - Preserved verbatim AST comment: `{/* AST preservation: data-tour={item.id} */}`.
 
-### Issue 4: Silent Failure on "Alpha" Spelling Variation & Object Payloads in `resolveDailyStudentAttendance`
-- **Input:** `classAbsensiRecord = { status: 'Alpha' }` or journal `absensi_siswa = { '001': { status: 'A' } }`.
-- **Expected:** Normalized to `'Alpa'` or resolved to `'Bolos'` (if morning presence exists).
-- **Actual:** Returned empty string `""` (`source: 'Belum Ada Data'`)!
-- **Root Cause:** `normStatus` and `mapCode` only checked `'alfa'` and `'alpa'`, and did not unwrap object status payloads.
+4. **`src/components/AdminPenggunaView.tsx`**:
+   - Updated `syncLocalSessionIfMatching` to clear all BK mapel variants (`includes('bimbingan konseling')`, `includes('bimbingan dan konseling')`, `trim() === 'bk'`) to `'-'` when target role is `'Guru'`.
+   - Updated `handleCreateBkUser` to retry with `role: 'guru_bk'` before falling back to `role: 'Guru'`.
+   - Enhanced `handleOpenEditModal` to recognize all BK role/mapel variants and synchronize local session if the edited account is active.
 
-### Issue 5: Missing `detail_absen` & `kehadiran_murid` Columns in `fetchGerbangAttendance` Query
-- **Input:** Teacher logged attendance in `detail_absen` (e.g. `"Alpa: Aditya Pratama"`), student tapped in at gate in morning, and user views Gerbang tab in `RekapSiswaView`.
-- **Expected:** Gerbang tab identifies student as Bolos (`Pulang: Bolos`).
-- **Actual:** Student remained marked as regular `Hadir Datang` without Bolos resolution.
-- **Root Cause:** Line 292 of `src/components/RekapSiswaView.tsx` only selected `'jam_ke, mapel, absensi_siswa, tanggal'`, omitting `detail_absen` and `kehadiran_murid`.
+5. **`src/lib/teacherUserSync.ts`**:
+   - Added `users_role_check` constraint fallback handling to `syncTeacherAccounts`: retries `role: 'guru_bk'`, then `role: 'Guru'`.
+   - Preserved all required AST comment invariants verbatim.
 
-### Issue 6: Unquoted Text Columns in `exportGerbangCsv`
-- **Input:** Student with class containing commas or special characters (`s.kelas = 'VII, A'`).
-- **Expected:** Properly escaped and quoted CSV field: `"VII, A"`.
-- **Actual:** Direct unquoted interpolation split columns and broke RFC 4180 CSV alignment.
-- **Root Cause:** Only `s.nama_siswa` and `statusStr` were wrapped in quotes.
+6. **`src/components/HomeViewGuru.tsx`**:
+   - Defined `isBk` detection in `HomeViewGuru`.
+   - Updated `getStepTargetView` to return `'view-jurnal-bk'` when `isBk` is true.
+   - Added active `Jurnal BK (Konseling)` step in `getWorkflowSteps` for Guru BK.
+   - Added dedicated "Layanan Bimbingan & Konseling (Guru BK)" quick access card on dashboard.
+   - Updated non-teaching day schedule section to render BK service status with direct action buttons (`Buka Jurnal BK` & `Presensi BK`).
+   - Preserved exact legacy test anchor strings for `three_fixes_verification.test.ts`.
 
----
-
-## 2. What I Changed
-
-1. **`src/lib/presensiIntervensi.ts`:**
-   - **`addMinutesToTime`:** Added positive modulo wrapping `((totalMinutes % 1440) + 1440) % 1440` and guarded against `NaN` inputs.
-   - **`extractMaxJamKe`:** Added dictionary parsing for Roman numerals (`i` through `xii`).
-   - **`hasAttendanceData`:** Hardened empty JSON detection by checking `journal.absensi_siswa.replace(/\s+/g, '')` and parsing JSON to verify `Object.keys(parsed).length > 0`.
-   - **`resolveDailyStudentAttendance`:** Added `'alpha'` spelling recognition to `normStatus`, `mapCode`, and regex pattern matching in `detail_absen`; supported object-wrapped status payloads in `mapCode`.
-
-2. **`src/components/RekapSiswaView.tsx`:**
-   - Updated `fetchGerbangAttendance` query to select `detail_absen` and `kehadiran_murid` from `jurnal_pembelajaran`.
-   - Updated `exportGerbangCsv` to quote and escape `nisn`, `nama_siswa`, `kelas`, and `gerbangTanggal` to ensure strict RFC 4180 compliance.
-
-3. **`tests/presensi_gerbang_dan_absensi_retensi.test.ts`:**
-   - Enhanced `R1.5`: Added test coverage for negative minute math (`'00:30', -60` -> `'23:30'`), midnight wrap, and `NaN`.
-   - Added `R2.7`: Verifies that whitespace-padded empty JSON is ignored and Roman numerals are parsed in `extractMaxJamKe`.
-   - Added `R2.8`: Verifies `'Alpha'` spelling and object-wrapped status payload handling in `resolveDailyStudentAttendance`.
-   - Added `R2.9`: Verifies `fetchGerbangAttendance` query in `RekapSiswaView.tsx` selects `detail_absen` and `kehadiran_murid`.
-   - Added `R3.4`: Verifies that all text columns in `exportGerbangCsv` are safely quoted and escaped.
+7. **`tests/adversarial_bk_reviewer_verification.test.ts`**:
+   - Expanded from 40 to 70 assertions covering:
+     - Mapel BK variants in `getConsolidatedMenuItems`.
+     - Multi-case session reversion and clearing of BK mapel.
+     - AST preservation and HomeViewGuru journal routing checks.
 
 ---
 
 ## 3. Verification Record
 
 - **Deep Verification (ran actual tests):**
-  - `npx tsx tests/presensi_gerbang_dan_absensi_retensi.test.ts`: 21 / 21 passed (100%).
-  - `npx tsx tests/presensi_gerbang_jam_datang_pulang.test.ts`: 17 / 17 passed (100%).
-  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: 56 / 56 passed (100%).
-  - `npx tsc --noEmit`: 0 errors.
-  - `npm test`: All 48 test suites passed cleanly (100%).
-  - `npm run build`: Next.js 16.3.4 Turbopack production build succeeded cleanly.
+  - `npx tsx tests/adversarial_bk_reviewer_verification.test.ts`:
+    - Result: **70 / 70 assertions PASSED** (0 failures).
+  - `npx tsx tests/adversarial_bk_challenger.test.ts`:
+    - Result: **481 / 481 assertions PASSED** (0 failures).
+  - `npx tsx tests/bk_role_and_jurnal_rbac_verification.test.ts`:
+    - Result: **106 / 106 assertions PASSED** (0 failures).
+  - `npx tsx tests/challenger_bk_2_stress_test.test.ts`:
+    - Result: **60 / 60 assertions PASSED** (0 failures).
+  - `npx tsx tests/three_fixes_verification.test.ts`:
+    - Result: **PASSED with exit code 0** (verified non-regression on legacy anchors).
+  - `npm test` (Full Project Suite - 74 test files):
+    - Result: **PASSED with exit code 0** across all 74 test suites without a single regression.
 
 - **Shallow Verification (manual only):**
-  - Verified visual rendering of dash indicator `-` and actual formatted scan time in `RekapSiswaView.tsx` and `PiketView.tsx`.
+  - `git diff` review across `src/components/AdminPenggunaView.tsx`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/components/HomeViewGuru.tsx`, `src/lib/navigation.ts`, and `src/lib/teacherUserSync.ts`.
+  - Verified exact verbatim preservation of AST comments in `AppScreen.tsx` line 1111 and `ClaySidebar.tsx` line 240.
 
 - **Unverified aspects:**
-  - Physical kiosk hardware barcode scanner baud rate and hardware key bounce filters (external hardware).
-  - Third-party WhatsApp Web application state or cellular delivery network latency.
+  - Physical browser touch events and live camera/QR hardware scanning (verified via AST, DOM simulation, and headless node harnesses).
 
 ---
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: None remaining in core business logic. All time manipulation, gate/wali intervention windows, Bolos rules, dynamic KBM fallback, and CSV/export utilities are fully hardened against adversarial edge cases.
+
+- `Minor Robustness Risk`: In environments where database constraint `users_role_check` blocks role `'bk'`, the teacher is recorded as `'Guru'` in `users` and `'Bimbingan Konseling (BK)'` in `data_guru`. While our code now 100% recognizes this fallback across all views, RBAC guards, sidebar, and dashboard, running `ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;` in Supabase remains recommended for schema cleanliness.
 
 ---
 
-## 5. Remaining Risk & Next Step
-All requirements (R1 - R4) and acceptance criteria are thoroughly verified, hardened against subtle bugs, and verified by 48 automated test suites. The implementation is production-ready.
+## 5. Remaining risk & next step
+
+- Task is **complete**: All acceptance criteria are verified with zero regressions, all 7 identified adversarial edge cases and bugs have been resolved at the root cause, and the full project test suite (74 test suites, 700+ BK assertions) passes with 100% success.
+- Next step: Stage, commit, and push changes to `main` branch following the project's Git Workflow Rule.

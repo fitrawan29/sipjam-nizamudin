@@ -102,9 +102,9 @@ export default function AppScreen({
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
-    (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
-    (baseUser?.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
-    (baseUser?.mata_pelajaran || '').toLowerCase().trim() === 'bk';
+    (baseUser?.mata_pelajaran || baseUser?.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') ||
+    (baseUser?.mata_pelajaran || baseUser?.mataPelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
+    (baseUser?.mata_pelajaran || baseUser?.mataPelajaran || '').toLowerCase().trim() === 'bk';
 
   const [activeTargetSchool, setActiveTargetSchoolState] = useState<SatelliteSchool | null>(() => {
     return (isSuperadmin || isDinas) ? getActiveTargetSchool() : null;
@@ -189,6 +189,9 @@ export default function AppScreen({
       const rawView = params.get('view');
       const rawTab = params.get('tab');
       if (rawView) {
+        if (rawView === 'view-pengaturan-akun') {
+          return 'view-home';
+        }
         const resolution = resolveCanonicalRoute(rawView, rawTab);
         if (resolution.isLegacyAlias) {
           const newParams = new URLSearchParams();
@@ -300,7 +303,13 @@ export default function AppScreen({
     handleMarkAsRead,
     handleMarkAllAsRead,
   } = useBroadcasts(user, isAdmin, isWaliKelas, syncKey);
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('view') === 'view-pengaturan-akun';
+    }
+    return false;
+  });
   const [tutorialModalOpen, setTutorialModalOpen] = useState<boolean>(false);
   const [showAiAssistant, setShowAiAssistant] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
@@ -892,7 +901,9 @@ export default function AppScreen({
     isWaliKelas,
     isPiketHariIni,
     isKepalaSekolah,
-    activeTargetSchool
+    activeTargetSchool,
+    isBk,
+    mata_pelajaran: baseUser?.mata_pelajaran || baseUser?.mataPelajaran
   });
 
   // Role landing view resolution satisfying both dinas, siswa, and tata usaha RBAC contracts:
