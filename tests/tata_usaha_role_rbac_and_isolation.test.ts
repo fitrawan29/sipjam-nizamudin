@@ -116,16 +116,17 @@ async function runTests() {
 
   const tuMenuItems = getConsolidatedMenuItems({ role: 'tata_usaha' });
 
-  // Test 2.1: Exactly 6 menu items
+  // Test 2.1: Exactly 7 menu items (including Dashboard)
   recordAssert(
-    tuMenuItems.length === 6,
+    tuMenuItems.length === 7,
     'T2.1',
-    `getConsolidatedMenuItems returns strictly 6 menu items for tata_usaha (got: ${tuMenuItems.length})`,
-    'Satisfies Milestone 2 TU specification'
+    `getConsolidatedMenuItems returns strictly 7 menu items for tata_usaha (got: ${tuMenuItems.length})`,
+    'Satisfies Tata Usaha Dashboard specification'
   );
 
-  // Test 2.2: The 6 menu items are Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, Pengaturan Akun
+  // Test 2.2: The 7 menu items are Dashboard, Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, Pengaturan Akun
   const expectedItems = [
+    { id: 'view-home', label: 'Dashboard' },
     { id: 'view-guru-presensi', label: 'Presensi TU' },
     { id: 'view-guru-jurnal', label: 'Jurnal Kegiatan' },
     { id: 'view-gradebook', label: 'Asesmen' },
@@ -139,7 +140,7 @@ async function runTests() {
   recordAssert(
     allItemsPresent,
     'T2.2',
-    'Menu items contain strictly Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, and Pengaturan Akun',
+    'Menu items contain strictly Dashboard, Presensi TU, Jurnal Kegiatan, Asesmen, Rapor, Informasi Sekolah, and Pengaturan Akun',
     JSON.stringify(tuMenuItems.map(i => ({ id: i.id, label: i.label })))
   );
 

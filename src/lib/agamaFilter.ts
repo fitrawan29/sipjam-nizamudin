@@ -15,6 +15,7 @@ function normalizeSubject(mapelName?: string | null): string {
   return String(mapelName)
     .trim()
     .toLowerCase()
+    .replace(/\./g, '')
     .replace(/[\-_/\\()&]/g, ' ')
     .replace(/\s+/g, ' ');
 }
@@ -67,18 +68,22 @@ export function getRequiredReligionForSubject(mapelName?: string | null): 'Islam
 /**
  * Determines whether a student has an Islamic religious status
  */
-export function isIslamStudent(student?: { agama?: string | null } | null): boolean {
-  if (!student || !student.agama) return false;
-  const clean = String(student.agama).trim().toLowerCase();
+export function isIslamStudent(student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | null): boolean {
+  if (!student) return false;
+  const rawAgama = student.agama || student.status_agama || student.religion;
+  if (!rawAgama) return false;
+  const clean = String(rawAgama).trim().toLowerCase();
   return clean === 'islam' || clean.startsWith('islam') || clean.includes('islam') || clean === 'muslim';
 }
 
 /**
  * Determines whether a student has a Christian (or Catholic) religious status
  */
-export function isKristenStudent(student?: { agama?: string | null } | null): boolean {
-  if (!student || !student.agama) return false;
-  const clean = String(student.agama).trim().toLowerCase();
+export function isKristenStudent(student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | null): boolean {
+  if (!student) return false;
+  const rawAgama = student.agama || student.status_agama || student.religion;
+  if (!rawAgama) return false;
+  const clean = String(rawAgama).trim().toLowerCase();
   return (
     clean === 'kristen' ||
     clean.includes('kristen') ||
@@ -94,7 +99,7 @@ export function isKristenStudent(student?: { agama?: string | null } | null): bo
  * - General/Other subjects: All students are eligible.
  */
 export function isStudentEligibleForSubject(
-  student?: { agama?: string | null } | null,
+  student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | null,
   mapelName?: string | null
 ): boolean {
   if (!mapelName || !mapelName.trim()) return true;
@@ -116,7 +121,7 @@ export function isStudentEligibleForSubject(
  * - For PAK (Pendidikan Agama Kristen): strictly keeps only Kristen students.
  * - For general subjects: returns all students without modification.
  */
-export function filterStudentsBySubject<T extends { agama?: string | null }>(
+export function filterStudentsBySubject<T extends { agama?: string | null; status_agama?: string | null; religion?: string | null }>(
   students: T[],
   mapelName?: string | null
 ): T[] {

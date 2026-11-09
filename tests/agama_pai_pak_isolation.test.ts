@@ -8,7 +8,7 @@ import {
   filterStudentsBySubject,
   getRequiredReligionForSubject
 } from '../src/lib/agamaFilter';
-import { normalizeCsvHeaders } from '../src/lib/dataIntegrityGuard';
+import { normalizeCsvHeaders, parseAndValidateMasterCsv } from '../src/lib/dataIntegrityGuard';
 
 console.log('========================================================================');
 console.log('  TEST SUITE: PEMISAHAN SISWA AGAMA PAI & PAK DAN NON-REGRESI');
@@ -58,6 +58,12 @@ check('Identifies standard PAI subject variations', () => {
     'PAI',
     'pai',
     ' PAI ',
+    'P.A.I',
+    'P.A.I.',
+    'P.A.I. & B.P.',
+    'P.A.I & BP',
+    'PAI/BP',
+    'P.A.I/BP',
     'Pendidikan Agama Islam dan Budi Pekerti',
     'Agama Islam',
     'PAI & BP',
@@ -81,6 +87,12 @@ check('Identifies standard PAK subject variations', () => {
     'PAK',
     'pak',
     ' PAK ',
+    'P.A.K',
+    'P.A.K.',
+    'P.A.K. & B.P.',
+    'P.A.K & BP',
+    'PAK/BP',
+    'P.A.K/BP',
     'Pendidikan Agama Kristen dan Budi Pekerti',
     'Agama Kristen',
     'PAK & BP',
@@ -342,8 +354,91 @@ check('normalizeCsvHeaders handles agama aliases properly', () => {
   assert.strictEqual(normAlias.filter(h => h === 'agama').length, 3, 'Aliases map to agama');
 });
 
-// --- SECTION 7: Boundary & Stress Cases ---
-console.log('\n--- SECTION 7: Boundary & Stress Cases ---');
+check('parseAndValidateMasterCsv sanitizes and standardizes agama values', () => {
+  const csvContent = `nisn,nama_siswa,kelas,gender,agama,status
+001,Siswa Satu,X Merdeka,Laki-laki,  islam  ,Aktif
+002,Siswa Dua,X Merdeka,Perempuan,ISLAM,Aktif
+003,Siswa Tiga,X Merdeka,Laki-laki,Kristen Protestan,Aktif
+004,Siswa Empat,X Merdeka,Perempuan,katolik,Aktif
+005,Siswa Lima,X Merdeka,Laki-laki,hindu,Aktif
+006,Siswa Enam,X Merdeka,Perempuan,buddha,Aktif
+007,Siswa Tujuh,X Merdeka,Laki-laki,-,Aktif
+008,Siswa Delapan,X Merdeka,Perempuan,null,Aktif`;
+
+  const rows = parseAndValidateMasterCsv(csvContent, 'data_siswa');
+  assert.strictEqual(rows.length, 8);
+  assert.strictEqual(rows[0].agama, 'Islam', 'Whitespace and lowercase trimmed/standardized');
+  assert.strictEqual(rows[1].agama, 'Islam', 'Uppercase ISLAM standardized to Title Case');
+  assert.strictEqual(rows[2].agama, 'Kristen', 'Kristen Protestan standardized to Kristen');
+  assert.strictEqual(rows[3].agama, 'Katolik', 'katolik standardized to Katolik');
+  assert.strictEqual(rows[4].agama, 'Hindu', 'hindu standardized to Hindu');
+  assert.strictEqual(rows[5].agama, 'Buddha', 'buddha standardized to Buddha');
+  assert.strictEqual(rows[6].agama, null, 'Dash hyphen normalized to null');
+  assert.strictEqual(rows[7].agama, null, 'String null normalized to null');
+});
+
+check('parseAndValidateMasterCsv handles legacy CSV without agama column gracefully', () => {
+  const legacyCsv = `nisn,nama_siswa,kelas,gender,status
+001,Siswa Lama,X Merdeka,Laki-laki,Aktif`;
+
+  const rows = parseAndValidateMasterCsv(legacyCsv, 'data_siswa');
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].nama_siswa, 'Siswa Lama');
+  assert.strictEqual(rows[0].agama, undefined);
+  // Student without agama is eligible for general subjects
+  assert.strictEqual(isStudentEligibleForSubject(rows[0], 'Matematika'), true);
+  // Student without agama is safely excluded from PAI and PAK
+  assert.strictEqual(isStudentEligibleForSubject(rows[0], 'PAI'), false);
+  assert.strictEqual(isStudentEligibleForSubject(rows[0], 'PAK'), false);
+});
+
+// --- SECTION 7: Adversarial State Isolation & Bleed Prevention ---
+console.log('\n--- SECTION 7: Adversarial State Isolation & Bleed Prevention ---');
+
+check('Prevents attendance state bleed when switching from general subject to PAI/PAK', () => {
+  // Simulate teacher starting on Matematika with all 12 class students
+  const prevAbsensi: Record<string, string> = {};
+  mockClassStudents.forEach(s => {
+    prevAbsensi[s.nisn] = 'H';
+  });
+  assert.strictEqual(Object.keys(prevAbsensi).length, 12, 'Matematika has 12 student attendance keys');
+
+  // Teacher switches mapel to PAK (which only has 5 students: 006, 007, 008, 009, 010)
+  const filteredPakData = filterStudentsBySubject(mockClassStudents, 'PAK');
+  assert.strictEqual(filteredPakData.length, 5);
+
+  // GuruJurnal fixed state merger logic:
+  const merged: Record<string, string> = {};
+  filteredPakData.forEach(s => {
+    if (s.nisn) {
+      merged[s.nisn] = prevAbsensi[s.nisn] || 'H';
+    }
+  });
+
+  // Verify merged state ONLY has keys for the 5 PAK students
+  assert.strictEqual(Object.keys(merged).length, 5);
+  const pakNisns = ['006', '007', '008', '009', '010'];
+  assert.deepStrictEqual(Object.keys(merged).sort(), pakNisns.sort());
+
+  // Confirm NO Muslim student keys leaked into the PAK attendance record
+  const islamNisns = ['001', '002', '003', '004', '005'];
+  islamNisns.forEach(nisn => {
+    assert.strictEqual(merged[nisn], undefined, `Muslim student ${nisn} must NOT exist in PAK attendance state`);
+  });
+});
+
+check('Handles student objects using religion or status_agama aliases', () => {
+  const studentWithReligionAlias = { id: 'x1', nama_siswa: 'Ali', religion: 'Islam' };
+  const studentWithStatusAgama = { id: 'x2', nama_siswa: 'David', status_agama: 'Kristen' };
+
+  assert.strictEqual(isIslamStudent(studentWithReligionAlias), true);
+  assert.strictEqual(isKristenStudent(studentWithStatusAgama), true);
+  assert.strictEqual(isStudentEligibleForSubject(studentWithReligionAlias, 'PAI'), true);
+  assert.strictEqual(isStudentEligibleForSubject(studentWithStatusAgama, 'PAK'), true);
+});
+
+// --- SECTION 8: Boundary & Stress Cases ---
+console.log('\n--- SECTION 8: Boundary & Stress Cases ---');
 
 check('Handles empty student arrays gracefully', () => {
   assert.deepStrictEqual(filterStudentsBySubject([], 'PAI'), []);

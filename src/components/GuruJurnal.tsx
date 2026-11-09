@@ -832,7 +832,13 @@ export default function GuruJurnal({
         setAbsensi((prevAbsensi) => {
           const hasMatchingStudent = filteredData.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
           if (hasMatchingStudent) {
-            const merged = { ...initialAbsensi, ...prevAbsensi };
+            // Strictly retain attendance status only for students in filteredData to prevent non-eligible student bleed
+            const merged: Record<string, string> = {};
+            filteredData.forEach(s => {
+              if (s.nisn) {
+                merged[s.nisn] = (prevAbsensi && prevAbsensi[s.nisn]) || initialAbsensi[s.nisn] || 'H';
+              }
+            });
             setKehadiranMurid(calculateKehadiranSummary(merged, filteredData));
             return merged;
           }

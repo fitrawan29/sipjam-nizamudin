@@ -1249,6 +1249,27 @@ export function parseAndValidateMasterCsv(
           row.gender = 'Perempuan';
         }
       }
+      if (row.agama !== undefined && row.agama !== null) {
+        const aRaw = String(row.agama).trim();
+        const aNorm = aRaw.toLowerCase();
+        if (!aRaw || aRaw === '-' || aNorm === 'null' || aNorm === 'undefined') {
+          row.agama = null;
+        } else if (aNorm === 'islam' || aNorm.startsWith('islam') || aNorm.includes('islam') || aNorm === 'muslim') {
+          row.agama = 'Islam';
+        } else if (aNorm === 'kristen' || aNorm.includes('kristen') || aNorm.includes('protestan')) {
+          row.agama = 'Kristen';
+        } else if (aNorm === 'katolik' || aNorm.includes('katolik')) {
+          row.agama = 'Katolik';
+        } else if (aNorm === 'hindu' || aNorm.includes('hindu')) {
+          row.agama = 'Hindu';
+        } else if (aNorm === 'buddha' || aNorm === 'budha' || aNorm.includes('buddh')) {
+          row.agama = 'Buddha';
+        } else if (aNorm === 'khonghucu' || aNorm === 'konghucu' || aNorm.includes('khonghucu')) {
+          row.agama = 'Khonghucu';
+        } else {
+          row.agama = aRaw;
+        }
+      }
     } else if (tableName === 'kalender_pendidikan') {
       const rawTanggal = row.tanggal ? String(row.tanggal).trim() : '';
       if (!rawTanggal || rawTanggal.toLowerCase() === 'null' || rawTanggal.toLowerCase() === 'undefined') {

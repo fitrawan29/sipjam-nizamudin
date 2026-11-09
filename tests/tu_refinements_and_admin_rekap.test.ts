@@ -66,15 +66,16 @@ async function runMilestone2Tests() {
 
   const tuItems = getConsolidatedMenuItems({ role: 'tata_usaha' });
 
-  // 1.1 Exactly 6 menu items
+  // 1.1 Exactly 7 menu items (with Dashboard)
   recordAssert(
-    tuItems.length === 6,
+    tuItems.length === 7,
     'T1.1',
-    `getConsolidatedMenuItems({ role: 'tata_usaha' }) returns exactly 6 items (got: ${tuItems.length})`
+    `getConsolidatedMenuItems({ role: 'tata_usaha' }) returns exactly 7 items (got: ${tuItems.length})`
   );
 
-  // 1.2 Exact 6 items IDs and labels
+  // 1.2 Exact 7 items IDs and labels
   const expectedTuItems = [
+    { id: 'view-home', label: 'Dashboard', icon: 'fa-house' },
     { id: 'view-guru-presensi', label: 'Presensi TU', icon: 'fa-clock' },
     { id: 'view-guru-jurnal', label: 'Jurnal Kegiatan', icon: 'fa-book-open' },
     { id: 'view-gradebook', label: 'Asesmen', icon: 'fa-graduation-cap' },

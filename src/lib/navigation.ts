@@ -180,6 +180,7 @@ export function getConsolidatedMenuItems(params: {
 
   if (normRole === 'tatausaha') {
     return [
+      { id: 'view-home', icon: 'fa-house', label: 'Dashboard', dataTour: 'view-home' },
       { id: 'view-guru-presensi', icon: 'fa-clock', label: 'Presensi TU', dataTour: 'view-guru-presensi' },
       { id: 'view-guru-jurnal', icon: 'fa-book-open', label: 'Jurnal Kegiatan', dataTour: 'view-guru-jurnal' },
       { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen', dataTour: 'view-gradebook' },

@@ -101,6 +101,7 @@ async function runAdversarialM2ChallengeHarness() {
   ];
 
   const expectedTuMenuIds = [
+    'view-home',
     'view-guru-presensi',
     'view-guru-jurnal',
     'view-gradebook',
@@ -112,21 +113,22 @@ async function runAdversarialM2ChallengeHarness() {
   tuRolePermutations.forEach((perm, idx) => {
     const items = getConsolidatedMenuItems({ role: perm });
     const itemIds = items.map(i => i.id);
-    const hasExact6 = items.length === 6;
+    const hasExact7 = items.length === 7;
     const matchesExpected = expectedTuMenuIds.every(id => itemIds.includes(id));
     const leakedItems = itemIds.filter(id => !expectedTuMenuIds.includes(id));
 
     check(
-      hasExact6 && matchesExpected && leakedItems.length === 0,
+      hasExact7 && matchesExpected && leakedItems.length === 0,
       `S1.1.${idx + 1}`,
-      `Role permutation "${perm.replace(/\n/g, '\\n').replace(/\t/g, '\\t')}" receives strictly the 6 allowed menu items`,
+      `Role permutation "${perm.replace(/\n/g, '\\n').replace(/\t/g, '\\t')}" receives strictly the 7 allowed menu items`,
       `Items: [${itemIds.join(', ')}], Leaked: ${leakedItems.length}`
     );
   });
 
-  // Verify label and icon integrity for the 6 items
+  // Verify label and icon integrity for the 7 items
   const tuSampleMenu = getConsolidatedMenuItems({ role: 'tata_usaha' });
   const expectedLabelsAndIcons: Record<string, { label: string; icon: string }> = {
+    'view-home': { label: 'Dashboard', icon: 'fa-house' },
     'view-guru-presensi': { label: 'Presensi TU', icon: 'fa-clock' },
     'view-guru-jurnal': { label: 'Jurnal Kegiatan', icon: 'fa-book-open' },
     'view-gradebook': { label: 'Asesmen', icon: 'fa-graduation-cap' },

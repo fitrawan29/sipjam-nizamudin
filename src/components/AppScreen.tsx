@@ -195,7 +195,7 @@ export default function AppScreen({
     if (isSuperadmin) return 'view-superadmin-overview';
     if (isDinas) return 'view-dinas-overview';
     if (isSiswa) return 'view-ujian';
-    if (isTataUsaha) return 'view-guru-presensi';
+    if (isTataUsaha) return 'view-home';
     return 'view-home';
   });
 
@@ -234,7 +234,7 @@ export default function AppScreen({
         setUrlTab(null);
         const defaultDinasPopView = isDinas ? 'view-dinas-overview' : 'view-home';
         const defaultSiswaPopView = isSiswa ? 'view-ujian' : 'view-home';
-        const defaultTuPopView = isTataUsaha ? 'view-guru-presensi' : defaultDinasPopView;
+        const defaultTuPopView = isTataUsaha ? 'view-home' : defaultDinasPopView;
         setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultTuPopView));
       }
     };
@@ -819,13 +819,13 @@ export default function AppScreen({
     activeTargetSchool
   });
 
-  // Role landing view resolution satisfying both dinas and siswa RBAC contracts:
+  // Role landing view resolution satisfying both dinas, siswa, and tata usaha RBAC contracts:
   // - Dinas Pendidikan contract: isDinas ? 'view-dinas-overview' : 'view-home'
   // - Siswa contract: isSiswa ? 'view-ujian' : 'view-home'
-  // - Tata Usaha contract: isTataUsaha ? 'view-guru-presensi' : defaultDinasHomeView
+  // - Tata Usaha contract: isTataUsaha ? 'view-home' : defaultDinasHomeView
   const defaultDinasHomeView = isDinas ? 'view-dinas-overview' : 'view-home';
   const defaultSiswaHomeView = isSiswa ? 'view-ujian' : 'view-home';
-  const defaultTuHomeView = isTataUsaha ? 'view-guru-presensi' : defaultDinasHomeView;
+  const defaultTuHomeView = isTataUsaha ? 'view-home' : defaultDinasHomeView;
   const defaultHomeView = isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaHomeView : defaultTuHomeView);
 
   return (
