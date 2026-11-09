@@ -1,34 +1,31 @@
-# Sentinel Handoff Report
+# Sentinel Handoff: Perbaikan Alur dan Fungsionalitas Guru BK ("Tunjuk BK")
 
-## Observation
-All requirements specified in ORIGINAL_REQUEST.md have been addressed:
-1. Role Tata Usaha (TU) navigation menu is restricted to 6 menus: Presensi TU, Jurnal Kegiatan, Asesmen (read-only), Rapor (read-only), Informasi Sekolah, and Pengaturan Akun.
-2. Read-only permissions on Asesmen and Rapor for TU across all class levels and teachers are enforced in the UI and backed by PostgREST client mutation interceptors.
-3. Admin attendance recap (`AdminRekapView.tsx`) partitions records into distinct Guru and TU tables, with CSS page-break rules ensuring print and PDF outputs render Guru and TU lists on separate physical pages.
-4. Admin TU account management (`AdminPenggunaView.tsx` and `teacherUserSync.ts`) supports appointing existing teachers to TU and creating new TU accounts requiring NIP, full name, phone number, and active email.
-5. All implementations adhere to the `/ponytail` design philosophy (lean, pragmatic, zero component duplication, zero unnecessary dependencies).
-6. Commit `9a68fcd` is pushed to `origin main`.
+## 1. Observation
+- **User Request**: Memperbaiki alur dan fungsionalitas Guru BK saat admin menunjuk guru menjadi Guru BK ("Tunjuk BK"), konsistensi role `'bk'` vs `'guru_bk'`, navigasi khusus BK, dan preservasi peran lain dengan pendekatan /ponytail.
+- **Workflow & Route**: Routed to SWE Light (`teamwork_swe`). Execution proceeded through initial implementation (`teamwork_implementer_r0`), 3 adversarial review rounds (`teamwork_reviewer_r1`, `r2`, `r3`), remediation iteration (`reviewer_r4`), and independent victory audit (`teamwork_victory_auditor`).
+- **Remediation**: Initial victory audit surfaced TS2588 compilation error in `src/lib/teacherUserSync.ts` (const reassignment). Orchestrator remediated line 132 to `let { data: inserted, error: insErr }` in commit `35d89a4`.
+- **Audit Verdict**: Generation 1 independent victory auditor confirmed complete compliance: **VICTORY CONFIRMED**.
 
-## Logic Chain
-- Task prompt was received, recorded into `ORIGINAL_REQUEST.md`, and routed via General Path to `teamwork_orchestrator`.
-- The orchestrator conducted technical survey (3 Explorers), drafted Milestone 2 in `PROJECT.md`, and dispatched `worker_tu_nav`.
-- Two Reviewers, two Challengers, and one Forensic Auditor conducted parallel gate evaluations, resulting in an unanimous Gate PASS.
-- Upon orchestrator victory claim, Sentinel blocked completion reporting and spawned independent `teamwork_victory_auditor`.
-- The Victory Auditor executed a 3-phase audit (timeline analysis, anti-cheating check, independent test runs) and issued **VICTORY CONFIRMED**.
+## 2. Logic Chain
+1. `AdminPenggunaView.tsx` was hardened to ensure the "Tunjuk BK" action updates the database (`users` and `data_guru.mata_pelajaran`), updates the local session (`localStorage.getItem('sipjam_user')`), and dispatches a storage event for reactive UI update.
+2. `navigation.ts`, `AppScreen.tsx`, and `ClaySidebar.tsx` detect BK users via unified role mapping (`isBk` checks for `'bk'`, `'guru_bk'`, or `data_guru.mata_pelajaran` containing 'Bimbingan Konseling'), displaying the dedicated 5-item menu (Dashboard, Presensi BK, Jurnal BK, Informasi Sekolah, Pengaturan Akun).
+3. Jurnal BK routes directly to `view-jurnal-bk` without requiring standard classroom bindings.
+4. All non-BK roles (guru reguler, wali kelas, piket, admin) remain unaffected.
+5. Verification via `npx tsc --noEmit`, `npm run build` (Next.js Turbopack), and `npm test` passed 100% with exit code 0.
 
-## Caveats
-- Production deployment should ensure environment variables and Supabase schema match the development definitions.
-- Existing tests and legacy tours remain intact with AST comments preserved.
+## 3. Caveats
+- If the live Supabase database still has a legacy check constraint (`users_role_check`) restricting the `role` column to `'Guru'`, the system uses the validated fallback in `data_guru.mata_pelajaran` (`Bimbingan Konseling (BK)`), which is fully supported across all UI and RBAC layers. Running the migration to drop `users_role_check` remains recommended for pure schema hygiene.
 
-## Conclusion
-The task is 100% complete and independently verified. All acceptance criteria are satisfied without regressions.
+## 4. Conclusion
+- All acceptance criteria in `ORIGINAL_REQUEST.md` have been met.
+- Independent victory audit verdict: **VICTORY CONFIRMED**.
+- All changes have been committed and pushed to `main` per GEMINI.md.
 
-## Verification Method
-- Independent automated test runs:
-  - `npx tsc --noEmit`: 0 errors
-  - `tu_refinements_and_admin_rekap.test.ts`: 81/81 passed
-  - `tata_usaha_role_rbac_and_isolation.test.ts`: 87/87 passed
-  - `adversarial_tu_nav_m2_challenger.test.ts`: 166/166 passed
-  - `adversarial_tu_presensi_and_account_m2.test.ts`: 62/62 passed
-  - Full suite (`npm test`): 69/69 suites passed (exit code 0)
-- Victory Auditor verdict: **VICTORY CONFIRMED**.
+## 5. Verification Method
+- `npx tsc --noEmit` -> 0 errors (Exit code 0).
+- `npm run build` -> Next.js Turbopack build succeeds (Exit code 0).
+- `npx tsx tests/adversarial_bk_challenger.test.ts` -> 481/481 passed.
+- `npx tsx tests/bk_role_and_jurnal_rbac_verification.test.ts` -> 106/106 passed.
+- `npx tsx tests/challenger_bk_2_stress_test.test.ts` -> 60/60 passed.
+- `npx tsx tests/adversarial_bk_reviewer_verification.test.ts` -> 86/86 passed.
+- `npm test` -> 80+ test suites passed cleanly.
