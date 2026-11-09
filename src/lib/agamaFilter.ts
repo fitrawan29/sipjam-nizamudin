@@ -68,9 +68,13 @@ export function getRequiredReligionForSubject(mapelName?: string | null): 'Islam
 /**
  * Determines whether a student has an Islamic religious status
  */
-export function isIslamStudent(student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | null): boolean {
+export function isIslamStudent(
+  student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | string | null
+): boolean {
   if (!student) return false;
-  const rawAgama = student.agama || student.status_agama || student.religion;
+  const rawAgama = typeof student === 'string'
+    ? student
+    : (student.agama || student.status_agama || student.religion || (student as any).Agama || (student as any).Religion);
   if (!rawAgama) return false;
   const clean = String(rawAgama).trim().toLowerCase();
   return (
@@ -87,9 +91,13 @@ export function isIslamStudent(student?: { agama?: string | null; status_agama?:
 /**
  * Determines whether a student has a Christian (or Catholic) religious status
  */
-export function isKristenStudent(student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | null): boolean {
+export function isKristenStudent(
+  student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | string | null
+): boolean {
   if (!student) return false;
-  const rawAgama = student.agama || student.status_agama || student.religion;
+  const rawAgama = typeof student === 'string'
+    ? student
+    : (student.agama || student.status_agama || student.religion || (student as any).Agama || (student as any).Religion);
   if (!rawAgama) return false;
   const clean = String(rawAgama).trim().toLowerCase();
   return (
@@ -109,7 +117,7 @@ export function isKristenStudent(student?: { agama?: string | null; status_agama
  * - General/Other subjects: All students are eligible.
  */
 export function isStudentEligibleForSubject(
-  student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | null,
+  student?: { agama?: string | null; status_agama?: string | null; religion?: string | null } | string | null,
   mapelName?: string | null
 ): boolean {
   if (!mapelName || !mapelName.trim()) return true;
@@ -139,11 +147,11 @@ export function filterStudentsBySubject<T extends { agama?: string | null; statu
   if (!mapelName || !mapelName.trim()) return students;
 
   if (isPaiSubject(mapelName)) {
-    return students.filter(isIslamStudent);
+    return students.filter(s => isIslamStudent(s));
   }
 
   if (isPakSubject(mapelName)) {
-    return students.filter(isKristenStudent);
+    return students.filter(s => isKristenStudent(s));
   }
 
   return students;

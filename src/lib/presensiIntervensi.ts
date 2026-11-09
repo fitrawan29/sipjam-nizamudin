@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getWitaTimeStr, getWitaDayName, formatPresensiTime } from '@/lib/wita';
+import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 
 export type IntervensiPhase = 'pagi' | 'kbm' | 'pulang' | 'malam_tutup';
 
@@ -319,10 +320,15 @@ function hasAttendanceData(journal: any): boolean {
 /**
  * Finds the KBM teaching journal with the latest teaching hour (jam_ke) for that day,
  * prioritizing journals with recorded student attendance data.
+ * If an optional student is provided, candidate journals are filtered to those the student is eligible for.
  */
-export function findLastKbmJournal(journals: any[]): any {
+export function findLastKbmJournal(journals: any[], student?: any): any {
   if (!journals || journals.length === 0) return null;
-  const validJournals = (journals || []).filter(j => j && typeof j === 'object');
+  let candidateJournals = journals;
+  if (student && typeof student === 'object') {
+    candidateJournals = journals.filter(j => !j?.mapel || isStudentEligibleForSubject(student, j.mapel));
+  }
+  const validJournals = candidateJournals.filter(j => j && typeof j === 'object');
   if (validJournals.length === 0) return null;
   const withAttendance = validJournals.filter(hasAttendanceData);
   const candidates = withAttendance.length > 0 ? withAttendance : validJournals;
@@ -352,11 +358,25 @@ export interface DailyAttendanceResolved {
  * - Aturan Bolos: Hadir di awal (datang pagi / gerbang / kelas pagi) namun Alfa di sesi KBM jam terakhir -> Otomatis Bolos (B).
  */
 export function resolveDailyStudentAttendance(
-  student: { id?: string; nisn?: string; nama_siswa: string },
+  student: {
+    id?: string;
+    nisn?: string;
+    nama_siswa: string;
+    agama?: string | null;
+    status_agama?: string | null;
+    religion?: string | null;
+  },
   classAbsensiRecord: { status?: string; keterangan?: string | null } | null | undefined,
   hasMorningPresence: boolean,
   lastKbmJournal?: any | null
 ): DailyAttendanceResolved {
+  // If the provided lastKbmJournal is for a religion-specific subject (PAI or PAK)
+  // and the student is not eligible for that subject, do NOT inherit attendance from it.
+  let activeJournal = lastKbmJournal;
+  if (activeJournal?.mapel && !isStudentEligibleForSubject(student, activeJournal.mapel)) {
+    activeJournal = null;
+  }
+
   const normStatus = (st: string | null | undefined): 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' => {
     if (!st) return '';
     const s = st.trim().toLowerCase();
@@ -384,19 +404,19 @@ export function resolveDailyStudentAttendance(
 
   // 1. Extract status from last KBM journal if available
   let lastKbmStatus: 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' = '';
-  if (lastKbmJournal) {
+  if (activeJournal) {
     let absensiJson: Record<string, any> | null = null;
-    if (lastKbmJournal.absensi_siswa) {
-      if (typeof lastKbmJournal.absensi_siswa === 'object') {
-        absensiJson = lastKbmJournal.absensi_siswa;
-      } else if (typeof lastKbmJournal.absensi_siswa === 'string' && lastKbmJournal.absensi_siswa.trim().startsWith('{')) {
+    if (activeJournal.absensi_siswa) {
+      if (typeof activeJournal.absensi_siswa === 'object') {
+        absensiJson = activeJournal.absensi_siswa;
+      } else if (typeof activeJournal.absensi_siswa === 'string' && activeJournal.absensi_siswa.trim().startsWith('{')) {
         try {
-          absensiJson = JSON.parse(lastKbmJournal.absensi_siswa);
+          absensiJson = JSON.parse(activeJournal.absensi_siswa);
         } catch (_) {}
       }
     }
 
-    const combinedText = `${lastKbmJournal.kehadiran_murid || ''} ${typeof lastKbmJournal.absensi_siswa === 'string' ? lastKbmJournal.absensi_siswa : ''} ${lastKbmJournal.detail_absen || ''}`.toLowerCase();
+    const combinedText = `${activeJournal.kehadiran_murid || ''} ${typeof activeJournal.absensi_siswa === 'string' ? activeJournal.absensi_siswa : ''} ${activeJournal.detail_absen || ''}`.toLowerCase();
     const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
 
     if (absensiJson && Object.keys(absensiJson).length > 0) {
@@ -428,8 +448,8 @@ export function resolveDailyStudentAttendance(
     }
 
     // If not found in absensiJson, check detail_absen / kehadiran_murid
-    if (!lastKbmStatus && (lastKbmJournal.detail_absen || lastKbmJournal.kehadiran_murid)) {
-      const detail = `${lastKbmJournal.detail_absen || ''} ${lastKbmJournal.kehadiran_murid || ''}`;
+    if (!lastKbmStatus && (activeJournal.detail_absen || activeJournal.kehadiran_murid)) {
+      const detail = `${activeJournal.detail_absen || ''} ${activeJournal.kehadiran_murid || ''}`;
       const identifiers = [
         student.nama_siswa ? String(student.nama_siswa).trim() : '',
         (student.nisn !== undefined && student.nisn !== null) ? String(student.nisn).trim() : ''
@@ -557,7 +577,7 @@ export function resolveDailyStudentAttendance(
       status: 'Bolos',
       isFallback: !recordedStatus,
       source: recordedStatus ? 'Wali Kelas & KBM Terakhir (Preservasi Bolos)' : 'Fallback KBM Terakhir (Otomatis Bolos)',
-      keterangan: classAbsensiRecord?.keterangan || (lastKbmJournal ? `Terdeteksi Bolos: Hadir pagi, Alfa pada KBM Jam ${lastKbmJournal.jam_ke || '-'}` : 'Terdeteksi Bolos')
+      keterangan: classAbsensiRecord?.keterangan || (activeJournal ? `Terdeteksi Bolos: Hadir pagi, Alfa pada KBM Jam ${activeJournal.jam_ke || '-'}` : 'Terdeteksi Bolos')
     };
   }
 
@@ -576,8 +596,8 @@ export function resolveDailyStudentAttendance(
     return {
       status: lastKbmStatus,
       isFallback: true,
-      source: `Fallback Jurnal KBM (Jam ${lastKbmJournal?.jam_ke || '-'})`,
-      keterangan: `Otomatis diwarisi dari Jurnal KBM Jam ${lastKbmJournal?.jam_ke || '-'}`
+      source: `Fallback Jurnal KBM (Jam ${activeJournal?.jam_ke || '-'})`,
+      keterangan: `Otomatis diwarisi dari Jurnal KBM Jam ${activeJournal?.jam_ke || '-'}`
     };
   }
 

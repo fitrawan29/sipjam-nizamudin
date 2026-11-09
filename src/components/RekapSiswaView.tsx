@@ -238,7 +238,8 @@ export default function RekapSiswaView({
           studentsData.forEach(s => {
             const found = absensiData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
             const hasGate = Boolean(gateMap[s.nisn]?.datang || (s.id && gateMap[s.id]?.datang));
-            const resolved = resolveDailyStudentAttendance(s, found, hasGate, lastJurnal);
+            const studentLastJurnal = findLastKbmJournal(dayJournals || [], s);
+            const resolved = resolveDailyStudentAttendance(s, found, hasGate, studentLastJurnal);
 
             map[s.nisn] = {
               status: resolved.status,
@@ -312,15 +313,16 @@ export default function RekapSiswaView({
 
             const classLog = absensiLogs?.find(a => (a.siswa_id && siswa.id && a.siswa_id === siswa.id) || (a.nisn && a.nisn === siswa.nisn) || (a.nama_siswa && siswa.nama_siswa && a.nama_siswa.trim().toLowerCase() === siswa.nama_siswa.trim().toLowerCase()));
             const isDailyBolos = classLog?.status === 'Bolos' || classLog?.status === 'B';
-            const resolvedDaily = resolveDailyStudentAttendance(siswa, classLog, Boolean(datang), lastJurnal);
+            const studentLastJurnal = findLastKbmJournal(dayJournals || [], siswa);
+            const resolvedDaily = resolveDailyStudentAttendance(siswa, classLog, Boolean(datang), studentLastJurnal);
             const isResolvedBolos = resolvedDaily.status === 'Bolos';
 
             let lastMapelStatus: string | null = null;
-            if (lastJurnal?.absensi_siswa) {
+            if (studentLastJurnal?.absensi_siswa) {
               try {
-                const parsed = typeof lastJurnal.absensi_siswa === 'string'
-                  ? JSON.parse(lastJurnal.absensi_siswa)
-                  : lastJurnal.absensi_siswa;
+                const parsed = typeof studentLastJurnal.absensi_siswa === 'string'
+                  ? JSON.parse(studentLastJurnal.absensi_siswa)
+                  : studentLastJurnal.absensi_siswa;
                 lastMapelStatus = parsed[siswa.nisn] || (siswa.nama_siswa && parsed[siswa.nama_siswa]) || (siswa.id && parsed[siswa.id]) || null;
                 if (!lastMapelStatus && siswa.nama_siswa) {
                   const lower = siswa.nama_siswa.trim().toLowerCase();
@@ -687,7 +689,8 @@ export default function RekapSiswaView({
             const absRecord = directAbsensi?.find(a => a.tanggal === d && ((a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase())));
             const hasGate = Boolean((s.nisn && dateGateDatang.has(s.nisn)) || (s.id && dateGateDatang.has(s.id)));
 
-            const resolved = resolveDailyStudentAttendance(s, absRecord, hasGate, lastJurnal);
+            const studentLastJurnal = findLastKbmJournal(dateJournals, s);
+            const resolved = resolveDailyStudentAttendance(s, absRecord, hasGate, studentLastJurnal);
             const st = String(resolved.status || '').trim().toLowerCase();
             if (st === 'hadir' || st === 'h') target.hadir++;
             else if (st === 'sakit' || st === 's') target.sakit++;

@@ -9,6 +9,7 @@ import {
   getRequiredReligionForSubject
 } from '../src/lib/agamaFilter';
 import { normalizeCsvHeaders, parseAndValidateMasterCsv } from '../src/lib/dataIntegrityGuard';
+import { findLastKbmJournal, resolveDailyStudentAttendance } from '../src/lib/presensiIntervensi';
 
 console.log('========================================================================');
 console.log('  TEST SUITE: PEMISAHAN SISWA AGAMA PAI & PAK DAN NON-REGRESI');
@@ -519,6 +520,114 @@ check('Handles student objects using religion or status_agama aliases', () => {
   assert.strictEqual(isStudentEligibleForSubject(studentWithStatusAgama, 'PAK'), true);
   assert.strictEqual(isStudentEligibleForSubject(studentWithMoslem, 'PAIBP'), true);
   assert.strictEqual(isStudentEligibleForSubject(studentWithChristian, 'PAKBP'), true);
+});
+
+check('Polymorphic religion evaluation supports raw strings and case-insensitive object keys', () => {
+  // Raw string inputs
+  assert.strictEqual(isIslamStudent('Islam'), true);
+  assert.strictEqual(isIslamStudent('islam'), true);
+  assert.strictEqual(isIslamStudent('Muslim'), true);
+  assert.strictEqual(isIslamStudent('Moslem'), true);
+  assert.strictEqual(isIslamStudent('Kristen'), false);
+
+  assert.strictEqual(isKristenStudent('Kristen'), true);
+  assert.strictEqual(isKristenStudent('kristen'), true);
+  assert.strictEqual(isKristenStudent('Katolik'), true);
+  assert.strictEqual(isKristenStudent('catholic'), true);
+  assert.strictEqual(isKristenStudent('Christian'), true);
+  assert.strictEqual(isKristenStudent('Islam'), false);
+
+  // Direct strings via isStudentEligibleForSubject
+  assert.strictEqual(isStudentEligibleForSubject('Islam', 'PAI'), true);
+  assert.strictEqual(isStudentEligibleForSubject('Kristen', 'PAI'), false);
+  assert.strictEqual(isStudentEligibleForSubject('Katolik', 'PAK'), true);
+  assert.strictEqual(isStudentEligibleForSubject('Islam', 'PAK'), false);
+  assert.strictEqual(isStudentEligibleForSubject('Hindu', 'Matematika'), true);
+
+  // Capitalized / unnormalized object keys
+  const unnormalizedIslam = { Agama: 'Islam', nama_siswa: 'Ali' };
+  const unnormalizedChristian = { Religion: 'Christian', nama_siswa: 'David' };
+  assert.strictEqual(isIslamStudent(unnormalizedIslam as any), true);
+  assert.strictEqual(isKristenStudent(unnormalizedChristian as any), true);
+});
+
+check('Parallel KBM Journal Resolution: strictly isolates PAI and PAK sessions for fallback attendance', () => {
+  const paiJournal = {
+    id: 'j-pai',
+    jam_ke: 'Jam 5-6',
+    mapel: 'Pendidikan Agama Islam',
+    absensi_siswa: JSON.stringify({ '001': 'H', '002': 'A' }),
+    kehadiran_murid: 'H:1|A:1',
+    timestamp: '2026-11-09T10:00:00Z'
+  };
+
+  const pakJournal = {
+    id: 'j-pak',
+    jam_ke: 'Jam 5-6',
+    mapel: 'Pendidikan Agama Kristen',
+    absensi_siswa: JSON.stringify({ '006': 'H', '007': 'A' }),
+    kehadiran_murid: 'H:1|A:1',
+    timestamp: '2026-11-09T10:01:00Z'
+  };
+
+  const dayJournals = [pakJournal, paiJournal];
+
+  const studentIslamHadir = { id: 's1', nisn: '001', nama_siswa: 'Ahmad Fauzi', agama: 'Islam' };
+  const studentIslamAlpa = { id: 's2', nisn: '002', nama_siswa: 'Fatimah Az-Zahra', agama: 'Islam' };
+  const studentKristenHadir = { id: 's6', nisn: '006', nama_siswa: 'Yohanes Baptista', agama: 'Kristen' };
+  const studentKristenAlpa = { id: 's7', nisn: '007', nama_siswa: 'Maria Magdalena', agama: 'Kristen' };
+
+  // 1. findLastKbmJournal filters to the student's eligible journal
+  const pickedForIslam = findLastKbmJournal(dayJournals, studentIslamHadir);
+  assert.strictEqual(pickedForIslam?.id, 'j-pai', 'Muslim student must pick PAI journal');
+
+  const pickedForKristen = findLastKbmJournal(dayJournals, studentKristenHadir);
+  assert.strictEqual(pickedForKristen?.id, 'j-pak', 'Christian student must pick PAK journal');
+
+  // 2. Fallback attendance resolution:
+  // Muslim student present in PAI -> Hadir
+  const resIslamHadir = resolveDailyStudentAttendance(studentIslamHadir, null, false, pickedForIslam);
+  assert.strictEqual(resIslamHadir.status, 'Hadir');
+  assert.strictEqual(resIslamHadir.source, 'Fallback Jurnal KBM (Jam Jam 5-6)');
+
+  // Muslim student with gate presence, Alpa in PAI -> Bolos (B)
+  const resIslamBolos = resolveDailyStudentAttendance(studentIslamAlpa, null, true, pickedForIslam);
+  assert.strictEqual(resIslamBolos.status, 'Bolos', 'Muslim student Alfa in PAI must resolve to Bolos');
+
+  // Christian student present in PAK -> Hadir
+  const resKristenHadir = resolveDailyStudentAttendance(studentKristenHadir, null, false, pickedForKristen);
+  assert.strictEqual(resKristenHadir.status, 'Hadir');
+
+  // Christian student with gate presence, Alpa in PAK -> Bolos (B)
+  const resKristenBolos = resolveDailyStudentAttendance(studentKristenAlpa, null, true, pickedForKristen);
+  assert.strictEqual(resKristenBolos.status, 'Bolos', 'Christian student Alfa in PAK must resolve to Bolos');
+
+  // 3. Cross-Religion Immunity:
+  // If PAI journal with "Semua Hadir" is mistakenly evaluated against Christian student, resolveDailyStudentAttendance safely ignores it
+  const paiAllPresent = {
+    id: 'j-pai-all',
+    jam_ke: 'Jam 7-8',
+    mapel: 'Pendidikan Agama Islam',
+    kehadiran_murid: 'Semua Hadir',
+    absensi_siswa: JSON.stringify({ '001': 'H' })
+  };
+
+  const resCrossImmunity = resolveDailyStudentAttendance(studentKristenHadir, null, false, paiAllPresent);
+  assert.strictEqual(resCrossImmunity.status, '', 'Christian student must NOT inherit status from PAI journal');
+
+  // 4. Non-Regresi: General subjects (Matematika) resolve for both religions
+  const mtkJournal = {
+    id: 'j-mtk',
+    jam_ke: 'Jam 3-4',
+    mapel: 'Matematika',
+    absensi_siswa: JSON.stringify({ '001': 'H', '006': 'H' }),
+    kehadiran_murid: 'Semua Hadir'
+  };
+
+  const resMtkIslam = resolveDailyStudentAttendance(studentIslamHadir, null, false, mtkJournal);
+  const resMtkKristen = resolveDailyStudentAttendance(studentKristenHadir, null, false, mtkJournal);
+  assert.strictEqual(resMtkIslam.status, 'Hadir', 'Matematika must resolve Hadir for Muslim student');
+  assert.strictEqual(resMtkKristen.status, 'Hadir', 'Matematika must resolve Hadir for Christian student');
 });
 
 // --- SECTION 8: Boundary & Stress Cases ---
