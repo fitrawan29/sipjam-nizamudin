@@ -1,29 +1,36 @@
-# Sentinel Handoff Report
+# Sentinel Handoff Report: Presensi Document Upload & Folder Routing Fix
 
-## Observation
-User requested administrative capability to designate the school principal status as `Definitif`, `Plt` (Pelaksana Tugas), or `Plh` (Pelaksana Harian), with dynamic label prefixing ("Plt. Kepala Sekolah", "Plh. Kepala Sekolah", or "Kepala Sekolah") across all views and printed documents, while preserving all existing system logic and preventing regression.
-Following task interview approval, the task was routed to `teamwork_swe` (SWE Light path) for small, focused, single-change execution with sequential refinement and adversarial review.
-The orchestrator completed 1 implementation round and 3 adversarial review rounds. An independent victory audit was dispatched by Sentinel, returning a **VICTORY CONFIRMED** verdict.
+**Archetype:** Sentinel  
+**Timestamp:** 2026-11-09T01:10:00Z  
+**Verdict:** VICTORY CONFIRMED  
 
-## Logic Chain
-1. **Task Interview & Routing**: Interview conducted and approved prompt received. Routed to SWE Light path (`teamwork_swe`) per the explicit "single self-contained fix; keep it small and focused" request.
-2. **Implementation (Round 1)**: `teamwork_implementer` implemented core formatting helpers in `src/utils/textUtils.ts`, updated DB types in `src/types/database.ts`, created admin controls in `src/components/AdminConfigView.tsx`, and built 42 test assertions in `tests/status_kepala_sekolah.test.ts`.
-3. **Adversarial Review (Round 1)**: `teamwork_reviewer` identified and patched title corruption on non-principal titles (e.g., "Wakil Kepala Sekolah"), `useKepalaSekolah` early-return hydration bugs, and expanded test coverage to 56 tests.
-4. **Adversarial Review (Round 2)**: Resolved unconfigured principal fallback names in `PrintHeader.tsx`, dynamicized UI headers/placeholders in `AdminConfigView.tsx`, and verified template coverage across all views (`RekapSiswaView`, `RekapJurnalView`, `AdminRekapView`, `GradebookView`, `DokumenView`, `PiketView`, `RaporView`), reaching 76 tests.
-5. **Adversarial Review (Round 3)**: Hardened status canonicalization (`normalizeStatusKepalaSekolah`), added status column to `SETUP_NEW_SCHOOL_TEMPLATE.sql`, and brought automated test suite to 88 assertions.
-6. **Independent Victory Audit**: Sentinel spawned independent `teamwork_victory_auditor` with zero implementation context. The auditor independently executed all test suites, Next.js build, and TypeScript typecheck, confirming VICTORY CONFIRMED across all phases.
-7. **Cleanup**: Background crons and subagents terminated.
+---
 
-## Caveats
-- Physical paper printing margins remain subject to browser/operating system `@media print` drivers, though CSS styling and layout elements adhere to standard print formatting.
-- Dual-table persistence (`pengaturan` and `sekolah`) provides graceful fallback if the Supabase Postgres schema cache has not yet refreshed the column definition in the active session.
+## 1. Observation
+- The initial requirement requested fixing presensi document uploads (izin, sakit, supporting files) in SIPJAM so file selection does not cause unintended refreshes or premature uploading, provides progress indicators, prevents erroneous file rejections, and routes uploaded files directly to `SIPJAM/Presensi_Guru/<Nama Guru>/`.
+- SWE Light execution path (`teamwork_swe`) ran the implementation loop across 3 sequential adversarial review rounds (`reviewer_r1`, `reviewer_r2`, `reviewer_r3`).
+- Independent verification was executed independently by Sentinel Victory Auditor (`1f478f55-3d6b-4d58-849a-5aa8d5227733`).
 
-## Conclusion
-The school principal status feature is fully implemented, verified, tested (88/88 test suite passing, 100% full repo test suites passing), built without errors, committed, and pushed to `main`. All requirements (R1-R4) and acceptance criteria are completely satisfied.
+## 2. Logic Chain
+- **Alur Pengunggahan Dokumen Presensi (R1):** Decoupled `<input type="file">` change events in `GuruPresensi.tsx` from premature submission. Files are held in component state and persistent IndexedDB draft storage until the teacher explicitly clicks "Kirim Presensi". Submission triggers an asynchronous, non-blocking upload flow that dispatches reactive events (`sipjam:presensi_updated`) rather than invoking a full browser reload.
+- **Indikator Progres & Validasi Dokumen (R2):** Integrated an animated progress bar with dynamic stage messages ('10% Menyiapkan berkas...', '65% Mengunggah ke Google Drive...', '100% Dokumen berhasil tersimpan!'). Expanded file type acceptance in `driveUpload.ts` for PDF, Word documents (.doc, .docx), images (.jpg, .jpeg, .png, .webp, .bmp, .jfif, .gif), and text docs (.odt, .rtf, .txt) up to 25 MB. Added security controls against SVG XSS scripts, double extensions, and MIME spoofing.
+- **Routing Folder Google Drive (R3):** Enforced canonical folder structure `SIPJAM/Presensi_Guru/<Nama Guru>/` (and `SIPJAM/Presensi_DinasLuar/<Nama Guru>/` for official travel) via `buildDriveFolderPath` and `normalizeDriveTeacherFolder`, complete with path traversal (`..`) stripping.
+- **Adversarial Review Rounds:**
+  - Round 1 (`1a7b1b3`): Strengthened MIME type sniffing, input reset on cancellation, and draft isolation.
+  - Round 2 (`a8657c4`): Anti-spoofing verification, progress percentage calculations, and folder normalization.
+  - Round 3 (`dfc35eb`): Hardened against directory traversal in teacher names, double-extension malware, and upload status tracking.
 
-## Verification Method
-- `npx tsx tests/status_kepala_sekolah.test.ts` (88/88 assertions pass)
-- `npx tsc --noEmit` (clean typecheck, 0 errors)
-- `npm test` (all project unit and integration test suites pass, 0 regressions)
-- `npm run build` (Next.js production build succeeds, exit code 0)
-- `git status` / `git log -n 5` (commits `116dcd0`, `380222b`, `aff940f`, `d8a0f91`, `6a4d0b7` present on `origin/main`)
+## 3. Caveats
+- Network timeout handling: If a teacher uploads a 25 MB document on a severely constrained network (e.g. 2G/EDGE), upload to Google Apps Script webhook may approach the 60-second fetch threshold. The offline IndexedDB retry queue and status tracking (`gagal_upload` / `pending`) ensure data integrity and automatic recovery without loss of presensi records.
+
+## 4. Conclusion
+- All acceptance criteria from `ORIGINAL_REQUEST.md` have been met.
+- Independent victory audit confirmed with zero discrepancies, zero hardcoded flags, and full regression test passing.
+- Implementation pushed to `origin/main` (latest commits: `ddb4df5`, `1a7b1b3`, `a8657c4`, `dfc35eb`, `814f264`).
+
+## 5. Verification Method
+- Independent automated tests executed:
+  - `npx tsx tests/presensi_dokumen_upload_reliable.test.ts` (67/67 assertions passed)
+  - `npx tsx tests/izin_sakit_refresh_resilience.test.ts` (11/11 assertions passed)
+  - `npx tsc --noEmit` (0 compilation errors)
+  - `npm test` (75/75 repository test suites passed, 100% regression-free)
