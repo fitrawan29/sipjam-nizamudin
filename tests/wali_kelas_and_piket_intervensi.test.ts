@@ -13,7 +13,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { isIntervensiAllowed, isWaliKelasIntervensiAllowed, isPiketPulangAllowed, addMinutesToTime, findLastKbmJournal, resolveDailyStudentAttendance } from '../src/lib/presensiIntervensi';
+import { isIntervensiAllowed, isWaliKelasIntervensiAllowed, isPiketPulangAllowed, addMinutesToTime, findLastKbmJournal, resolveDailyStudentAttendance, canWaliKelasIntervene } from '../src/lib/presensiIntervensi';
 
 const GREEN = '\x1b[32m';
 const RED = '\x1b[31m';
@@ -569,6 +569,48 @@ async function runTests() {
     pass('DOMAIN-10', 'GuruJurnal memproteksi indikator truant (Bolos) di UI agar hanya aktif jika siswa hadir di pagi hari');
   } else {
     fail('DOMAIN-10', 'Indikator truant di GuruJurnal belum diproteksi dengan isMorningHadir');
+  }
+
+  // SECTION 9: VERIFY WALI KELAS NON-HADIR INTERVENSI (DINAS LUAR, IZIN, SAKIT, CUTI)
+  console.log(`\n${YELLOW}${BOLD}━━━ 9. VERIFY WALI KELAS NON-HADIR INTERVENSI ━━━${RESET}`);
+  const sampleWali = {
+    id: 'wk-1',
+    nama: 'Fitra Suryazana Mamonto',
+    role: 'Guru',
+    wali_kelas: 'X Merdeka A',
+    penugasan: { kelas_binaan: 'X Merdeka A' }
+  };
+
+  const sampleNonWali = {
+    id: 'wk-2',
+    nama: 'Guru Lain',
+    role: 'Guru',
+    wali_kelas: null,
+    penugasan: null
+  };
+
+  const dlCheck = canWaliKelasIntervene(sampleWali, 'X Merdeka A', 'Dinas Luar');
+  if (dlCheck.allowed && dlCheck.isWaliKelas) {
+    pass('WALI-NONHADIR-01', 'Wali kelas berstatus presensi Dinas Luar berhasil melakukan intervensi presensi siswa binaan');
+  } else {
+    fail('WALI-NONHADIR-01', 'Wali kelas Dinas Luar ditolak melakukan intervensi');
+  }
+
+  const izCheck = canWaliKelasIntervene(sampleWali, 'X Merdeka A', 'Izin');
+  const skCheck = canWaliKelasIntervene(sampleWali, 'X Merdeka A', 'Sakit');
+  const ctCheck = canWaliKelasIntervene(sampleWali, 'X Merdeka A', 'Cuti');
+  if (izCheck.allowed && skCheck.allowed && ctCheck.allowed) {
+    pass('WALI-NONHADIR-02', 'Wali kelas berstatus presensi Izin, Sakit, atau Cuti berhasil melakukan intervensi presensi siswa binaan');
+  } else {
+    fail('WALI-NONHADIR-02', 'Wali kelas Izin/Sakit/Cuti ditolak melakukan intervensi');
+  }
+
+  const rejectNonWali = canWaliKelasIntervene(sampleNonWali, 'X Merdeka A', 'Hadir');
+  const rejectDiffWali = canWaliKelasIntervene(sampleWali, 'XI Merdeka B', 'Dinas Luar');
+  if (!rejectNonWali.allowed && !rejectDiffWali.allowed) {
+    pass('WALI-NONHADIR-03', 'Pengguna yang bukan wali kelas dari siswa terkait tetap ditolak saat mencoba melakukan intervensi presensi siswa');
+  } else {
+    fail('WALI-NONHADIR-03', 'Pengguna bukan wali kelas salah diizinkan intervensi');
   }
 
   // SUMMARY

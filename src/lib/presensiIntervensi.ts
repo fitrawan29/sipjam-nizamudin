@@ -120,12 +120,17 @@ export function isPiketPulangAllowed(
  * Window 1 (Pagi): currentTime <= batasPagi (default 12:00 WITA)
  * Window 2 (Pulang): jamPulangMulai s.d. 60 menit setelah jam pulang (selaras Guru Piket)
  * Evening access (22:00 WITA) is eliminated; locked after 60-minute window ends.
+ *
+ * R1 & R2: Homeroom teachers (Wali Kelas) retain full permission to intervene in student
+ * attendance for their assigned class even if their own teacher attendance status on that day
+ * is Dinas Luar, Izin, Sakit, Cuti, or any other non-present status.
  */
 export function isWaliKelasIntervensiAllowed(
   batasPagi: string = '12:00',
   jamPulangMulai: string = '11:00',
   jamBatasMalam?: string,
-  currentTimeStr?: string
+  currentTimeStr?: string,
+  teacherStatusOrPresensi?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null
 ): WaliIntervensiCheck {
   try {
     const rawCurrent = (currentTimeStr || getWitaTimeStr() || '00:00').trim();
@@ -182,6 +187,87 @@ export function isWaliKelasIntervensiAllowed(
     };
   }
 }
+
+export interface WaliKelasIntervensiAuthCheck {
+  allowed: boolean;
+  isWaliKelas: boolean;
+  reason: string;
+  teacherStatus?: string;
+}
+
+/**
+ * Validates authorization for homeroom teacher (Wali Kelas) student attendance intervention.
+ * 
+ * Rules:
+ * 1. Admin & Superadmin are globally authorized for all classes.
+ * 2. User must be authenticated and verified as the homeroom teacher of the target class.
+ *    Non-homeroom users are strictly denied from intervening in student attendance.
+ * 3. Verified homeroom teachers are explicitly permitted to intervene in their assigned class
+ *    even when their own attendance status is Dinas Luar, Izin, Sakit, Cuti, or any non-present status.
+ */
+export function canWaliKelasIntervene(
+  user: {
+    id?: string;
+    nama?: string;
+    role?: string;
+    wali_kelas?: string | { kelas?: string } | null;
+    penugasan?: { kelas_binaan?: string } | null;
+  } | null | undefined,
+  targetClass: string,
+  teacherStatusOrPresensi?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null
+): WaliKelasIntervensiAuthCheck {
+  if (!user) {
+    return {
+      allowed: false,
+      isWaliKelas: false,
+      reason: 'Pengguna belum terotentikasi.'
+    };
+  }
+
+  const role = (user.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const isAdmin = role === 'admin' || role === 'superadmin';
+
+  if (isAdmin) {
+    return {
+      allowed: true,
+      isWaliKelas: true,
+      reason: 'Administrator memiliki wewenang intervensi presensi seluruh kelas.'
+    };
+  }
+
+  // Extract user's assigned homeroom class
+  const assigned = user.penugasan?.kelas_binaan ||
+    (typeof user.wali_kelas === 'string' ? user.wali_kelas : user.wali_kelas?.kelas) ||
+    '';
+
+  const cleanAssigned = assigned.trim().toLowerCase().replace(/^kelas\s+/i, '');
+  const cleanTarget = (targetClass || '').trim().toLowerCase().replace(/^kelas\s+/i, '');
+
+  const isMatched = Boolean(cleanAssigned && cleanTarget && (cleanAssigned === cleanTarget));
+
+  if (!isMatched) {
+    return {
+      allowed: false,
+      isWaliKelas: false,
+      reason: 'Akses ditolak: Pengguna bukan wali kelas dari kelas binaan terkait.'
+    };
+  }
+
+  // Teacher is verified as homeroom teacher of target class.
+  const rawStatus = typeof teacherStatusOrPresensi === 'string'
+    ? teacherStatusOrPresensi
+    : (teacherStatusOrPresensi?.jenis_presensi || teacherStatusOrPresensi?.status || teacherStatusOrPresensi?.detail_izin || 'Hadir');
+
+  return {
+    allowed: true,
+    isWaliKelas: true,
+    teacherStatus: rawStatus || 'Hadir',
+    reason: `Wali kelas terverifikasi berwenang melakukan intervensi presensi siswa kelas binaan (status presensi guru: ${rawStatus || 'Aktif'}).`
+  };
+}
+
+export const isWaliKelasIntervensiAuthorized = canWaliKelasIntervene;
+export const validateWaliKelasIntervensi = canWaliKelasIntervene;
 
 /**
  * Fetches the school-specific student attendance intervention cutoff time (default: '08:00').

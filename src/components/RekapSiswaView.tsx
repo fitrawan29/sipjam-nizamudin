@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
+import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance, canWaliKelasIntervene } from '@/lib/presensiIntervensi';
 import { getWitaDateStr, formatPresensiTime } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -479,6 +479,27 @@ export default function RekapSiswaView({
       });
     }
     if (!activeWaliKelas || waliStudents.length === 0) return;
+
+    // Guard Otorisasi: Wali Kelas dari kelas binaan terkait atau Administrator yang berhak menyimpan intervensi presensi
+    // Wali kelas tetap berhak intervensi meskipun berstatus presensi dinas luar, izin, sakit, cuti, atau status non-hadir lainnya
+    const authCheck = canWaliKelasIntervene(user, activeWaliKelas.kelas);
+    const isWaliVerified = isAdmin || isSuperadmin || authCheck.allowed || Boolean(
+      (userAssignedKelas && activeWaliKelas?.kelas && activeWaliKelas.kelas === userAssignedKelas) ||
+      (waliKelasList && waliKelasList.some(w => w.kelas === activeWaliKelas.kelas && (
+        (user?.id && w.guru_id === user.id) ||
+        (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
+        (user?.username && w.nip && w.nip === user.username)
+      )))
+    );
+
+    if (!isWaliVerified) {
+      return Swal.fire({
+        icon: 'error',
+        title: 'Akses Ditolak',
+        text: 'Anda bukan wali kelas dari kelas binaan ini sehingga tidak berhak melakukan intervensi presensi siswa.',
+        confirmButtonColor: '#dc2626'
+      });
+    }
 
     // Guard: Batas intervensi presensi siswa bagi Wali Kelas (Pagi s.d. 12:00 & Pulang 1 jam pasca jam pulang WITA)
     if (isIntervensiExpired && !isAdmin) {

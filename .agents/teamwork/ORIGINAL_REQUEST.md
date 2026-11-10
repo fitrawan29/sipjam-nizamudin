@@ -1,37 +1,26 @@
 # Original User Request
 
-## Initial Request — 2026-11-09T07:18:07Z
+## Initial Request — 2026-11-10T00:45:05Z
 
-This is a single self-contained fix; keep it small and focused.
-Perbaiki alur dan fungsionalitas Guru BK saat admin menunjuk guru menjadi Guru BK ("Tunjuk BK"), agar guru yang ditunjuk langsung mendapatkan tampilan dan fungsionalitas BK yang sesuai rancangan tanpa merubah fitur dan logika lain yang tidak terdampak oleh perubahan ini, dengan menerapkan pendekatan /ponytail (solusi paling ringkas, langsung ke akar masalah, tanpa over-engineering atau mengubah kode yang tidak perlu).
+This is a single self-contained fix; keep it small and focused. Sesuaikan fitur intervensi wali kelas pada presensi siswa agar tetap dapat dilakukan meskipun wali kelas tersebut berstatus presensi dinas luar, izin, sakit, cuti, atau status non-hadir lainnya, tanpa memengaruhi fitur dan logika aplikasi yang sudah ada.
 
 Integrity mode: development
 
 ## Requirements
 
-### R1. Sinkronisasi dan Penunjukan Role Guru BK
-Perbaiki alur saat guru ditunjuk menjadi Guru BK di `AdminPenggunaView` ("Tunjuk BK"), termasuk penyimpanan role di database/localStorage/auth session, pemetaan role `'bk'` vs `'guru_bk'`, dan sinkronisasi akun guru di `teacherUserSync.ts` / `AdminPenggunaView.tsx` agar pengguna yang ditunjuk secara konsisten terdaftar dan dikenali sebagai Guru BK.
+### R1. Intervensi Presensi Siswa oleh Wali Kelas Berstatus Non-Hadir
+Izinkan wali kelas untuk melakukan intervensi presensi terhadap siswa binaannya meskipun presensi wali kelas pada hari tersebut berstatus dinas luar, izin, sakit, cuti, atau status non-hadir lainnya, selama pengguna terotentikasi dan terverifikasi sebagai wali kelas dari siswa terkait.
 
-### R2. Tampilan dan Fungsionalitas Role Guru BK
-Pastikan pengguna dengan role Guru BK mendapatkan menu navigasi khusus dan fitur yang dirancang: Dashboard, Presensi BK, Jurnal BK (tidak terikat kelas), Informasi Sekolah, dan Pengaturan Akun. Deteksi role pada antarmuka (`navigation.ts`, `AppScreen.tsx`, dan `ClaySidebar.tsx`) harus bekerja secara tepat sehingga guru yang ditunjuk langsung mendapatkan tampilan dan akses fitur BK.
-
-### R3. Preservasi Fitur dan Logika Pengguna Lain
-Pastikan perubahan ini tidak merubah fitur dan logika lain yang tidak terdampak: role guru umum/mata pelajaran, wali kelas, guru piket, admin, serta fungsionalitas KBM lainnya harus tetap beroperasi normal tanpa regresi.
-
-## Verification Resources
-- Test suite Vitest proyek: jalankan `tests/adversarial_bk_challenger.test.ts` dan test suite terkait (`npm test`) untuk memverifikasi navigasi, RBAC, sinkronisasi role BK, dan memastikan tidak ada regresi pada role lainnya.
+### R2. Preservasi Logika Eksisting dan Pencegahan Regresi
+Perubahan aturan validasi tidak boleh mengubah alur presensi reguler, validasi untuk peran/guru selain wali kelas, atau logika presensi siswa lainnya. Semua aturan bisnis presensi yang sudah berjalan harus tetap berfungsi normal.
 
 ## Acceptance Criteria
 
-### Penunjukan & Sinkronisasi Role BK
-- [ ] Aksi "Tunjuk BK" oleh admin berhasil menyimpan dan menyinkronkan status/role Guru BK secara konsisten di sesi dan penyimpanan data pengguna.
-- [ ] Akun guru yang ditunjuk langsung terdeteksi sebagai role BK tanpa konflik antara format role `'bk'` dan `'guru_bk'`.
+### Fungsionalitas Intervensi
+- [ ] Wali kelas dengan status presensi dinas luar dapat berhasil melakukan intervensi presensi siswa di kelas binaannya.
+- [ ] Wali kelas dengan status presensi izin, sakit, atau cuti dapat berhasil melakukan intervensi presensi siswa di kelas binaannya.
+- [ ] Pengguna yang bukan wali kelas dari siswa terkait tetap ditolak saat mencoba melakukan intervensi presensi siswa tersebut sesuai aturan otorisasi yang berlaku.
 
-### Navigasi & Fitur BK
-- [ ] Pengguna Guru BK mendapatkan menu navigasi khusus: Dashboard, Presensi BK, Jurnal BK (tidak terikat kelas), Informasi Sekolah, dan Pengaturan Akun.
-- [ ] Jurnal BK dapat diakses dan berfungsi tanpa keterikatan kelas reguler.
-
-### Preservasi Sistem & Kualitas Kode
-- [ ] Fitur, navigasi, dan logika role lain (guru reguler, wali kelas, piket, admin) tidak mengalami perubahan dan tetap berfungsi normal.
-- [ ] Seluruh pengujian otomatis proyek (`npm test` / Vitest, termasuk `tests/adversarial_bk_challenger.test.ts`) berjalan sukses tanpa regresi.
-- [ ] Perubahan menerapkan pendekatan /ponytail: ringkas, tepat sasaran ke akar masalah, dan tanpa penambahan dependensi atau kode yang tidak perlu.
+### Integritas Sistem & Regresi
+- [ ] Logika presensi guru reguler dan pencatatan presensi siswa umum tetap berjalan tanpa error atau perubahan perilaku yang tidak diharapkan.
+- [ ] Perubahan kode diverifikasi menggunakan automated test yang relevan atau skrip verifikasi programmatic mandiri yang membuktikan kondisi terpenuhi dan tidak ada regresi.
