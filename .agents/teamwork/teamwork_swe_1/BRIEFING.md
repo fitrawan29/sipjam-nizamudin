@@ -58,23 +58,23 @@ Orchestrate the SWE Light workflow to add CSV export feature across all Master D
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
 | Implementer 1 | teamwork_implementer | Initial CSV export implementation across all Master Data tabs | completed | 15b562b5-d333-42aa-a2b4-ffd285d29a55 |
-| Reviewer 1 | teamwork_reviewer | Adversarial review round 1: break and harden CSV export | in-progress | a6281357-b1df-438e-b26e-de5e42523933 |
+| Reviewer 1 | teamwork_reviewer | Adversarial review round 1: break and harden CSV export | completed | a6281357-b1df-438e-b26e-de5e42523933 |
+| Reviewer 2 | teamwork_reviewer | Adversarial review round 2: CSV injection guards & edge cases | in-progress | 45a34229-6e36-42b1-9889-aa6dd2d791eb |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 2 / 16
-- Pending subagents: a6281357-b1df-438e-b26e-de5e42523933
+- Spawn count: 3 / 16
+- Pending subagents: 45a34229-6e36-42b1-9889-aa6dd2d791eb
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
 - Heartbeat cron: 7a66eb17-7705-4e6a-b649-ebfad31d8c67/task-10
-- Safety timer: 7a66eb17-7705-4e6a-b649-ebfad31d8c67/task-91
+- Safety timer: 7a66eb17-7705-4e6a-b649-ebfad31d8c67/task-123
 
 ## Open Issues Ledger
 - [Round 1 / Implementer] Physical browser file saving prompt / OS dialog interaction on iOS Safari or mobile Chrome (tested via DOM anchor simulation in JS).
-- [Round 1 / Implementer] Minor Robustness Risk: Very large datasets (e.g. >50,000 rows in memory) in a single tab could experience a brief UI pause during client-side string concatenation; however, typical school dataset sizes in SIPJAM are well under 2,000 rows.
-- [Round 1 / Implementer] Untested Edge Cases: Very long text fields containing mixed carriage returns (\r\n and \n) along with embedded quotation marks and non-ASCII emojis within the same field.
+- [Round 1 / Implementer] Minor Robustness Risk: Very large datasets (>20,000 rows in memory) in a single tab could experience a brief UI pause during client-side string concatenation; however, typical school dataset sizes in SIPJAM are well under 2,000 rows.
 - [Round 1 / Implementer] Next Step for Reviewer: Verify the UI buttons on each tab in a live browser session, click "Export CSV", and open the resulting .csv file in Microsoft Excel or LibreOffice Calc to verify column delimitation and character rendering.
 
 ## Artifact Index

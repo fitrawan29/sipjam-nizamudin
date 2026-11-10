@@ -181,11 +181,15 @@ export function extractAssignedClasses(user: any): string[] {
   add(user.kelas_binaan);
   add(user.penugasan?.kelas_binaan);
   add(user.penugasan?.kelas);
+  add(user.penugasan?.nama_kelas);
   add(user.penugasan?.assignedKelas);
+  add(user.penugasan?.assigned_kelas);
   add(user.penugasan?.wali_kelas);
   add(user.wali_kelas);
   add(user.waliKelas);
   add(user.kelas);
+  add(user.nama_kelas);
+  add(user.kelas_wali);
 
   return result;
 }
@@ -277,6 +281,50 @@ export interface WaliKelasIntervensiAuthCheck {
 }
 
 /**
+ * Checks whether an authenticated user matches a wali_kelas database record.
+ * Resilient against:
+ * - Varied ID fields (user.id, user.data_guru_id, user.guru_id, user.user_id vs w.guru_id, w.user_id, w.data_guru_id)
+ * - Single and compound academic titles / honorifics (Prof. Dr. Ir., Drs. H., KH., etc.)
+ * - Trailing academic degrees with or without comma (S.Pd, M.Pd, S.Kom, etc.)
+ * - NIP or username equality
+ */
+export function isMatchingWaliGuru(
+  user: any,
+  w: { guru_id?: string; user_id?: string; data_guru_id?: string; nama_guru?: string; nama?: string; nip?: string } | null | undefined
+): boolean {
+  if (!user || !w) return false;
+
+  const userIds = [user.id, user.data_guru_id, user.guru_id, user.user_id].filter(Boolean);
+  const wIds = [(w as any).guru_id, (w as any).user_id, (w as any).data_guru_id].filter(Boolean);
+  const matchId = userIds.length > 0 && wIds.length > 0 && userIds.some(uid => wIds.some(wid => wid === uid));
+
+  const cleanTitle = (str: string) => {
+    return (str || '')
+      .split(',')[0]
+      .replace(/^(?:(?:dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah|kh|k\.h)\.?\s+)+/i, '')
+      .replace(/\s+(?:s\.pd|m\.pd|s\.kom|m\.kom|s\.e|m\.m|s\.t|m\.t|s\.ag|m\.ag|s\.si|m\.si|ph\.d|b\.sc|m\.sc)\.?$/i, '')
+      .toLowerCase()
+      .trim();
+  };
+
+  const rawUserNama = (user.nama || '').toLowerCase().trim();
+  const rawWaliNama = ((w as any).nama_guru || (w as any).nama || '').toLowerCase().trim();
+  const cleanUserNama = cleanTitle(user.nama || '');
+  const cleanWaliNama = cleanTitle((w as any).nama_guru || (w as any).nama || '');
+
+  const matchName = Boolean(
+    (rawUserNama && rawWaliNama && rawUserNama === rawWaliNama) ||
+    (cleanUserNama && cleanWaliNama && (cleanUserNama === cleanWaliNama || cleanUserNama.includes(cleanWaliNama) || cleanWaliNama.includes(cleanUserNama)))
+  );
+
+  const userNip = String(user.nip || user.username || '').trim();
+  const wNip = String((w as any).nip || '').trim();
+  const matchNip = Boolean(userNip && wNip && userNip === wNip);
+
+  return matchId || matchName || matchNip;
+}
+
+/**
  * Validates authorization for homeroom teacher (Wali Kelas) student attendance intervention.
  * 
  * Rules:
@@ -339,23 +387,7 @@ export function canWaliKelasIntervene(
     waliKelasList &&
     waliKelasList.some(w => {
       if (toCanonicalClass(w.kelas) !== targetCanon) return false;
-      const matchId = Boolean(
-        (user.id && w.guru_id && (w.guru_id === user.id || w.guru_id === user.data_guru_id || w.guru_id === user.guru_id || w.guru_id === user.user_id)) ||
-        (user.guru_id && w.guru_id && w.guru_id === user.guru_id) ||
-        (user.data_guru_id && w.guru_id && w.guru_id === user.data_guru_id) ||
-        (user.user_id && w.guru_id && w.guru_id === user.user_id)
-      );
-      const cleanUserNama = (user.nama || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
-      const cleanWaliNama = (w.nama_guru || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
-      const matchName = Boolean(
-        (user.nama && w.nama_guru && user.nama.toLowerCase().trim() === w.nama_guru.toLowerCase().trim()) ||
-        (cleanUserNama && cleanWaliNama && (cleanUserNama === cleanWaliNama || cleanUserNama.includes(cleanWaliNama) || cleanWaliNama.includes(cleanUserNama)))
-      );
-      const matchNip = Boolean(
-        (user.username || user.nip) && w.nip &&
-        (w.nip === user.username || w.nip === user.nip || String(w.nip).trim() === String(user.nip || user.username).trim())
-      );
-      return matchId || matchName || matchNip;
+      return isMatchingWaliGuru(user, w);
     })
   );
 
@@ -372,7 +404,8 @@ export function canWaliKelasIntervene(
   // Teacher is verified as homeroom teacher of target class.
   const rawStatus = typeof teacherStatusOrPresensi === 'string'
     ? teacherStatusOrPresensi
-    : (teacherStatusOrPresensi?.jenis_presensi || teacherStatusOrPresensi?.status || teacherStatusOrPresensi?.detail_izin || 'Hadir');
+    : (teacherStatusOrPresensi?.jenis_presensi || teacherStatusOrPresensi?.status || teacherStatusOrPresensi?.detail_izin ||
+       user?.jenis_presensi || user?.status_presensi || user?.daily_status || user?.detail_izin || 'Hadir');
 
   return {
     allowed: true,

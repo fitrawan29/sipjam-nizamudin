@@ -17,7 +17,8 @@ import {
   isWaliKelasIntervensiAllowed,
   canWaliKelasIntervene,
   isWaliKelasIntervensiAuthorized,
-  validateWaliKelasIntervensi
+  validateWaliKelasIntervensi,
+  isMatchingWaliGuru
 } from '../src/lib/presensiIntervensi';
 
 const GREEN = '\x1b[32m';
@@ -424,6 +425,94 @@ async function runTests() {
     pass('ADV-ROBUST-15', 'workflow.ts memproteksi guru berstatus Cuti dari false-positive Alpa');
   } else {
     fail('ADV-ROBUST-15', 'workflow.ts tidak menyertakan proteksi Cuti');
+  }
+
+  // SECTION 7: ROUND 3 ADVERSARIAL STRESS PROBES
+  console.log(`\n${YELLOW}${BOLD}━━━ 7. ROUND 3 ADVERSARIAL STRESS PROBES ━━━${RESET}`);
+
+  // 7.1 Compound academic titles & honorifics (Prof. Dr. Ir., Dra. Hj., etc.)
+  const matchCompound = isMatchingWaliGuru(
+    { nama: 'Prof. Dr. Ir. Budi Santoso, M.Sc' },
+    { nama_guru: 'Budi Santoso' }
+  );
+  const matchHj = isMatchingWaliGuru(
+    { nama: 'Dra. Hj. Siti Rahmah, M.Pd' },
+    { nama_guru: 'Siti Rahmah' }
+  );
+  if (matchCompound && matchHj) {
+    pass('ADV-ROBUST-16', 'isMatchingWaliGuru mengenali gelar akademik ganda dan majemuk (Prof. Dr. Ir., Dra. Hj.)');
+  } else {
+    fail('ADV-ROBUST-16', 'Gagal mencocokkan gelar majemuk', { matchCompound, matchHj });
+  }
+
+  // 7.2 Degree suffix without comma separator (e.g. "Budi Santoso S.Pd")
+  const matchNoCommaDegree = isMatchingWaliGuru(
+    { nama: 'Budi Santoso S.Pd' },
+    { nama_guru: 'Budi Santoso' }
+  );
+  if (matchNoCommaDegree) {
+    pass('ADV-ROBUST-17', 'isMatchingWaliGuru mengenali gelar sarjana tanpa koma ("Budi Santoso S.Pd")');
+  } else {
+    fail('ADV-ROBUST-17', 'Gagal mencocokkan gelar tanpa koma', matchNoCommaDegree);
+  }
+
+  // 7.3 Religious honorifics (KH., Ustadz, Ustadzah)
+  const matchKy = isMatchingWaliGuru(
+    { nama: 'KH. Ahmad Dahlan' },
+    { nama_guru: 'Ahmad Dahlan' }
+  );
+  const matchUst = isMatchingWaliGuru(
+    { nama: 'Ustadzah Fatimah Azzahra' },
+    { nama_guru: 'Fatimah Azzahra' }
+  );
+  if (matchKy && matchUst) {
+    pass('ADV-ROBUST-18', 'isMatchingWaliGuru mengenali gelar kehormatan keagamaan (KH., Ustadzah)');
+  } else {
+    fail('ADV-ROBUST-18', 'Gagal mencocokkan gelar keagamaan', { matchKy, matchUst });
+  }
+
+  // 7.4 Strict denial of completely different teachers
+  const matchDifferent = isMatchingWaliGuru(
+    { id: 'user-001', nama: 'Budi Santoso', nip: '19800101' },
+    { guru_id: 'user-002', nama_guru: 'Budi Gunawan', nip: '19800202' }
+  );
+  if (!matchDifferent) {
+    pass('ADV-ROBUST-19', 'isMatchingWaliGuru secara ketat menolak guru berbeda nama, ID, dan NIP');
+  } else {
+    fail('ADV-ROBUST-19', 'Guru berbeda salah dinyatakan cocok');
+  }
+
+  // 7.5 canWaliKelasIntervene auto-detects status from user properties
+  const resAutoStatusDinas = canWaliKelasIntervene(
+    { role: 'guru', wali_kelas: 'VII-A', jenis_presensi: 'Dinas Luar' },
+    'VII A'
+  );
+  const resAutoStatusCuti = canWaliKelasIntervene(
+    { role: 'guru', wali_kelas: 'VII-A', status_presensi: 'Cuti' },
+    'VII A'
+  );
+  if (resAutoStatusDinas.allowed && resAutoStatusDinas.teacherStatus === 'Dinas Luar' &&
+      resAutoStatusCuti.allowed && resAutoStatusCuti.teacherStatus === 'Cuti') {
+    pass('ADV-ROBUST-20', 'canWaliKelasIntervene otomatis mengekstrak status dari user.jenis_presensi/status_presensi');
+  } else {
+    fail('ADV-ROBUST-20', 'Ekstraksi status dari user object gagal', { resAutoStatusDinas, resAutoStatusCuti });
+  }
+
+  // 7.6 canWaliKelasIntervene authorizes additional non-hadir variants (Pulang Cepat, Izin Terlambat)
+  const resPulangCepat = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VII-A' }, 'VII A', 'Pulang Cepat');
+  const resIzinTerlambat = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VII-A' }, 'VII A', 'Izin Terlambat');
+  if (resPulangCepat.allowed && resIzinTerlambat.allowed) {
+    pass('ADV-ROBUST-21', 'canWaliKelasIntervene mengizinkan status Pulang Cepat dan Izin Terlambat');
+  } else {
+    fail('ADV-ROBUST-21', 'Gagal memproses Pulang Cepat atau Izin Terlambat', { resPulangCepat, resIzinTerlambat });
+  }
+
+  // 7.7 RekapSiswaView & useWaliKelas both import and integrate isMatchingWaliGuru
+  const useWaliCode = fs.readFileSync(path.resolve('src/hooks/useWaliKelas.ts'), 'utf-8');
+  if (rekapCode.includes('isMatchingWaliGuru') && useWaliCode.includes('isMatchingWaliGuru')) {
+    pass('ADV-ROBUST-22', 'RekapSiswaView dan useWaliKelas mengintegrasikan helper sentral isMatchingWaliGuru');
+  } else {
+    fail('ADV-ROBUST-22', 'Integrasi isMatchingWaliGuru belum lengkap di hook atau view');
   }
 
 

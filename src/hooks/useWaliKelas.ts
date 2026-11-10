@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { AppUser } from '@/types/user';
+import { isMatchingWaliGuru } from '@/lib/presensiIntervensi';
 
 export function useWaliKelas(
   user: AppUser | null,
@@ -16,7 +17,7 @@ export function useWaliKelas(
       return;
     }
 
-    const directWali = user?.wali_kelas || (user as any)?.penugasan?.kelas_binaan || (user as any)?.penugasan?.kelas || (user as any)?.kelas_binaan || (user as any)?.assignedKelas || (user as any)?.assigned_kelas || (user as any)?.waliKelas;
+    const directWali = user?.wali_kelas || (user as any)?.penugasan?.kelas_binaan || (user as any)?.penugasan?.kelas || (user as any)?.penugasan?.nama_kelas || (user as any)?.penugasan?.assignedKelas || (user as any)?.penugasan?.wali_kelas || (user as any)?.kelas_binaan || (user as any)?.assignedKelas || (user as any)?.assigned_kelas || (user as any)?.waliKelas || (user as any)?.nama_kelas || (user as any)?.kelas_wali;
     if (directWali) {
       setIsWaliKelas(true);
       const parsed = typeof directWali === 'string' ? directWali : (directWali.kelas || directWali.nama_kelas || directWali.kelas_binaan || null);
@@ -32,24 +33,7 @@ export function useWaliKelas(
         }
         const { data } = await query;
         if (data && data.length > 0) {
-          const cleanUserNama = (user?.nama || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
-          const found = data.find(w => {
-            const matchId = Boolean(
-              (user?.id && w.guru_id && (w.guru_id === user.id || w.guru_id === (user as any).data_guru_id || w.guru_id === (user as any).guru_id || w.guru_id === (user as any).user_id)) ||
-              ((user as any)?.guru_id && w.guru_id && w.guru_id === (user as any).guru_id) ||
-              ((user as any)?.data_guru_id && w.guru_id && w.guru_id === (user as any).data_guru_id)
-            );
-            const cleanWaliNama = (w.nama_guru || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
-            const matchName = Boolean(
-              (user?.nama && w.nama_guru && user.nama.toLowerCase().trim() === w.nama_guru.toLowerCase().trim()) ||
-              (cleanUserNama && cleanWaliNama && (cleanUserNama === cleanWaliNama || cleanUserNama.includes(cleanWaliNama) || cleanWaliNama.includes(cleanUserNama)))
-            );
-            const matchNip = Boolean(
-              (user?.username || (user as any)?.nip) && w.nip &&
-              (w.nip === user?.username || w.nip === (user as any)?.nip || String(w.nip).trim() === String((user as any)?.nip || user?.username).trim())
-            );
-            return matchId || matchName || matchNip;
-          });
+          const found = data.find(w => isMatchingWaliGuru(user, w));
           if (found) {
             setIsWaliKelas(true);
             setAssignedKelas(found.kelas);
