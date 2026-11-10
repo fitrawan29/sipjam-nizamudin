@@ -8,6 +8,7 @@ import { isMasterDataModificationAllowed, importMasterDataFromCsv, getStorageCac
 import NaikKelasModal from './NaikKelasModal';
 import { AppUser } from '@/types/user';
 import { filterStudentsBySubject, isStudentEligibleForSubject } from '@/lib/agamaFilter';
+import { downloadMasterDataCsv } from '@/lib/csvExport';
 
 export interface AdminKelasViewProps {
   user: AppUser | any;
@@ -526,6 +527,17 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // CSV Export for Data Kelas
+  const handleExportClassCsv = () => {
+    const listToExport = filteredClasses && filteredClasses.length > 0 ? filteredClasses : consolidatedClasses;
+    if (!listToExport || listToExport.length === 0) {
+      showToast('Info', 'Belum ada data kelas untuk diekspor.', 'info');
+      return;
+    }
+    const result = downloadMasterDataCsv('Data_Kelas', listToExport);
+    showToast('Berhasil', `Data Kelas (${result.rowCount} kelas) berhasil diekspor ke CSV!`, 'success');
   };
 
   // CSV File Upload & Import for Data Kelas
@@ -1273,6 +1285,17 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           >
             <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i>
             <span>Template CSV</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportClassCsv}
+            disabled={loading}
+            className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            title="Ekspor seluruh Data Kelas ke berkas CSV"
+          >
+            <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
+            <span>Export CSV</span>
           </button>
 
           {isAdmin && (

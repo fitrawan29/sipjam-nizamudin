@@ -32,6 +32,7 @@ import { parseTingkat } from './AdminKelasView';
 import { connectGuruMapelWithJadwal, isJurnalMatchJadwal } from '@/lib/workflow';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 import { filterStudentsBySubject, isStudentEligibleForSubject } from '@/lib/agamaFilter';
+import { downloadMasterDataCsv } from '@/lib/csvExport';
 
 export interface AdminDataViewProps {
   user: any;
@@ -600,6 +601,21 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  // Export Master Data to CSV
+  const handleExportCsv = () => {
+    const listToExport = filteredList && filteredList.length > 0 ? filteredList : dataList;
+    if (!listToExport || listToExport.length === 0) {
+      showToast('Info', 'Belum ada data untuk diekspor.', 'info');
+      return;
+    }
+    const currentTab = normalizeAdminTab(activeTab);
+    const result = downloadMasterDataCsv(currentTab, listToExport, {
+      schoolId: user?.sekolah_id,
+      configuredTahunAjaran
+    });
+    showToast('Berhasil', `Data ${currentTab.replace(/_/g, ' ')} (${result.rowCount} baris) berhasil diekspor!`, 'success');
   };
 
   const escapeHtml = (str?: string) => {
@@ -2741,6 +2757,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                           className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                         >
                           <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i> Template
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={handleExportCsv} 
+                          disabled={loading}
+                          className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer disabled:opacity-50"
+                          title="Ekspor data ke berkas CSV"
+                        >
+                          <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i> Export CSV
                         </button>
                         {canModify && (
                           <button 

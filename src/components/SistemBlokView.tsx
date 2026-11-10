@@ -7,6 +7,7 @@ import Swal from 'sweetalert2';
 import { getWitaDateStr } from '@/lib/wita';
 import { SistemBlok, TargetBlokType } from '@/types/database';
 import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
+import { downloadMasterDataCsv } from '@/lib/csvExport';
 
 interface TeacherOption {
   id: string;
@@ -517,6 +518,17 @@ export default function SistemBlokView({ user }: { user: any }) {
     return blokList.filter(item => getStatus(item.tanggal_mulai, item.tanggal_selesai) === 'Aktif').length;
   }, [blokList, getStatus]);
 
+  // Export Periode Sistem Blok to CSV
+  const handleExportBlokCsv = () => {
+    const listToExport = filteredList && filteredList.length > 0 ? filteredList : blokList;
+    if (!listToExport || listToExport.length === 0) {
+      showToast('Info', 'Belum ada data periode blok untuk diekspor.', 'info');
+      return;
+    }
+    const result = downloadMasterDataCsv('sistem_blok', listToExport);
+    showToast('Berhasil', `Data Periode Blok (${result.rowCount} data) berhasil diekspor ke CSV!`, 'success');
+  };
+
   const userRole = (user?.role || '').toLowerCase();
   const isAdminOrSuperadmin = isAdmin || userRole === 'admin' || userRole === 'superadmin';
 
@@ -826,15 +838,27 @@ export default function SistemBlokView({ user }: { user: any }) {
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={loadBlokData}
-            disabled={loading}
-            className="btn-click self-start sm:self-auto px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition"
-          >
-            <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
-            <span>Refresh</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={handleExportBlokCsv}
+              disabled={loading}
+              className="btn-click px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition shadow-sm cursor-pointer disabled:opacity-50"
+              title="Ekspor seluruh Periode Sistem Blok ke berkas CSV"
+            >
+              <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
+              <span>Export CSV</span>
+            </button>
+            <button
+              type="button"
+              onClick={loadBlokData}
+              disabled={loading}
+              className="btn-click px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition"
+            >
+              <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
+              <span>Refresh</span>
+            </button>
+          </div>
         </div>
 
         {/* Search & Status Filters */}

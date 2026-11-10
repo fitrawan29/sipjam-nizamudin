@@ -13,6 +13,7 @@ import {
   TeacherAccountItem
 } from '@/lib/teacherUserSync';
 import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
+import { downloadMasterDataCsv } from '@/lib/csvExport';
 
 export interface AdminPenggunaViewProps {
   user: any;
@@ -195,6 +196,17 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
   }, [filteredAccounts, page]);
 
   const totalPages = Math.ceil(filteredAccounts.length / ITEMS_PER_PAGE) || 1;
+
+  // Export Pengguna to CSV
+  const handleExportUsersCsv = () => {
+    const listToExport = filteredAccounts && filteredAccounts.length > 0 ? filteredAccounts : accounts;
+    if (!listToExport || listToExport.length === 0) {
+      showToast('Info', 'Belum ada data pengguna untuk diekspor.', 'info');
+      return;
+    }
+    const result = downloadMasterDataCsv('Pengguna', listToExport);
+    showToast('Berhasil', `Data Pengguna (${result.rowCount} akun) berhasil diekspor ke CSV!`, 'success');
+  };
 
   // Handle Toggle Tata Usaha Role Assignment (Mekanisme 1: Tunjuk TU / Ke Guru)
   const handleToggleTuAssignment = async (item: TeacherAccountItem) => {
@@ -1056,6 +1068,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
             >
               <i className={`fa-solid fa-arrows-rotate ${syncing ? 'animate-spin' : ''}`}></i>
               <span>{syncing ? 'Menyinkronkan...' : 'Tarik / Sinkron Guru'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportUsersCsv}
+              disabled={loading}
+              className="clay-btn px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              title="Ekspor daftar pengguna ke berkas CSV"
+            >
+              <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
+              <span>Export CSV</span>
             </button>
           </div>
         </div>
