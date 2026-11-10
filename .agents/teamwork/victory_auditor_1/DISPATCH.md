@@ -1,63 +1,33 @@
-## 2026-10-26T07:10:33Z
-
-You are victory_auditor_1. Your working directory is `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1`.
-Conduct a 3-phase independent victory audit (timeline & commit audit, cheating & scope detection, independent test execution) with zero shared context from the implementation swarm.
-
+## 2026-11-10T02:23:55Z
 <original_task>
-Hilangkan blok tanda tangan admin dari dokumen cetak di sipjam-app: ketika user yang sedang login memiliki role `admin` (atau `Admin`), komponen `PrintSignature` di `src/components/PrintHeader.tsx` tidak boleh merender blok tanda tangan sisi kiri (kolom admin/guru yang mencetak). Kolom tanda tangan Kepala Sekolah dan Pengawas tetap ditampilkan seperti biasa.
+This is a single self-contained fix; keep it small and focused. Tambahkan fitur export data berformat CSV pada setiap tab Master Data yang ada (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, dan Sistem Blok) pada aplikasi SIPJAM tanpa mempengaruhi fungsionalitas dan logika eksisting.
 
-**This is a single self-contained fix; keep it small and focused.**
-
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-
-Integrity mode: development
-
----
-
-## Context
-
-- Komponen utama: `PrintSignature` di `src/components/PrintHeader.tsx`
-- Interface `PrintSignatureProps` sudah memiliki prop `user?: any`
-- Pengecekan role admin yang sudah ada di codebase: `(user?.role || '').toLowerCase() === 'admin'` (lihat `AdminVerifView.tsx` L25)
-- `PrintSignature` dipanggil dari: `AdminRekapView`, `DinasDashboard`, `DokumenView`, `GradebookView`, `PiketView`, `RaporView`, `RekapJurnalView`, `RekapSiswaView`
-- Tanda tangan kiri adalah kolom pertama di layout flex `PrintSignature` — berisi jabatan + nama + NIP dari props `leftTitle/leftName/leftNip`
+Integrity mode: demo
+The team must NOT: use pre-built libraries or frameworks for core functionality
 
 ## Requirements
 
-### R1. Sembunyikan tanda tangan kiri saat pencetak adalah admin
+### R1. Fitur Export Data CSV pada Master Data
+Menambahkan fitur export data berformat CSV (.csv) untuk seluruh data pada setiap tab Master Data yang aktif (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, dan Sistem Blok). Pengguna yang berwenang dapat mengunduh data dalam bentuk file CSV dengan struktur kolom yang sesuai dan nama file yang deskriptif.
 
-Jika `user?.role` (case-insensitive) adalah `'admin'`, `PrintSignature` tidak merender blok tanda tangan kiri (kolom `leftTitle`, `leftName`, `leftNip`, `leftSubtitle`). Kolom tanda tangan kanan (Kepala Sekolah) dan Pengawas tetap dirender normal.
+### R2. Preservasi Fungsionalitas Eksisting & Zero Regression
+Perubahan ini tidak boleh mempengaruhi fitur, alur kerja, validasi, dan logika yang sudah ada pada aplikasi SIPJAM (seperti penambahan data, pengubahan, penghapusan, filter, pencarian, import data, dan hak akses).
 
-Ubah hanya `PrintHeader.tsx`. Jangan ubah caller — prop `user` sudah diteruskan dari setiap caller.
-
-### R2. Layout tidak rusak saat kolom kiri tidak ada
-
-Ketika kolom kiri disembunyikan, kolom tanda tangan kanan (Kepala Sekolah) tetap terposisi rapi — tidak ada ruang kosong besar di kiri, tidak ada pergeseran layout yang aneh. Gunakan flag `singleColumn` yang sudah ada jika applicable, atau sesuaikan CSS minimal.
+### R3. Implementasi Minimal dan Tanpa Dependensi Tambahan (/ponytail)
+Implementasi fitur export harus seringkas dan seminimal mungkin dengan memanfaatkan fitur native browser (seperti Blob/URL/CSV generator sederhana) atau utilitas yang sudah ada di codebase. Dilarang menambahkan dependensi/library pihak ketiga baru ke dalam proyek.
 
 ## Acceptance Criteria
 
-### Logika role
-- [ ] `user.role === 'admin'` → blok tanda tangan kiri tidak dirender sama sekali (tidak hanya invisible/hidden, benar-benar tidak ada di DOM)
-- [ ] `user.role === 'Admin'` (kapital) → sama, tidak dirender
-- [ ] `user.role === 'guru'` atau role lain → blok kiri tetap dirender seperti biasa
-- [ ] `user` undefined/null → perilaku default tidak berubah (blok kiri tetap ada)
+### Fungsionalitas Export CSV
+- [ ] Tersedia tombol atau opsi export CSV yang jelas dan mudah diakses pada setiap tampilan tab Master Data (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, dan Sistem Blok).
+- [ ] Mengklik tombol export memicu download file berformat `.csv` dengan header kolom yang sesuai dengan data pada tab tersebut.
+- [ ] Data baris pada file CSV terisi lengkap dan akurat sesuai data yang ada pada tab terkait, dengan penanganan karakter khusus (seperti koma dan tanda kutip) yang tepat.
 
-### Layout
-- [ ] Saat role admin, kolom Kepala Sekolah masih terlihat dan posisinya tidak bergeser ekstrem
-- [ ] Tidak ada TypeScript error baru
+### Preservasi Fungsionalitas & Non-Regresi
+- [ ] Seluruh fungsi master data eksisting (tambah, edit, hapus, filter, pencarian, import) tetap berjalan normal tanpa error atau degradasi fungsi.
+- [ ] Tidak ada penambahan package/dependensi baru pada `package.json`.
 
-### Scope
-- [ ] Hanya `PrintHeader.tsx` yang diubah
-- [ ] Tidak ada prop baru yang ditambahkan ke caller manapun
-- [ ] Commit dan push ke branch `dev` setelah selesai sesuai Git Workflow Rule
-
----
-*Expecting this to run as one contained change on a small focused team — say so if you want it broken up.*
+### Verifikasi Otomatis
+- [ ] Tersedia skrip automated test mandiri yang memverifikasi pembentukan data export CSV pada masing-masing tab Master Data.
+- [ ] Seluruh automated test berjalan sukses (pass) tanpa menyebabkan kegagalan pada pengujian regresi eksisting.
 </original_task>
-
-<audit_instructions>
-1. Conduct Phase 1: Timeline & Commit audit (verify commits on branch `dev`, check git log and git status).
-2. Conduct Phase 2: Cheating & Scope detection (verify that tests in `tests/printHeader.test.ts` test real logic and were not mocked to trivially pass, verify only `PrintHeader.tsx` was modified in source code, no callers were modified).
-3. Conduct Phase 3: Independent Test Execution (run `npx tsx tests/printHeader.test.ts` and `npx tsc --noEmit`).
-4. Write your full audit report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\victory_auditor_1\handoff.md` with explicit structured verdict: CONFIRMED or REJECTED, and send a message back with your verdict.
-</audit_instructions>

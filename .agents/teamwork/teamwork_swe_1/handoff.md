@@ -1,44 +1,36 @@
-# Orchestrator Handoff Report — Gate Attendance Time Display Fix
+# Orchestrator Final Handoff: Master Data CSV Export Feature for All 9 Tabs
 
-## 1. Observation
-- **Task Assigned**: Perbaiki tampilan jam datang dan jam pulang pada presensi gerbang piket agar menampilkan data waktu yang sesuai.
-- **Requirements Satisfied**:
-  - **R1 (Tampilan Jam Datang)**: Menampilkan waktu presensi/scan masuk pada kolom atau indikator jam datang presensi gerbang piket sesuai catatan presensi kedatangan yang tercatat.
-  - **R2 (Tampilan Jam Pulang)**: Menampilkan waktu presensi/scan pulang pada kolom atau indikator jam pulang presensi gerbang piket jika sudah melakukan presensi pulang, dan secara konsisten menampilkan tanda `'-'` ketika belum terdapat catatan presensi pulang.
-- **Workflow & Iterations**: Executed under SWE Light pattern with sequential refinement:
-  1. `teamwork_implementer_1` (commit `bc9b5de`): Fixed `RekapSiswaView.tsx` by separating `realPulang`, eliminating fake departure injections (`pulang = { jam: 'Sistem Mapel Auto' }`), and rendering `'-'` when departure scan is missing. Added initial automated test suite `tests/presensi_gerbang_jam_datang_pulang.test.ts`.
-  2. `teamwork_reviewer_1` (commit `2ff6b8b`): Identified scope omission in guru piket view (`PiketView.tsx`), added dash `'-'` indicator alongside action buttons when no scan exists, extracted shared `formatPresensiTime` helper in `src/lib/wita.ts`, and updated test assertions.
-  3. `teamwork_reviewer_2` (commit `59ae070`): Adversarially identified a regressed naive slice fallback (`|| datangRecord.jam.slice(0, 5)`), strengthened `formatPresensiTime` to handle 12-hour AM/PM timestamps, Indonesian dot notations, and ISO UTC conversions, and connected `GuruJurnal.tsx` and `qrSiswa.ts`.
-  4. `teamwork_reviewer_3` (commit `407a85e`): Conducted full-repo sweep, formatted timestamp on primary kiosk scanner card (`PiketView.tsx:2568`), cleaned up naive `.slice(0, 8)` in audit log tables and WhatsApp payloads, and eliminated remaining obsolete slice fallbacks.
-  5. `teamwork_victory_auditor_1`: Conducted independent 3-phase victory audit (Timeline, Cheating Check, Independent Tests). Result: **VICTORY CONFIRMED**.
+## Milestone State
+- [x] Initial Implementation (teamwork_implementer): Pure zero-dependency CSV export engine, RFC 4180 escaping, BOM prefix, initial UI buttons across 9 Master Data tabs.
+- [x] Adversarial Review Round 1 (teamwork_reviewer R1): Resolved object extraction bug in `Data_Kelas` (`wali_kelas`), fixed whitespace/hyphen normalization in tab aliases, fixed unintended database dumps on 0-match filter queries, delayed `revokeObjectURL` for mobile WebKit.
+- [x] Adversarial Review Round 2 (teamwork_reviewer R2): Spreadsheet formula injection mitigation (CWE-1236), defensive handlers for invalid Dates/BigInt/circular objects, array multi-value join support, 25k-row preallocation performance optimization, WCAG `aria-label` accessibility attributes.
+- [x] Adversarial Review Round 3 (teamwork_reviewer R3): Responsive `flex-wrap` layouts on narrow mobile screens, multi-tenant `school_id` fallback in Data Guru, secondary toolbar accessibility attributes, 9-tab roundtrip import validation in automated CI.
+- [x] Independent Verification (Orchestrator): Re-ran `tests/master_data_csv_export_verification.test.ts` (44/44 passed), `npx tsc --noEmit` (0 errors), `npm test` (85+ suites passed with 0 failures), and Next.js Turbopack production build (clean).
+- [x] Independent Victory Audit (teamwork_victory_auditor): 3-phase audit (Timeline, Cheating Check, Independent Test Execution) resulting in **VICTORY CONFIRMED**.
 
-## 2. Logic Chain
-- Prior to the fix, students who were present in the morning automatically received `pulang = { jam: 'Sistem Mapel Auto', status: 'pulang' }`. Slicing this text resulted in `"Siste WITA"`, misrepresenting them as having departed. Missing departure records also resulted in broken rendering.
-- By separating actual departure logs (`gateLogs` with `status === 'pulang'`) from arrival logs and removing the synthetic auto-departure injection, the arrival time is cleanly mapped from `datang.jam` and departure time from `realPulang.jam`.
-- The robust `formatPresensiTime` utility safely converts diverse timestamp formats (HH:mm:ss, single-digit hours, Indonesian dot format, 12h AM/PM, ISO strings with UTC/Z or offset) into standard 24-hr `HH:mm` WITA while safely transforming placeholders (`'Auto Fallback: Bolos'`, `'Sistem Mapel Auto'`, `'-'`, empty strings, null, undefined) into `null`.
-- In `RekapSiswaView.tsx`, `PiketView.tsx` (desktop manual table and mobile cards), `GuruJurnal.tsx`, and `qrSiswa.ts`, all gate attendance times are parsed with `formatPresensiTime`. When a departure record is absent, a clean `'-'` is rendered.
-- Automated regression test suite `tests/presensi_gerbang_jam_datang_pulang.test.ts` (17 checks) and all 46 existing test suites in `npm test` confirm zero regressions and 100% compliance.
+## Active Subagents
+- None (All subagents completed, heartbeat cron cancelled).
 
-## 3. Caveats
-- Real-time hardware integration with physical USB HID barcode scanners and live video streams in actual gate installations was verified via database simulation suites (`tests/m3_piket_scanner_kiosk.test.ts`) and unit tests rather than physical hardware connection.
-- Development mode integrity was maintained throughout the implementation.
+## Pending Decisions
+- None. Requirements R1, R2, R3 and all acceptance criteria are fully met.
 
-## 4. Conclusion
-All acceptance criteria for R1 and R2 are fully met, verified across 3 adversarial review rounds, verified independently by the orchestrator, and confirmed by the Independent Victory Auditor.
+## Remaining Work
+- None. Feature is verified, hardened, and pushed to `main`.
 
-## 5. Verification Method
-- Run gate presence test suite:
-  ```powershell
-  npx tsx tests/presensi_gerbang_jam_datang_pulang.test.ts
-  ```
-  *Result: 17/17 passed.*
-- Run full test suite:
-  ```powershell
-  npm test
-  ```
-  *Result: 46/46 test suites passed.*
-- Run production build:
-  ```powershell
-  npm run build
-  ```
-  *Result: Turbopack compilation succeeded, 13/13 static routes generated.*
+## Key Artifacts
+- `src/lib/csvExport.ts`: Central zero-dependency RFC 4180 CSV export utility with formula injection protection, BOM encoding, and declarative extractors for all 9 Master Data tabs.
+- `src/components/AdminDataView.tsx`: Export CSV button and handler for Siswa, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, and Kalender Pendidikan.
+- `src/components/AdminKelasView.tsx`: Export CSV button and handler for Tab Data Kelas.
+- `src/components/AdminPenggunaView.tsx`: Export CSV button and handler for Tab Data Pengguna.
+- `src/components/SistemBlokView.tsx`: Export CSV button and handler for Tab Sistem Blok.
+- `tests/master_data_csv_export_verification.test.ts`: 44 automated tests verifying CSV escaping, all 9 tab exports, BOM presence, aliases, round-trip import, UI button declarations, formula injection mitigation, defensive types, performance, responsive layout, and zero dependencies.
+- `.agents/teamwork/teamwork_swe_1/BRIEFING.md`: Persistent orchestrator state.
+- `.agents/teamwork/teamwork_swe_1/progress.md`: Progress log.
+- `.agents/teamwork/victory_auditor_1/handoff.md`: Independent victory auditor report.
+
+## Verification Method & Results
+1. `npx tsx tests/master_data_csv_export_verification.test.ts`: **44/44 PASSED (0 failed)**
+2. `npx tsc --noEmit`: **0 errors (Exit code 0)**
+3. `npm test`: **All 85+ test suites PASSED with 0 failures (Exit code 0)**
+4. `npm run build`: **Next.js Turbopack build succeeded, 13/13 static routes generated (Exit code 0)**
+5. `git diff package.json`: **0 new dependencies added (Ponytail compliance)**

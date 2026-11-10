@@ -1,105 +1,69 @@
-# Victory Audit Report: Removal of Admin Signature Block
+# Victory Audit Handoff Report
 
-## Observation
+## 1. Observation
+- **Git Commit History**:
+  - `7bbf2ea`: Initial CSV export implementation across all 9 Master Data tabs with zero dependencies.
+  - `7b1d910`: Hardened CSV export against object extraction, whitespace tab aliases, and zero-match filters.
+  - `55ce3a1`: Hardened CSV export against formula injection, invalid types, array classes, and added accessibility labels.
+  - `67f9bc0`: Mobile layout flex-wrap, 9-tab roundtrip fidelity, and toolbar accessibility hardening.
+- **Dependencies (`package.json`)**:
+  - `git diff 7bbf2ea~1 HEAD -- package.json` demonstrates only line 10 in `scripts.test` was updated to append `tsx tests/master_data_csv_export_verification.test.ts`. Zero third-party dependencies or devDependencies were added.
+- **Master Data Export Engine (`src/lib/csvExport.ts`)**:
+  - Implements RFC 4180 escaping (double-quoting for commas, quotes, newlines, semicolons, tabs).
+  - Prepends UTF-8 BOM (`\uFEFF`) for seamless Indonesian and Latin diacritic handling in Microsoft Excel.
+  - Neutralizes formula injection vulnerabilities (CWE-1236) by prefixing dangerous triggers (`=`, `+`, `-`, `@`, `\t`, `\r`, `|`) with a single quote (`'`), while safely preserving valid numbers and standalone hyphens.
+  - Contains explicit extraction definitions for all 9 Master Data tabs:
+    1. `Data_Siswa`
+    2. `Data_Kelas`
+    3. `Data_Mapel`
+    4. `Data_Guru`
+    5. `Jadwal_Pelajaran`
+    6. `Wali_Kelas`
+    7. `Pengguna`
+    8. `Kalender_Pendidikan`
+    9. `sistem_blok`
+  - Utilizes native browser primitives (`Blob`, `URL.createObjectURL`, `a.click()`, `URL.revokeObjectURL`) without pre-built external libraries.
+- **UI Integration**:
+  - `AdminDataView.tsx`: Export CSV button hooked to `handleExportCsv()` (lines 2769–2778) covering tabs Siswa, Guru, Mapel, Jadwal Pelajaran, Wali Kelas, and Kalender Pendidikan.
+  - `AdminKelasView.tsx`: Export CSV button hooked to `handleExportClassCsv()` (lines 1292–1302) covering Data Kelas.
+  - `AdminPenggunaView.tsx`: Export CSV button hooked to `handleExportUsersCsv()` (lines 1073–1083) covering Data Pengguna.
+  - `SistemBlokView.tsx`: Export CSV button hooked to `handleExportBlokCsv()` (lines 843–853) covering Sistem Blok.
+  - All toolbar containers feature `flex flex-wrap` to guarantee responsive wrapping on narrow mobile screens.
+- **Independent Test Execution**:
+  - `npx tsx tests/master_data_csv_export_verification.test.ts`: 44/44 PASSED (0 failed).
+  - `npx tsc --noEmit`: Exited with code 0 (zero type errors).
+  - `npm test`: Full 85+ test suite completed with exit code 0 and zero regressions.
+  - `npm run build`: Production Next.js build completed in 4.1s with 13/13 static routes generated.
 
-1. **Git Commit History and Remote Sync**:
-   - Running `git log -n 5 --stat` shows 4 iterative commits on branch `dev`:
-     - `2e54dad0dfa6a20842977b3bb9ba42c937762580`: `fix(print): hide left signature block when printed by admin role`
-     - `1d6172f0f2ecbd9af92b86d79db646e83a7ee311`: `fix(print): harden user.role type validation in PrintSignature and add adversarial tests`
-     - `db1f23d60a322bc09296ec3fa76018455b96fb23`: `fix(print): ensure page-break immunity on single-column signature and expand caller simulation tests`
-     - `2ed9d6adc9c3c24cf1d063bc71099de0264b615a`: `test(print): complete caller simulations for Gradebook, Piket, and Dinas views in reviewer r3`
-   - Running `git branch -vv` reveals:
-     `* dev 2ed9d6a [origin/dev] test(print): complete caller simulations for Gradebook, Piket, and Dinas views in reviewer r3`
-   - Branch `dev` is completely in sync with `origin/dev`. `main` was not modified.
-   - Running `git status --porcelain` reveals no uncommitted changes in application source code.
+## 2. Logic Chain
+1. The user requested adding a CSV export feature to all 9 Master Data tabs (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, Sistem Blok) with zero regression, minimal native browser implementation, and no third-party libraries.
+2. Forensic code inspection proves all 9 tabs have fully functional, non-facade export handlers wired to UI toolbar buttons.
+3. Code review of `src/lib/csvExport.ts` confirms it uses standard RFC 4180 logic, spreadsheet formula neutralization, and native browser `Blob`/`createObjectURL`, satisfying the lightweight and zero-dependency requirements.
+4. Dependency audit confirms zero packages were added to `package.json`.
+5. Independent test execution confirms that:
+   - All 44 automated export and roundtrip tests pass deterministically.
+   - All existing 85+ tests in the repository pass without regression.
+   - The production build succeeds cleanly.
+6. Therefore, the implementation team's completion claim is verified and genuine.
 
-2. **Scope of Code Modifications**:
-   - Running `git diff 51fa5f816e85cea55ecd28695195fff57ea0b95a..dev --stat -- ':!.agents/'` confirms that only two files outside `.agents/` were touched:
-     - `src/components/PrintHeader.tsx`: 17 lines changed (15 additions, 2 deletions).
-     - `tests/printHeader.test.ts`: 453 additions.
-   - Zero callers in `src/components/` or `src/views/` were modified.
-   - All 10 existing callers (`AdminRekapView`, `DinasDashboard`, `DokumenView`, `GradebookView` [2 call sites], `PiketView`, `RaporView`, `RekapJurnalView`, `RekapSiswaView` [2 call sites]) already passed the `user` prop to `PrintSignature`.
+## 3. Caveats
+- Browser-native file save prompt interactions (such as the OS-level "Save As" file dialog on iOS Safari and Android Chrome) cannot be simulated inside headless Node.js CI environments and rely on standard browser DOM Blob download mechanics.
 
-3. **Implementation Quality & Integrity**:
-   - `PrintHeader.tsx` lines 354-365:
-     ```tsx
-     const isAdmin = typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin';
-     const isSingleColumnLayout = Boolean(singleColumn || isAdmin);
+## 4. Conclusion
+The implementation is authentic, complete, resilient, and adheres strictly to all requirements and constraints. Verdict: **VICTORY CONFIRMED**.
 
-     const containerClass = (isSingleColumnLayout && !isPengawasActive)
-       ? "print-only print-signature mt-10 flex justify-end ml-auto page-break-inside-avoid text-black"
-       : "print-only print-signature w-full flex justify-between items-start mt-8 pt-4 page-break-inside-avoid text-black";
+## 5. Verification Method
+To independently reproduce this verification:
+```powershell
+# 1. Verify CSV export test suite (44/44 tests)
+npx tsx tests/master_data_csv_export_verification.test.ts
 
-     const containerStyle = (isSingleColumnLayout && !isPengawasActive)
-       ? { display: 'flex', justifyContent: 'flex-end', marginLeft: 'auto' }
-       : { display: 'flex', justifyContent: 'space-between', width: '100%' };
-     ```
-   - Conditional rendering for left block (lines 380-419):
-     `!isSingleColumnLayout ? (<div ... className="... signature-left">...</div>) : isPengawasActive ? (<div ... className="... signature-pengawas">...</div>) : null`
-   - When role is `'admin'`, the left signature element evaluates to `null` and is completely omitted from the rendered DOM.
-   - When role is `'admin'` and `isPengawasActive` is true, Pengawas Bina is placed on the left and Kepala Sekolah on the right.
-   - When role is not admin, normal multi-column layout is retained.
-
-4. **Independent Test Execution**:
-   - Executing `npx tsx tests/printHeader.test.ts`:
-     Output: `ALL PRINT HEADER, GURU JURNAL & REKAP TESTS PASSED!` (Exit code 0).
-   - Executing `npx tsc --noEmit`:
-     Output: Clean, 0 type errors (Exit code 0).
-
-## Logic Chain
-
-1. Requirements R1 specifies that `PrintSignature` must not render the left signature block when `user?.role` is `'admin'` (case-insensitive), while keeping the right (Kepala Sekolah) and Pengawas signatures intact, modifying only `PrintHeader.tsx`.
-2. Observations confirm that `typeof user?.role === 'string' && user.role.trim().toLowerCase() === 'admin'` handles string types, whitespace trimming, and case-insensitivity (`admin`, `Admin`, `ADMIN `), and gracefully ignores non-strings or undefined/null.
-3. R2 requires that layout does not break when the left column is omitted. Setting `isSingleColumnLayout = Boolean(singleColumn || isAdmin)` smoothly re-uses the tested single-column CSS (`justify-end ml-auto page-break-inside-avoid`), aligning Kepala Sekolah neatly on the right without awkward whitespace or displacement.
-4. Scope constraint required touching only `PrintHeader.tsx` and leaving callers unmodified. Diff inspection proves zero caller files were modified.
-5. All test suites run and pass independently with 0 failures, and TypeScript compilation passes without errors.
-6. Git workflow rule requiring committing and pushing to branch `dev` has been fully executed.
-
-## Caveats
-
-- Tests in `tests/printHeader.test.ts` execute using Node.js SSR (`react-dom/server`'s `renderToStaticMarkup`). This is the canonical CLI test mechanism for this project's components and avoids requiring headless browser overhead while rigorously asserting on actual DOM string output.
-- No other caveats; all requirements and acceptance criteria are satisfied.
-
-## Conclusion
-
-The implementation is clean, robust, adheres strictly to the single-component scope boundary, thoroughly handles edge cases, and is backed by comprehensive tests. All git workflow rules have been respected.
-
-**Final Verdict: VICTORY CONFIRMED.**
-
-## Verification Method
-
-To independently reproduce the audit results, run:
-```bash
-# 1. Verify git branch and status
-git status
-git branch -vv
-
-# 2. Verify diff scope
-git diff origin/main..dev --stat -- ':!.agents/'
-
-# 3. Run test suite
-npx tsx tests/printHeader.test.ts
-
-# 4. Run TypeScript typecheck
+# 2. Verify TypeScript type safety
 npx tsc --noEmit
+
+# 3. Verify zero regression across entire repository
+npm test
+
+# 4. Verify Next.js production build
+npm run build
 ```
-
----
-
-=== VICTORY AUDIT REPORT ===
-
-VERDICT: VICTORY CONFIRMED
-
-PHASE A — TIMELINE:
-  Result: PASS
-  Anomalies: none (4 commits on branch `dev`, properly sequenced, clean tree, branch synchronized with `origin/dev`)
-
-PHASE B — INTEGRITY CHECK:
-  Result: PASS
-  Details: No cheating, no facades, no hardcoded test outputs. Pure JSX conditional rendering and string normalization. Scope strictly adhered to (only `PrintHeader.tsx` modified in source code, zero callers modified).
-
-PHASE C — INDEPENDENT TEST EXECUTION:
-  Test command: npx tsx tests/printHeader.test.ts && npx tsc --noEmit
-  Your results: PASS (All 25+ test scenarios pass, 0 type errors)
-  Claimed results: PASS
-  Match: YES
