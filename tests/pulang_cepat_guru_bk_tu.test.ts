@@ -203,6 +203,8 @@ async function main() {
 
     assert.ok(rekap.includes('datangWorkDates') && rekap.includes('normalPulangDates') && rekap.includes('explicitPulangCepatDates'), 'AdminRekapView must deduplicate Pulang Cepat by date across Guru, BK, and TU');
     assert.ok(rekap.includes('jam_pulang_akhir') && rekap.includes('isBeforeCutoff'), 'AdminRekapView must respect jam_pulang_akhir before flagging today as Pulang Cepat');
+    assert.ok(!rekap.includes('x (Pulang Cepat)'), 'Kolom Pulang Cepat tabel rekap tidak boleh menampilkan teks "x (Pulang Cepat)"');
+    assert.strictEqual((rekap.match(/>\{r\.pulangCepat \|\| 0\}<\/td>/g) || []).length, 2, 'Kolom Pulang Cepat tabel rekap Guru dan TU cukup menampilkan angka');
     assert.ok(rekap.includes('PrintHeader') && rekap.includes('PrintSignature'), 'AdminRekapView preserves dual print headers and signatures');
 
     assert.ok(homeTu.includes('⚠️ Pulang Cepat') && homeTu.includes('⚠️ Anda tercatat Pulang Cepat'), 'HomeViewTU must render Pulang Cepat step and warning banner');

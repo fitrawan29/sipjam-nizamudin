@@ -1173,7 +1173,7 @@ export default function AdminRekapView({
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat > 0 ? `${r.pulangCepat}x (Pulang Cepat)` : '-'}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
@@ -1264,7 +1264,7 @@ export default function AdminRekapView({
                                     <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
                                     <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
                                     <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat > 0 ? `${r.pulangCepat}x (Pulang Cepat)` : '-'}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat || 0}</td>
                                     <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
                                   </tr>
                                 );
