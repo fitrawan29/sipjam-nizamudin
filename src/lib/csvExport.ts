@@ -17,17 +17,85 @@ export interface MasterDataExportDefinition {
 }
 
 /**
+ * Helper to safely serialize objects without throwing on BigInt or circular references.
+ */
+function safeStringify(val: any): string {
+  try {
+    return JSON.stringify(val, (_, v) => (typeof v === 'bigint' ? v.toString() : v)) || '';
+  } catch (_) {
+    return '[Object]';
+  }
+}
+
+/**
+ * Sanitizes against CSV / Spreadsheet Formula Injection (CWE-1236).
+ * Prepends a single quote (') if the field starts with dangerous formula triggers (=, +, -, @, \t, \r, |),
+ * preventing execution when opened in Excel, LibreOffice Calc, or Google Sheets,
+ * while preserving standard numbers and standalone minus signs.
+ */
+export function sanitizeCsvFormula(str: string): string {
+  if (!str || typeof str !== 'string') return str;
+  const trimmed = str.trimStart();
+  if (trimmed.length === 0) return str;
+
+  // Already safe-quoted
+  if (trimmed.startsWith("'")) return str;
+
+  // Safe pure numbers (e.g. 42, -5, +5, 3.14) or standalone hyphen/plus
+  if (/^[-+]?\d+(\.\d+)?$/.test(trimmed) || trimmed === '-' || trimmed === '+') {
+    return str;
+  }
+
+  // Dangerous formula triggers in spreadsheet programs
+  const first = trimmed[0];
+  if (
+    first === '=' ||
+    first === '@' ||
+    first === '+' ||
+    first === '-' ||
+    first === '\t' ||
+    first === '\r' ||
+    first === '|'
+  ) {
+    return `'${str}`;
+  }
+
+  return str;
+}
+
+/**
+ * Safely formats date fields into YYYY-MM-DD, gracefully handling invalid Date objects and timestamps.
+ */
+function formatDateField(val: any): string {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? '' : val.toISOString().split('T')[0];
+  }
+  const str = String(val).trim();
+  if (str.includes('T')) return str.split('T')[0];
+  return str;
+}
+
+/**
  * Escapes a single CSV field value according to RFC 4180.
  * Wraps values containing commas, quotes, semicolons, tabs, or newlines in double quotes,
- * and doubles any internal double quotes. Safely extracts scalar values from objects.
+ * doubles any internal double quotes, sanitizes formula injection, and safely extracts scalar values from objects.
  */
 export function escapeCsvField(val: any): string {
   if (val === null || val === undefined) return '';
   if (val instanceof Date) {
-    return val.toISOString().split('T')[0];
+    return isNaN(val.getTime()) ? '' : val.toISOString().split('T')[0];
   }
   if (Array.isArray(val)) {
-    return escapeCsvField(val.map(v => (typeof v === 'object' && v !== null ? (v.nama_guru || v.nama || v.nama_kelas || v.name || JSON.stringify(v)) : String(v))).join('; '));
+    return escapeCsvField(
+      val
+        .map(v =>
+          typeof v === 'object' && v !== null
+            ? v.nama_guru || v.nama || v.nama_kelas || v.name || safeStringify(v)
+            : String(v)
+        )
+        .join('; ')
+    );
   }
   if (typeof val === 'object') {
     if (typeof val.nama_guru === 'string') return escapeCsvField(val.nama_guru);
@@ -35,9 +103,9 @@ export function escapeCsvField(val: any): string {
     if (typeof val.nama_kelas === 'string') return escapeCsvField(val.nama_kelas);
     if (typeof val.nama === 'string') return escapeCsvField(val.nama);
     if (typeof val.name === 'string') return escapeCsvField(val.name);
-    return `"${JSON.stringify(val).replace(/"/g, '""')}"`;
+    return `"${safeStringify(val).replace(/"/g, '""')}"`;
   }
-  const str = String(val);
+  const str = sanitizeCsvFormula(String(val));
   if (
     str.includes(',') ||
     str.includes('"') ||
@@ -53,11 +121,16 @@ export function escapeCsvField(val: any): string {
 
 /**
  * Generates an RFC 4180 compliant CSV string with UTF-8 BOM prepended for Excel compatibility.
+ * Optimized with exact array pre-allocation for high performance across large datasets.
  */
 export function generateCsvString(headers: string[], rows: any[][]): string {
-  const headerLine = headers.map(escapeCsvField).join(',');
-  const rowLines = rows.map(row => row.map(escapeCsvField).join(','));
-  return '\uFEFF' + [headerLine, ...rowLines].join('\r\n');
+  const totalLines = rows.length + 1;
+  const lines: string[] = new Array(totalLines);
+  lines[0] = headers.map(escapeCsvField).join(',');
+  for (let i = 0; i < rows.length; i++) {
+    lines[i + 1] = rows[i].map(escapeCsvField).join(',');
+  }
+  return '\uFEFF' + lines.join('\r\n');
 }
 
 /**
@@ -185,10 +258,13 @@ export function normalizeMasterTabKey(tab?: string): string {
 }
 
 /**
- * Helper to resolve scalar teacher / person name from string or nested object.
+ * Helper to resolve scalar teacher / person name from string, array, or nested object.
  */
 function resolvePersonName(val: any): string {
   if (!val) return '';
+  if (Array.isArray(val)) {
+    return val.map(resolvePersonName).filter(Boolean).join('; ');
+  }
   if (typeof val === 'string') return val;
   if (typeof val === 'object') {
     return val.nama_guru || val.nama || val.nama_wali || val.name || '';
@@ -197,10 +273,13 @@ function resolvePersonName(val: any): string {
 }
 
 /**
- * Helper to resolve scalar class name from string or nested object.
+ * Helper to resolve scalar class name from string, array, or nested object.
  */
 function resolveClassName(val: any): string {
   if (!val) return '';
+  if (Array.isArray(val)) {
+    return val.map(resolveClassName).filter(Boolean).join('; ');
+  }
   if (typeof val === 'string') return val;
   if (typeof val === 'object') {
     return val.nama_kelas || val.kelas || val.name || '';
@@ -242,7 +321,7 @@ export const MASTER_DATA_EXPORT_DEFINITIONS: Record<string, MasterDataExportDefi
     filename: 'Data_Mapel.csv',
     headers: ['id', 'nama_mata_pelajaran', 'kategori', 'kelompok'],
     extractRow: (item) => [
-      item?.id || item?.kode_mapel || item?.kode || '',
+      item?.id !== undefined && item?.id !== null ? String(item.id) : (item?.kode_mapel || item?.kode || ''),
       item?.nama_mata_pelajaran || item?.nama_mapel || item?.nama || '',
       item?.kategori || item?.kelompok || '',
       item?.kelompok || item?.kategori || ''
@@ -271,8 +350,12 @@ export const MASTER_DATA_EXPORT_DEFINITIONS: Record<string, MasterDataExportDefi
         ? (item.mata_pelajaran.nama_mata_pelajaran || item.mata_pelajaran.nama_mapel || '')
         : (item?.mata_pelajaran || item?.mapel || item?.nama_mapel || ''),
       resolveClassName(item?.kelas),
-      item?.jam_mulai !== undefined && item?.jam_mulai !== null ? String(item.jam_mulai) : '',
-      item?.jam_selesai !== undefined && item?.jam_selesai !== null ? String(item.jam_selesai) : ''
+      typeof item?.jam_mulai === 'object' && item?.jam_mulai !== null
+        ? (item.jam_mulai.jam || item.jam_mulai.waktu || item.jam_mulai.start || '')
+        : (item?.jam_mulai !== undefined && item?.jam_mulai !== null ? String(item.jam_mulai) : ''),
+      typeof item?.jam_selesai === 'object' && item?.jam_selesai !== null
+        ? (item.jam_selesai.jam || item.jam_selesai.waktu || item.jam_selesai.end || '')
+        : (item?.jam_selesai !== undefined && item?.jam_selesai !== null ? String(item.jam_selesai) : '')
     ]
   },
   Wali_Kelas: {
@@ -281,7 +364,9 @@ export const MASTER_DATA_EXPORT_DEFINITIONS: Record<string, MasterDataExportDefi
     extractRow: (item, options) => [
       resolveClassName(item?.kelas),
       resolvePersonName(item?.nama_guru || item?.nama || item?.wali),
-      typeof item?.nip === 'object' && item?.nip !== null ? (item.nip.nip || '') : (item?.nip || ''),
+      typeof item?.nip === 'object' && item?.nip !== null
+        ? (item.nip.nip || item.nip.value || item.nip.nomor || '')
+        : (item?.nip || ''),
       item?.tahun_ajaran || options?.configuredTahunAjaran || '2024/2025'
     ]
   },
@@ -300,39 +385,23 @@ export const MASTER_DATA_EXPORT_DEFINITIONS: Record<string, MasterDataExportDefi
   Kalender_Pendidikan: {
     filename: 'Data_Kalender_Pendidikan.csv',
     headers: ['tanggal', 'keterangan', 'tipe'],
-    extractRow: (item) => {
-      const rawDate = item?.tanggal || item?.tanggal_mulai || '';
-      const dateStr = rawDate instanceof Date
-        ? rawDate.toISOString().split('T')[0]
-        : (String(rawDate).includes('T') ? String(rawDate).split('T')[0] : String(rawDate));
-      return [
-        dateStr,
-        item?.keterangan || '',
-        item?.tipe || ''
-      ];
-    }
+    extractRow: (item) => [
+      formatDateField(item?.tanggal || item?.tanggal_mulai),
+      item?.keterangan || '',
+      item?.tipe || ''
+    ]
   },
   sistem_blok: {
     filename: 'Data_Periode_Sistem_Blok.csv',
     headers: ['nama_kegiatan', 'tanggal_mulai', 'tanggal_selesai', 'tipe_target', 'target_kelas', 'deskripsi'],
-    extractRow: (item) => {
-      const startRaw = item?.tanggal_mulai || item?.start_date || '';
-      const endRaw = item?.tanggal_selesai || item?.end_date || '';
-      const startStr = startRaw instanceof Date
-        ? startRaw.toISOString().split('T')[0]
-        : (String(startRaw).includes('T') ? String(startRaw).split('T')[0] : String(startRaw));
-      const endStr = endRaw instanceof Date
-        ? endRaw.toISOString().split('T')[0]
-        : (String(endRaw).includes('T') ? String(endRaw).split('T')[0] : String(endRaw));
-      return [
-        item?.nama_kegiatan || item?.kegiatan || item?.nama || '',
-        startStr,
-        endStr,
-        item?.tipe_target || 'sekolah',
-        resolveClassName(item?.target_kelas),
-        item?.deskripsi || item?.keterangan || ''
-      ];
-    }
+    extractRow: (item) => [
+      item?.nama_kegiatan || item?.kegiatan || item?.nama || '',
+      formatDateField(item?.tanggal_mulai || item?.start_date),
+      formatDateField(item?.tanggal_selesai || item?.end_date),
+      item?.tipe_target || 'sekolah',
+      resolveClassName(item?.target_kelas),
+      item?.deskripsi || item?.keterangan || ''
+    ]
   }
 };
 

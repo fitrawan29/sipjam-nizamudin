@@ -846,6 +846,7 @@ export default function SistemBlokView({ user }: { user: any }) {
               disabled={loading}
               className="btn-click px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition shadow-sm cursor-pointer disabled:opacity-50"
               title="Ekspor seluruh Periode Sistem Blok ke berkas CSV"
+              aria-label="Ekspor seluruh Periode Sistem Blok ke berkas CSV"
             >
               <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
               <span>Export CSV</span>

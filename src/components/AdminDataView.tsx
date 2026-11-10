@@ -2770,6 +2770,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                           disabled={loading}
                           className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer disabled:opacity-50"
                           title="Ekspor data ke berkas CSV"
+                          aria-label="Ekspor data ke berkas CSV"
                         >
                           <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i> Export CSV
                         </button>

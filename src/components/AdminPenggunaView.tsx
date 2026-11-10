@@ -1076,6 +1076,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               disabled={loading}
               className="clay-btn px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Ekspor daftar pengguna ke berkas CSV"
+              aria-label="Ekspor daftar pengguna ke berkas CSV"
             >
               <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
               <span>Export CSV</span>

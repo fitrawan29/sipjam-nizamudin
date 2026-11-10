@@ -1,69 +1,88 @@
-# Sentinel Handoff Report: Role BK & Jurnal Khusus BK
+# Adversarial Review Round 2 Report: Master Data CSV Export Hardening
 
-**Task**: Implementasi Role BK (Bimbingan Konseling) & Jurnal Khusus BK (Tidak Terikat Kelas) ke dalam aplikasi SIPJAM untuk kebutuhan produksi  
-**Date**: 2026-11-09T06:03:00Z  
-**Verdict**: **VICTORY CONFIRMED**  
-**Execution Path**: General (`teamwork_orchestrator`)  
+## Executive Summary
+In this adversarial review round (Round 2), we attacked the Master Data CSV export implementation across security, defensive data handling, complex multi-value data types, high-volume performance, and accessibility standards.
 
----
-
-## 1. Observation
-
-1. **Routing & Dispatch**:
-   - Approved prompt diterima dari caller dan dicatat verbatim pada `.agents/teamwork/ORIGINAL_REQUEST.md`.
-   - Routing diarahkan ke `teamwork_orchestrator` untuk rekayasa perangkat lunak multi-komponen.
-   - Project Orchestrator mengorganisasikan tim subagent: 3 Explorers (Phase 0), 1 Worker, 2 Reviewers, 2 Challengers, dan 1 Forensic Auditor (Phase 2).
-2. **Implementasi Komponen & Data**:
-   - `src/types/user.ts` & `src/types/database.ts`: Union type `UserRole` dan `RoleUser` diperluas mendukung `'bk' | 'guru_bk'`.
-   - `src/lib/navigation.ts`: Otorisasi RBAC memproteksi `view-jurnal-bk` khusus untuk role `bk`, `admin`, dan `kepala_sekolah`, serta membatasi menu sidebar BK tepat 5 menu ringkas (Miller's Law).
-   - `src/components/BkJurnalView.tsx`: Komponen jurnal konseling mandiri beroperasi penuh tanpa ketergantungan pada `jadwal_pelajaran` atau jam pelajaran KBM; menyediakan seleksi siswa universal lintas kelas, CRUD lengkap, auto-save formulir, ketahanan cache offline `localStorage`, dan cetak format resmi konseling.
-   - `src/components/AdminPenggunaView.tsx`: Mendukung tombol "+ Akun BK" (modal 4 field wajib: NIP, Nama, HP, Email) dan row-level toggle "Tunjuk BK" / "Ke Guru".
-   - `supabase/migrations/20261109_create_jurnal_bk.sql`: Migrasi tabel `public.jurnal_bk` terisolasi dengan index performa dan Row Level Security (RLS).
-   - `src/components/AppScreen.tsx` & `src/components/ClaySidebar.tsx`: Invarian komentar `{/* AST preservation: data-tour={item.id} */}` terjaga utuh.
-   - Non-regresi: File `src/components/GuruJurnal.tsx` dan `src/lib/workflow.ts` tidak terganggu sama sekali.
-3. **Independent Victory Audit**:
-   - Subagent `teamwork_victory_auditor` mengeksekusi 3 fase audit (Timeline, Integrity Forensics, Independent Test Execution).
-   - Hasil audit mandiri:
-     - `tests/bk_role_and_jurnal_rbac_verification.test.ts`: 106 passed, 0 failed.
-     - `tests/adversarial_bk_challenger.test.ts`: 481 passed, 0 failed.
-     - `tests/challenger_bk_2_stress_test.test.ts`: 60 passed, 0 failed.
-     - `npx tsc --noEmit`: 0 error (exit code 0).
-     - `npm run build`: Next.js Turbopack build sukses, 13/13 static pages ter-generate.
-   - Putusan auditor: **VICTORY CONFIRMED**.
-4. **Git Provenance**:
-   - Seluruh perubahan kode dan test suite telah di-stage, di-commit, dan di-push ke branch utama `origin/main` (commit `2e65155` dan `2678956`).
+We identified and resolved **three functional and security defects**:
+1. **Security Vulnerability (CWE-1236 — Spreadsheet Formula Injection)**: Values beginning with spreadsheet formula triggers (`=`, `@`, `+`, `-`, `\t`, `\r`, `|`) were exported directly without single-quote escaping. If opened in Microsoft Excel or LibreOffice Calc, malicious payloads (e.g., `=cmd|'/C calc'!A0`, `@SUM(...)`, `=HYPERLINK(...)`) would execute automatically or trigger security warnings.
+2. **Crash Risk on Non-Standard Object Types & Dates**: 
+   - Passing an invalid `Date` (`new Date('invalid')` or `new Date(NaN)`) caused `.toISOString()` to throw an unhandled `RangeError: Invalid time value`.
+   - Passing objects with `BigInt` properties (`123n`) or circular references to `escapeCsvField` threw unhandled `TypeError` exceptions inside `JSON.stringify`.
+3. **Data Erasure on Array Multi-Value Class & Teacher Fields**: When `target_kelas` in `sistem_blok` or `wali_kelas` contained an array of classes/teachers, `resolveClassName` and `resolvePersonName` tested `typeof val === 'object'` and queried scalar `.nama_kelas` / `.nama_guru`. Because arrays lacked those scalar keys, it returned `""`, erasing all target classes from the exported CSV.
+4. **Export Engine Performance**: String concatenation via `rows.map(...).join('\r\n')` with array spreads caused intermediate allocations on large datasets. Refactored to exact capacity pre-allocation (`new Array(rows.length + 1)`), achieving 25,000 synthetic rows generation in **42–59ms**.
+5. **Accessibility / WCAG Compliance**: Added explicit `aria-label` attributes to "Export CSV" buttons across all 4 UI views (`AdminDataView`, `AdminKelasView`, `AdminPenggunaView`, `SistemBlokView`).
 
 ---
 
-## 2. Logic Chain
+## 1. What the Prior Attempt Got Wrong
 
-1. *Kerahasiaan Siswa & Decoupling*: Catatan bimbingan konseling mengandung informasi psikologis dan kepribadian siswa yang wajib dirahasiakan dari guru mapel reguler. Oleh karena itu, arsitektur jurnal BK tidak menggunakan `jurnal_pembelajaran` KBM dan dibuatkan tabel serta antarmuka mandiri `jurnal_bk`.
-2. *Layanan Fleksibel Tanpa Jadwal*: Layanan konseling siswa berlangsung fleksibel kapan saja saat dibutuhkan sekolah, sehingga selektor siswa query langsung ke `data_siswa` secara universal lintas jenjang dan kelas tanpa kunci jam jadwal pelajaran.
-3. *Ketahanan Produksi*: Implementasi menerapkan fallback `localStorage` saat cache skema PostgREST belum sinkron, menjamin antarmuka tidak crash pada lingkungan produksi.
-4. *Verifikasi Berlapis*: Verifikasi independen oleh Victory Auditor memastikan tidak ada kode dummy/mock dan seluruh 106 kriteria penerimaan terbukti berfungsi otentik.
+### Issue 1: Unsanitized CSV Formula Injection (CWE-1236)
+- **Input**: Cell value starting with formula syntax, e.g. `=cmd|'/C calc'!A0`, `@SUM(A1:B2)`, `+cmd`, `-cmd`, or leading whitespace `   =1+1`.
+- **Expected**: Escaped with a single quote prefix (`'=cmd...`) so Excel, LibreOffice Calc, and Google Sheets treat the cell as plain text and refuse execution. Standalone numbers (`-10`, `+10`, `3.14`) and standalone `-` remain unaltered.
+- **Actual**: Raw formula syntax was emitted directly into the CSV.
+- **Root Cause**: `escapeCsvField` only checked for RFC 4180 delimiter characters (commas, quotes, newlines) and lacked spreadsheet formula sanitization.
+- **Fix**: Implemented `sanitizeCsvFormula` to prefix formula trigger characters with `'` while preserving valid numbers and standalone hyphens. Verified symmetrical roundtrip through `parseAndValidateMasterCsv` which strips `'`.
+
+### Issue 2: Fatal Crashes on Invalid Dates and Circular Objects
+- **Input**: Date objects with `NaN` time value, or objects with `BigInt` properties / circular references.
+- **Expected**: Graceful fallback to empty string `""` or safe string representation without throwing.
+- **Actual**: Threw unhandled `RangeError: Invalid time value` or `TypeError: Converting circular structure to JSON` / `Do not know how to serialize a BigInt`.
+- **Root Cause**: Unchecked `toISOString()` and unhandled `JSON.stringify` calls in `escapeCsvField`, `Kalender_Pendidikan`, and `sistem_blok`.
+- **Fix**: Implemented `formatDateField` checking `isNaN(val.getTime())` and `safeStringify` supporting BigInt serialization and circular structure trapping.
+
+### Issue 3: Array Data Ingestion Returned Empty Strings
+- **Input**: `item.target_kelas = ['X Merdeka 1', 'X Merdeka 2']` in `sistem_blok`.
+- **Expected**: Joined class string `"X Merdeka 1; X Merdeka 2"`.
+- **Actual**: Returned `""` (empty string).
+- **Root Cause**: `resolveClassName` only inspected object properties `.nama_kelas`, `.kelas`, `.name`, which do not exist on arrays.
+- **Fix**: Added explicit `Array.isArray(val)` recursive mapping in `resolveClassName` and `resolvePersonName`.
 
 ---
 
-## 3. Caveats
-
-- **Eksekusi SQL Migrasi di Supabase**: File migrasi `supabase/migrations/20261109_create_jurnal_bk.sql` telah tersedia di repositori. Pada server Supabase produksi langsung, skrip ini perlu dijalankan via Supabase Dashboard SQL Editor atau Supabase CLI untuk membuat tabel fisik dan mengaktifkan RLS. (Aplikasi telah dilengkapi fallback lokal transparan sehingga pengguna tetap dapat mencatat jurnal secara aman).
+## 2. Files Changed
+1. **`src/lib/csvExport.ts`**:
+   - Added `safeStringify` with BigInt replacer and circular trap.
+   - Added `sanitizeCsvFormula` protecting against CWE-1236 spreadsheet execution.
+   - Added `formatDateField` safeguarding against invalid `Date` values.
+   - Hardened `escapeCsvField` with formula sanitization, safe stringification, and invalid date protection.
+   - Optimized `generateCsvString` with exact-size array pre-allocation (`new Array(totalLines)`).
+   - Hardened `resolvePersonName` and `resolveClassName` to support multi-value arrays.
+   - Updated `Data_Mapel`, `Jadwal_Pelajaran`, `Wali_Kelas`, `Kalender_Pendidikan`, and `sistem_blok` definitions.
+2. **`src/components/AdminDataView.tsx`**:
+   - Added `aria-label="Ekspor data ke berkas CSV"` to the Export CSV toolbar button.
+3. **`src/components/AdminKelasView.tsx`**:
+   - Added `aria-label="Ekspor seluruh Data Kelas ke berkas CSV"` to the Export CSV button.
+4. **`src/components/AdminPenggunaView.tsx`**:
+   - Added `aria-label="Ekspor daftar pengguna ke berkas CSV"` to the Export CSV button.
+5. **`src/components/SistemBlokView.tsx`**:
+   - Added `aria-label="Ekspor seluruh Periode Sistem Blok ke berkas CSV"` to the Export CSV button.
+6. **`tests/master_data_csv_export_verification.test.ts`**:
+   - Added Section 7 with 5 comprehensive adversarial tests (Formula Injection, Defensive Types, Array Handling, 25,000-row Synthetic Benchmark, Accessibility). Total tests increased to 33/33 passing.
 
 ---
 
-## 4. Conclusion
-
-Seluruh kebutuhan tugas sesuai `ORIGINAL_REQUEST.md` (R1 Role BK & Kontrol Akses, R2 Fitur Jurnal Khusus BK Tanpa Kelas, dan R3 Non-Regresi Fitur Eksisting) telah selesai 100%, terverifikasi dengan hasil **VICTORY CONFIRMED**, dan telah di-push ke branch `origin/main`.
+## 3. Verification Record
+- **Deep Verification (Ran Actual Automated Test Suites):**
+  - `tests/master_data_csv_export_verification.test.ts`: **33/33 PASSED (0 failed)**
+  - `tests/template_master_data_import_visibility.test.ts`: **16/16 PASSED**
+  - `tests/m2_csv_templates_and_import_harmonization.test.ts`: **16/16 PASSED**
+  - `tests/adversarial_student_csv_review.test.ts`: **PASSED (100%)**
+  - `tests/admin_submenu_kelas_dan_alokasi_siswa.test.ts`: **58/58 PASSED**
+  - `tests/sistem_blok_verification.test.ts`: **205/205 PASSED**
+  - TypeScript Typecheck (`npx tsc --noEmit`): **0 errors**
+  - Next.js Production Build (`npm run build`): **Compiled successfully (Turbopack, 13/13 static routes)**
+- **Shallow Verification:**
+  - Verified `aria-label` attributes across all 4 UI views.
+  - Confirmed zero new dependencies in `package.json`.
+- **Unverified Aspects:**
+  - Native Excel/Calc software GUI rendering on hardware machines (verified via RFC 4180 parsing and roundtrip importer).
 
 ---
 
-## 5. Verification Method
+## 4. Known Issues
+- `Minor Robustness Risk`: Very large browser downloads (>50MB) may consume noticeable RAM on low-end mobile devices before garbage collection frees the Blob URL.
 
-Untuk memverifikasi kembali secara mandiri:
-```bash
-npx tsx tests/bk_role_and_jurnal_rbac_verification.test.ts
-npx tsx tests/adversarial_bk_challenger.test.ts
-npx tsx tests/challenger_bk_2_stress_test.test.ts
-npx tsc --noEmit
-npm run build
-```
-Semua perintah keluar dengan exit code 0 tanpa error.
+---
+
+## 5. Verdict
+Task complete, fully verified, secure against formula injection, and zero regressions detected.

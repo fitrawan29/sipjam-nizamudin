@@ -1294,6 +1294,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             disabled={loading}
             className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             title="Ekspor seluruh Data Kelas ke berkas CSV"
+            aria-label="Ekspor seluruh Data Kelas ke berkas CSV"
           >
             <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
             <span>Export CSV</span>

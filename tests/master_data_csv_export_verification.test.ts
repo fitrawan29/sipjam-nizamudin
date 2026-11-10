@@ -30,6 +30,7 @@ import {
   normalizeMasterTabKey,
   generateMasterDataCsv,
   downloadMasterDataCsv,
+  sanitizeCsvFormula,
   MASTER_DATA_EXPORT_DEFINITIONS
 } from '../src/lib/csvExport';
 import { parseAndValidateMasterCsv } from '../src/lib/dataIntegrityGuard';
@@ -567,6 +568,155 @@ async function runMasterDataExportTests() {
     pass('6.5: UI components preserve active filter scope during CSV export without unintended database dumps');
   } catch (e) {
     fail('6.5: UI component filter check verification failed', e);
+  }
+
+  // ==========================================================================
+  // SECTION 7: Adversarial Round 2 Probes & Advanced Hardening
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 7: Adversarial Round 2 Probes (Formula Injection, Types, Perf, A11y) ---${RESET}`);
+
+  try {
+    // 7.1: CSV Spreadsheet / Formula Injection Mitigation (CWE-1236)
+    // Excel / LibreOffice execution triggers: =, +, -, @, \t, \r, |
+    assert.strictEqual(sanitizeCsvFormula("=cmd|'/C calc'!A0"), "'=cmd|'/C calc'!A0");
+    assert.strictEqual(sanitizeCsvFormula('@SUM(1,2)'), "'@SUM(1,2)");
+    assert.strictEqual(sanitizeCsvFormula('+cmd'), "'+cmd");
+    assert.strictEqual(sanitizeCsvFormula('-cmd'), "'-cmd");
+    assert.strictEqual(sanitizeCsvFormula('   =1+1'), "'   =1+1");
+    assert.strictEqual(sanitizeCsvFormula('\t=1+1'), "'\t=1+1");
+    assert.strictEqual(sanitizeCsvFormula("=HYPERLINK(\"http://evil.com\")"), "'=HYPERLINK(\"http://evil.com\")");
+
+    // Pure numbers and standalone hyphen must remain unquoted/unprefixed
+    assert.strictEqual(sanitizeCsvFormula('123'), '123');
+    assert.strictEqual(sanitizeCsvFormula('-10'), '-10');
+    assert.strictEqual(sanitizeCsvFormula('+5'), '+5');
+    assert.strictEqual(sanitizeCsvFormula('3.14159'), '3.14159');
+    assert.strictEqual(sanitizeCsvFormula('-'), '-');
+    assert.strictEqual(sanitizeCsvFormula("'=already_safe"), "'=already_safe");
+
+    // Test in full CSV export pipeline
+    const formulaPayload = [
+      { nisn: '0110001111', nama_siswa: "=cmd|'/C calc'!A0", kelas: 'X Merdeka', gender: 'Laki-laki', status: 'Aktif' },
+      { nisn: '0110002222', nama_siswa: '@SUM(A1:B2)', kelas: 'X Merdeka', gender: 'Laki-laki', status: 'Aktif' },
+      { nisn: '0110003333', nama_siswa: '=SUM(1, 2)', kelas: 'X Merdeka', gender: 'Laki-laki', status: 'Aktif' }
+    ];
+    const exp = generateMasterDataCsv('Data_Siswa', formulaPayload);
+    assert.ok(exp.csv.includes("'=cmd|'/C calc'!A0"), 'Formula starting with = must have safe quote prefix');
+    assert.ok(exp.csv.includes("'@SUM(A1:B2)"), 'Formula starting with @ must have safe quote prefix');
+    assert.ok(exp.csv.includes("\"'=SUM(1, 2)\""), 'Formula containing comma must be quoted with safe prefix');
+
+    // Roundtrip verification: parseAndValidateMasterCsv safely imports back without dangerous execution
+    const reimported = parseAndValidateMasterCsv(exp.csv, 'data_siswa', { role: 'admin' });
+    assert.strictEqual(reimported.length, 3);
+    assert.strictEqual(reimported[0].nama_siswa, "=cmd|'/C calc'!A0");
+    assert.strictEqual(reimported[1].nama_siswa, '@SUM(A1:B2)');
+    assert.strictEqual(reimported[2].nama_siswa, '=SUM(1, 2)');
+    pass('7.1: CSV formula injection prevented with safe single-quote prefix and verified roundtrip');
+  } catch (e) {
+    fail('7.1: CSV formula injection probe failed', e);
+  }
+
+  try {
+    // 7.2: Defensive Data Types & Crash Prevention (Invalid Dates, Circular References, BigInt)
+    // Invalid date must not crash with RangeError: Invalid time value
+    const invalidDate = new Date('invalid');
+    assert.strictEqual(escapeCsvField(invalidDate), '');
+
+    // Kalender Pendidikan with invalid date gracefully exports empty string
+    const kalenderInvalid = [{ tanggal: new Date(NaN), keterangan: 'Ujian Percobaan', tipe: 'Kegiatan' }];
+    const kalenderRes = generateMasterDataCsv('Kalender_Pendidikan', kalenderInvalid);
+    assert.ok(kalenderRes.csv.includes(',Ujian Percobaan,Kegiatan'));
+
+    // Object with BigInt must not throw TypeError: Do not know how to serialize a BigInt
+    const bigIntObj = { id: 9007199254740991n, detail: 'BigInt test' };
+    const escapedBigInt = escapeCsvField(bigIntObj);
+    assert.ok(escapedBigInt.includes('9007199254740991'));
+
+    // Circular object must not throw TypeError: Converting circular structure to JSON
+    const circularObj: any = { name: undefined };
+    circularObj.self = circularObj;
+    const escapedCircular = escapeCsvField(circularObj);
+    assert.ok(escapedCircular.length > 0 && !escapedCircular.includes('[object Object]'));
+
+    pass('7.2: Defensive data types (invalid Date, BigInt, circular objects) serialize safely without exceptions');
+  } catch (e) {
+    fail('7.2: Defensive data types probe failed', e);
+  }
+
+  try {
+    // 7.3: Array Handling for Class Names & Teacher Names
+    // Target classes as array in sistem_blok must join properly instead of returning empty string
+    const multiClassBlok = [
+      {
+        nama_kegiatan: 'KBM Blok Khusus',
+        tanggal_mulai: '2026-10-10',
+        tanggal_selesai: '2026-10-15',
+        tipe_target: 'kelas',
+        target_kelas: ['X Merdeka 1', 'X Merdeka 2', 'XI Merdeka A'],
+        deskripsi: 'Rotasi kelas gabungan'
+      }
+    ];
+    const blokRes = generateMasterDataCsv('sistem_blok', multiClassBlok);
+    assert.ok(blokRes.csv.includes('"X Merdeka 1; X Merdeka 2; XI Merdeka A"'), 'Array of classes must be joined by semicolon');
+
+    // Jadwal Pelajaran with object time formats
+    const jadwalObjTime = [
+      {
+        hari: 'Senin',
+        nama_guru: [{ nama_guru: 'Guru Utama' }, { nama_guru: 'Guru Pendamping' }],
+        mata_pelajaran: 'Fisika Terapan',
+        kelas: [{ nama_kelas: 'XII-IPA-1' }],
+        jam_mulai: { jam: '08:00' },
+        jam_selesai: { jam: '09:30' }
+      }
+    ];
+    const jadwalRes = generateMasterDataCsv('Jadwal_Pelajaran', jadwalObjTime);
+    assert.ok(jadwalRes.csv.includes('"Guru Utama; Guru Pendamping"'));
+    assert.ok(jadwalRes.csv.includes('XII-IPA-1'));
+    assert.ok(jadwalRes.csv.includes('08:00,09:30'));
+
+    pass('7.3: Array handling for classes and teachers extracts full multi-value records');
+  } catch (e) {
+    fail('7.3: Array handling probe failed', e);
+  }
+
+  try {
+    // 7.4: High-Performance Synthetic Dataset Generation
+    // Benchmarks exporting 25,000 rows to ensure zero memory exhaustion, fast join, and no call-stack overflow
+    const startTime = Date.now();
+    const largeDataset = new Array(25000);
+    for (let i = 0; i < 25000; i++) {
+      largeDataset[i] = {
+        nisn: '0100000000'.slice(0, 10 - String(i).length) + i,
+        nama_siswa: `Siswa Uji Performa Ke-${i}, S.Pd.`,
+        kelas: `X Merdeka ${(i % 10) + 1}`,
+        gender: i % 2 === 0 ? 'Laki-laki' : 'Perempuan',
+        agama: 'Islam',
+        status: 'Aktif',
+        no_hp_ortu: '081234567890'
+      };
+    }
+    const largeExport = generateMasterDataCsv('Data_Siswa', largeDataset);
+    const elapsed = Date.now() - startTime;
+
+    assert.strictEqual(largeExport.rowCount, 25000);
+    assert.ok(largeExport.csv.startsWith('\uFEFFnisn,nama_siswa,kelas,gender,agama,status,no_hp_ortu'));
+    assert.ok(elapsed < 2000, `25,000 rows export took ${elapsed}ms (expected under 2000ms)`);
+    pass(`7.4: Synthetic large dataset (25,000 rows) generated in ${elapsed}ms without memory spikes or stack overflow`);
+  } catch (e) {
+    fail('7.4: Large dataset performance benchmark failed', e);
+  }
+
+  try {
+    // 7.5: Accessibility & WCAG Compliance for Export Buttons
+    // Verifies aria-label presence on Export CSV buttons in all 4 UI components
+    assert.ok(adminDataSrc.includes('aria-label="Ekspor data ke berkas CSV"'), 'AdminDataView export button must have aria-label');
+    assert.ok(adminKelasSrc.includes('aria-label="Ekspor seluruh Data Kelas ke berkas CSV"'), 'AdminKelasView export button must have aria-label');
+    assert.ok(adminPenggunaSrc.includes('aria-label="Ekspor daftar pengguna ke berkas CSV"'), 'AdminPenggunaView export button must have aria-label');
+    assert.ok(sistemBlokSrc.includes('aria-label="Ekspor seluruh Periode Sistem Blok ke berkas CSV"'), 'SistemBlokView export button must have aria-label');
+    pass('7.5: Accessibility verification: aria-label defined on all Export CSV buttons across views');
+  } catch (e) {
+    fail('7.5: Accessibility verification failed', e);
   }
 
   // ==========================================================================
