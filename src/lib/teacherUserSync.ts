@@ -98,7 +98,7 @@ export async function syncTeacherAccounts(
     // 3. Match or create user accounts
     for (const guru of teacherList) {
       const nip = (guru.nip || '').trim();
-      const nama = guru.nama_guru || '';
+      const nama = (guru.nama_guru || '').trim().replace(/\s+/g, ' ');
       const targetUsername = resolveTeacherUsername(guru);
       const targetSekolahId = guru.sekolah_id || sekolahId || 'a0000000-0000-0000-0000-000000000001';
       const defaultPassword = getDefaultTeacherPassword(targetUsername);

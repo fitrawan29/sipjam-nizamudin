@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getWitaDateStr, getWitaTimeStr, extractWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
-import { resolveLinkedUserForTeacher, isTeacherRecordMatch, isBkAccount } from '@/lib/workflow';
+import { getWitaDateStr, getWitaTimeStr, getWitaDayName, extractWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
+import { resolveLinkedUserForTeacher, isTeacherRecordMatch, isTeacherNameEquivalent, isBkAccount, isLateArrival } from '@/lib/workflow';
 import { isBeforeCutoff } from '@/lib/attendanceAlpa';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
@@ -80,7 +80,7 @@ function isTestGuruName(nama?: string | null): boolean {
  */
 export function canonicalizeTeacherRekapName(nama?: string | null): string {
   if (!nama) return '';
-  const trimmed = nama.trim();
+  const trimmed = nama.trim().replace(/\s+/g, ' ');
   if (trimmed.toLowerCase().includes('ade fitrawan ibrahim')) {
     return 'Ade Fitrawan Ibrahim';
   }
@@ -169,136 +169,178 @@ export default function AdminRekapView({
         return;
       }
 
+      // Paginate Supabase queries beyond PostgREST's default 1,000-row limit
+      const fetchAllRows = async (buildQuery: () => any) => {
+        const PAGE_SIZE = 1000;
+        const all: any[] = [];
+        for (let pageIdx = 0; pageIdx < 20; pageIdx++) {
+          const base = buildQuery();
+          const hasRange = typeof base?.range === 'function';
+          const q = hasRange ? base.range(pageIdx * PAGE_SIZE, (pageIdx + 1) * PAGE_SIZE - 1) : base;
+          const res: any = await Promise.resolve(q).catch((err: any) => ({ data: null, error: err }));
+          if (res?.error) {
+            return { data: all.length > 0 ? all : null, error: res.error };
+          }
+          const batch = Array.isArray(res?.data) ? res.data : [];
+          all.push(...batch);
+          if (!hasRange || batch.length < PAGE_SIZE) break;
+        }
+        return { data: all, error: null };
+      };
+
       // 1. Fetch all teachers from data_guru to seed the map (ensures 0 attendance teachers appear)
-      let guruQuery = supabase
-        .from('data_guru')
-        .select('*')
-        .not('nama_guru', 'ilike', '%test guru%')
-        .not('nama_guru', 'ilike', '%guru test%')
-        .order('nama_guru', { ascending: true });
-      if (user?.sekolah_id) {
-        guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      let userQuery = supabase
-        .from('users')
-        .select('id, nama, username, role');
-      if (user?.sekolah_id) {
-        userQuery = userQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      const safeUserPromise = Promise.resolve(userQuery).then(
-        (res: any) => (res?.error ? { data: [] } : res),
-        () => ({ data: [] })
-      );
       const [{ data: guruList }, { data: userAccounts }] = await Promise.all([
-        guruQuery,
-        safeUserPromise
+        fetchAllRows(() => {
+          let guruQuery = supabase
+            .from('data_guru')
+            .select('*')
+            .not('nama_guru', 'ilike', '%test guru%')
+            .not('nama_guru', 'ilike', '%guru test%')
+            .order('nama_guru', { ascending: true });
+          if (user?.sekolah_id) {
+            guruQuery = guruQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          return guruQuery;
+        }),
+        fetchAllRows(() => {
+          let userQuery = supabase
+            .from('users')
+            .select('id, nama, username, role');
+          if (user?.sekolah_id) {
+            userQuery = userQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          return userQuery;
+        }).then(
+          (res: any) => (res?.error ? { data: [] } : res),
+          () => ({ data: [] })
+        )
       ]);
 
       // 2. Fetch presensi_guru (both single-day and multi-day spans)
-      let presensiQuery = supabase
-        .from('presensi_guru')
-        .select('*')
-        .not('nama_guru', 'ilike', '%test guru%')
-        .not('nama_guru', 'ilike', '%guru test%')
-        .gte('timestamp', start)
-        .lte('timestamp', end)
-        .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat', 'Sakit', 'Izin'])
-        .order('timestamp', { ascending: true });
-      if (user?.sekolah_id) {
-        presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
-      }
-
-      let multiDayQuery = supabase
-        .from('presensi_guru')
-        .select('*')
-        .not('nama_guru', 'ilike', '%test guru%')
-        .not('nama_guru', 'ilike', '%guru test%')
-        .lte('tanggal_mulai', endDateStr)
-        .gte('tanggal_selesai', startDateStr)
-        .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Sakit', 'Izin']);
-      if (user?.sekolah_id) {
-        multiDayQuery = multiDayQuery.eq('sekolah_id', user.sekolah_id);
-      }
-
       let allPulangRows: any[] = [];
-      let pulangAllQuery = supabase
-        .from('presensi_guru')
-        .select('id, nama_guru, user_id, timestamp, tipe_absen, jenis_presensi, status_verifikasi, is_auto_checkout')
-        .eq('tipe_absen', 'Pulang')
-        .neq('status_verifikasi', 'Ditolak')
-        .not('nama_guru', 'ilike', '%test guru%')
-        .not('nama_guru', 'ilike', '%guru test%')
-        .gte('timestamp', start)
-        .lte('timestamp', end);
-      if (user?.sekolah_id) {
-        pulangAllQuery = pulangAllQuery.eq('sekolah_id', user.sekolah_id);
-      }
-
-      const [{ data: presensiSingle }, { data: presensiMulti }, pulangAllRes] = await Promise.all([
-        presensiQuery,
-        multiDayQuery,
-        Promise.resolve(pulangAllQuery).catch(() => ({ data: [] }))
+      const [presensiSingleRes, presensiMultiRes, pulangAllRes] = await Promise.all([
+        fetchAllRows(() => {
+          let presensiQuery = supabase
+            .from('presensi_guru')
+            .select('*')
+            .not('nama_guru', 'ilike', '%test guru%')
+            .not('nama_guru', 'ilike', '%guru test%')
+            .gte('timestamp', start)
+            .lte('timestamp', end)
+            .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat', 'Sakit', 'Izin'])
+            .order('timestamp', { ascending: true });
+          if (user?.sekolah_id) {
+            presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          return presensiQuery;
+        }),
+        fetchAllRows(() => {
+          let multiDayQuery = supabase
+            .from('presensi_guru')
+            .select('*')
+            .not('nama_guru', 'ilike', '%test guru%')
+            .not('nama_guru', 'ilike', '%guru test%')
+            .lte('tanggal_mulai', endDateStr)
+            .gte('tanggal_selesai', startDateStr)
+            .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Sakit', 'Izin'])
+            .order('timestamp', { ascending: true });
+          if (user?.sekolah_id) {
+            multiDayQuery = multiDayQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          return multiDayQuery;
+        }),
+        fetchAllRows(() => {
+          let pulangAllQuery = supabase
+            .from('presensi_guru')
+            .select('id, nama_guru, user_id, timestamp, tipe_absen, jenis_presensi, status_verifikasi, is_auto_checkout')
+            .eq('tipe_absen', 'Pulang')
+            .neq('status_verifikasi', 'Ditolak')
+            .not('nama_guru', 'ilike', '%test guru%')
+            .not('nama_guru', 'ilike', '%guru test%')
+            .gte('timestamp', start)
+            .lte('timestamp', end)
+            .order('timestamp', { ascending: true });
+          if (user?.sekolah_id) {
+            pulangAllQuery = pulangAllQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          return pulangAllQuery;
+        })
       ]);
-      if (Array.isArray((pulangAllRes as any)?.data)) {
-        allPulangRows = (pulangAllRes as any).data;
+      const presensiSingle = presensiSingleRes?.data || [];
+      if (presensiMultiRes?.error) {
+        console.warn('[AdminRekapView] multiDayQuery warning:', presensiMultiRes.error?.message || presensiMultiRes.error);
+      }
+      const presensiMulti = presensiMultiRes?.data || [];
+      if (Array.isArray(pulangAllRes?.data)) {
+        allPulangRows = pulangAllRes.data;
       }
 
       const presensiMap = new Map<string, any>();
-      (presensiSingle || []).forEach(p => presensiMap.set(p.id, p));
+      (presensiSingle || []).forEach(p => {
+        const key = p.id || `${p.nama_guru || p.user_id || ''}_${p.timestamp || ''}_${p.tipe_absen || ''}`;
+        presensiMap.set(key, p);
+      });
       (presensiMulti || []).forEach(p => {
-        if (!presensiMap.has(p.id)) presensiMap.set(p.id, p);
+        const key = p.id || `${p.nama_guru || p.user_id || ''}_${p.timestamp || ''}_${p.tipe_absen || ''}`;
+        if (!presensiMap.has(key)) presensiMap.set(key, p);
       });
       const presensi = Array.from(presensiMap.values());
 
       // 3. Fetch jurnal_pembelajaran
-      let jurnalQuery = supabase
-        .from('jurnal_pembelajaran')
-        .select('*')
-        .not('nama_guru', 'ilike', '%test guru%')
-        .not('nama_guru', 'ilike', '%guru test%')
-        .gte('tanggal', startDateStr)
-        .lte('tanggal', endDateStr)
-        .eq('status_verifikasi', 'Disetujui')
-        .order('tanggal', { ascending: true })
-        .order('jam_ke', { ascending: true });
-      if (user?.sekolah_id) {
-        jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      const { data: jurnal } = await jurnalQuery;
+      const { data: jurnal } = await fetchAllRows(() => {
+        let jurnalQuery = supabase
+          .from('jurnal_pembelajaran')
+          .select('*')
+          .not('nama_guru', 'ilike', '%test guru%')
+          .not('nama_guru', 'ilike', '%guru test%')
+          .gte('tanggal', startDateStr)
+          .lte('tanggal', endDateStr)
+          .eq('status_verifikasi', 'Disetujui')
+          .order('tanggal', { ascending: true })
+          .order('jam_ke', { ascending: true });
+        if (user?.sekolah_id) {
+          jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        return jurnalQuery;
+      });
 
       // 3b. Fetch jurnal_bk (Disetujui / Diverifikasi)
       let bkJurnal: any[] = [];
       try {
-        let bkJurnalQuery = supabase
-          .from('jurnal_bk')
-          .select('id, guru_id, nama_guru, tanggal, status_verifikasi')
-          .gte('tanggal', startDateStr)
-          .lte('tanggal', endDateStr)
-          .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
-          .order('tanggal', { ascending: true });
-        if (user?.sekolah_id) {
-          bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', user.sekolah_id);
-        }
-        const { data: bkData, error: bkErr } = await bkJurnalQuery;
+        const { data: bkData, error: bkErr } = await fetchAllRows(() => {
+          let bkJurnalQuery = supabase
+            .from('jurnal_bk')
+            .select('id, guru_id, nama_guru, tanggal, status_verifikasi')
+            .gte('tanggal', startDateStr)
+            .lte('tanggal', endDateStr)
+            .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
+            .order('tanggal', { ascending: true });
+          if (user?.sekolah_id) {
+            bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', user.sekolah_id);
+          }
+          return bkJurnalQuery;
+        });
         if (!bkErr && Array.isArray(bkData)) {
           bkJurnal = bkData;
         }
       } catch (_) {}
 
       // 4. Fetch laporan_piket
-      let piketQuery = supabase
-        .from('laporan_piket')
-        .select('guru_pelapor, tanggal, status_verifikasi')
-        .not('guru_pelapor', 'ilike', '%test guru%')
-        .not('guru_pelapor', 'ilike', '%guru test%')
-        .gte('tanggal', startDateStr)
-        .lte('tanggal', endDateStr)
-        .eq('status_verifikasi', 'Disetujui')
-        .order('tanggal', { ascending: true });
-      if (user?.sekolah_id) {
-        piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      const { data: piket } = await piketQuery;
+      const { data: piket } = await fetchAllRows(() => {
+        let piketQuery = supabase
+          .from('laporan_piket')
+          .select('guru_pelapor, tanggal, status_verifikasi')
+          .not('guru_pelapor', 'ilike', '%test guru%')
+          .not('guru_pelapor', 'ilike', '%guru test%')
+          .gte('tanggal', startDateStr)
+          .lte('tanggal', endDateStr)
+          .eq('status_verifikasi', 'Disetujui')
+          .order('tanggal', { ascending: true });
+        if (user?.sekolah_id) {
+          piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        return piketQuery;
+      });
 
       // 5. Hitung total hari kerja wajib hadir untuk periode ini
       let calLiburQ = supabase
@@ -383,14 +425,17 @@ export default function AdminRekapView({
         }
       });
 
+      const normIdStr = (s?: string | null) => String(s || '').trim().replace(/\s+/g, ' ').toLowerCase();
+
       const isStaffTU = (person: any) => {
         if (!person) return false;
-        const n = String(person.nama || person.nama_guru || '').trim().toLowerCase();
+        const n = normIdStr(person.nama || person.nama_guru);
         const c = canonicalizeTeacherRekapName(n).toLowerCase();
         const nip = String(person.nip || '').trim().toLowerCase();
+        const un = String(person.username || '').trim().toLowerCase();
         const uid = String(person.user_id || person.userId || person.id || '').toLowerCase();
         const mapel = String(person.mata_pelajaran || '').toLowerCase();
-        return tuIdentifiers.has(n) || tuIdentifiers.has(c) || (nip && tuIdentifiers.has(nip)) || (uid && tuIdentifiers.has(uid)) || mapel.includes('tata usaha');
+        return tuIdentifiers.has(n) || tuIdentifiers.has(c) || (nip && tuIdentifiers.has(nip)) || (un && tuIdentifiers.has(un)) || (uid && tuIdentifiers.has(uid)) || mapel.includes('tata usaha');
       };
 
       // Gabungkan guru & akun BK yang belum ada di data_guru agar pemetaan identitas konsisten
@@ -424,17 +469,51 @@ export default function AdminRekapView({
           canonicalName: canonicalizeTeacherRekapName(g.nama_guru)
         }));
 
-      const resolveRekapCanonicalName = (record: any, fallbackRawName: string) => {
-        const matched = teacherEntries.find(e =>
+      const resolveRekapCanonicalName = (
+        rawName: string | null | undefined,
+        matchedEntry?: typeof teacherEntries[number] | null,
+        matchedUser?: any
+      ): string | null => {
+        if (matchedEntry) return matchedEntry.canonicalName;
+        const rawClean = String(rawName || '').trim().replace(/\s+/g, ' ');
+        if (matchedUser) {
+          const entryByUser = teacherEntries.find(e => e.linkedUser?.id && String(e.linkedUser.id) === String(matchedUser.id));
+          if (entryByUser) {
+            return entryByUser.canonicalName;
+          }
+          const userCanon = canonicalizeTeacherRekapName(matchedUser.nama || rawClean || matchedUser.username);
+          if (!userCanon || isTestGuruName(userCanon) || (rawClean && isTestGuruName(rawClean))) return null;
+          return userCanon;
+        }
+        if (!rawClean || isTestGuruName(rawClean)) return null;
+        return canonicalizeTeacherRekapName(rawClean);
+      };
+
+      const resolveRekapPerson = (record: any, rawNameField?: string | null): { canonicalNama: string; matchedUser?: any } | null => {
+        const rawClean = String(rawNameField || '').trim().replace(/\s+/g, ' ');
+        const matchedEntry = teacherEntries.find(e =>
           isTeacherRecordMatch(record, e.teacher, e.linkedUser)
         );
-        return matched ? matched.canonicalName : canonicalizeTeacherRekapName(fallbackRawName);
+        if (matchedEntry) {
+          return {
+            canonicalNama: resolveRekapCanonicalName(rawClean, matchedEntry) || matchedEntry.canonicalName,
+            matchedUser: matchedEntry.linkedUser
+          };
+        }
+        const matchedUser = safeUsersList.find((u: any) =>
+          (record?.user_id && u?.id && String(record.user_id) === String(u.id)) ||
+          (rawClean && u?.username && String(u.username).trim().toLowerCase() === rawClean.toLowerCase()) ||
+          (rawClean && u?.nama && isTeacherNameEquivalent(rawClean, u.nama))
+        );
+        const canonicalNama = resolveRekapCanonicalName(rawClean, null, matchedUser);
+        if (!canonicalNama) return null;
+        return matchedUser ? { canonicalNama, matchedUser } : { canonicalNama };
       };
 
       // Seed map with all teachers and staff from data_guru (excluding test accounts)
       const pMap: Record<string, any> = {};
-      teacherEntries.forEach(({ teacher: g, canonicalName: cName }) => {
-        const isTuPerson = isStaffTU(g) || tuIdentifiers.has(cName.toLowerCase());
+      teacherEntries.forEach(({ teacher: g, linkedUser, canonicalName: cName }) => {
+        const isTuPerson = isStaffTU(g) || isStaffTU(linkedUser) || tuIdentifiers.has(cName.toLowerCase());
         if (!pMap[cName]) {
           pMap[cName] = {
             nama: cName,
@@ -460,9 +539,11 @@ export default function AdminRekapView({
       // Aggregate presensi
       presensi?.forEach(p => {
         const nama = p.nama_guru?.trim();
-        if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = resolveRekapCanonicalName(p, nama);
-        const isTuPerson = isStaffTU(p) || tuIdentifiers.has(canonicalNama.toLowerCase());
+        if (nama && isTestGuruName(nama)) return;
+        const resolved = resolveRekapPerson(p, nama || p.nama_guru);
+        if (!resolved) return;
+        const { canonicalNama, matchedUser } = resolved;
+        const isTuPerson = isStaffTU(p) || isStaffTU(matchedUser) || tuIdentifiers.has(canonicalNama.toLowerCase());
         if (!pMap[canonicalNama]) {
           pMap[canonicalNama] = {
             nama: canonicalNama,
@@ -492,78 +573,71 @@ export default function AdminRekapView({
           p.tipe_absen === 'Datang' || 
           p.jenis_presensi === 'Sakit' || 
           p.jenis_presensi === 'Izin' ||
-          p.jenis_presensi === 'Dinas Luar'
+          p.jenis_presensi === 'Dinas Luar' ||
+          (!isLateArrival(p) && ((p.detail_izin || '').toLowerCase().includes('sakit') || (p.status_verifikasi || '').trim().toLowerCase() === 'sakit'))
         ) {
+          const statusLower = (p.status_verifikasi || '').trim().toLowerCase();
           const isApproved = 
-            p.status_verifikasi === 'Disetujui' || 
-            p.status_verifikasi === 'Diverifikasi' ||
-            p.status_verifikasi === 'Sakit' ||
-            p.status_verifikasi === 'Izin';
+            statusLower === 'disetujui' || 
+            statusLower === 'diverifikasi' ||
+            statusLower === 'sakit' ||
+            statusLower === 'izin';
 
           if (!isApproved) return;
 
           const detailLower = (p.detail_izin || '').toLowerCase();
-          const jenisLower = (p.jenis_presensi || '').toLowerCase();
-          const statusLower = (p.status_verifikasi || '').toLowerCase();
+          const jenisLower = (p.jenis_presensi || '').trim().toLowerCase();
+          const isLate = isLateArrival(p);
 
-          const isSakit = 
+          const isSakit = !isLate && (
             jenisLower === 'sakit' || 
             detailLower.includes('sakit') || 
-            statusLower === 'sakit';
+            statusLower === 'sakit'
+          );
 
-          const isIzin = !isSakit && (
+          const isIzin = !isLate && !isSakit && (
             jenisLower === 'izin' || 
             detailLower.includes('izin') || 
             statusLower === 'izin'
           );
 
           if (isSakit || isIzin) {
-            // Calculate exact workdays within leave span to prevent undercounting multi-day leaves
-            if (p.tanggal_mulai && p.tanggal_selesai) {
-              const curLeave = new Date(p.tanggal_mulai + 'T12:00:00+08:00');
-              const endLeave = new Date(p.tanggal_selesai + 'T12:00:00+08:00');
-              while (curLeave <= endLeave) {
-                const dow = curLeave.getDay();
-                const dStr = curLeave.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
-                const isWeekend = dow === 0 || (hariSekolah === 5 && dow === 6);
-                if (
-                  dStr >= startDateStr && 
-                  dStr <= endDateStr && 
-                  !isWeekend && 
-                  !liburDates.has(dStr) && 
-                  !creditedLeaveDates[canonicalNama].has(dStr)
-                ) {
-                  creditedLeaveDates[canonicalNama].add(dStr);
-                  if (isSakit) pMap[canonicalNama].sakit++;
-                  else pMap[canonicalNama].izin++;
+            // Calculate exact workdays within leave span (WITA-aware, handles YYYY-MM-DD, ISO timestamps, & detail_izin range fallback)
+            const detailRangeMatch = !p.tanggal_mulai ? (p.detail_izin || '').match(/(\d{4}-\d{2}-\d{2})\s*s\/d\s*(\d{4}-\d{2}-\d{2})/) : null;
+            const leaveStartStr = p.tanggal_mulai
+              ? (extractWitaDateStr(p.tanggal_mulai) || String(p.tanggal_mulai).trim().substring(0, 10))
+              : (detailRangeMatch ? detailRangeMatch[1] : '');
+            const leaveEndStr = p.tanggal_selesai
+              ? (extractWitaDateStr(p.tanggal_selesai) || String(p.tanggal_selesai).trim().substring(0, 10))
+              : (detailRangeMatch ? detailRangeMatch[2] : '');
+            const effectiveDurasi = Number(p.durasi_hari || p.durasiHari) || 0;
+
+            if (leaveStartStr && (leaveEndStr || effectiveDurasi > 0)) {
+              const computedEnd = leaveEndStr || addDaysToDateStr(leaveStartStr, Math.max(1, effectiveDurasi) - 1);
+              const curLeave = new Date(`${leaveStartStr}T12:00:00+08:00`);
+              const endLeave = new Date(`${computedEnd}T12:00:00+08:00`);
+              if (!isNaN(curLeave.getTime()) && !isNaN(endLeave.getTime())) {
+                while (curLeave <= endLeave) {
+                  const dayNameWita = getWitaDayName(curLeave);
+                  const dStr = getWitaDateStr(curLeave);
+                  const isWeekend = dayNameWita === 'Minggu' || (hariSekolah === 5 && dayNameWita === 'Sabtu');
+                  if (
+                    dStr >= startDateStr &&
+                    dStr <= endDateStr &&
+                    !isWeekend &&
+                    !liburDates.has(dStr) &&
+                    !creditedLeaveDates[canonicalNama].has(dStr)
+                  ) {
+                    creditedLeaveDates[canonicalNama].add(dStr);
+                    if (isSakit) pMap[canonicalNama].sakit++;
+                    else pMap[canonicalNama].izin++;
+                  }
+                  curLeave.setDate(curLeave.getDate() + 1);
                 }
-                curLeave.setDate(curLeave.getDate() + 1);
-              }
-            } else if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
-              const days = Number(p.durasi_hari || p.durasiHari) || 1;
-              const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
-              const curLeave = new Date(p.tanggal_mulai + 'T12:00:00+08:00');
-              const endLeave = new Date(computedEnd + 'T12:00:00+08:00');
-              while (curLeave <= endLeave) {
-                const dow = curLeave.getDay();
-                const dStr = curLeave.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
-                const isWeekend = dow === 0 || (hariSekolah === 5 && dow === 6);
-                if (
-                  dStr >= startDateStr && 
-                  dStr <= endDateStr && 
-                  !isWeekend && 
-                  !liburDates.has(dStr) && 
-                  !creditedLeaveDates[canonicalNama].has(dStr)
-                ) {
-                  creditedLeaveDates[canonicalNama].add(dStr);
-                  if (isSakit) pMap[canonicalNama].sakit++;
-                  else pMap[canonicalNama].izin++;
-                }
-                curLeave.setDate(curLeave.getDate() + 1);
               }
             } else {
-              const pDate = p.timestamp ? p.timestamp.substring(0, 10) : '';
-              if (pDate && !creditedLeaveDates[canonicalNama].has(pDate)) {
+              const pDate = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).trim().substring(0, 10) : '');
+              if (pDate && pDate >= startDateStr && pDate <= endDateStr && !creditedLeaveDates[canonicalNama].has(pDate)) {
                 creditedLeaveDates[canonicalNama].add(pDate);
                 if (isSakit) pMap[canonicalNama].sakit++;
                 else pMap[canonicalNama].izin++;
@@ -603,9 +677,9 @@ export default function AdminRekapView({
         }
       });
       pulangMerged.forEach(p => {
-        const nama = p.nama_guru?.trim();
-        if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = resolveRekapCanonicalName(p, nama);
+        const resolved = resolveRekapPerson(p, p.nama_guru);
+        if (!resolved) return;
+        const { canonicalNama } = resolved;
         if (!pMap[canonicalNama]) return;
         const dStr = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).substring(0, 10) : '');
         if (!dStr || dStr < startDateStr || dStr > endDateStr) return;
@@ -642,9 +716,9 @@ export default function AdminRekapView({
       // Aggregate jurnal (KBM/Kegiatan + Jurnal BK)
       const jMap: Record<string, number> = {};
       [...(jurnal || []), ...(bkJurnal || [])].forEach(j => {
-        const nama = j.nama_guru?.trim();
-        if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = resolveRekapCanonicalName(j, nama);
+        const resolved = resolveRekapPerson(j, j.nama_guru);
+        if (!resolved) return;
+        const { canonicalNama } = resolved;
         if (pMap[canonicalNama]) pMap[canonicalNama].jurnal++;
         jMap[canonicalNama] = (jMap[canonicalNama] || 0) + 1;
       });
@@ -652,9 +726,9 @@ export default function AdminRekapView({
       // Aggregate piket
       const pkMap: Record<string, number> = {};
       piket?.forEach(pk => {
-        const nama = pk.guru_pelapor?.trim();
-        if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = resolveRekapCanonicalName(pk, nama);
+        const resolved = resolveRekapPerson(pk, pk.guru_pelapor);
+        if (!resolved) return;
+        const { canonicalNama } = resolved;
         if (pMap[canonicalNama]) pMap[canonicalNama].piket++;
         pkMap[canonicalNama] = (pkMap[canonicalNama] || 0) + 1;
       });
@@ -696,7 +770,7 @@ export default function AdminRekapView({
   };
 
   const filteredPresensi = (rekapData?.presensi || []).filter(p =>
-    !isTestGuruName(p.nama) && p.nama.toLowerCase().includes(search.toLowerCase())
+    !isTestGuruName(p.nama) && p.nama.toLowerCase().includes(search.trim().toLowerCase())
   );
 
   const guruPresensiList = useMemo(() => {

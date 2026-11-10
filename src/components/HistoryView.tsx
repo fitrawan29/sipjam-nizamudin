@@ -56,19 +56,22 @@ export default function HistoryView({
     if (!user?.nama) return;
     setLoading(true);
     setErrorMsg('');
+
+    const cleanNama = user.nama.trim();
+    const namaVariants = cleanNama !== user.nama ? [user.nama, cleanNama] : [cleanNama];
     
     let query;
     if (activeTab === 'presensi') {
-      query = supabase
+      const base = supabase
         .from('presensi_guru')
-        .select('*')
-        .eq('nama_guru', user.nama)
+        .select('*');
+      query = (namaVariants.length > 1 ? base.in('nama_guru', namaVariants) : base.eq('nama_guru', cleanNama))
         .order('timestamp', { ascending: false });
     } else {
-      query = supabase
+      const base = supabase
         .from('jurnal_pembelajaran')
-        .select('*')
-        .eq('nama_guru', user.nama)
+        .select('*');
+      query = (namaVariants.length > 1 ? base.in('nama_guru', namaVariants) : base.eq('nama_guru', cleanNama))
         .order('timestamp', { ascending: false });
     }
 

@@ -739,7 +739,7 @@ export default function GuruPresensi({
 
     // Keep references for upload task
     const fileToUpload = file;
-    const currentTeacher = user.nama;
+    const currentTeacher = (user.nama || '').trim();
     const isSelfie = isSelfieRequired;
     const currentJenis = jenisPresensi;
 

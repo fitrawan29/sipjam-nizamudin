@@ -137,7 +137,8 @@ export function getWitaTimestamp(date: Date = new Date()): string {
   }).formatToParts(date);
 
   const get = (type: string) => parts.find(p => p.type === type)?.value || '00';
-  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}+08:00`;
+  const hh = get('hour').replace('24', '00').padStart(2, '0');
+  return `${get('year')}-${get('month')}-${get('day')}T${hh}:${get('minute')}:${get('second')}+08:00`;
 }
 
 /**

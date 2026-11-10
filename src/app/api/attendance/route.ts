@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
 
     // Support both direct fields and legacy/alternative payload structures
-    const nama_guru = body.nama_guru || body.nama || '';
+    const nama_guru = String(body.nama_guru || body.nama || '').trim().replace(/\s+/g, ' ');
     const user_id = body.user_id || body.userId || null;
     const tipe_absen = body.tipe_absen || body.tipe || 'Datang';
     const jenis_presensi = body.jenis_presensi || body.status || 'Sekolah';

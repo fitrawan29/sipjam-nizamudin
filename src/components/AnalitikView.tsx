@@ -154,7 +154,7 @@ export default function AnalitikView({ user }: { user: any }) {
           h++;
           lMap[nama].hadir++;
         }
-        else if (p.jenis_presensi === 'Izin') i++;
+        else if (p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit') i++;
         else if (p.jenis_presensi === 'Dinas Luar') {
           d++;
           lMap[nama].dinasLuar++;
