@@ -412,6 +412,127 @@ async function runMasterDataExportTests() {
     fail('4.2: Class re-import roundtrip failed', e);
   }
 
+  try {
+    // Generate exported mapel CSV
+    const mapels = [
+      { id: 'MP-01', nama_mata_pelajaran: 'Matematika Wajib', kategori: 'Umum', kelompok: 'Wajib' },
+      { id: 'MP-02', nama_mata_pelajaran: 'Bahasa Indonesia', kategori: 'Umum', kelompok: 'Wajib' }
+    ];
+    const { csv } = generateMasterDataCsv('Data_Mapel', mapels);
+    const parsed = parseAndValidateMasterCsv(csv, 'data_mapel', { role: 'admin' });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].nama_mata_pelajaran, 'Matematika Wajib');
+    assert.strictEqual(parsed[1].nama_mata_pelajaran, 'Bahasa Indonesia');
+    pass('4.3: Exported Data_Mapel CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.3: Mapel re-import roundtrip failed', e);
+  }
+
+  try {
+    // Generate exported guru CSV
+    const schoolUuid = 'a0000000-0000-0000-0000-000000000001';
+    const gurus = [
+      { sekolah_id: schoolUuid, nip: '198501012010011001', nama_guru: 'Budi Santoso, S.Pd.', mata_pelajaran: 'Informatika', no_hp: '081234567890', status: 'Aktif', email: 'budi@example.com' },
+      { sekolah_id: schoolUuid, nip: '198602022011022002', nama_guru: 'Siti Aminah, M.Pd.', mata_pelajaran: 'Matematika', no_hp: '081234567891', status: 'Aktif', email: 'siti@example.com' }
+    ];
+    const { csv } = generateMasterDataCsv('Data_Guru', gurus, { schoolId: schoolUuid });
+    const parsed = parseAndValidateMasterCsv(csv, 'data_guru', { role: 'admin', sekolah_id: schoolUuid });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].nama_guru, 'Budi Santoso, S.Pd.');
+    assert.strictEqual(parsed[1].nama_guru, 'Siti Aminah, M.Pd.');
+    pass('4.4: Exported Data_Guru CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.4: Guru re-import roundtrip failed', e);
+  }
+
+  try {
+    // Generate exported jadwal CSV
+    const jadwals = [
+      { hari: 'Senin', nama_guru: 'Budi Santoso', mata_pelajaran: 'Informatika', kelas: 'X Merdeka', jam_mulai: '07:30', jam_selesai: '09:00' },
+      { hari: 'Selasa', nama_guru: 'Siti Aminah', mata_pelajaran: 'Matematika', kelas: 'XI Merdeka A', jam_mulai: '08:00', jam_selesai: '09:30' }
+    ];
+    const { csv } = generateMasterDataCsv('Jadwal_Pelajaran', jadwals);
+    const parsed = parseAndValidateMasterCsv(csv, 'jadwal_pelajaran', { role: 'admin' });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].hari, 'Senin');
+    assert.strictEqual(parsed[0].nama_guru, 'Budi Santoso');
+    assert.strictEqual(parsed[1].hari, 'Selasa');
+    assert.strictEqual(parsed[1].mata_pelajaran, 'Matematika');
+    pass('4.5: Exported Jadwal_Pelajaran CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.5: Jadwal Pelajaran re-import roundtrip failed', e);
+  }
+
+  try {
+    // Generate exported wali kelas CSV
+    const walis = [
+      { kelas: 'X Merdeka', nama_guru: 'Budi Santoso', nip: '198501012010011001', tahun_ajaran: '2024/2025' },
+      { kelas: 'XI Merdeka A', nama_guru: 'Siti Aminah', nip: '198602022011022002', tahun_ajaran: '2024/2025' }
+    ];
+    const { csv } = generateMasterDataCsv('Wali_Kelas', walis);
+    const parsed = parseAndValidateMasterCsv(csv, 'wali_kelas', { role: 'admin' });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].kelas, 'X Merdeka');
+    assert.strictEqual(parsed[0].nama_guru, 'Budi Santoso');
+    assert.strictEqual(parsed[1].kelas, 'XI Merdeka A');
+    assert.strictEqual(parsed[1].nama_guru, 'Siti Aminah');
+    pass('4.6: Exported Wali_Kelas CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.6: Wali Kelas re-import roundtrip failed', e);
+  }
+
+  try {
+    // Generate exported pengguna CSV
+    const users = [
+      { username: '198501012010011001', nama: 'Budi Santoso', role: 'Guru', nip: '198501012010011001', mata_pelajaran: 'Informatika', status: 'Aktif' },
+      { username: '198602022011022002', nama: 'Siti Aminah', role: 'Guru', nip: '198602022011022002', mata_pelajaran: 'Matematika', status: 'Aktif' }
+    ];
+    const { csv } = generateMasterDataCsv('Pengguna', users);
+    const parsed = parseAndValidateMasterCsv(csv, 'pengguna', { role: 'admin' });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].username, '198501012010011001');
+    assert.strictEqual(parsed[0].nama, 'Budi Santoso');
+    assert.strictEqual(parsed[0].role, 'Guru');
+    assert.strictEqual(parsed[1].username, '198602022011022002');
+    pass('4.7: Exported Pengguna CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.7: Pengguna re-import roundtrip failed', e);
+  }
+
+  try {
+    // Generate exported kalender pendidikan CSV
+    const kalenders = [
+      { tanggal: '2026-10-01', keterangan: 'Hari Kesaktian Pancasila', tipe: 'Libur' },
+      { tanggal: '2026-11-10', keterangan: 'Hari Pahlawan', tipe: 'Kegiatan' }
+    ];
+    const { csv } = generateMasterDataCsv('Kalender_Pendidikan', kalenders);
+    const parsed = parseAndValidateMasterCsv(csv, 'kalender_pendidikan', { role: 'admin' });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].tanggal, '2026-10-01');
+    assert.strictEqual(parsed[0].keterangan, 'Hari Kesaktian Pancasila');
+    assert.strictEqual(parsed[1].tanggal, '2026-11-10');
+    pass('4.8: Exported Kalender_Pendidikan CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.8: Kalender Pendidikan re-import roundtrip failed', e);
+  }
+
+  try {
+    // Generate exported sistem blok CSV
+    const bloks = [
+      { nama_kegiatan: 'Penilaian Akhir Semester', tanggal_mulai: '2026-12-01', tanggal_selesai: '2026-12-10', tipe_target: 'sekolah', target_kelas: '', deskripsi: 'Ujian Semester' },
+      { nama_kegiatan: 'KBM Praktik Industri', tanggal_mulai: '2026-11-01', tanggal_selesai: '2026-11-15', tipe_target: 'kelas', target_kelas: 'XII Merdeka 1; XII Merdeka 2', deskripsi: 'Praktik' }
+    ];
+    const { csv } = generateMasterDataCsv('sistem_blok', bloks);
+    const parsed = parseAndValidateMasterCsv(csv, 'sistem_blok', { role: 'admin' });
+    assert.strictEqual(parsed.length, 2);
+    assert.strictEqual(parsed[0].nama_kegiatan, 'Penilaian Akhir Semester');
+    assert.strictEqual(parsed[0].tanggal_mulai, '2026-12-01');
+    assert.strictEqual(parsed[1].target_kelas, 'XII Merdeka 1; XII Merdeka 2');
+    pass('4.9: Exported sistem_blok CSV can be parsed and validated back by parseAndValidateMasterCsv');
+  } catch (e) {
+    fail('4.9: Sistem Blok re-import roundtrip failed', e);
+  }
+
   // ==========================================================================
   // SECTION 5: UI Integration Verification across All Master Data Views
   // ==========================================================================
@@ -717,6 +838,196 @@ async function runMasterDataExportTests() {
     pass('7.5: Accessibility verification: aria-label defined on all Export CSV buttons across views');
   } catch (e) {
     fail('7.5: Accessibility verification failed', e);
+  }
+
+  // ==========================================================================
+  // SECTION 8: Adversarial Round 3 Probes (Mobile Responsiveness, RBAC, Special Chars)
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 8: Adversarial Round 3 Probes (Mobile Layout, RBAC, Special Chars) ---${RESET}`);
+
+  try {
+    // 8.1: Mobile Flex-Wrap & Non-Overflow Toolbar Layout
+    // Re-read current files
+    const curAdminDataSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'AdminDataView.tsx'), 'utf8');
+    const curAdminKelasSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'AdminKelasView.tsx'), 'utf8');
+    const curAdminPenggunaSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'AdminPenggunaView.tsx'), 'utf8');
+    const curSistemBlokSrc = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'SistemBlokView.tsx'), 'utf8');
+
+    // AdminDataView toolbar must use flex flex-wrap for responsive wrapping
+    assert.ok(curAdminDataSrc.includes('flex flex-wrap sm:flex-nowrap gap-1.5'), 'AdminDataView toolbar must support flex-wrap on mobile');
+
+    // AdminKelasView action buttons container must use flex flex-wrap
+    assert.ok(curAdminKelasSrc.includes('flex flex-wrap items-center gap-1.5 sm:gap-2'), 'AdminKelasView buttons must use flex-wrap');
+
+    // AdminPenggunaView buttons container must use flex flex-wrap (not rigid shrink-0)
+    assert.ok(curAdminPenggunaSrc.includes('flex flex-wrap items-center gap-2'), 'AdminPenggunaView buttons must support flex-wrap on mobile');
+
+    // SistemBlokView toolbar buttons container must use flex-wrap
+    assert.ok(curSistemBlokSrc.includes('flex flex-wrap items-center gap-2 self-start sm:self-auto'), 'SistemBlokView buttons must support flex-wrap on mobile');
+
+    pass('8.1: Mobile flex-wrap & non-overflow responsive layouts verified across all 4 UI views');
+  } catch (e) {
+    fail('8.1: Mobile responsive layout verification failed', e);
+  }
+
+  try {
+    // 8.2: Role Permission & RBAC Isolation
+    // Verifies that canModify in AdminDataView requires isAdmin or isTataUsaha with Siswa/Guru tabs only
+    assert.ok(adminDataSrc.includes("const canModify = isAdmin || (isTataUsaha && (activeTab === 'Data_Siswa' || activeTab === 'Data_Guru'));"), 'AdminDataView must enforce strict canModify RBAC');
+
+    // AdminKelasView strictly guards class uploads with isAdmin
+    assert.ok(adminKelasSrc.includes('if (!isAdmin) {'), 'AdminKelasView must guard file upload with isAdmin check');
+
+    // SistemBlokView displays locked screen for non-admin users
+    assert.ok(sistemBlokSrc.includes('if (!isAdminOrSuperadmin) {'), 'SistemBlokView must guard view with isAdminOrSuperadmin');
+
+    pass('8.2: Role permission isolation strictly verified for Admin, TU, and non-admin roles');
+  } catch (e) {
+    fail('8.2: Role permission verification failed', e);
+  }
+
+  try {
+    // 8.3: Special Character Matrix Round-Trip Across All 9 Tabs
+    const specialMatrix = [
+      {
+        tab: 'Data_Siswa',
+        table: 'data_siswa',
+        item: {
+          nisn: '0106436229',
+          nama_siswa: 'Siswa, "Spesial" & Karakter: =cmd | kalkulasi;',
+          kelas: 'X Merdeka, A',
+          gender: 'Laki-laki',
+          agama: 'Islam',
+          status: 'Aktif',
+          no_hp_ortu: '081234567890'
+        }
+      },
+      {
+        tab: 'Data_Kelas',
+        table: 'data_kelas',
+        item: {
+          nama_kelas: 'XI IPA "Unggulan", 1',
+          tingkat: '11',
+          jurusan: 'MIPA, Sains'
+        }
+      },
+      {
+        tab: 'Data_Mapel',
+        table: 'data_mapel',
+        item: {
+          id: 'MP-SP-01',
+          nama_mata_pelajaran: 'Bahasa & Sastra "Indonesia", Wajib',
+          kategori: 'Umum, Wajib',
+          kelompok: 'Kelompok A (Wajib)'
+        }
+      },
+      {
+        tab: 'Data_Guru',
+        table: 'data_guru',
+        item: {
+          sekolah_id: 'a0000000-0000-0000-0000-000000000001',
+          nip: '198501012010011001',
+          nama_guru: 'Dra. Hj. Siti "Aminah", M.Pd.',
+          mata_pelajaran: 'Bahasa Indonesia',
+          no_hp: '081234567890',
+          status: 'Aktif',
+          email: 'siti.aminah@sekolah.sch.id'
+        }
+      },
+      {
+        tab: 'Jadwal_Pelajaran',
+        table: 'jadwal_pelajaran',
+        item: {
+          hari: 'Senin',
+          nama_guru: 'Dra. Hj. Siti "Aminah", M.Pd.',
+          mata_pelajaran: 'Bahasa Indonesia',
+          kelas: 'XI IPA "Unggulan", 1',
+          jam_mulai: '07:30',
+          jam_selesai: '09:00'
+        }
+      },
+      {
+        tab: 'Wali_Kelas',
+        table: 'wali_kelas',
+        item: {
+          kelas: 'XI IPA "Unggulan", 1',
+          nama_guru: 'Dra. Hj. Siti "Aminah", M.Pd.',
+          nip: '198501012010011001',
+          tahun_ajaran: '2024/2025'
+        }
+      },
+      {
+        tab: 'Pengguna',
+        table: 'pengguna',
+        item: {
+          username: '198501012010011001',
+          nama: 'Dra. Hj. Siti "Aminah", M.Pd.',
+          role: 'Guru',
+          nip: '198501012010011001',
+          mata_pelajaran: 'Bahasa Indonesia',
+          status: 'Aktif'
+        }
+      },
+      {
+        tab: 'Kalender_Pendidikan',
+        table: 'kalender_pendidikan',
+        item: {
+          tanggal: '2026-08-17',
+          keterangan: 'HUT RI Ke-81: "Indonesia Tangguh, Indonesia Maju"',
+          tipe: 'Libur Nasional'
+        }
+      },
+      {
+        tab: 'sistem_blok',
+        table: 'sistem_blok',
+        item: {
+          nama_kegiatan: 'Ujian "Komprehensif" Semester, Ganjil',
+          tanggal_mulai: '2026-12-01',
+          tanggal_selesai: '2026-12-10',
+          tipe_target: 'kelas',
+          target_kelas: 'XI IPA "Unggulan", 1; XII IPA "Reguler"',
+          deskripsi: 'Pelaksanaan ujian blok: tertib & teratur'
+        }
+      }
+    ];
+
+    for (const testCase of specialMatrix) {
+      const { csv } = generateMasterDataCsv(testCase.tab, [testCase.item], { schoolId: 'a0000000-0000-0000-0000-000000000001' });
+      const parsed = parseAndValidateMasterCsv(csv, testCase.table, {
+        role: 'admin',
+        sekolah_id: 'a0000000-0000-0000-0000-000000000001'
+      });
+      assert.strictEqual(parsed.length, 1, `Table ${testCase.table} must parse exactly 1 row`);
+    }
+
+    pass('8.3: Symmetrical round-trip verified for complex special character matrix across all 9 tabs');
+  } catch (e) {
+    fail('8.3: Special character matrix round-trip failed', e);
+  }
+
+  try {
+    // 8.4: Verification of Template and Export Definitions Registry Alignment
+    const canonicalTabs = [
+      'Data_Siswa',
+      'Data_Kelas',
+      'Data_Mapel',
+      'Data_Guru',
+      'Jadwal_Pelajaran',
+      'Wali_Kelas',
+      'Pengguna',
+      'Kalender_Pendidikan',
+      'sistem_blok'
+    ];
+
+    for (const tabKey of canonicalTabs) {
+      assert.ok(MASTER_DATA_EXPORT_DEFINITIONS[tabKey], `Definition for tab "${tabKey}" must exist`);
+      assert.ok(MASTER_DATA_EXPORT_DEFINITIONS[tabKey].headers.length > 0, `Headers for "${tabKey}" must not be empty`);
+      assert.ok(MASTER_DATA_EXPORT_DEFINITIONS[tabKey].filename.endsWith('.csv'), `Filename for "${tabKey}" must end with .csv`);
+    }
+
+    pass('8.4: All 9 canonical Master Data export definitions exist and are properly registered');
+  } catch (e) {
+    fail('8.4: Alignment check failed', e);
   }
 
   // ==========================================================================

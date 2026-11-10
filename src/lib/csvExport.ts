@@ -331,7 +331,7 @@ export const MASTER_DATA_EXPORT_DEFINITIONS: Record<string, MasterDataExportDefi
     filename: 'Data_Guru.csv',
     headers: ['sekolah_id', 'nip', 'nama_guru', 'mata_pelajaran', 'no_hp', 'status', 'email'],
     extractRow: (item, options) => [
-      item?.sekolah_id || options?.schoolId || '',
+      item?.sekolah_id || item?.school_id || options?.schoolId || '',
       item?.nip || '',
       resolvePersonName(item?.nama_guru || item?.nama),
       item?.mata_pelajaran || item?.mapel || '',

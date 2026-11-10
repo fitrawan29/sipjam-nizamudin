@@ -1283,6 +1283,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             onClick={handleDownloadClassTemplate}
             className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
             title="Unduh format template CSV Data Kelas"
+            aria-label="Unduh format template CSV Data Kelas"
           >
             <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i>
             <span>Template CSV</span>

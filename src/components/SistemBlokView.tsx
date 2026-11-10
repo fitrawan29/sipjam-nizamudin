@@ -839,7 +839,7 @@ export default function SistemBlokView({ user }: { user: any }) {
             </span>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
             <button
               type="button"
               onClick={handleExportBlokCsv}

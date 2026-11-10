@@ -2760,7 +2760,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         <button 
                           type="button" 
                           onClick={handleDownloadTemplate} 
-                          className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                          className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
+                          title="Unduh format template CSV"
+                          aria-label="Unduh format template CSV"
                         >
                           <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i> Template
                         </button>

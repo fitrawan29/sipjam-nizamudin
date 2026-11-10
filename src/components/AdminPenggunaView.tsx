@@ -1039,7 +1039,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               </p>
             </div>
           </div>
-          <div className="shrink-0 flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleCreateTuUser}
