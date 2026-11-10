@@ -531,9 +531,10 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
   // CSV Export for Data Kelas
   const handleExportClassCsv = () => {
-    const listToExport = filteredClasses && filteredClasses.length > 0 ? filteredClasses : consolidatedClasses;
+    const isFilterApplied = Boolean((searchQuery && searchQuery.trim()) || filterTingkat !== 'ALL');
+    const listToExport = isFilterApplied ? filteredClasses : (consolidatedClasses && consolidatedClasses.length > 0 ? consolidatedClasses : filteredClasses);
     if (!listToExport || listToExport.length === 0) {
-      showToast('Info', 'Belum ada data kelas untuk diekspor.', 'info');
+      showToast('Info', isFilterApplied ? 'Tidak ada kelas yang sesuai filter untuk diekspor.' : 'Belum ada data kelas untuk diekspor.', 'info');
       return;
     }
     const result = downloadMasterDataCsv('Data_Kelas', listToExport);

@@ -199,9 +199,10 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
   // Export Pengguna to CSV
   const handleExportUsersCsv = () => {
-    const listToExport = filteredAccounts && filteredAccounts.length > 0 ? filteredAccounts : accounts;
+    const isFilterApplied = Boolean((search && search.trim()) || filterMapel !== 'ALL' || filterStatus !== 'ALL');
+    const listToExport = isFilterApplied ? filteredAccounts : (accounts && accounts.length > 0 ? accounts : filteredAccounts);
     if (!listToExport || listToExport.length === 0) {
-      showToast('Info', 'Belum ada data pengguna untuk diekspor.', 'info');
+      showToast('Info', isFilterApplied ? 'Tidak ada pengguna yang sesuai filter untuk diekspor.' : 'Belum ada data pengguna untuk diekspor.', 'info');
       return;
     }
     const result = downloadMasterDataCsv('Pengguna', listToExport);

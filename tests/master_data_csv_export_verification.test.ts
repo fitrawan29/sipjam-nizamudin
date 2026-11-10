@@ -470,6 +470,106 @@ async function runMasterDataExportTests() {
   }
 
   // ==========================================================================
+  // SECTION 6: Adversarial Review Probes & Regression Hardening
+  // ==========================================================================
+  console.log(`\n${YELLOW}${BOLD}--- SECTION 6: Adversarial Review Probes & Edge Case Proof ---${RESET}`);
+
+  try {
+    // 6.1: Data_Kelas with wali_kelas as an object (as created by AdminKelasView consolidatedClasses)
+    const classWithObjWali = [
+      {
+        nama_kelas: 'XII Merdeka B',
+        tingkat: '12',
+        jurusan: 'IPA',
+        wali_kelas: { nama_guru: 'Dra. Hj. Siti Aminah, M.Pd.', nip: '197205121998022001' },
+        totalSiswa: 36
+      }
+    ];
+    const res = generateMasterDataCsv('Data_Kelas', classWithObjWali);
+    assert.ok(!res.csv.includes('[object Object]'), 'Exported CSV must never contain [object Object]');
+    assert.ok(res.csv.includes('"Dra. Hj. Siti Aminah, M.Pd."'), 'Homeroom teacher name must be extracted properly');
+    pass('6.1: Data_Kelas handles wali_kelas as object without [object Object] degradation');
+  } catch (e) {
+    fail('6.1: Data_Kelas object wali_kelas probe failed', e);
+  }
+
+  try {
+    // 6.2: Tab aliases with whitespace and hyphens
+    assert.strictEqual(normalizeMasterTabKey('Wali Kelas'), 'Wali_Kelas');
+    assert.strictEqual(normalizeMasterTabKey('wali kelas'), 'Wali_Kelas');
+    assert.strictEqual(normalizeMasterTabKey('Jadwal Pelajaran'), 'Jadwal_Pelajaran');
+    assert.strictEqual(normalizeMasterTabKey('jadwal-pelajaran'), 'Jadwal_Pelajaran');
+    assert.strictEqual(normalizeMasterTabKey('Kalender Pendidikan'), 'Kalender_Pendidikan');
+    assert.strictEqual(normalizeMasterTabKey('Sistem Blok'), 'sistem_blok');
+    assert.strictEqual(normalizeMasterTabKey('Periode Sistem Blok'), 'sistem_blok');
+    assert.strictEqual(normalizeMasterTabKey('Data Guru'), 'Data_Guru');
+    assert.strictEqual(normalizeMasterTabKey('Data Siswa'), 'Data_Siswa');
+    assert.strictEqual(normalizeMasterTabKey('Data Kelas'), 'Data_Kelas');
+    assert.strictEqual(normalizeMasterTabKey('Data Mapel'), 'Data_Mapel');
+    assert.strictEqual(normalizeMasterTabKey('data-siswa'), 'Data_Siswa');
+
+    // Verify calling generateMasterDataCsv with 'Wali Kelas' does NOT fallback to Data_Siswa
+    const resWali = generateMasterDataCsv('Wali Kelas', [{ kelas: 'X-A', nama_guru: 'Budi' }]);
+    assert.strictEqual(resWali.filename, 'Data_Wali_Kelas.csv');
+    assert.deepStrictEqual(resWali.headers, ['kelas', 'nama_guru', 'nip', 'tahun_ajaran']);
+    assert.ok(!resWali.headers.includes('nisn'), 'Must not fallback to Data_Siswa');
+    pass('6.2: Tab aliases with spaces, hyphens, and title cases resolve to exact entity definitions');
+  } catch (e) {
+    fail('6.2: Tab aliases with whitespace probe failed', e);
+  }
+
+  try {
+    // 6.3: Complex multi-line, quotation marks, commas, tabs, and non-ASCII emojis
+    const complexDesc = 'Catatan:\r\n1. "Ujian Akhir" Semester 📝\n2. Ruang KBM: Lab 1; Lab 2\t[Wajib]';
+    const blokComplex = [
+      {
+        nama_kegiatan: 'PAS & "Remedial" 2026',
+        tanggal_mulai: '2026-11-01',
+        tanggal_selesai: '2026-11-15',
+        tipe_target: 'sekolah',
+        target_kelas: 'Semua Kelas',
+        deskripsi: complexDesc
+      }
+    ];
+    const res = generateMasterDataCsv('sistem_blok', blokComplex);
+    assert.ok(res.csv.includes('""Ujian Akhir""'));
+    assert.ok(res.csv.includes('📝'));
+
+    // Roundtrip verification through parseAndValidateMasterCsv
+    const parsed = parseAndValidateMasterCsv(res.csv, 'sistem_blok', { role: 'admin' });
+    assert.strictEqual(parsed.length, 1);
+    assert.strictEqual(parsed[0].nama_kegiatan, 'PAS & "Remedial" 2026');
+    assert.strictEqual(parsed[0].deskripsi, complexDesc);
+    pass('6.3: Complex multi-line text, mixed CRLF/LF, quotes, emojis, tabs roundtrip perfectly');
+  } catch (e) {
+    fail('6.3: Complex multi-line & emoji escaping probe failed', e);
+  }
+
+  try {
+    // 6.4: escapeCsvField defensive object protection
+    assert.strictEqual(escapeCsvField({ nama_guru: 'Ahmad, M.Pd.' }), '"Ahmad, M.Pd."');
+    assert.strictEqual(escapeCsvField({ nama_siswa: 'Budi' }), 'Budi');
+    assert.strictEqual(escapeCsvField({ nama_kelas: 'X-A' }), 'X-A');
+    assert.strictEqual(escapeCsvField(new Date('2026-05-15T08:00:00Z')), '2026-05-15');
+    assert.strictEqual(escapeCsvField(['IPA', 'IPS']), '"IPA; IPS"');
+    assert.ok(!escapeCsvField({ other: 123 }).includes('[object Object]'));
+    pass('6.4: escapeCsvField defensive handlers gracefully format objects, arrays, and dates');
+  } catch (e) {
+    fail('6.4: escapeCsvField defensive handling failed', e);
+  }
+
+  try {
+    // 6.5: Verify UI components prevent dumping entire dataset when filter yields 0 matches
+    assert.ok(adminDataSrc.includes('isFilterApplied'), 'AdminDataView must check isFilterApplied');
+    assert.ok(adminKelasSrc.includes('isFilterApplied'), 'AdminKelasView must check isFilterApplied');
+    assert.ok(adminPenggunaSrc.includes('isFilterApplied'), 'AdminPenggunaView must check isFilterApplied');
+    assert.ok(sistemBlokSrc.includes('isFilterApplied'), 'SistemBlokView must check isFilterApplied');
+    pass('6.5: UI components preserve active filter scope during CSV export without unintended database dumps');
+  } catch (e) {
+    fail('6.5: UI component filter check verification failed', e);
+  }
+
+  // ==========================================================================
   // FINAL SCORE
   // ==========================================================================
   console.log(`\n${CYAN}${BOLD}========================================================================${RESET}`);

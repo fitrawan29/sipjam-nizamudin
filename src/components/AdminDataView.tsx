@@ -605,9 +605,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
   // Export Master Data to CSV
   const handleExportCsv = () => {
-    const listToExport = filteredList && filteredList.length > 0 ? filteredList : dataList;
+    const isFilterApplied = Boolean(
+      (search && search.trim()) ||
+      filter1 !== 'ALL' ||
+      filter2 !== 'ALL' ||
+      filterMapelSiswa !== 'ALL'
+    );
+    const listToExport = isFilterApplied ? filteredList : (dataList && dataList.length > 0 ? dataList : filteredList);
     if (!listToExport || listToExport.length === 0) {
-      showToast('Info', 'Belum ada data untuk diekspor.', 'info');
+      showToast('Info', isFilterApplied ? 'Tidak ada data yang sesuai filter untuk diekspor.' : 'Belum ada data untuk diekspor.', 'info');
       return;
     }
     const currentTab = normalizeAdminTab(activeTab);

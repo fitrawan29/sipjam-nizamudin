@@ -520,9 +520,10 @@ export default function SistemBlokView({ user }: { user: any }) {
 
   // Export Periode Sistem Blok to CSV
   const handleExportBlokCsv = () => {
-    const listToExport = filteredList && filteredList.length > 0 ? filteredList : blokList;
+    const isFilterApplied = Boolean((search && search.trim()) || filterStatus !== 'Semua');
+    const listToExport = isFilterApplied ? filteredList : (blokList && blokList.length > 0 ? blokList : filteredList);
     if (!listToExport || listToExport.length === 0) {
-      showToast('Info', 'Belum ada data periode blok untuk diekspor.', 'info');
+      showToast('Info', isFilterApplied ? 'Tidak ada periode blok yang sesuai filter untuk diekspor.' : 'Belum ada data periode blok untuk diekspor.', 'info');
       return;
     }
     const result = downloadMasterDataCsv('sistem_blok', listToExport);
