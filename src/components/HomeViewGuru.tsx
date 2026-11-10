@@ -339,6 +339,9 @@ export default function HomeViewGuru({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, () => {
         refreshDailyWorkflow();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk' }, () => {
+        refreshDailyWorkflow();
+      })
       .on('broadcast', { event: 'config_updated' }, () => {
         refreshDailyWorkflow();
       })
@@ -378,6 +381,7 @@ export default function HomeViewGuru({
 
     window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
     window.addEventListener('sipjam:guru_updated', handleWindowConfigSync);
+    window.addEventListener('sipjam:jurnal_bk_updated', handleWindowConfigSync);
     window.addEventListener('storage', handleStorageSync);
     window.addEventListener('focus', handleResumeOrOnline);
     window.addEventListener('online', handleResumeOrOnline);
@@ -395,6 +399,7 @@ export default function HomeViewGuru({
       }
       window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
       window.removeEventListener('sipjam:guru_updated', handleWindowConfigSync);
+      window.removeEventListener('sipjam:jurnal_bk_updated', handleWindowConfigSync);
       window.removeEventListener('storage', handleStorageSync);
       window.removeEventListener('focus', handleResumeOrOnline);
       window.removeEventListener('online', handleResumeOrOnline);
@@ -457,13 +462,32 @@ export default function HomeViewGuru({
 
     // Step 3: Jurnal
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
+    const bkCount = dailyState.jurnalBK?.length ?? 0;
     if (isBk) {
-      steps.push({
-        label: 'Jurnal BK (Konseling)',
-        status: 'active',
-        detail: 'Layanan Bimbingan & Konseling Siswa Lintas Kelas',
-        icon: 'fa-heart-pulse'
-      });
+      if (hasJurnalDitolak && bkCount === 0) {
+        steps.push({
+          label: 'Jurnal BK (Konseling)',
+          status: 'active',
+          detail: `⚠️ Ditolak Admin — Silakan perbaiki di menu Jurnal BK (${dailyState.jurnalDitolak.length} entri)`,
+          icon: 'fa-heart-pulse'
+        });
+      } else if (bkCount > 0) {
+        steps.push({
+          label: `Jurnal BK (${bkCount} Sesi)`,
+          status: hasJurnalDitolak ? 'active' : 'done',
+          detail: hasJurnalDitolak
+            ? `Sudah mengisi ${bkCount} jurnal BK (ada ${dailyState.jurnalDitolak.length} ditolak admin)`
+            : `Sudah mengisi ${bkCount} jurnal layanan BK hari ini`,
+          icon: 'fa-heart-pulse'
+        });
+      } else {
+        steps.push({
+          label: 'Jurnal BK (Konseling)',
+          status: 'active',
+          detail: 'Layanan Bimbingan & Konseling Siswa Lintas Kelas',
+          icon: 'fa-heart-pulse'
+        });
+      }
     } else if (dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) {
       steps.push({ label: 'Bebas Jurnal', status: 'skipped', detail: 'Tidak ada jadwal mengajar hari ini', icon: 'fa-book-journal-whills' });
     } else if (dailyState.isBlok) {
@@ -547,7 +571,7 @@ export default function HomeViewGuru({
         : { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
     }
     if (dailyState.isPiket && dailyState.laporanPiketDitolak) return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan isi ulang di menu Piket.', color: 'text-red-600 dark:text-red-400' };
-    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${(dailyState.jurnalDitolak || []).length} jurnal Anda ditolak admin. Silakan isi ulang di menu Jurnal.`, color: 'text-red-600 dark:text-red-400' };
+    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${(dailyState.jurnalDitolak || []).length} jurnal Anda ditolak admin. Silakan isi ulang di menu ${isBk ? 'Jurnal BK' : 'Jurnal'}.`, color: 'text-red-600 dark:text-red-400' };
     if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.presensiPulang) {
@@ -560,6 +584,10 @@ export default function HomeViewGuru({
       return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-green-600 dark:text-green-400' };
     }
     if (isBk) {
+      const bkFilledCount = dailyState.jurnalBK?.length ?? 0;
+      if (bkFilledCount > 0) {
+        return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Lakukan Presensi Pulang jika jam tugas selesai.`, color: 'text-green-600 dark:text-green-400' };
+      }
       if (dailyState.canPresensiPulang) {
         return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi, atau lakukan Presensi Pulang jika jam tugas selesai.', color: 'text-emerald-600 dark:text-emerald-400' };
       }
@@ -989,52 +1017,56 @@ export default function HomeViewGuru({
                   Selamat menikmati hari libur Anda.
                 </p>
               </div>
+            ) : isBk ? (
+              <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 text-center space-y-2">
+                <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-base">
+                  <i className="fa-solid fa-heart-pulse"></i>
+                </div>
+                <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                  Layanan Bimbingan & Konseling Terbuka
+                </p>
+                <p className="text-[11px] text-rose-700 dark:text-rose-300 max-w-md mx-auto">
+                  Sebagai Guru BK, Anda memberikan pendampingan dan konseling siswa lintas kelas tanpa jadwal mengajar KBM reguler.
+                </p>
+                {(dailyState?.jurnalBK?.length ?? 0) > 0 && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-700">
+                    <i className="fa-solid fa-circle-check"></i>
+                    <span>Sudah mengisi {dailyState?.jurnalBK?.length} Jurnal BK hari ini</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setView('view-jurnal-bk')}
+                    className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <i className="fa-solid fa-book-medical text-xs"></i>
+                    <span>Buka Jurnal BK</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setView('view-guru-presensi')}
+                    className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  >
+                    <i className="fa-solid fa-clock text-xs"></i>
+                    <span>Presensi BK</span>
+                  </button>
+                </div>
+              </div>
             ) : dailyState?.isNonTeachingDay ? (
-              isBk ? (
-                <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 text-center space-y-2">
-                  <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-base">
-                    <i className="fa-solid fa-heart-pulse"></i>
-                  </div>
-                  <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
-                    Layanan Bimbingan & Konseling Terbuka
-                  </p>
-                  <p className="text-[11px] text-rose-700 dark:text-rose-300 max-w-md mx-auto">
-                    Sebagai Guru BK, Anda memberikan pendampingan dan konseling siswa lintas kelas tanpa jadwal mengajar KBM reguler.
-                  </p>
-                  <div className="flex items-center justify-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setView('view-jurnal-bk')}
-                      className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    >
-                      <i className="fa-solid fa-book-medical text-xs"></i>
-                      <span>Buka Jurnal BK</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setView('view-guru-presensi')}
-                      className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
-                    >
-                      <i className="fa-solid fa-clock text-xs"></i>
-                      <span>Presensi BK</span>
-                    </button>
-                  </div>
+              <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
+                  <i className="fa-solid fa-calendar-check"></i>
                 </div>
-              ) : (
-                <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
-                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
-                    <i className="fa-solid fa-calendar-check"></i>
-                  </div>
-                  <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
-                    {dailyState.presensiDatang ? 'Kehadiran Sukarela · Bebas Jurnal' : 'Bebas Kehadiran & Jurnal'}
-                  </p>
-                  <p className="text-[11px] text-blue-700 dark:text-blue-300">
-                    {dailyState.presensiDatang
-                      ? 'Hari ini Anda hadir sukarela tanpa jadwal mengajar wajib, sehingga dibebaskan dari pengisian jurnal dan tugas piket.'
-                      : 'Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.'}
-                  </p>
-                </div>
-              )
+                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                  {dailyState?.presensiDatang ? 'Kehadiran Sukarela · Bebas Jurnal' : 'Bebas Kehadiran & Jurnal'}
+                </p>
+                <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                  {dailyState?.presensiDatang
+                    ? 'Hari ini Anda hadir sukarela tanpa jadwal mengajar wajib, sehingga dibebaskan dari pengisian jurnal dan tugas piket.'
+                    : 'Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.'}
+                </p>
+              </div>
             ) : dailyState?.isBlok ? (
               <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200/80 dark:border-amber-800/60">

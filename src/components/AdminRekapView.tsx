@@ -242,6 +242,25 @@ export default function AdminRekapView({
       }
       const { data: jurnal } = await jurnalQuery;
 
+      // 3b. Fetch jurnal_bk (Disetujui / Diverifikasi)
+      let bkJurnal: any[] = [];
+      try {
+        let bkJurnalQuery = supabase
+          .from('jurnal_bk')
+          .select('id, guru_id, nama_guru, tanggal, status_verifikasi')
+          .gte('tanggal', startDateStr)
+          .lte('tanggal', endDateStr)
+          .in('status_verifikasi', ['Disetujui', 'Diverifikasi'])
+          .order('tanggal', { ascending: true });
+        if (user?.sekolah_id) {
+          bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: bkData, error: bkErr } = await bkJurnalQuery;
+        if (!bkErr && Array.isArray(bkData)) {
+          bkJurnal = bkData;
+        }
+      } catch (_) {}
+
       // 4. Fetch laporan_piket
       let piketQuery = supabase
         .from('laporan_piket')
@@ -501,9 +520,9 @@ export default function AdminRekapView({
         }
       });
 
-      // Aggregate jurnal
+      // Aggregate jurnal (KBM/Kegiatan + Jurnal BK)
       const jMap: Record<string, number> = {};
-      jurnal?.forEach(j => {
+      [...(jurnal || []), ...(bkJurnal || [])].forEach(j => {
         const nama = j.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
         const canonicalNama = canonicalizeTeacherRekapName(nama);

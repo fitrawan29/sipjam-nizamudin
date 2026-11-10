@@ -1,4 +1,5 @@
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
+import { isBkAccount } from '@/lib/workflow';
 import { 
   getWitaDateStr, 
   getWitaDayName, extractWitaDateStr 
@@ -75,11 +76,14 @@ export function evaluateTeacherWarningsSync(
   jadwalData: any[],
   penugasanData: any[],
   legacyPiketData: any[],
-  presensiRecords: any[],
+  penilaianOrPresensi: any[],
   jurnalRecords: any[],
   piketRecords: any[],
-  targetMonth?: string
+  targetMonth?: string,
+  bkJurnalRecords: any[] = [],
+  isBkTeacher: boolean = false
 ): TeacherWarningSummary {
+  const presensiRecords = penilaianOrPresensi;
   const normName = (teacherName || '').trim();
   const normLower = normName.toLowerCase();
 
@@ -243,16 +247,32 @@ export function evaluateTeacherWarningsSync(
     const dayJournals = jurnalRecords.filter(
       j => j.tanggal === dateStr && j.status_verifikasi !== 'Ditolak'
     );
+    const dayBkSeparate = (bkJurnalRecords || []).filter(
+      j => j.tanggal === dateStr && j.status_verifikasi !== 'Ditolak'
+    );
+    const combinedDayJournals = [...dayJournals, ...dayBkSeparate];
+    const dayBkCount = combinedDayJournals.filter(
+      j => j.isJurnalBk || j._sourceTable === 'jurnal_bk' || Boolean(j.bidang_bimbingan || j.jenis_layanan)
+    ).length;
 
-    const hasJurnalKegiatan = dayJournals.some(
+    const hasJurnalKegiatan = combinedDayJournals.some(
       j => j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (!j.kelas || j.kelas === '-')
     );
 
+    let reqForDay = requiredJournals;
     let filledCount = 0;
-    if (targetCount === 0) {
+    if (dayBkCount > 0 && targetCount === 0) {
+      // Setiap sesi Jurnal BK yang tercatat dihitung dalam pengisian jurnal harian
+      reqForDay = dayBkCount;
+      filledCount = dayBkCount;
+    } else if (isBkTeacher && targetCount === 0 && !hasJurnalKegiatan) {
+      // Layanan BK tidak memiliki jadwal KBM tetap harian; hari tanpa sesi BK tidak dihitung pelanggaran jurnal KBM
+      reqForDay = 0;
+      filledCount = 0;
+    } else if (targetCount === 0) {
       if (hasJurnalKegiatan) filledCount = 1;
     } else {
-      if (hasJurnalKegiatan) {
+      if (hasJurnalKegiatan || dayBkCount > 0) {
         filledCount = requiredJournals;
       } else {
         const uniqueFilled = new Set();
@@ -265,9 +285,9 @@ export function evaluateTeacherWarningsSync(
       }
     }
 
-    const isMissingJournal = filledCount < requiredJournals;
+    const isMissingJournal = filledCount < reqForDay;
     
-    monthlyStats.jurnal.required += requiredJournals;
+    monthlyStats.jurnal.required += reqForDay;
     monthlyStats.jurnal.filled += filledCount;
     jurnalOperationalDays.push({ dateStr, isViolation: isMissingJournal });
   }
@@ -433,16 +453,33 @@ export async function getTeacherDisciplineWarnings(
   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
-  const presensiQuery = supabase.from('presensi_guru').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
-  const jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
-  const piketQuery = supabase.from('laporan_piket').select('*').or(`guru_pelapor.ilike.%${normName.split(',')[0].trim()}%,kehadiran_guru_piket.ilike.%${normName.split(',')[0].trim()}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
+  const cleanFirst = normName.split(',')[0].trim();
+  const presensiQuery = supabase.from('presensi_guru').select('*').ilike('nama_guru', `%${cleanFirst}%`).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  const jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').ilike('nama_guru', `%${cleanFirst}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
+  const piketQuery = supabase.from('laporan_piket').select('*').or(`guru_pelapor.ilike.%${cleanFirst}%,kehadiran_guru_piket.ilike.%${cleanFirst}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
+  let bkJurnalQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
+  if (resolvedSekolahId) {
+    bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', resolvedSekolahId);
+  }
+  const bkOwnerId = guruData?.user_id || teacherId;
+  if (bkOwnerId && cleanFirst) {
+    bkJurnalQuery = bkJurnalQuery.or(`guru_id.eq.${bkOwnerId},nama_guru.ilike."%${cleanFirst}%"`);
+  } else if (cleanFirst) {
+    bkJurnalQuery = bkJurnalQuery.ilike('nama_guru', `%${cleanFirst}%`);
+  }
+
+  const safeBkPromise = Promise.resolve(bkJurnalQuery).then(
+    (res: any) => (res?.error && isSchemaCacheOrMissingTableError(res.error) ? [] : res?.data || []),
+    () => []
+  );
 
   const [
     { data: presensiRes },
     { data: jurnalRes },
-    { data: piketRes }
+    { data: piketRes },
+    bkJurnalRes
   ] = await Promise.all([
-    presensiQuery, jurnalQuery, piketQuery
+    presensiQuery, jurnalQuery, piketQuery, safeBkPromise
   ]);
 
   const configMap = new Map((configs || []).map((c: any) => [c.key, c.value]));
@@ -474,6 +511,20 @@ export async function getTeacherDisciplineWarnings(
     ? isExplicitExempt
     : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
 
+  let isSingleTeacherBk = isBkAccount(guruData?.mata_pelajaran);
+  if (!isSingleTeacherBk) {
+    try {
+      let uQuery = supabase.from('users').select('role');
+      if (resolvedSekolahId) uQuery = uQuery.eq('sekolah_id', resolvedSekolahId);
+      if (guruData?.user_id) uQuery = uQuery.eq('id', guruData.user_id);
+      else uQuery = uQuery.ilike('nama', `%${cleanFirst}%`);
+      const { data: uRows } = await uQuery;
+      if (Array.isArray(uRows) && uRows.some((u: any) => isBkAccount(u.role))) {
+        isSingleTeacherBk = true;
+      }
+    } catch (_) {}
+  }
+
   return evaluateTeacherWarningsSync(
     teacherId,
     normName,
@@ -487,7 +538,9 @@ export async function getTeacherDisciplineWarnings(
     presensiRes || [],
     jurnalRes || [],
     piketRes || [],
-    targetMonth
+    targetMonth,
+    bkJurnalRes || [],
+    isSingleTeacherBk
   );
 }
 
@@ -495,7 +548,7 @@ export async function getAllTeachersDisciplineWarnings(
   sekolahId?: string,
   targetMonth?: string
 ): Promise<TeacherWarningSummary[]> {
-  let guruQuery = supabase.from('data_guru').select('id, nama_guru, nip, sekolah_id, wajib_hadir_hanya_mengajar').order('nama_guru');
+  let guruQuery = supabase.from('data_guru').select('id, user_id, nama_guru, nip, sekolah_id, mata_pelajaran, wajib_hadir_hanya_mengajar').order('nama_guru');
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);
   }
@@ -512,6 +565,7 @@ export async function getAllTeachersDisciplineWarnings(
   let jadwalQuery = supabase.from('jadwal_pelajaran').select('*');
   let penugasanQuery = supabase.from('penugasan_piket').select('*').eq('tipe_petugas', 'Guru');
   let legacyPiketQuery = supabase.from('jadwal_piket').select('*');
+  let usersRoleQuery = supabase.from('users').select('id, nama, username, role');
 
   if (sekolahId) {
     configQuery = configQuery.eq('sekolah_id', sekolahId);
@@ -519,16 +573,23 @@ export async function getAllTeachersDisciplineWarnings(
     jadwalQuery = jadwalQuery.eq('sekolah_id', sekolahId);
     penugasanQuery = penugasanQuery.eq('sekolah_id', sekolahId);
     legacyPiketQuery = legacyPiketQuery.eq('sekolah_id', sekolahId);
+    usersRoleQuery = usersRoleQuery.eq('sekolah_id', sekolahId);
   }
+
+  const safeUsersPromise = Promise.resolve(usersRoleQuery).then(
+    (res: any) => (res?.error ? [] : res?.data || []),
+    () => []
+  );
 
   const [
     { data: configs },
     { data: holidaysData },
     { data: jadwalData },
     { data: penugasanData },
-    { data: legacyPiketData }
+    { data: legacyPiketData },
+    usersRoleList
   ] = await Promise.all([
-    configQuery, calQuery, jadwalQuery, penugasanQuery, legacyPiketQuery
+    configQuery, calQuery, jadwalQuery, penugasanQuery, legacyPiketQuery, safeUsersPromise
   ]);
 
   const currentWitaStr = getWitaDateStr();
@@ -549,19 +610,27 @@ export async function getAllTeachersDisciplineWarnings(
   let presensiQuery = supabase.from('presensi_guru').select('*').gte('timestamp', minTimestamp).lte('timestamp', maxDate);
   let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   let piketQuery = supabase.from('laporan_piket').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
+  let bkJurnalAllQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
 
   if (sekolahId) {
     presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
     jurnalQuery = jurnalQuery.eq('sekolah_id', sekolahId);
     piketQuery = piketQuery.eq('sekolah_id', sekolahId);
+    bkJurnalAllQuery = bkJurnalAllQuery.eq('sekolah_id', sekolahId);
   }
+
+  const safeAllBkPromise = Promise.resolve(bkJurnalAllQuery).then(
+    (res: any) => (res?.error && isSchemaCacheOrMissingTableError(res.error) ? [] : res?.data || []),
+    () => []
+  );
 
   const [
     { data: presensiRes },
     { data: jurnalRes },
-    { data: piketRes }
+    { data: piketRes },
+    bkJurnalData
   ] = await Promise.all([
-    presensiQuery, jurnalQuery, piketQuery
+    presensiQuery, jurnalQuery, piketQuery, safeAllBkPromise
   ]);
 
   const presensiData = presensiRes || [];
@@ -617,11 +686,27 @@ export async function getAllTeachersDisciplineWarnings(
         return jName.includes(teacherNameSplit) && (j.sekolah_id === resolvedSekolahId || !j.sekolah_id);
       });
 
+      const tBkJurnal = (bkJurnalData || []).filter((b: any) => {
+        const bName = (b.nama_guru || '').toLowerCase();
+        const ownerMatch =
+          (teacher.user_id && b.guru_id === teacher.user_id) ||
+          (teacher.id && b.guru_id === teacher.id) ||
+          bName.includes(teacherNameSplit);
+        return ownerMatch && (b.sekolah_id === resolvedSekolahId || !b.sekolah_id);
+      });
+
       const tPiket = piketData.filter(p => {
         const pelapor = (p.guru_pelapor || '').toLowerCase();
         const kehadiran = (p.kehadiran_guru_piket || '').toLowerCase();
         return (pelapor.includes(teacherNameSplit) || kehadiran.includes(teacherNameSplit)) && (p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
       });
+
+      const matchedUserBk = (usersRoleList || []).some(
+        (u: any) =>
+          isBkAccount(u.role) &&
+          ((teacher.user_id && u.id === teacher.user_id) ||
+            (u.nama || '').toLowerCase().includes(teacherNameSplit))
+      );
 
       const summary = evaluateTeacherWarningsSync(
         teacher.id,
@@ -636,7 +721,9 @@ export async function getAllTeachersDisciplineWarnings(
         tPresensi,
         tJurnal,
         tPiket,
-        targetMonth
+        targetMonth,
+        tBkJurnal,
+        isBkAccount(teacher.mata_pelajaran) || matchedUserBk
       );
       summaries.push(summary);
     } catch (err: any) {

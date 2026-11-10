@@ -7,6 +7,7 @@ import { PrintHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import CameraSelfieCapture from './CameraSelfieCapture';
 import { uploadToDrive } from '@/lib/driveUpload';
+import { getWitaDateStr, getWitaTimeStr } from '@/lib/wita';
 
 export interface BkJurnalViewProps {
   user: any;
@@ -34,6 +35,9 @@ export interface JurnalBkEntry {
   tindak_lanjut: string;
   status: 'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus';
   link_dokumen?: string | null;
+  status_verifikasi?: 'Menunggu' | 'Disetujui' | 'Ditolak' | 'Dispensasi' | 'Diverifikasi' | string;
+  catatan_admin?: string | null;
+  alasan_penolakan?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -99,11 +103,8 @@ export default function BkJurnalView({
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form State
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
-  const nowTimeStr = useMemo(() => {
-    const d = new Date();
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  }, []);
+  const todayStr = useMemo(() => getWitaDateStr(), []);
+  const nowTimeStr = useMemo(() => getWitaTimeStr(), []);
 
   const [formData, setFormData] = useState<{
     siswa_id: string;
@@ -490,13 +491,40 @@ export default function BkJurnalView({
       updated_at: nowIso
     };
 
+    const editingEntry = editingId ? entries.find(e => e.id === editingId) : null;
+    const shouldResetVerif = !editingId || editingEntry?.status_verifikasi === 'Ditolak';
+    const verifPayload = shouldResetVerif
+      ? { status_verifikasi: 'Menunggu' as const, catatan_admin: null, alasan_penolakan: null }
+      : {};
+    const payloadWithVerif = { ...recordPayload, ...verifPayload };
+    const isMissingVerifCol = (err: any) => {
+      if (!err) return false;
+      const code = String(err.code || '');
+      const msg = String(err.message || '').toLowerCase();
+      return (
+        code === 'PGRST204' ||
+        code === '42703' ||
+        msg.includes('status_verifikasi') ||
+        msg.includes('catatan_admin') ||
+        msg.includes('alasan_penolakan')
+      );
+    };
+
     try {
       if (editingId) {
         // UPDATE
-        const { error } = await supabase
+        let { error } = await supabase
           .from('jurnal_bk')
-          .update(recordPayload)
+          .update(payloadWithVerif)
           .eq('id', editingId);
+
+        if (error && isMissingVerifCol(error)) {
+          const retryRes = await supabase
+            .from('jurnal_bk')
+            .update(recordPayload)
+            .eq('id', editingId);
+          error = retryRes.error;
+        }
 
         if (error && !isSchemaCacheOrMissingTableError(error)) {
           throw error;
@@ -504,11 +532,12 @@ export default function BkJurnalView({
 
         // Update local state & cache
         const updatedEntries = entries.map(item =>
-          item.id === editingId ? { ...item, ...recordPayload, id: editingId } : item
+          item.id === editingId ? { ...item, ...payloadWithVerif, id: editingId } : item
         );
         setEntries(updatedEntries);
         if (typeof window !== 'undefined') {
           localStorage.setItem(cacheKey, JSON.stringify(updatedEntries));
+          window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
         }
 
         Swal.fire({
@@ -526,12 +555,21 @@ export default function BkJurnalView({
             : `bk-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
         const insertRecord: JurnalBkEntry = {
-          ...(recordPayload as JurnalBkEntry),
+          ...(payloadWithVerif as JurnalBkEntry),
           id: newId,
           created_at: nowIso
         };
 
-        const { error } = await supabase.from('jurnal_bk').insert([insertRecord]);
+        let { error } = await supabase.from('jurnal_bk').insert([insertRecord]);
+        if (error && isMissingVerifCol(error)) {
+          const fallbackInsertRecord: JurnalBkEntry = {
+            ...(recordPayload as JurnalBkEntry),
+            id: newId,
+            created_at: nowIso
+          };
+          const retryRes = await supabase.from('jurnal_bk').insert([fallbackInsertRecord]);
+          error = retryRes.error;
+        }
         if (error && !isSchemaCacheOrMissingTableError(error)) {
           throw error;
         }
@@ -540,6 +578,7 @@ export default function BkJurnalView({
         setEntries(updatedEntries);
         if (typeof window !== 'undefined') {
           localStorage.setItem(cacheKey, JSON.stringify(updatedEntries));
+          window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
         }
 
         Swal.fire({
@@ -616,6 +655,7 @@ export default function BkJurnalView({
       setEntries(updated);
       if (typeof window !== 'undefined') {
         localStorage.setItem(cacheKey, JSON.stringify(updated));
+        window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
       }
 
       Swal.fire({
@@ -1393,7 +1433,29 @@ export default function BkJurnalView({
                           </p>
                         </td>
                         <td className="py-2.5 px-3 align-top text-center whitespace-nowrap">
-                          {renderStatusBadge(item.status)}
+                          <div className="flex flex-col items-center gap-1">
+                            {renderStatusBadge(item.status)}
+                            {item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+                                Terverifikasi
+                              </span>
+                            ) : item.status_verifikasi === 'Ditolak' ? (
+                              <span
+                                className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800"
+                                title={item.alasan_penolakan || item.catatan_admin || 'Ditolak admin'}
+                              >
+                                Ditolak
+                              </span>
+                            ) : item.status_verifikasi === 'Dispensasi' ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800">
+                                Dispensasi
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                                Menunggu Verifikasi
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-2.5 px-3 align-top text-center whitespace-nowrap">
                           {item.link_dokumen ? (

@@ -1,7 +1,23 @@
-import { supabase } from './supabaseClient';
+import { supabase, isSchemaCacheOrMissingTableError } from './supabaseClient';
 import { getWitaDateStr, getWitaDayName, extractWitaDateStr } from './wita';
 import { isInvalidMapel } from './dataIntegrityGuard';
 import type { SistemBlok } from '@/types/database';
+
+/**
+ * Deteksi terpusat apakah role atau mata pelajaran merujuk ke layanan Guru BK.
+ */
+export function isBkAccount(roleOrMapel?: string | null, extra?: string | null): boolean {
+  const check = (val?: string | null) => {
+    const norm = (val || '').toLowerCase().replace(/[\s_-]+/g, '');
+    return (
+      norm === 'bk' ||
+      norm === 'gurubk' ||
+      norm.includes('bimbingankonseling') ||
+      norm.includes('bimbingandankonseling')
+    );
+  };
+  return check(roleOrMapel) || check(extra);
+}
 
 export type GuruDailyState = {
   tanggal: string;
@@ -20,6 +36,7 @@ export type GuruDailyState = {
   jadwalKBM: any[];
   jurnalKBM: any[];
   jurnalKegiatan: any | null;
+  jurnalBK?: any[];
 
   // Sistem Blok (waktu diblokir untuk kegiatan khusus)
   isBlok: boolean;
@@ -787,6 +804,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     jadwalKBM: [],
     jurnalKBM: [],
     jurnalKegiatan: null,
+    jurnalBK: [],
     isBlok: false,
     blokInfo: null,
     canOpenPiket: false,
@@ -936,12 +954,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         for (const teacher of tData) {
           if (!teacherDataGuruId && teacher.id) teacherDataGuruId = String(teacher.id);
           if (!teacherDataGuruNip && teacher.nip) teacherDataGuruNip = String(teacher.nip);
-          const mapel = (teacher.mata_pelajaran || '').toLowerCase();
-          if (
-            mapel.includes('bimbingan konseling') ||
-            mapel.includes('bimbingan dan konseling') ||
-            mapel.trim() === 'bk'
-          ) {
+          if (isBkAccount(teacher.mata_pelajaran)) {
             isTeacherBk = true;
           }
           if (teacher.wajib_hadir_hanya_mengajar !== null && teacher.wajib_hadir_hanya_mengajar !== undefined) {
@@ -969,11 +982,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         if (userId) uQ = uQ.eq('id', userId);
         else if (username) uQ = uQ.eq('username', username);
         const { data: uData } = await uQ;
-        if (uData && uData.length > 0) {
-          const r = (uData[0].role || '').toLowerCase().replace(/[\s_-]+/g, '');
-          if (r === 'bk' || r === 'gurubk' || r === 'bimbingankonseling' || r === 'bimbingandankonseling') {
-            isTeacherBk = true;
-          }
+        if (uData && uData.length > 0 && isBkAccount(uData[0].role)) {
+          isTeacherBk = true;
         }
       } catch (_) {}
     }
@@ -1407,6 +1417,83 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.jurnalKegiatan = acceptedJurnal.find((j: any) => {
         return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan';
       }) || null;
+    }
+
+    // 5b. Cek Jurnal BK untuk Guru BK (atau pemilik layanan Bimbingan & Konseling)
+    if (isTeacherBk) {
+      try {
+        let bkQuery = supabase
+          .from('jurnal_bk')
+          .select('*')
+          .eq('tanggal', todayStr);
+
+        if (sekolahId) {
+          bkQuery = bkQuery.eq('sekolah_id', sekolahId);
+        }
+
+        const bkOwnerId = userId || teacherDataGuruId;
+        if (bkOwnerId && cleanTeacherName) {
+          bkQuery = bkQuery.or(`guru_id.eq.${bkOwnerId},nama_guru.ilike."%${cleanTeacherName}%"`);
+        } else if (bkOwnerId) {
+          bkQuery = bkQuery.eq('guru_id', bkOwnerId);
+        } else if (cleanTeacherName) {
+          bkQuery = bkQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+        }
+
+        const { data: bkRaw, error: bkErr } = await bkQuery;
+        let bkEntries: any[] = Array.isArray(bkRaw) ? bkRaw : [];
+
+        if (bkErr && !isSchemaCacheOrMissingTableError(bkErr) && cleanTeacherName) {
+          let fbBkQuery = supabase.from('jurnal_bk').select('*').eq('tanggal', todayStr);
+          if (sekolahId) fbBkQuery = fbBkQuery.eq('sekolah_id', sekolahId);
+          fbBkQuery = fbBkQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+          const fbRes = await fbBkQuery;
+          if (Array.isArray(fbRes.data)) bkEntries = fbRes.data;
+        }
+
+        // Merge localStorage fallback/offline cache if running in browser
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const cacheKey = `sipjam_jurnal_bk_cache_${sekolahId || 'default'}`;
+            const cachedRaw = window.localStorage.getItem(cacheKey);
+            if (cachedRaw) {
+              const cachedList = JSON.parse(cachedRaw);
+              if (Array.isArray(cachedList)) {
+                const seenIds = new Set(bkEntries.map((item: any) => item.id));
+                const cleanNorm = cleanTeacherName.toLowerCase();
+                for (const item of cachedList) {
+                  if (!item || seenIds.has(item.id) || item.tanggal !== todayStr) continue;
+                  const itemNama = (item.nama_guru || '').split(',')[0].trim().toLowerCase();
+                  const ownerMatch = (bkOwnerId && item.guru_id === bkOwnerId) || (cleanNorm && (itemNama.includes(cleanNorm) || cleanNorm.includes(itemNama)));
+                  if (ownerMatch) {
+                    bkEntries.push(item);
+                    seenIds.add(item.id);
+                  }
+                }
+              }
+            }
+          } catch (_) {
+            // ignore storage parse error
+          }
+        }
+
+        const rejectedBk = bkEntries
+          .filter((b: any) => b.status_verifikasi === 'Ditolak')
+          .map((b: any) => ({
+            ...b,
+            _sourceTable: 'jurnal_bk',
+            isJurnalBk: true,
+            mapel: `Jurnal BK (${b.bidang_bimbingan || 'Konseling'})`,
+          }));
+        const acceptedBk = bkEntries.filter((b: any) => b.status_verifikasi !== 'Ditolak');
+
+        state.jurnalBK = acceptedBk;
+        if (rejectedBk.length > 0) {
+          state.jurnalDitolak = [...(state.jurnalDitolak || []), ...rejectedBk];
+        }
+      } catch (bkLoadErr) {
+        console.warn('Error loading jurnal_bk in workflow:', bkLoadErr);
+      }
     }
 
     // 6. Evaluasi State Lanjutan

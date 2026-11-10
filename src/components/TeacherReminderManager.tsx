@@ -272,8 +272,8 @@ export function evaluateReminderConditions(
     }
   }
 
-  // Condition 2: Jurnal Mengajar
-  if (!isExempt || hasClassesToday) {
+  // Condition 2: Jurnal Mengajar (tidak berlaku untuk akun Guru BK yang menggunakan Jurnal BK terpisah)
+  if (!dailyState.isBk && (!isExempt || hasClassesToday)) {
     if (dailyState.isBlok) {
       // In block system, 1 Jurnal Kegiatan is required
       if (!dailyState.jurnalKegiatan) {

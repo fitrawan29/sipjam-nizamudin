@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { 
@@ -13,7 +13,7 @@ import {
   extractWitaDateStr
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
-import { isGuruDiPiket } from '@/lib/workflow';
+import { isGuruDiPiket, isBkAccount } from '@/lib/workflow';
 import { isInvalidMapel, normalizeScheduleMapel } from '@/lib/dataIntegrityGuard';
 import DokumenView from './DokumenView';
 
@@ -38,6 +38,7 @@ export function isDelinquencyJournal(j: any): boolean {
 // Helper: Memastikan jurnal benar-benar diisi oleh guru dengan materi pembelajaran riil (bukan auto-record delinquency / auto-fill berhalangan)
 export function isRealSubmittedJournal(j: any): boolean {
   if (!j) return false;
+  if (j._sourceTable === 'jurnal_bk' || j.isJurnalBk || j.bidang_bimbingan || j.jenis_layanan) return true;
   if (isDelinquencyJournal(j)) return false;
   const sv = j.status_verifikasi;
   if (sv === 'Sakit' || sv === 'Izin') return false;
@@ -127,6 +128,7 @@ export default function AdminVerifView({
 
   // Master & Schedule Data for Cross-Referencing
   const [allTeachers, setAllTeachers] = useState<any[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [allPiketSchedule, setAllPiketSchedule] = useState<any[]>([]);
   const [allPenugasanPiket, setAllPenugasanPiket] = useState<any[]>([]);
   const [allJadwalPelajaran, setAllJadwalPelajaran] = useState<any[]>([]);
@@ -151,16 +153,27 @@ export default function AdminVerifView({
           kalenderQ = kalenderQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
         }
 
-        const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes, kalenderRes] = await Promise.all([
+        let usersQ = supabase.from('users').select('id, nama, username, role');
+        if (user?.sekolah_id) {
+          usersQ = usersQ.eq('sekolah_id', user.sekolah_id);
+        }
+        const safeUsersPromise = Promise.resolve(usersQ).then(
+          (res: any) => (res?.error ? { data: [] } : res),
+          () => ({ data: [] })
+        );
+
+        const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes, kalenderRes, usersRes] = await Promise.all([
           supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
           supabase.from('jadwal_piket').select('*'),
           supabase.from('jadwal_pelajaran').select('*'),
           supabase.from('penugasan_piket').select('*'),
           supabase.from('pengaturan').select('*'),
-          kalenderQ
+          kalenderQ,
+          safeUsersPromise
         ]);
 
         if (teachersRes.data) setAllTeachers(teachersRes.data);
+        if ((usersRes as any)?.data) setAllUsers((usersRes as any).data);
         if (piketRes.data) setAllPiketSchedule(piketRes.data);
         if (penugasanRes.data) setAllPenugasanPiket(penugasanRes.data);
         if (jadwalRes.data) {
@@ -222,7 +235,17 @@ export default function AdminVerifView({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran' }, () => {
         if (activeTab === 'Jurnal') loadData();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk' }, () => {
+        if (activeTab === 'Jurnal') loadData();
+      })
       .subscribe();
+
+    const handleBkUpdated = () => {
+      if (activeTab === 'Jurnal') loadData();
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sipjam:jurnal_bk_updated', handleBkUpdated);
+    }
 
     const channelPiket = supabase
       .channel(`verif-piket-${user?.sekolah_id || 'global'}`)
@@ -232,6 +255,9 @@ export default function AdminVerifView({
       .subscribe();
 
     return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sipjam:jurnal_bk_updated', handleBkUpdated);
+      }
       supabase.removeChannel(channelPresensi);
       supabase.removeChannel(channelJurnal);
       supabase.removeChannel(channelPiket);
@@ -297,10 +323,59 @@ export default function AdminVerifView({
           query = query.eq('tanggal', date);
         }
         query = query.order('timestamp', { ascending: false }).limit(200);
-        
-        const { data, error } = await query;
+
+        let bkQuery = supabase.from('jurnal_bk').select('*');
+        if (date) {
+          bkQuery = bkQuery.eq('tanggal', date);
+        }
+        if (user?.sekolah_id) {
+          bkQuery = bkQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        bkQuery = bkQuery.order('created_at', { ascending: false }).limit(200);
+
+        const safeBkPromise = Promise.resolve(bkQuery).then(
+          (res: any) => (res?.error && isSchemaCacheOrMissingTableError(res.error) ? { data: [] } : res),
+          () => ({ data: [] })
+        );
+
+        const [{ data, error }, bkRes] = await Promise.all([query, safeBkPromise]);
         if (error) console.error('Error loading jurnal:', error);
-        if (data) setJurnalList(data);
+
+        const rawBkList: any[] = [...((bkRes as any)?.data || [])];
+        if (typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const bkCacheRaw = window.localStorage.getItem(`sipjam_jurnal_bk_cache_${user?.sekolah_id || 'default'}`);
+            if (bkCacheRaw) {
+              const parsedBk = JSON.parse(bkCacheRaw);
+              if (Array.isArray(parsedBk)) {
+                const seenBkIds = new Set(rawBkList.map((b: any) => b.id));
+                parsedBk.forEach((b: any) => {
+                  if (!b || seenBkIds.has(b.id)) return;
+                  if (date && b.tanggal !== date) return;
+                  rawBkList.push(b);
+                  seenBkIds.add(b.id);
+                });
+              }
+            }
+          } catch (_) {}
+        }
+
+        const normalizedBkList = rawBkList.map((b: any) => ({
+          ...b,
+          _sourceTable: 'jurnal_bk',
+          isJurnalBk: true,
+          status_verifikasi: b.status_verifikasi || 'Menunggu',
+          timestamp:
+            b.created_at ||
+            b.updated_at ||
+            (b.tanggal ? `${b.tanggal}T${b.waktu || '08:00'}:00+08:00` : new Date().toISOString()),
+          mapel: `Jurnal BK (${b.bidang_bimbingan || 'Konseling'})`,
+          kelas: b.kelas || '-',
+          materi: b.catatan || b.tindak_lanjut || b.jenis_layanan || '-',
+          link_bukti_foto: b.link_dokumen || '-'
+        }));
+
+        setJurnalList([...(data || []), ...normalizedBkList]);
 
         // Also fetch presensi records covering target date so unsubmittedJurnal accurately identifies excused leaves
         const targetD = date || getWitaDateStr();
@@ -431,6 +506,9 @@ export default function AdminVerifView({
 
     const currentList = activeTab === 'Presensi' ? presensiList : activeTab === 'Jurnal' ? jurnalList : piketList;
     const targetItem = currentList.find(item => item.id === id);
+    const isBkItem = activeTab === 'Jurnal' && Boolean(targetItem?._sourceTable === 'jurnal_bk' || targetItem?.isJurnalBk);
+    const targetTable = isBkItem ? 'jurnal_bk' : table;
+    const displayLabel = isBkItem ? 'Jurnal BK' : label;
 
     setProcessingId(id);
 
@@ -448,18 +526,44 @@ export default function AdminVerifView({
       }
 
       const { error } = await supabase
-        .from(table)
+        .from(targetTable)
         .update(updatePayload)
         .eq('id', id);
 
       if (error) {
+        const errCode = String(error.code || '');
+        const errMsg = String(error.message || '').toLowerCase();
+        const isMissingVerifCol =
+          isBkItem &&
+          (errCode === 'PGRST204' ||
+            errCode === '42703' ||
+            errMsg.includes('status_verifikasi') ||
+            errMsg.includes('catatan_admin') ||
+            errMsg.includes('alasan_penolakan'));
         Swal.fire({
           icon: 'error',
           title: 'Gagal Memverifikasi',
-          text: error.message,
+          text: isMissingVerifCol
+            ? 'Kolom verifikasi pada tabel jurnal_bk belum tersedia di database. Jalankan migrasi supabase/migrations/20261110_add_verifikasi_to_jurnal_bk.sql di Supabase SQL Editor.'
+            : error.message,
           confirmButtonColor: '#0B4619'
         });
       } else {
+        if (isBkItem && typeof window !== 'undefined' && window.localStorage) {
+          try {
+            const bkCacheKey = `sipjam_jurnal_bk_cache_${targetItem?.sekolah_id || user?.sekolah_id || 'default'}`;
+            const rawCache = window.localStorage.getItem(bkCacheKey);
+            if (rawCache) {
+              const parsedCache = JSON.parse(rawCache);
+              if (Array.isArray(parsedCache)) {
+                const updatedCache = parsedCache.map((c: any) => (c?.id === id ? { ...c, ...updatePayload } : c));
+                window.localStorage.setItem(bkCacheKey, JSON.stringify(updatedCache));
+              }
+            }
+            window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
+          } catch (_) {}
+        }
+
         // Dispatch rejection notification (Web Push & in-app chat)
         if (status === 'Ditolak' && rejectionReason && targetItem) {
           const teacherName = activeTab === 'Piket' 
@@ -468,7 +572,9 @@ export default function AdminVerifView({
           const detailInfo = activeTab === 'Presensi'
             ? `Presensi ${targetItem.tipe_absen || 'Datang'}`
             : activeTab === 'Jurnal'
-            ? (targetItem.keterangan === 'Jurnal Kegiatan' || targetItem.mapel === 'Jurnal Kegiatan'
+            ? (isBkItem
+                ? `Jurnal BK (${targetItem.bidang_bimbingan || 'Konseling'}${targetItem.nama_siswa ? ` - ${targetItem.nama_siswa}` : ''})`
+                : targetItem.keterangan === 'Jurnal Kegiatan' || targetItem.mapel === 'Jurnal Kegiatan'
                 ? `Jurnal Kegiatan (${targetItem.materi || targetItem.kegiatan || 'Sistem Blok'})`
                 : `Jurnal ${targetItem.kelas && targetItem.kelas !== '-' ? targetItem.kelas : ''} ${targetItem.mapel && targetItem.mapel !== '-' ? `(${targetItem.mapel})` : ''}`.trim())
             : `Laporan Piket ${targetItem.tanggal || ''}`.trim();
@@ -482,6 +588,7 @@ export default function AdminVerifView({
                 category: activeTab,
                 detailInfo,
                 rejectionReason,
+                targetView: isBkItem ? 'view-jurnal-bk' : undefined,
                 adminName: user?.nama_lengkap || user?.nama || user?.username || 'Admin',
                 adminId: user?.id,
                 sekolahId: targetItem.sekolah_id || user?.sekolah_id
@@ -511,7 +618,7 @@ export default function AdminVerifView({
         }
 
         showToast(
-          status === 'Dispensasi' ? `${label} Dipulihkan (Dispensasi)` : `${label} ${status}`,
+          status === 'Dispensasi' ? `${displayLabel} Dipulihkan (Dispensasi)` : `${displayLabel} ${status}`,
           status === 'Ditolak' 
             ? `Alasan: ${rejectionReason}` 
             : status === 'Dispensasi'
@@ -554,25 +661,41 @@ export default function AdminVerifView({
 
     setLoading(true);
     try {
-      const pendingIds = pendingItems.map(item => item.id);
+      const kbmPendingIds = pendingItems
+        .filter(item => !(activeTab === 'Jurnal' && (item._sourceTable === 'jurnal_bk' || item.isJurnalBk)))
+        .map(item => item.id);
+      const bkPendingIds = pendingItems
+        .filter(item => activeTab === 'Jurnal' && (item._sourceTable === 'jurnal_bk' || item.isJurnalBk))
+        .map(item => item.id);
       let hasError = false;
 
-      for (let i = 0; i < pendingIds.length; i += 100) {
-        const batchIds = pendingIds.slice(i, i + 100);
-        const { error } = await supabase
-          .from(table)
-          .update({ status_verifikasi: 'Disetujui' })
-          .in('id', batchIds);
+      const updateBatches = async (targetTbl: string, ids: (string | number)[]) => {
+        for (let i = 0; i < ids.length; i += 100) {
+          const batchIds = ids.slice(i, i + 100);
+          const { error } = await supabase
+            .from(targetTbl)
+            .update({ status_verifikasi: 'Disetujui' })
+            .in('id', batchIds);
 
-        if (error) {
-          hasError = true;
-          showToast('Gagal Sebagian', error.message, 'error');
-          break;
+          if (error) {
+            hasError = true;
+            showToast('Gagal Sebagian', error.message, 'error');
+            return false;
+          }
+        }
+        return true;
+      };
+
+      const okPrimary = kbmPendingIds.length > 0 ? await updateBatches(table, kbmPendingIds) : true;
+      if (okPrimary && bkPendingIds.length > 0) {
+        const okBk = await updateBatches('jurnal_bk', bkPendingIds);
+        if (okBk && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
         }
       }
 
       if (!hasError) {
-        showToast('Berhasil Disetujui', `${pendingIds.length} data ${label} berhasil disetujui.`, 'success');
+        showToast('Berhasil Disetujui', `${pendingItems.length} data ${label} berhasil disetujui.`, 'success');
         loadData();
       }
     } catch (err: any) {
@@ -774,6 +897,7 @@ export default function AdminVerifView({
         if (isTeacherOnLeave(t)) return false;
 
         const hasSubmitted = submittedList.some(j => 
+          (j.guru_id && (j.guru_id === t.user_id || j.guru_id === t.id)) ||
           isTeacherMatch(t.nama_guru, j.nama_guru, t.nip)
         );
         return !hasSubmitted;
@@ -783,6 +907,13 @@ export default function AdminVerifView({
         const namaNorm = normalizeName(t.nama_guru);
         const firstName = namaNorm.split(/\s+/)[0] || '';
         const nipNorm = normalizeName(t.nip);
+        const isTeacherBk =
+          isBkAccount(t.mata_pelajaran) ||
+          allUsers.some(
+            u =>
+              isBkAccount(u.role) &&
+              ((t.user_id && u.id === t.user_id) || isTeacherMatch(t.nama_guru, u.nama, t.nip))
+          );
 
         const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
           if (j.hari !== effectiveDayName) return false;
@@ -797,19 +928,27 @@ export default function AdminVerifView({
           id: `unsub-jurnal-${t.id}`,
           nama_guru: t.nama_guru,
           nip: t.nip || '-',
-          mata_pelajaran: isInvalidMapel(t.mata_pelajaran) ? normalizeScheduleMapel(t.mata_pelajaran) : (t.mata_pelajaran || 'Guru'),
-          scheduledInfo: scheduledClasses.length > 0 
+          mata_pelajaran: isTeacherBk
+            ? 'Bimbingan & Konseling (BK)'
+            : isInvalidMapel(t.mata_pelajaran)
+            ? normalizeScheduleMapel(t.mata_pelajaran)
+            : (t.mata_pelajaran || 'Guru'),
+          scheduledInfo: isTeacherBk
+            ? `Layanan BK (${effectiveDayName})`
+            : scheduledClasses.length > 0 
             ? `${scheduledClasses.length} Kelas Terjadwal (${effectiveDayName})` 
             : `Bebas KBM (${effectiveDayName})`,
           task_type: 'Jurnal',
-          pesan_belum: scheduledClasses.length > 0 
+          pesan_belum: isTeacherBk
+            ? `Belum mengisi jurnal BK untuk tanggal ${targetDate}`
+            : scheduledClasses.length > 0 
             ? `Belum mengisi jurnal KBM untuk ${scheduledClasses.length} kelas terjadwal pada hari ${effectiveDayName}` 
             : `Belum mengisi jurnal pembelajaran untuk tanggal ${targetDate}`,
           tanggal: targetDate,
           isUnsubmitted: true
         };
       });
-  }, [allTeachers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, holidayInfo]);
+  }, [allTeachers, allUsers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, holidayInfo]);
 
   const unsubmittedPiket = useMemo(() => {
     if (allTeachers.length === 0) return [];
@@ -976,7 +1115,12 @@ export default function AdminVerifView({
           (item.nama_guru || '').toLowerCase().includes(q) ||
           (item.mapel || '').toLowerCase().includes(q) ||
           (item.kelas || '').toLowerCase().includes(q) ||
-          (item.materi || '').toLowerCase().includes(q)
+          (item.materi || '').toLowerCase().includes(q) ||
+          (item.nama_siswa || '').toLowerCase().includes(q) ||
+          (item.bidang_bimbingan || '').toLowerCase().includes(q) ||
+          (item.jenis_layanan || '').toLowerCase().includes(q) ||
+          (item.catatan || '').toLowerCase().includes(q) ||
+          (item.tindak_lanjut || '').toLowerCase().includes(q)
         );
       } else {
         return (
@@ -1507,68 +1651,106 @@ export default function AdminVerifView({
                     )}
                   </div>
                 ) : activeTab === 'Jurnal' ? (
-                  <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
-                    <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
-                    {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? (
-                      <p><span className="font-semibold">Tipe:</span> <span className="text-amber-600 dark:text-amber-400 font-bold">Jurnal Kegiatan (Sistem Blok)</span></p>
-                    ) : (
-                      <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
-                    )}
-                    {(item.status_verifikasi === 'Tidak Masuk Kelas' || item.keterangan === 'Tidak Masuk Kelas') && (
-                      <div className="pt-1">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
-                          <i className="fa-solid fa-robot text-[10px]"></i>
-                          Otomatis (Tidak Masuk Kelas)
+                  (item._sourceTable === 'jurnal_bk' || item.isJurnalBk) ? (
+                    <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                          <i className="fa-solid fa-heart-pulse text-[10px]"></i>
+                          Jurnal BK ({item.bidang_bimbingan || 'Konseling'})
                         </span>
-                      </div>
-                    )}
-                    {(item.isExcusedLeave || item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar' || item.materi === 'Sakit' || item.materi === 'Izin' || item.materi === 'Dinas Luar' || item.is_auto_filled_leave) && (
-                      <div className="pt-1">
-                        <span 
-                          data-testid="badge-excused-leave"
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
-                          (item.status_verifikasi === 'Sakit' || item.materi === 'Sakit' || item.leaveType === 'Sakit')
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
-                            : (item.status_verifikasi === 'Izin' || item.materi === 'Izin' || item.leaveType === 'Izin')
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                            : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
-                        }`}>
-                          <i className="fa-solid fa-calendar-check text-[10px]"></i>
-                          Dikecualikan (Izin / Sakit)
-                        </span>
-                      </div>
-                    )}
-                    <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
-                    {(item.link_bukti_foto || item.foto_kegiatan) && (item.link_bukti_foto !== '-' || item.foto_kegiatan !== '-') && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <img 
-                          src={transformGoogleDriveUrl(item.link_bukti_foto || item.foto_kegiatan)} 
-                          alt="Bukti Jurnal" 
-                          className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
-                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                        />
-                        <a href={item.link_bukti_foto || item.foto_kegiatan} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
-                          <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
-                        </a>
-                      </div>
-                    )}
-                    {(item.lokasi || (item.latitude && item.longitude) || item.waktu_upload) && (
-                      <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
-                        {(item.lokasi || (item.latitude && item.longitude)) && (
-                          <span className="flex items-center gap-1">
-                            <i className="fa-solid fa-location-dot text-red-500"></i>
-                            <span>{item.lokasi || `GPS: ${item.latitude?.toFixed(5)}, ${item.longitude?.toFixed(5)}`}</span>
-                          </span>
-                        )}
-                        {item.waktu_upload && (
-                          <span>
-                            {(item.lokasi || (item.latitude && item.longitude)) ? '• ' : ''}
-                            {item.waktu_upload}
+                        {item.status && (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                            {item.status}
                           </span>
                         )}
                       </div>
-                    )}
-                  </div>
+                      <p>
+                        <span className="font-semibold">Tanggal:</span> {item.tanggal}
+                        {item.waktu ? ` · ${item.waktu} WITA` : ''}
+                        {item.tempat_layanan ? ` (${item.tempat_layanan})` : ''}
+                      </p>
+                      <p>
+                        <span className="font-semibold">Siswa / Kelas:</span> {item.nama_siswa || '-'}{item.kelas && item.kelas !== '-' ? ` (${item.kelas})` : ''}
+                      </p>
+                      {item.jenis_layanan && (
+                        <p><span className="font-semibold">Jenis Layanan:</span> {item.jenis_layanan}</p>
+                      )}
+                      <p className="line-clamp-2"><span className="font-semibold">Catatan:</span> {item.catatan || '-'}</p>
+                      {item.tindak_lanjut && (
+                        <p className="line-clamp-2"><span className="font-semibold">Tindak Lanjut:</span> {item.tindak_lanjut}</p>
+                      )}
+                      {item.link_dokumen && item.link_dokumen !== '-' && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <a href={item.link_dokumen} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs inline-flex items-center gap-1">
+                            <i className="fa-solid fa-paperclip"></i> Dokumen Pendukung BK
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
+                      <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
+                      {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? (
+                        <p><span className="font-semibold">Tipe:</span> <span className="text-amber-600 dark:text-amber-400 font-bold">Jurnal Kegiatan (Sistem Blok)</span></p>
+                      ) : (
+                        <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
+                      )}
+                      {(item.status_verifikasi === 'Tidak Masuk Kelas' || item.keterangan === 'Tidak Masuk Kelas') && (
+                        <div className="pt-1">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
+                            <i className="fa-solid fa-robot text-[10px]"></i>
+                            Otomatis (Tidak Masuk Kelas)
+                          </span>
+                        </div>
+                      )}
+                      {(item.isExcusedLeave || item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar' || item.materi === 'Sakit' || item.materi === 'Izin' || item.materi === 'Dinas Luar' || item.is_auto_filled_leave) && (
+                        <div className="pt-1">
+                          <span 
+                            data-testid="badge-excused-leave"
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
+                            (item.status_verifikasi === 'Sakit' || item.materi === 'Sakit' || item.leaveType === 'Sakit')
+                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                              : (item.status_verifikasi === 'Izin' || item.materi === 'Izin' || item.leaveType === 'Izin')
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                          }`}>
+                            <i className="fa-solid fa-calendar-check text-[10px]"></i>
+                            Dikecualikan (Izin / Sakit)
+                          </span>
+                        </div>
+                      )}
+                      <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
+                      {(item.link_bukti_foto || item.foto_kegiatan) && (item.link_bukti_foto !== '-' || item.foto_kegiatan !== '-') && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img 
+                            src={transformGoogleDriveUrl(item.link_bukti_foto || item.foto_kegiatan)} 
+                            alt="Bukti Jurnal" 
+                            className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                          />
+                          <a href={item.link_bukti_foto || item.foto_kegiatan} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                            <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
+                          </a>
+                        </div>
+                      )}
+                      {(item.lokasi || (item.latitude && item.longitude) || item.waktu_upload) && (
+                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                          {(item.lokasi || (item.latitude && item.longitude)) && (
+                            <span className="flex items-center gap-1">
+                              <i className="fa-solid fa-location-dot text-red-500"></i>
+                              <span>{item.lokasi || `GPS: ${item.latitude?.toFixed(5)}, ${item.longitude?.toFixed(5)}`}</span>
+                            </span>
+                          )}
+                          {item.waktu_upload && (
+                            <span>
+                              {(item.lokasi || (item.latitude && item.longitude)) ? '• ' : ''}
+                              {item.waktu_upload}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
                     <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>

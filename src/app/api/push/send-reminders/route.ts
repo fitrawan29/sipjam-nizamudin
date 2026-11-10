@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
-import { isGuruDiPiket } from '@/lib/workflow';
+import { isGuruDiPiket, isBkAccount } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface ReminderItem {
@@ -133,6 +133,16 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const { data: journals } = await jurnalQuery;
     const journalList = journals || [];
 
+    let bkJurnalList: any[] = [];
+    try {
+      let bkJurnalQuery = supabase.from('jurnal_bk').select('id, guru_id, nama_guru, status_verifikasi').eq('tanggal', todayStr);
+      if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
+        bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', sekolahId);
+      }
+      const { data: bkData } = await bkJurnalQuery;
+      if (Array.isArray(bkData)) bkJurnalList = bkData;
+    } catch (_) {}
+
     // E. Fetch piket assignment and reports for today
     let penugasanQuery = supabase
       .from('penugasan_piket')
@@ -250,6 +260,15 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       const tNameLower = tName.toLowerCase();
 
       if (activeBlok) {
+        const hasSubmittedBkToday = bkJurnalList.some((b: any) => {
+          if (b.status_verifikasi === 'Ditolak') return false;
+          if (teacher.user_id && b.guru_id && String(b.guru_id) === String(teacher.user_id)) return true;
+          const bName = (b.nama_guru || '').toLowerCase().trim();
+          return bName && tNameLower && (bName === tNameLower || (bName.length >= 3 && tNameLower.includes(bName)) || (tNameLower.length >= 3 && bName.includes(tNameLower)));
+        });
+        if (isBkAccount(teacher.mata_pelajaran) || hasSubmittedBkToday) {
+          continue;
+        }
         // Teachers exempt on non-teaching days do not need to fill block journals if they have no classes today
         if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => {

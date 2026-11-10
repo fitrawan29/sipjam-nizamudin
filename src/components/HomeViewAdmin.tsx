@@ -8,10 +8,11 @@ import {
 } from '@/lib/wita';
 import { 
   isJurnalMatchJadwal, 
-  isGuruDiPiket 
+  isGuruDiPiket,
+  isBkAccount
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
 
@@ -180,6 +181,8 @@ export default function HomeViewAdmin({
       let kalenderQ = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
       let pengaturanQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru');
       let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr).order('created_at', { ascending: false });
+      let jurnalBkQ = supabase.from('jurnal_bk').select('*').eq('tanggal', todayStr);
+      let usersQ = supabase.from('users').select('id, nama, username, role');
 
       if (user?.sekolah_id) {
         teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
@@ -192,7 +195,18 @@ export default function HomeViewAdmin({
         kalenderQ = kalenderQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
         pengaturanQ = pengaturanQ.eq('sekolah_id', user.sekolah_id);
         blokQ = blokQ.eq('sekolah_id', user.sekolah_id);
+        jurnalBkQ = jurnalBkQ.eq('sekolah_id', user.sekolah_id);
+        usersQ = usersQ.eq('sekolah_id', user.sekolah_id);
       }
+
+      const safeJurnalBkPromise = Promise.resolve(jurnalBkQ).then(
+        (res: any) => (res?.error && isSchemaCacheOrMissingTableError(res.error) ? { data: [] } : res),
+        () => ({ data: [] })
+      );
+      const safeUsersPromise = Promise.resolve(usersQ).then(
+        (res: any) => (res?.error ? { data: [] } : res),
+        () => ({ data: [] })
+      );
 
       const [
         teachersRes, 
@@ -204,7 +218,9 @@ export default function HomeViewAdmin({
         penugasanPiketRes,
         kalenderRes,
         pengaturanRes,
-        blokRes
+        blokRes,
+        jurnalBkRes,
+        usersRes
       ] = await Promise.all([
         teachersQ,
         presensiQ.limit(500),
@@ -215,12 +231,33 @@ export default function HomeViewAdmin({
         penugasanPiketQ,
         kalenderQ,
         pengaturanQ,
-        blokQ
+        blokQ,
+        safeJurnalBkPromise,
+        safeUsersPromise
       ]);
 
       const teachers = teachersRes.data || [];
       const rawPresensi = presensiRes.data || [];
       const jurnalList = jurnalRes.data || [];
+      const jurnalBkList: any[] = [...((jurnalBkRes as any)?.data || [])];
+      if (typeof window !== 'undefined' && window.localStorage) {
+        try {
+          const bkCacheRaw = window.localStorage.getItem(`sipjam_jurnal_bk_cache_${user?.sekolah_id || 'default'}`);
+          if (bkCacheRaw) {
+            const parsedBk = JSON.parse(bkCacheRaw);
+            if (Array.isArray(parsedBk)) {
+              const seenBkIds = new Set(jurnalBkList.map((b: any) => b.id));
+              parsedBk.forEach((b: any) => {
+                if (b && b.tanggal === todayStr && !seenBkIds.has(b.id)) {
+                  jurnalBkList.push(b);
+                  seenBkIds.add(b.id);
+                }
+              });
+            }
+          }
+        } catch (_) {}
+      }
+      const usersList: any[] = (usersRes as any)?.data || [];
       const jadwalList = (jadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
@@ -470,13 +507,31 @@ export default function HomeViewAdmin({
           presensiPulangColor = 'rose';
         }
 
-        // 5. Pengisian Jurnal (Handling regular KBM and Dinas Luar / Jurnal Kegiatan)
+        // 5. Pengisian Jurnal (Handling regular KBM, Dinas Luar / Jurnal Kegiatan, and Jurnal BK)
+        const isTeacherBk =
+          isBkAccount(mapel) ||
+          usersList.some(
+            (u: any) =>
+              isBkAccount(u.role) &&
+              ((teacher.user_id && u.id === teacher.user_id) ||
+                (teacher.id && u.id === teacher.id) ||
+                isTeacherMatch(u.nama, u.username, nama, nip))
+          );
+
         const teacherJournals = jurnalList.filter((j: any) => 
           isTeacherMatch(j.nama_guru, undefined, nama, nip)
         );
+        const teacherBkJournals = jurnalBkList.filter(
+          (b: any) =>
+            (teacher.user_id && b.guru_id === teacher.user_id) ||
+            (teacher.id && b.guru_id === teacher.id) ||
+            isTeacherMatch(b.nama_guru, b.nip_guru, nama, nip)
+        );
+        const acceptedBkJournals = teacherBkJournals.filter((b: any) => b.status_verifikasi !== 'Ditolak');
+        const hasRejectedBkJournal = teacherBkJournals.some((b: any) => b.status_verifikasi === 'Ditolak');
 
         const acceptedTeacherJournals = teacherJournals.filter((j: any) => j.status_verifikasi !== 'Ditolak');
-        const hasRejectedJournal = teacherJournals.some((j: any) => j.status_verifikasi === 'Ditolak');
+        const hasRejectedJournal = teacherJournals.some((j: any) => j.status_verifikasi === 'Ditolak') || hasRejectedBkJournal;
         const hasTidakMasukKelas = acceptedTeacherJournals.some((j: any) => 
           j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas'
         );
@@ -495,11 +550,30 @@ export default function HomeViewAdmin({
         const hasJurnalKegiatan = acceptedTeacherJournals.some((j: any) => 
           isRealJournal(j) && (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && (!j.kelas || j.kelas === '-')))
         );
+        const bkFilledCount = acceptedBkJournals.length;
+        const hasJurnalBk = bkFilledCount > 0;
 
         let jurnalStatus = 'Bebas KBM';
         let jurnalColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = 'gray';
 
-        if (isBlokToday) {
+        if (isIzinSakit) {
+          jurnalStatus = presensiDatangStatus;
+          jurnalColor = presensiDatangStatus === 'Sakit' ? 'rose' : 'blue';
+        } else if (hasJurnalBk) {
+          jurnalStatus = `Jurnal BK (${bkFilledCount} Sesi)`;
+          jurnalColor = 'green';
+        } else if (isTeacherBk) {
+          if (hasJurnalKegiatan) {
+            jurnalStatus = 'Jurnal Kegiatan Selesai';
+            jurnalColor = 'green';
+          } else if (hasRejectedJournal) {
+            jurnalStatus = 'Ditolak (Perlu Revisi)';
+            jurnalColor = 'rose';
+          } else {
+            jurnalStatus = 'Bebas KBM';
+            jurnalColor = 'gray';
+          }
+        } else if (isBlokToday) {
           if (isExemptNonTeaching) {
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
@@ -530,9 +604,6 @@ export default function HomeViewAdmin({
             jurnalStatus = 'Perlu Jurnal Kegiatan';
             jurnalColor = 'amber';
           }
-        } else if (isIzinSakit) {
-          jurnalStatus = presensiDatangStatus;
-          jurnalColor = presensiDatangStatus === 'Sakit' ? 'rose' : 'blue';
         } else if (isExemptNonTeaching || targetCount === 0 || isSchoolDayOff) {
           if (hasTidakMelaksanakanKegiatan) {
             jurnalStatus = 'Tidak Melaksanakan Kegiatan';
@@ -566,13 +637,39 @@ export default function HomeViewAdmin({
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang ['));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
-        const jurnalDone = isLiburOrExempt || isIzinSakit || (isBlokToday ? (isExemptNonTeaching || hasJurnalKegiatan) : isDinasLuar ? hasJurnalKegiatan : (targetCount === 0 || isExemptNonTeaching ? true : filledCount >= targetCount));
+        const jurnalDone =
+          isLiburOrExempt ||
+          isIzinSakit ||
+          (isTeacherBk
+            ? !hasRejectedJournal || hasJurnalBk || hasJurnalKegiatan
+            : hasJurnalBk ||
+              (isBlokToday
+                ? isExemptNonTeaching || hasJurnalKegiatan
+                : isDinasLuar
+                ? hasJurnalKegiatan
+                : targetCount === 0 || isExemptNonTeaching
+                ? true
+                : filledCount >= targetCount));
 
         const isTugasLengkap = isLiburOrExempt
           ? true
           : isIzinSakit 
           ? datangDone 
           : (datangDone && pulangDone && piketDone && jurnalDone);
+
+        const pengisianJurnal = {
+          status: jurnalStatus,
+          color: jurnalColor,
+          filled: isIzinSakit ? 0 : (isBlokToday ? (isExemptNonTeaching ? 0 : (hasJurnalKegiatan ? 1 : 0)) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount),
+          total: isBlokToday ? 1 : isIzinSakit ? targetCount : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
+        };
+        if (hasJurnalBk && !isIzinSakit) {
+          pengisianJurnal.filled = bkFilledCount;
+          pengisianJurnal.total = bkFilledCount;
+        } else if (isTeacherBk && !isIzinSakit) {
+          pengisianJurnal.filled = hasJurnalKegiatan ? 1 : 0;
+          pengisianJurnal.total = hasRejectedJournal ? 1 : 0;
+        }
 
         return {
           id: teacher.id,
@@ -584,12 +681,7 @@ export default function HomeViewAdmin({
             color: presensiDatangColor as any,
             time: datangTime
           },
-          pengisianJurnal: {
-            status: jurnalStatus,
-            color: jurnalColor,
-            filled: isIzinSakit ? 0 : (isBlokToday ? (isExemptNonTeaching ? 0 : (hasJurnalKegiatan ? 1 : 0)) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount),
-            total: isBlokToday ? 1 : isIzinSakit ? targetCount : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
-          },
+          pengisianJurnal,
           laporanPiket: {
             status: piketStatus,
             color: piketColor,

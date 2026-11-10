@@ -8,7 +8,7 @@ import {
   getWitaDayName,
   extractWitaDateStr
 } from '@/lib/wita';
-import { isGuruDiPiket, isJurnalMatchJadwal, isLateArrival } from '@/lib/workflow';
+import { isGuruDiPiket, isJurnalMatchJadwal, isLateArrival, isBkAccount } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface AutoAlpaResult {
@@ -1168,9 +1168,25 @@ export async function recordUnfilledJournalsAndPiket(
     }
 
     // 2. Jurnal Kegiatan not filled -> "tidak melaksanakan kegiatan apapun"
-    // Excused leaves must NOT generate delinquent kegiatan records
+    // Excused leaves, BK counselors, and teachers with Jurnal BK today must NOT generate delinquent kegiatan records
     const isExcusedFromActivity = Boolean(leaveType || state.isIzinSakit);
-    const needsKegiatan = !isExcusedFromActivity && (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
+    const isBkTeacher = Boolean(
+      state.isBk ||
+      (state.jurnalBK && state.jurnalBK.length > 0) ||
+      isBkAccount((teacher as any).role, (teacher as any).mata_pelajaran)
+    );
+    let hasSubmittedBkToday = Boolean(state.jurnalBK && state.jurnalBK.length > 0);
+    if (!hasSubmittedBkToday && !isBkTeacher && !isExcusedFromActivity && (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay) {
+      try {
+        let bkCheckQ = client.from('jurnal_bk').select('id, guru_id, nama_guru, status_verifikasi').eq('tanggal', evaluatedDate);
+        if (teacher.sekolah_id) bkCheckQ = bkCheckQ.eq('sekolah_id', teacher.sekolah_id);
+        const { data: bkRows } = await bkCheckQ;
+        if (Array.isArray(bkRows)) {
+          hasSubmittedBkToday = bkRows.some((b: any) => b.status_verifikasi !== 'Ditolak' && isTeacherJournalMatch(teacher, b));
+        }
+      } catch (_) {}
+    }
+    const needsKegiatan = !isExcusedFromActivity && !isBkTeacher && !hasSubmittedBkToday && (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
     if (needsKegiatan && !jurnalKegiatan) {
       let q = client
         .from('jurnal_pembelajaran')

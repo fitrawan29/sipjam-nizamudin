@@ -11,6 +11,7 @@ export interface RejectionNotificationRequest {
   rejectionReason: string;
   adminName?: string;
   adminId?: string;
+  targetView?: string;
 }
 
 /**
@@ -27,11 +28,17 @@ function sanitizeText(str: any): string {
 /**
  * Returns deep link URL for each rejected category.
  */
-function getCategoryDeepLink(category: 'Presensi' | 'Jurnal' | 'Piket'): string {
+function getCategoryDeepLink(category: 'Presensi' | 'Jurnal' | 'Piket', targetView?: string, detailInfo?: string): string {
+  if (targetView && /^view-[a-z0-9-]+$/i.test(targetView)) {
+    return `/?view=${targetView}`;
+  }
   switch (category) {
     case 'Presensi':
       return '/?view=view-guru-presensi';
     case 'Jurnal':
+      if (detailInfo && detailInfo.startsWith('Jurnal BK')) {
+        return '/?view=view-jurnal-bk';
+      }
       return '/?view=view-guru-jurnal';
     case 'Piket':
       return '/?view=view-piket';
@@ -139,7 +146,8 @@ export async function POST(req: NextRequest) {
     });
 
     // 5. Dispatch Web Push Notifications (F5.2, F5-B3)
-    const deepLink = getCategoryDeepLink(category);
+    const requestedTargetView = typeof body.targetView === 'string' ? body.targetView.trim() : undefined;
+    const deepLink = getCategoryDeepLink(category as 'Presensi' | 'Jurnal' | 'Piket', requestedTargetView, detailInfo);
     const pushPayload: PushNotificationPayload = {
       title: `Pengajuan ${category} Ditolak`,
       body: `Pengajuan ${detailInfo} Anda ditolak. Alasan: "${cleanReason}". Silakan isi ulang.`,

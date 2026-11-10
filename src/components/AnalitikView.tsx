@@ -41,7 +41,7 @@ export default function AnalitikView({ user }: { user: any }) {
       }
       const { data: presensi } = await presensiQuery;
 
-      // 2. Fetch Jurnal
+      // 2. Fetch Jurnal (KBM/Kegiatan + Jurnal BK)
       let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
         .select('nama_guru')
@@ -52,6 +52,23 @@ export default function AnalitikView({ user }: { user: any }) {
         jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
       }
       const { data: jurnal } = await jurnalQuery;
+
+      let bkJurnal: any[] = [];
+      try {
+        let bkJurnalQuery = supabase
+          .from('jurnal_bk')
+          .select('nama_guru, status_verifikasi')
+          .gte('tanggal', startDateStr)
+          .lte('tanggal', endDateStr)
+          .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
+        if (user?.sekolah_id) {
+          bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: bkData, error: bkErr } = await bkJurnalQuery;
+        if (!bkErr && Array.isArray(bkData)) {
+          bkJurnal = bkData;
+        }
+      } catch (_) {}
 
       // 3. Fetch Piket
       let piketQuery = supabase
@@ -67,7 +84,8 @@ export default function AnalitikView({ user }: { user: any }) {
 
       // Aggregate stats
       let h = 0, i = 0, d = 0;
-      const jCount = jurnal?.length || 0;
+      const allJurnal = [...(jurnal || []), ...(bkJurnal || [])];
+      const jCount = allJurnal.length;
       const pkCount = piket?.length || 0;
       
       const lMap: Record<string, { hadir: number, jurnal: number, piket: number, dinasLuar: number }> = {};
@@ -88,7 +106,7 @@ export default function AnalitikView({ user }: { user: any }) {
         }
       });
 
-      jurnal?.forEach(j => {
+      allJurnal.forEach(j => {
         const nama = j.nama_guru;
         if (!nama) return;
         if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
