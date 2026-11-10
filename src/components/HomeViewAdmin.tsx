@@ -4,12 +4,19 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   getWitaTimeStr, 
   getWitaDayName, 
-  getWitaDateStr, formatPresensiTime, extractWitaDateStr 
+  getWitaDateStr,
+  getWitaStartOfDay,
+  getWitaEndOfDay,
+  formatPresensiTime,
+  extractWitaDateStr 
 } from '@/lib/wita';
 import { 
   isJurnalMatchJadwal, 
   isGuruDiPiket,
-  isBkAccount
+  isBkAccount,
+  normalizeTeacherIdentityName,
+  resolveLinkedUserForTeacher,
+  isTeacherRecordMatch
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
@@ -173,6 +180,7 @@ export default function HomeViewAdmin({
       // Multi-tenant scoped queries
       let teachersQ = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
       let presensiQ = supabase.from('presensi_guru').select('*').order('timestamp', { ascending: false });
+      let presensiTodayQ = supabase.from('presensi_guru').select('*').gte('timestamp', getWitaStartOfDay(todayStr)).lte('timestamp', getWitaEndOfDay(todayStr));
       let jurnalQ = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
       let jadwalQ = supabase.from('jadwal_pelajaran').select('*').eq('hari', dayName);
       let piketScheduleQ = supabase.from('jadwal_piket').select('*').eq('hari', dayName);
@@ -187,6 +195,7 @@ export default function HomeViewAdmin({
       if (user?.sekolah_id) {
         teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
         presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
+        presensiTodayQ = presensiTodayQ.eq('sekolah_id', user.sekolah_id);
         jurnalQ = jurnalQ.eq('sekolah_id', user.sekolah_id);
         jadwalQ = jadwalQ.eq('sekolah_id', user.sekolah_id);
         piketScheduleQ = piketScheduleQ.eq('sekolah_id', user.sekolah_id);
@@ -199,6 +208,10 @@ export default function HomeViewAdmin({
         usersQ = usersQ.eq('sekolah_id', user.sekolah_id);
       }
 
+      const safePresensiTodayPromise = Promise.resolve(presensiTodayQ).then(
+        (res: any) => (res?.error ? { data: [] } : res),
+        () => ({ data: [] })
+      );
       const safeJurnalBkPromise = Promise.resolve(jurnalBkQ).then(
         (res: any) => (res?.error && isSchemaCacheOrMissingTableError(res.error) ? { data: [] } : res),
         () => ({ data: [] })
@@ -210,7 +223,8 @@ export default function HomeViewAdmin({
 
       const [
         teachersRes, 
-        presensiRes, 
+        presensiRes,
+        presensiTodayRes,
         jurnalRes, 
         jadwalRes, 
         piketScheduleRes, 
@@ -224,6 +238,7 @@ export default function HomeViewAdmin({
       ] = await Promise.all([
         teachersQ,
         presensiQ.limit(500),
+        safePresensiTodayPromise,
         jurnalQ,
         jadwalQ,
         piketScheduleQ,
@@ -236,8 +251,15 @@ export default function HomeViewAdmin({
         safeUsersPromise
       ]);
 
-      const teachers = teachersRes.data || [];
-      const rawPresensi = presensiRes.data || [];
+      const rawTeachers = teachersRes.data || [];
+      const seenPresensiIds = new Set<string>();
+      const rawPresensi: any[] = [];
+      for (const p of [...((presensiTodayRes as any)?.data || []), ...(presensiRes.data || [])]) {
+        if (p && (!p.id || !seenPresensiIds.has(String(p.id)))) {
+          if (p.id) seenPresensiIds.add(String(p.id));
+          rawPresensi.push(p);
+        }
+      }
       const jurnalList = jurnalRes.data || [];
       const jurnalBkList: any[] = [...((jurnalBkRes as any)?.data || [])];
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -258,6 +280,25 @@ export default function HomeViewAdmin({
         } catch (_) {}
       }
       const usersList: any[] = (usersRes as any)?.data || [];
+      // Sertakan akun Guru BK dari tabel users jika belum memiliki baris di data_guru
+      const linkedUserIds = new Set(
+        rawTeachers
+          .map((t: any) => resolveLinkedUserForTeacher(t, usersList)?.id)
+          .filter(Boolean)
+          .map(String)
+      );
+      const missingBkTeachers = usersList
+        .filter((u: any) => u && isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
+        .map((u: any) => ({
+          id: u.id,
+          user_id: u.id,
+          nip: u.username || '-',
+          nama_guru: (u.nama || u.username || 'Guru BK').trim(),
+          mata_pelajaran: 'Bimbingan Konseling (BK)',
+          sekolah_id: u.sekolah_id || user?.sekolah_id,
+          _virtualFromUser: true
+        }));
+      const teachers = [...rawTeachers, ...missingBkTeachers];
       const jadwalList = (jadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
@@ -310,13 +351,10 @@ export default function HomeViewAdmin({
         return false;
       });
 
-      // Helper function for normalized teacher name & NIP matching without substring collisions (ponytail: robust, minimal, exact tokens)
-      const cleanStr = (s?: string | null) => (s || '').toLowerCase()
-        .replace(/,.*$/, '') // Hapus gelar setelah koma (misal: ", S.Pd.")
-        .replace(/\b(s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Hapus singkatan gelar umum
-        .replace(/[^a-z0-9]/g, ' ')
-        .trim()
-        .replace(/\s+/g, ' ');
+      // Delegasi normalisasi & pencocokan identitas guru ke helper terpusat di workflow.ts
+      const cleanStr = (s?: string | null) => normalizeTeacherIdentityName(s);
+      const isTeacherMatch = (record: any, teacher: any, linkedUser?: any, allowSingleWord = false) =>
+        isTeacherRecordMatch(record, teacher, linkedUser, { allowSingleWordFirstToken: allowSingleWord });
 
       // Helper: Memastikan jurnal pembelajaran benar-benar riil diisi oleh guru (bukan auto-record delinquency / auto-fill berhalangan)
       const isRealJournal = (j: any): boolean => {
@@ -330,44 +368,16 @@ export default function HomeViewAdmin({
         return true;
       };
 
-      const isTeacherMatch = (recordName?: string, recordNip?: string, targetName?: string, targetNip?: string): boolean => {
-        const rNip = cleanStr(recordNip);
-        const tNip = cleanStr(targetNip);
-        if (rNip && tNip && rNip === tNip) return true;
-
-        const c1 = cleanStr(recordName);
-        const c2 = cleanStr(targetName);
-        if (!c1 && !c2) return false;
-
-        // Exact match against NIP / username
-        if (c1 && tNip && c1 === tNip) return true;
-        if (c2 && rNip && c2 === rNip) return true;
-
-        if (!c1 || !c2) return false;
-        if (c1 === c2) return true;
-
-        // First name match (first word token must match exactly, min 2 chars; prevents substring collision e.g. Fitrawan vs Fitra)
-        const t1 = c1.split(' ').filter(w => w.length >= 2);
-        const t2 = c2.split(' ').filter(w => w.length >= 2);
-        if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) {
-          if (t1.length > 1 && t2.length > 1) {
-            return t1[1] === t2[1];
-          }
-          return true;
-        }
-
-        return false;
-      };
-
       const rows: TeacherStatusRow[] = teachers.map((teacher: any) => {
         const nama = (teacher.nama_guru || '').trim();
         const nip = (teacher.nip || '-').trim();
         const mapel = teacher.mata_pelajaran || '-';
+        const linkedUser = resolveLinkedUserForTeacher(teacher, usersList);
 
         // 1. Target Classes & Jurnal KBM
-        let targetClasses = jadwalList.filter((j: any) => {
-          return isTeacherMatch(j.nama_guru, undefined, nama, nip);
-        });
+        let targetClasses = jadwalList.filter((j: any) =>
+          isTeacherMatch(j, teacher, linkedUser, true)
+        );
         
         // Dedup to find real target count
         const uniqueTargetsMap = new Map();
@@ -395,10 +405,13 @@ export default function HomeViewAdmin({
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
         const inPenugasan = assignedPiketTeachers.some((p: any) =>
-          (p.guru_id && (p.guru_id === teacher.id || p.guru_id === teacher.user_id)) ||
-          isTeacherMatch(p.guru_nama, p.guru_nip, nama, nip)
+          isTeacherMatch(p, teacher, linkedUser, true)
         );
-        const inJadwalPiket = piketSchedule ? (isGuruDiPiket(piketSchedule.daftar_guru, nama) || isGuruDiPiket(piketSchedule.daftar_guru, nama.split(',')[0].trim())) : false;
+        const inJadwalPiket = piketSchedule
+          ? isGuruDiPiket(piketSchedule.daftar_guru, nama) ||
+            isGuruDiPiket(piketSchedule.daftar_guru, nama.split(',')[0].trim()) ||
+            Boolean(linkedUser?.nama && isGuruDiPiket(piketSchedule.daftar_guru, linkedUser.nama))
+          : false;
         const isAssignedPiket = inPenugasan || inJadwalPiket;
         const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
         let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
@@ -406,7 +419,7 @@ export default function HomeViewAdmin({
 
         if (isPiket) {
           const hasReport = piketReports.some((lp: any) => 
-            isTeacherMatch(lp.guru_pelapor, undefined, nama, nip)
+            isTeacherRecordMatch(lp, teacher, linkedUser, { allowSingleWordFirstToken: true })
           );
           if (hasReport) {
             piketStatus = 'Sudah Lapor';
@@ -422,8 +435,9 @@ export default function HomeViewAdmin({
 
         // 2. Presensi Datang
         const pDatang = presensiList.find((p: any) => 
-          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang' && p.status_verifikasi !== 'Ditolak'
-        ) || presensiList.find((p: any) => isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Datang'
+          isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Datang' && p.status_verifikasi !== 'Ditolak'
+        ) || presensiList.find((p: any) =>
+          isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Datang'
         );
         let presensiDatangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang';
         let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
@@ -483,8 +497,9 @@ export default function HomeViewAdmin({
 
         // 3. Presensi Pulang
         const pPulang = presensiList.find((p: any) => 
-          isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang' && p.status_verifikasi !== 'Ditolak'
-        ) || presensiList.find((p: any) => isTeacherMatch(p.nama_guru, p.nip, nama, nip) && p.tipe_absen === 'Pulang'
+          isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Pulang' && p.status_verifikasi !== 'Ditolak'
+        ) || presensiList.find((p: any) =>
+          isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Pulang'
         );
         let presensiPulangStatus = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang';
         let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' | 'rose' = (isSchoolDayOff || (isFreeFromPresence && !pDatang)) ? 'blue' : 'gray';
@@ -508,24 +523,13 @@ export default function HomeViewAdmin({
         }
 
         // 5. Pengisian Jurnal (Handling regular KBM, Dinas Luar / Jurnal Kegiatan, and Jurnal BK)
-        const isTeacherBk =
-          isBkAccount(mapel) ||
-          usersList.some(
-            (u: any) =>
-              isBkAccount(u.role) &&
-              ((teacher.user_id && u.id === teacher.user_id) ||
-                (teacher.id && u.id === teacher.id) ||
-                isTeacherMatch(u.nama, u.username, nama, nip))
-          );
+        const isTeacherBk = isBkAccount(mapel, linkedUser?.role);
 
         const teacherJournals = jurnalList.filter((j: any) => 
-          isTeacherMatch(j.nama_guru, undefined, nama, nip)
+          isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
         );
-        const teacherBkJournals = jurnalBkList.filter(
-          (b: any) =>
-            (teacher.user_id && b.guru_id === teacher.user_id) ||
-            (teacher.id && b.guru_id === teacher.id) ||
-            isTeacherMatch(b.nama_guru, b.nip_guru, nama, nip)
+        const teacherBkJournals = jurnalBkList.filter((b: any) =>
+          isTeacherRecordMatch(b, teacher, linkedUser, { allowSingleWordFirstToken: true })
         );
         const acceptedBkJournals = teacherBkJournals.filter((b: any) => b.status_verifikasi !== 'Ditolak');
         const hasRejectedBkJournal = teacherBkJournals.some((b: any) => b.status_verifikasi === 'Ditolak');

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
+import { resolveLinkedUserForTeacher, isTeacherRecordMatch, isBkAccount } from '@/lib/workflow';
 
 export default function AnalitikView({ user }: { user: any }) {
   const [bulan, setBulan] = useState(() => {
@@ -28,10 +29,26 @@ export default function AnalitikView({ user }: { user: any }) {
       const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
       const endDateStr = lastDayStr;
 
+      // 0. Fetch data_guru & users untuk konsolidasi identitas guru (non-blocking)
+      let guruQ = supabase.from('data_guru').select('*');
+      let usersQ = supabase.from('users').select('id, nama, username, role');
+      if (user?.sekolah_id) {
+        guruQ = guruQ.eq('sekolah_id', user.sekolah_id);
+        usersQ = usersQ.eq('sekolah_id', user.sekolah_id);
+      }
+      const safeGuruPromise = Promise.resolve(guruQ).then(
+        (res: any) => (res?.error ? [] : res?.data || []),
+        () => []
+      );
+      const safeUsersPromise = Promise.resolve(usersQ).then(
+        (res: any) => (res?.error ? [] : res?.data || []),
+        () => []
+      );
+
       // 1. Fetch Presensi
       let presensiQuery = supabase
         .from('presensi_guru')
-        .select('nama_guru, jenis_presensi')
+        .select('*')
         .gte('timestamp', start)
         .lte('timestamp', end)
         .eq('tipe_absen', 'Datang')
@@ -39,48 +56,86 @@ export default function AnalitikView({ user }: { user: any }) {
       if (user?.sekolah_id) {
         presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: presensi } = await presensiQuery;
 
       // 2. Fetch Jurnal (KBM/Kegiatan + Jurnal BK)
       let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
-        .select('nama_guru')
+        .select('*')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
       if (user?.sekolah_id) {
         jurnalQuery = jurnalQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: jurnal } = await jurnalQuery;
 
-      let bkJurnal: any[] = [];
-      try {
-        let bkJurnalQuery = supabase
-          .from('jurnal_bk')
-          .select('nama_guru, status_verifikasi')
-          .gte('tanggal', startDateStr)
-          .lte('tanggal', endDateStr)
-          .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
-        if (user?.sekolah_id) {
-          bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', user.sekolah_id);
-        }
-        const { data: bkData, error: bkErr } = await bkJurnalQuery;
-        if (!bkErr && Array.isArray(bkData)) {
-          bkJurnal = bkData;
-        }
-      } catch (_) {}
+      let bkJurnalQuery = supabase
+        .from('jurnal_bk')
+        .select('*')
+        .gte('tanggal', startDateStr)
+        .lte('tanggal', endDateStr)
+        .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
+      if (user?.sekolah_id) {
+        bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', user.sekolah_id);
+      }
+      const safeBkPromise = Promise.resolve(bkJurnalQuery).then(
+        (res: any) => (res?.error || !Array.isArray(res?.data) ? [] : res.data),
+        () => []
+      );
 
       // 3. Fetch Piket
       let piketQuery = supabase
         .from('laporan_piket')
-        .select('guru_pelapor, tanggal, status_verifikasi')
+        .select('*')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
       if (user?.sekolah_id) {
         piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);
       }
-      const { data: piket } = await piketQuery;
+
+      const [guruList, usersList, { data: presensi }, { data: jurnal }, bkJurnal, { data: piket }] =
+        await Promise.all([
+          safeGuruPromise,
+          safeUsersPromise,
+          presensiQuery,
+          jurnalQuery,
+          safeBkPromise,
+          piketQuery
+        ]);
+
+      const linkedUserIds = new Set(
+        guruList
+          .map((g: any) => resolveLinkedUserForTeacher(g, usersList)?.id)
+          .filter(Boolean)
+          .map((id: any) => String(id))
+      );
+      const effectiveTeachers = [
+        ...guruList,
+        ...usersList
+          .filter((u: any) => isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
+          .map((u: any) => ({
+            id: `bk-user-${u.id}`,
+            user_id: u.id,
+            username: u.username,
+            nip: u.username || '-',
+            nama_guru: (u.nama || u.username || 'Guru BK').trim(),
+            mata_pelajaran: 'BK'
+          }))
+      ];
+      const teacherEntries = effectiveTeachers
+        .filter((g: any) => g?.nama_guru?.trim())
+        .map((g: any) => ({
+          teacher: g,
+          linkedUser: resolveLinkedUserForTeacher(g, usersList),
+          canonicalName: String(g.nama_guru).trim()
+        }));
+
+      const resolveAnalitikName = (record: any, fallbackName?: string | null) => {
+        const matched = teacherEntries.find(e =>
+          isTeacherRecordMatch(record, e.teacher, e.linkedUser)
+        );
+        return matched ? matched.canonicalName : (fallbackName || '').trim();
+      };
 
       // Aggregate stats
       let h = 0, i = 0, d = 0;
@@ -91,7 +146,7 @@ export default function AnalitikView({ user }: { user: any }) {
       const lMap: Record<string, { hadir: number, jurnal: number, piket: number, dinasLuar: number }> = {};
       
       presensi?.forEach(p => {
-        const nama = p.nama_guru;
+        const nama = resolveAnalitikName(p, p.nama_guru);
         if (!nama) return;
         if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
         
@@ -107,14 +162,14 @@ export default function AnalitikView({ user }: { user: any }) {
       });
 
       allJurnal.forEach(j => {
-        const nama = j.nama_guru;
+        const nama = resolveAnalitikName(j, j.nama_guru);
         if (!nama) return;
         if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
         lMap[nama].jurnal++;
       });
 
       piket?.forEach(pk => {
-        const nama = pk.guru_pelapor;
+        const nama = resolveAnalitikName(pk, pk.guru_pelapor);
         if (!nama) return;
         if (!lMap[nama]) lMap[nama] = { hadir: 0, jurnal: 0, piket: 0, dinasLuar: 0 };
         lMap[nama].piket++;

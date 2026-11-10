@@ -20,11 +20,16 @@ import {
   isBkAccount,
   getGuruDailyState,
   canTeacherPresensiPulang,
+  normalizeTeacherIdentityName,
+  isTeacherNameEquivalent,
+  resolveLinkedUserForTeacher,
+  isTeacherRecordMatch,
   GuruDailyState
 } from '../src/lib/workflow';
 import {
   evaluateTeacherWarningsSync,
-  getTeacherDisciplineWarnings
+  getTeacherDisciplineWarnings,
+  getAllTeachersDisciplineWarnings
 } from '../src/lib/warningSystem';
 import { recordUnfilledJournalsAndPiket } from '../src/lib/attendanceAlpa';
 import { isRealSubmittedJournal, isDelinquencyJournal } from '../src/components/AdminVerifView';
@@ -586,6 +591,179 @@ async function main() {
     assert.strictEqual(dinasSrc.includes('jurnal_bk'), false, 'DinasDashboard tidak mengakses detail rahasia jurnal_bk');
 
     pass('Integrasi UI Admin/Kepsek/Rekap/Analitik terverifikasi & isolasi kerahasiaan Jurnal BK terjaga ketat');
+
+    // -----------------------------------------------------------------------
+    // Suite 7: Rekonsiliasi Identitas Alva / Variasi Nama & Skema Tanpa user_id
+    // -----------------------------------------------------------------------
+    console.log('\n--- Suite 7: Identitas Alva, Spasi Awal/Akhir, Variasi Nama & Skema Tanpa user_id ---');
+
+    // 7.1 Unit checks untuk normalizeTeacherIdentityName & isTeacherNameEquivalent
+    assert.strictEqual(
+      normalizeTeacherIdentityName(' Alva Rolan Saerang '),
+      'alva rolan saerang',
+      'Leading/trailing whitespace pada nama guru dinormalisasi dengan tepat'
+    );
+    assert.strictEqual(
+      isTeacherNameEquivalent('Alva R. Saerang, S.Pd., GR', ' Alva Rolan Saerang'),
+      true,
+      'Singkatan inisial tengah & gelar akademik cocok dengan nama lengkap di data_guru'
+    );
+    assert.strictEqual(
+      isTeacherNameEquivalent('Alva Saerang', 'Alva Rolan Saerang'),
+      true,
+      'Nama tengah yang dilewati ("Alva Saerang") cocok dengan "Alva Rolan Saerang"'
+    );
+
+    // Guard anti-collision (wajib tetap false!)
+    assert.strictEqual(isTeacherNameEquivalent('Fitra', 'Fitrawan'), false, 'Guard: Fitra !== Fitrawan');
+    assert.strictEqual(isTeacherNameEquivalent('Siti Fatimah', 'Siti Aminah'), false, 'Guard: Siti Fatimah !== Siti Aminah');
+    assert.strictEqual(isTeacherNameEquivalent('Alva Rolan Saerang', 'Alvan Saerang'), false, 'Guard: Alva Rolan Saerang !== Alvan Saerang');
+    pass('isTeacherNameEquivalent mendukung variasi inisial/gelar/spasi tanpa false-positive substring collision');
+
+    // 7.2 Skema produksi SMAN 1 Tutuyan: users.nama != data_guru.nama_guru & TANPA kolom user_id di data_guru/presensi_guru
+    const tutuyanUser = {
+      id: '0cfb15b5-5809-41c9-80fa-0d0de40a7c72',
+      username: 'Alva',
+      nama: 'Alva R. Saerang, S.Pd., GR',
+      role: 'bk',
+      sekolah_id: 'b0000000-0000-0000-0000-000000000001'
+    };
+    const tutuyanTeacherWithLeadingSpace = {
+      id: '27ab81d0-0473-4994-9c0b-b60a7cd1a566',
+      nip: 'Alva',
+      nama_guru: ' Alva Rolan Saerang',
+      mata_pelajaran: 'BK',
+      sekolah_id: 'b0000000-0000-0000-0000-000000000001'
+    };
+
+    const resolvedAlvaUser = resolveLinkedUserForTeacher(tutuyanTeacherWithLeadingSpace, [
+      { id: 'u-other', username: 'Budi', nama: 'Budi Santoso', role: 'guru' },
+      tutuyanUser
+    ]);
+    assert.strictEqual(resolvedAlvaUser?.id, tutuyanUser.id, 'resolveLinkedUserForTeacher menautkan nip=="Alva" ke username=="Alva" meski nama berbeda');
+
+    const datangRec = {
+      id: 'p-alva-datang',
+      nama_guru: 'Alva R. Saerang, S.Pd., GR',
+      tipe_absen: 'Datang',
+      jenis_presensi: 'Sekolah',
+      timestamp: '2026-11-10T00:16:25+00:00',
+      status_verifikasi: 'Disetujui',
+      sekolah_id: 'b0000000-0000-0000-0000-000000000001'
+    };
+    const pulangRec = {
+      id: 'p-alva-pulang',
+      nama_guru: 'Alva R. Saerang, S.Pd., GR',
+      tipe_absen: 'Pulang',
+      jenis_presensi: 'Pulang',
+      timestamp: '2026-11-10T07:15:00+00:00',
+      status_verifikasi: 'Disetujui',
+      sekolah_id: 'b0000000-0000-0000-0000-000000000001'
+    };
+    const bkRec = {
+      id: 'bk-alva-1',
+      guru_id: tutuyanUser.id,
+      user_id: tutuyanUser.id,
+      nama_guru: 'Alva R. Saerang, S.Pd., GR',
+      tanggal: '2026-11-10',
+      bidang_bimbingan: 'Pribadi',
+      jenis_layanan: 'Konseling Individual',
+      catatan: 'Konseling siswa kelas XII',
+      status_verifikasi: 'Disetujui',
+      sekolah_id: 'b0000000-0000-0000-0000-000000000001'
+    };
+    assert.strictEqual(isTeacherRecordMatch(datangRec, tutuyanTeacherWithLeadingSpace, resolvedAlvaUser), true, 'Datang milik Alva cocok dengan data_guru Alva');
+    assert.strictEqual(isTeacherRecordMatch(pulangRec, tutuyanTeacherWithLeadingSpace, resolvedAlvaUser), true, 'Pulang milik Alva cocok dengan data_guru Alva');
+    assert.strictEqual(isTeacherRecordMatch(bkRec, tutuyanTeacherWithLeadingSpace, resolvedAlvaUser), true, 'Jurnal BK milik Alva cocok dengan data_guru Alva');
+    pass('isTeacherRecordMatch mencocokkan presensi Datang/Pulang & Jurnal BK milik Alva meskipun tanpa kolom user_id');
+
+    // Simulasi Strict Postgres 42703: tolak query yang menyebut user_id eksplisit di data_guru atau presensi_guru
+    const tutuyanStore: TableStore = {
+      pengaturan: [{ key: 'hari_sekolah', value: '6', sekolah_id: 'b0000000-0000-0000-0000-000000000001' }],
+      kalender_pendidikan: [],
+      sistem_blok: [],
+      data_guru: [tutuyanTeacherWithLeadingSpace],
+      users: [tutuyanUser],
+      jadwal_pelajaran: [],
+      penugasan_piket: [],
+      jadwal_piket: [],
+      presensi_guru: [datangRec, pulangRec],
+      jurnal_pembelajaran: [],
+      laporan_piket: [],
+      jurnal_bk: [bkRec]
+    };
+    const baseTutuyanMock = createTableMock(tutuyanStore, []);
+    const mTutuyanFrom = mock.method(supabase, 'from', (table: string) => {
+      const builder = baseTutuyanMock(table);
+      let hasInvalidUserIdRef = false;
+      const origSelect = builder.select.bind(builder);
+      const origOr = builder.or.bind(builder);
+      const origEq = builder.eq.bind(builder);
+      const origThen = builder.then.bind(builder);
+      builder.select = (cols?: string) => {
+        if ((table === 'data_guru' || table === 'presensi_guru') && typeof cols === 'string' && /\buser_id\b/.test(cols)) {
+          hasInvalidUserIdRef = true;
+        }
+        return origSelect(cols);
+      };
+      builder.or = (expr: string) => {
+        if ((table === 'data_guru' || table === 'presensi_guru') && /\buser_id\.eq\b/.test(expr)) {
+          hasInvalidUserIdRef = true;
+        }
+        return origOr(expr);
+      };
+      builder.eq = (col: string, val: any) => {
+        if ((table === 'data_guru' || table === 'presensi_guru') && col === 'user_id') {
+          hasInvalidUserIdRef = true;
+        }
+        return origEq(col, val);
+      };
+      builder.then = (resolve: any, reject: any) => {
+        if (hasInvalidUserIdRef) {
+          return Promise.resolve({
+            data: null,
+            error: { code: '42703', message: `column ${table}.user_id does not exist` }
+          }).then(resolve, reject);
+        }
+        return origThen(resolve, reject);
+      };
+      return builder;
+    });
+
+    try {
+      const alvaDaily = await getGuruDailyState(
+        tutuyanUser.nama,
+        tutuyanUser.username,
+        tutuyanUser.id,
+        tutuyanUser.sekolah_id
+      );
+      assert.strictEqual(alvaDaily.isBk, true, 'getGuruDailyState mengenali Alva sebagai BK meski tanpa kolom user_id di data_guru');
+      assert.ok(alvaDaily.presensiDatang, 'getGuruDailyState membaca presensiDatang Alva via fallback aman 42703');
+      assert.ok(alvaDaily.presensiPulang, 'getGuruDailyState membaca presensiPulang Alva via fallback aman 42703');
+      assert.strictEqual(alvaDaily.jurnalBK?.length, 1, 'getGuruDailyState membaca Jurnal BK Alva');
+
+      const allWarnings = await getAllTeachersDisciplineWarnings(tutuyanUser.sekolah_id, '2026-11');
+      assert.strictEqual(allWarnings.length, 1, 'getAllTeachersDisciplineWarnings tidak return [] saat data_guru tanpa kolom user_id');
+      assert.strictEqual(allWarnings[0].stats?.jurnal.filled, 1, 'Rekonsiliasi Jurnal BK Alva terbaca pada warning engine sekolah');
+
+      const singleWarning = await getTeacherDisciplineWarnings(tutuyanUser.nama, tutuyanUser.sekolah_id, '2026-11');
+      assert.strictEqual(singleWarning.stats?.jurnal.filled, 1, 'getTeacherDisciplineWarnings menghitung Jurnal BK Alva dengan nama profil yang berbeda');
+      pass('Simulasi DB tanpa kolom user_id (42703): getGuruDailyState & warningSystem berfungsi 100% akurat untuk Alva');
+    } finally {
+      mTutuyanFrom.mock.restore();
+    }
+
+    // 7.3 Verifikasi sumber kode Admin/Guru konsisten memakai helper identitas & trim
+    assert.ok(homeAdminSrc.includes('presensiTodayQ'), 'HomeViewAdmin memiliki query khusus presensi hari ini agar >500 baris historis tidak memotong data hari ini');
+    assert.ok(homeAdminSrc.includes('resolveLinkedUserForTeacher') && homeAdminSrc.includes('isTeacherRecordMatch'), 'HomeViewAdmin menggunakan helper identitas terpusat');
+    assert.ok(verifSrc.includes('resolveLinkedUserForTeacher') && verifSrc.includes('isTeacherRecordMatch'), 'AdminVerifView menggunakan helper identitas terpusat');
+    assert.ok(rekapAdminSrc.includes('resolveRekapCanonicalName') && !rekapAdminSrc.includes(".select('nama_guru, nip, mata_pelajaran, user_id')"), 'AdminRekapView menggunakan select(*) yang aman dan resolveRekapCanonicalName');
+    assert.ok(analitikSrc.includes('resolveAnalitikName') && analitikSrc.includes('isTeacherRecordMatch'), 'AnalitikView menggunakan resolveAnalitikName');
+    const guruPresensiSrc = readRel('src/components/GuruPresensi.tsx');
+    assert.ok(guruPresensiSrc.includes('nama_guru: (user.nama || \'\').trim()'), 'GuruPresensi melakukan .trim() saat menulis nama_guru');
+    const bkJurnalSrc = readRel('src/components/BkJurnalView.tsx');
+    assert.ok(bkJurnalSrc.includes("(user?.nama || user?.name || 'Guru BK').trim()") && bkJurnalSrc.includes('savedLocallyOnly'), 'BkJurnalView men-trim counselorName dan memberi peringatan jelas jika hanya tersimpan di cache lokal');
+    pass('Integrasi sumber kode Admin (Home/Verif/Rekap/Analitik) & Guru (Presensi/BK) untuk rekonsiliasi identitas terverifikasi');
   } finally {
     globalThis.Date = RealDate;
   }

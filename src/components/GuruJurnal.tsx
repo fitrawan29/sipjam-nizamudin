@@ -494,7 +494,7 @@ export default function GuruJurnal({
       if (!user?.sekolah_id) return;
       const { data } = await supabase
         .from('data_guru')
-        .select('id, nama_guru, user_id')
+        .select('*')
         .eq('sekolah_id', user.sekolah_id)
         .order('nama_guru', { ascending: true });
       if (data) setAllGuruList(data.filter(g => g.nama_guru));
@@ -1041,7 +1041,7 @@ export default function GuruJurnal({
     const newJurnal = {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
-      nama_guru: user.nama,
+      nama_guru: (user.nama || '').trim(),
       user_id: user.id,
       mapel: tipeJurnal === 'Jurnal KBM' ? mapel : '-',
       kelas: tipeJurnal === 'Jurnal KBM' ? kelas : '-',

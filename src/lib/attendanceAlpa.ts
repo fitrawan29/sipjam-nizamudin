@@ -324,7 +324,7 @@ export async function evaluateAndApplyAutoAlpa(
   // Fetch semua guru aktif
   let guruQuery = supabase
     .from('data_guru')
-    .select('id, nip, nama_guru, user_id, wajib_hadir_hanya_mengajar, sekolah_id')
+    .select('*')
     .eq('status', 'Aktif');
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);

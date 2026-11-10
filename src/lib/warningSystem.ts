@@ -1,5 +1,10 @@
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
-import { isBkAccount } from '@/lib/workflow';
+import {
+  isBkAccount,
+  isTeacherNameEquivalent,
+  resolveLinkedUserForTeacher,
+  isTeacherRecordMatch
+} from '@/lib/workflow';
 import { 
   getWitaDateStr, 
   getWitaDayName, extractWitaDateStr 
@@ -85,7 +90,6 @@ export function evaluateTeacherWarningsSync(
 ): TeacherWarningSummary {
   const presensiRecords = penilaianOrPresensi;
   const normName = (teacherName || '').trim();
-  const normLower = normName.toLowerCase();
 
   const configMap = new Map((configs || []).map(c => [c.key, c.value]));
   const hariSekolah = configMap.get('hari_sekolah') || '6';
@@ -93,29 +97,25 @@ export function evaluateTeacherWarningsSync(
 
   const holidaySet = new Set((holidaysData || []).map(h => h.tanggal));
 
-  const teacherJadwal = (jadwalData || []).filter(j => {
-    const sName = (j.nama_guru || '').toLowerCase().trim();
-    return sName === normLower || normLower.includes(sName) || sName.includes(normLower);
-  });
+  const teacherJadwal = (jadwalData || []).filter(j =>
+    isTeacherNameEquivalent(j.nama_guru, normName, true)
+  );
 
   const isAssignedPenugasan = (day: string) => (penugasanData || []).some(p => {
     if (p.hari !== day) return false;
-    const gName = (p.guru_nama || '').toLowerCase().trim();
-    if (gName === normLower || normLower.includes(gName) || gName.includes(normLower)) return true;
+    if (isTeacherNameEquivalent(p.guru_nama, normName, true)) return true;
     if (Array.isArray(p.daftar_guru)) {
       return p.daftar_guru.some((dg: any) => {
-        const dName = (typeof dg === 'string' ? dg : dg.nama || dg.nama_guru || '').toLowerCase().trim();
-        return dName === normLower || normLower.includes(dName) || dName.includes(normLower);
+        const dName = typeof dg === 'string' ? dg : dg.nama || dg.nama_guru || '';
+        return isTeacherNameEquivalent(dName, normName, true);
       });
     }
     return false;
   });
 
-  const isAssignedLegacy = (day: string) => (legacyPiketData || []).some(lp => {
-    if (lp.hari !== day) return false;
-    const lName = (lp.nama_guru || '').toLowerCase().trim();
-    return lName === normLower || normLower.includes(lName) || lName.includes(normLower);
-  });
+  const isAssignedLegacy = (day: string) => (legacyPiketData || []).some(lp =>
+    lp.hari === day && isTeacherNameEquivalent(lp.nama_guru, normName, true)
+  );
 
   const isTeacherPiketOnDay = (day: string) => isAssignedPenugasan(day) || isAssignedLegacy(day);
 
@@ -155,7 +155,8 @@ export function evaluateTeacherWarningsSync(
 
     const dayPresensi = presensiRecords.filter(p => {
       const ts = p.timestamp || '';
-      return (extractWitaDateStr(ts) === dateStr || ts.startsWith(dateStr)) && p.tipe_absen === 'Datang';
+      const extracted = extractWitaDateStr(ts);
+      return (extracted ? extracted === dateStr : ts.startsWith(dateStr)) && p.tipe_absen === 'Datang';
     });
 
     let isAbsent = false;
@@ -406,11 +407,24 @@ export async function getTeacherDisciplineWarnings(
 ): Promise<TeacherWarningSummary> {
   const normName = (teacherName || '').trim();
 
-  let guruQuery = supabase.from('data_guru').select('*').ilike('nama_guru', `%${normName.split(',')[0].trim()}%`);
+  let guruQuery = supabase.from('data_guru').select('*');
+  let usersQuery = supabase.from('users').select('id, nama, username, role');
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);
+    usersQuery = usersQuery.eq('sekolah_id', sekolahId);
   }
-  const { data: guruData } = await guruQuery.maybeSingle();
+  const safeUsersPromise = Promise.resolve(usersQuery).then(
+    (res: any) => (res?.error ? [] : res?.data || []),
+    () => []
+  );
+  const [{ data: allGuruRows }, usersRows] = await Promise.all([guruQuery, safeUsersPromise]);
+
+  const guruData =
+    (allGuruRows || []).find((g: any) =>
+      isTeacherRecordMatch({ nama_guru: normName }, g, resolveLinkedUserForTeacher(g, usersRows))
+    ) || null;
+  const teacherProfile = guruData || { nama_guru: normName };
+  const linkedUser = resolveLinkedUserForTeacher(teacherProfile, usersRows);
   const teacherId = guruData?.id;
   const resolvedSekolahId = sekolahId || guruData?.sekolah_id;
 
@@ -453,19 +467,15 @@ export async function getTeacherDisciplineWarnings(
   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
-  const cleanFirst = normName.split(',')[0].trim();
-  const presensiQuery = supabase.from('presensi_guru').select('*').ilike('nama_guru', `%${cleanFirst}%`).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
-  const jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').ilike('nama_guru', `%${cleanFirst}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
-  const piketQuery = supabase.from('laporan_piket').select('*').or(`guru_pelapor.ilike.%${cleanFirst}%,kehadiran_guru_piket.ilike.%${cleanFirst}%`).gte('tanggal', minDate).lte('tanggal', todayStr);
+  let presensiQuery = supabase.from('presensi_guru').select('*').gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
+  let piketQuery = supabase.from('laporan_piket').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   let bkJurnalQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   if (resolvedSekolahId) {
+    presensiQuery = presensiQuery.eq('sekolah_id', resolvedSekolahId);
+    jurnalQuery = jurnalQuery.eq('sekolah_id', resolvedSekolahId);
+    piketQuery = piketQuery.eq('sekolah_id', resolvedSekolahId);
     bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', resolvedSekolahId);
-  }
-  const bkOwnerId = guruData?.user_id || teacherId;
-  if (bkOwnerId && cleanFirst) {
-    bkJurnalQuery = bkJurnalQuery.or(`guru_id.eq.${bkOwnerId},nama_guru.ilike."%${cleanFirst}%"`);
-  } else if (cleanFirst) {
-    bkJurnalQuery = bkJurnalQuery.ilike('nama_guru', `%${cleanFirst}%`);
   }
 
   const safeBkPromise = Promise.resolve(bkJurnalQuery).then(
@@ -474,13 +484,23 @@ export async function getTeacherDisciplineWarnings(
   );
 
   const [
-    { data: presensiRes },
-    { data: jurnalRes },
-    { data: piketRes },
-    bkJurnalRes
+    { data: presensiRaw },
+    { data: jurnalRaw },
+    { data: piketRaw },
+    bkJurnalRaw
   ] = await Promise.all([
     presensiQuery, jurnalQuery, piketQuery, safeBkPromise
   ]);
+
+  const presensiRes = (presensiRaw || []).filter((p: any) => isTeacherRecordMatch(p, teacherProfile, linkedUser));
+  const jurnalRes = (jurnalRaw || []).filter((j: any) => isTeacherRecordMatch(j, teacherProfile, linkedUser));
+  const piketRes = (piketRaw || []).filter((p: any) => {
+    if (isTeacherRecordMatch(p, teacherProfile, linkedUser)) return true;
+    return String(p.kehadiran_guru_piket || '')
+      .split(/[,;|]+/)
+      .some(part => isTeacherRecordMatch({ nama_guru: part }, teacherProfile, linkedUser));
+  });
+  const bkJurnalRes = (bkJurnalRaw || []).filter((b: any) => isTeacherRecordMatch(b, teacherProfile, linkedUser));
 
   const configMap = new Map((configs || []).map((c: any) => [c.key, c.value]));
   const aturanGlobal = configMap.get('aturan_kehadiran_guru') ||
@@ -511,23 +531,11 @@ export async function getTeacherDisciplineWarnings(
     ? isExplicitExempt
     : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
 
-  let isSingleTeacherBk = isBkAccount(guruData?.mata_pelajaran);
-  if (!isSingleTeacherBk) {
-    try {
-      let uQuery = supabase.from('users').select('role');
-      if (resolvedSekolahId) uQuery = uQuery.eq('sekolah_id', resolvedSekolahId);
-      if (guruData?.user_id) uQuery = uQuery.eq('id', guruData.user_id);
-      else uQuery = uQuery.ilike('nama', `%${cleanFirst}%`);
-      const { data: uRows } = await uQuery;
-      if (Array.isArray(uRows) && uRows.some((u: any) => isBkAccount(u.role))) {
-        isSingleTeacherBk = true;
-      }
-    } catch (_) {}
-  }
+  const isSingleTeacherBk = isBkAccount(guruData?.mata_pelajaran, linkedUser?.role);
 
   return evaluateTeacherWarningsSync(
     teacherId,
-    normName,
+    guruData?.nama_guru || normName,
     isExemptNonTeaching,
     resolvedSekolahId,
     configs || [],
@@ -548,7 +556,7 @@ export async function getAllTeachersDisciplineWarnings(
   sekolahId?: string,
   targetMonth?: string
 ): Promise<TeacherWarningSummary[]> {
-  let guruQuery = supabase.from('data_guru').select('id, user_id, nama_guru, nip, sekolah_id, mata_pelajaran, wajib_hadir_hanya_mengajar').order('nama_guru');
+  let guruQuery = supabase.from('data_guru').select('*').order('nama_guru');
   if (sekolahId) {
     guruQuery = guruQuery.eq('sekolah_id', sekolahId);
   }
@@ -637,13 +645,33 @@ export async function getAllTeachersDisciplineWarnings(
   const jurnalData = jurnalRes || [];
   const piketData = piketRes || [];
 
+  const linkedUserIds = new Set(
+    teachers
+      .map((t: any) => resolveLinkedUserForTeacher(t, usersRoleList || [])?.id)
+      .filter(Boolean)
+      .map((id: any) => String(id))
+  );
+  const unlinkedBkTeachers = (usersRoleList || [])
+    .filter((u: any) => isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
+    .map((u: any) => ({
+      id: `bk-user-${u.id}`,
+      user_id: u.id,
+      username: u.username,
+      nip: u.username || '-',
+      nama_guru: (u.nama || u.username || 'Guru BK').trim(),
+      mata_pelajaran: 'BK',
+      sekolah_id: u.sekolah_id || sekolahId,
+      wajib_hadir_hanya_mengajar: false
+    }));
+
   const summaries: TeacherWarningSummary[] = [];
 
-  for (const teacher of teachers) {
+  for (const teacher of [...teachers, ...unlinkedBkTeachers]) {
     if (!teacher.nama_guru) continue;
     try {
       const resolvedSekolahId = teacher.sekolah_id || sekolahId;
-      const teacherNameSplit = teacher.nama_guru.split(',')[0].trim().toLowerCase();
+      const linkedUser = resolveLinkedUserForTeacher(teacher, usersRoleList || []);
+      const sameSchool = (r: any) => !r.sekolah_id || r.sekolah_id === resolvedSekolahId;
       const tConfigs = (configs || []).filter(c => c.sekolah_id === resolvedSekolahId || !c.sekolah_id);
       const configMap = new Map((tConfigs || []).map((c: any) => [c.key, c.value]));
       const aturanGlobal = configMap.get('aturan_kehadiran_guru') ||
@@ -665,7 +693,8 @@ export async function getAllTeachersDisciplineWarnings(
       const isTeacherInLegacy = Boolean(
         ghmList.includes(teacher.id) ||
         ghmList.includes(teacher.nama_guru) ||
-        (teacher.nip && ghmList.includes(teacher.nip))
+        (teacher.nip && ghmList.includes(teacher.nip)) ||
+        (linkedUser?.id && ghmList.includes(linkedUser.id))
       );
 
       const isExemptNonTeaching = hasExplicitSetting
@@ -676,37 +705,16 @@ export async function getAllTeachersDisciplineWarnings(
       const tPenugasan = (penugasanData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
       const tLegacyPiket = (legacyPiketData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
 
-      const tPresensi = presensiData.filter(p => {
-        const pName = (p.nama_guru || '').toLowerCase();
-        return pName.includes(teacherNameSplit) && (p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
-      });
-      
-      const tJurnal = jurnalData.filter(j => {
-        const jName = (j.nama_guru || '').toLowerCase();
-        return jName.includes(teacherNameSplit) && (j.sekolah_id === resolvedSekolahId || !j.sekolah_id);
-      });
-
-      const tBkJurnal = (bkJurnalData || []).filter((b: any) => {
-        const bName = (b.nama_guru || '').toLowerCase();
-        const ownerMatch =
-          (teacher.user_id && b.guru_id === teacher.user_id) ||
-          (teacher.id && b.guru_id === teacher.id) ||
-          bName.includes(teacherNameSplit);
-        return ownerMatch && (b.sekolah_id === resolvedSekolahId || !b.sekolah_id);
-      });
-
+      const tPresensi = presensiData.filter(p => sameSchool(p) && isTeacherRecordMatch(p, teacher, linkedUser));
+      const tJurnal = jurnalData.filter(j => sameSchool(j) && isTeacherRecordMatch(j, teacher, linkedUser));
+      const tBkJurnal = (bkJurnalData || []).filter((b: any) => sameSchool(b) && isTeacherRecordMatch(b, teacher, linkedUser));
       const tPiket = piketData.filter(p => {
-        const pelapor = (p.guru_pelapor || '').toLowerCase();
-        const kehadiran = (p.kehadiran_guru_piket || '').toLowerCase();
-        return (pelapor.includes(teacherNameSplit) || kehadiran.includes(teacherNameSplit)) && (p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
+        if (!sameSchool(p)) return false;
+        if (isTeacherRecordMatch(p, teacher, linkedUser)) return true;
+        return String(p.kehadiran_guru_piket || '')
+          .split(/[,;|]+/)
+          .some(part => isTeacherRecordMatch({ nama_guru: part }, teacher, linkedUser));
       });
-
-      const matchedUserBk = (usersRoleList || []).some(
-        (u: any) =>
-          isBkAccount(u.role) &&
-          ((teacher.user_id && u.id === teacher.user_id) ||
-            (u.nama || '').toLowerCase().includes(teacherNameSplit))
-      );
 
       const summary = evaluateTeacherWarningsSync(
         teacher.id,
@@ -723,7 +731,7 @@ export async function getAllTeachersDisciplineWarnings(
         tPiket,
         targetMonth,
         tBkJurnal,
-        isBkAccount(teacher.mata_pelajaran) || matchedUserBk
+        isBkAccount(teacher.mata_pelajaran, linkedUser?.role)
       );
       summaries.push(summary);
     } catch (err: any) {

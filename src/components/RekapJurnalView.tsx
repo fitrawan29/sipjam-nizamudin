@@ -181,11 +181,15 @@ export default function RekapJurnalView({
         }
 
         // Fetch all teachers from data_guru & attendance rules for accurate obligation evaluation
+        let fallbackAllDg: any[] = [];
         try {
-          let dgAllQuery = supabase.from('data_guru').select('id, nama_guru, nip, user_id, wajib_hadir_hanya_mengajar, sekolah_id');
+          let dgAllQuery = supabase.from('data_guru').select('*');
           if (user?.sekolah_id) dgAllQuery = dgAllQuery.eq('sekolah_id', user.sekolah_id);
           const { data: allDg } = await dgAllQuery;
-          if (allDg) setAllTeachersList(allDg);
+          if (allDg) {
+            fallbackAllDg = allDg;
+            setAllTeachersList(allDg);
+          }
 
           let cfgQ = supabase.from('pengaturan').select('key, value').in('key', ['aturan_kehadiran_guru', 'guru_hanya_mengajar', 'guru_bebas_hadir']);
           if (user?.sekolah_id) cfgQ = cfgQ.eq('sekolah_id', user.sekolah_id);
@@ -232,7 +236,8 @@ export default function RekapJurnalView({
               dgQuery
             ]);
 
-            const matchedGuruRow = (dgRes.data || []).find((g: any) =>
+            const dgPool = dgRes.error || !dgRes.data ? fallbackAllDg : dgRes.data;
+            const matchedGuruRow = (dgPool || []).find((g: any) =>
               (user?.id && g.user_id === user.id) ||
               (user?.username && (g.nip || '').toLowerCase() === user.username.toLowerCase()) ||
               (cleanNama && (g.nama_guru || '').toLowerCase().includes(cleanNama.toLowerCase()))

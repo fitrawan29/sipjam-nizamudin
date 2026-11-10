@@ -1241,7 +1241,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       setLoading(true);
       let guruList: any[] = [];
       let mapelList: any[] = [];
-      let gq = supabase.from('data_guru').select('id, nama_guru, nip, user_id').order('nama_guru');
+      let gq = supabase.from('data_guru').select('*').order('nama_guru');
       if (user?.sekolah_id) gq = gq.eq('sekolah_id', user.sekolah_id);
       const { data: gData } = await gq;
       if (gData) guruList = gData;
@@ -2079,7 +2079,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       setLoading(true);
       let guruListE: any[] = [];
       let mapelListE: any[] = [];
-      let gqe = supabase.from('data_guru').select('id, nama_guru, nip, user_id').order('nama_guru');
+      let gqe = supabase.from('data_guru').select('*').order('nama_guru');
       if (user?.sekolah_id) gqe = gqe.eq('sekolah_id', user.sekolah_id);
       const { data: gDataE } = await gqe;
       if (gDataE) guruListE = gDataE;

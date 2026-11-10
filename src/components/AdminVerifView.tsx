@@ -13,7 +13,14 @@ import {
   extractWitaDateStr
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
-import { isGuruDiPiket, isBkAccount } from '@/lib/workflow';
+import {
+  isGuruDiPiket,
+  isBkAccount,
+  normalizeTeacherIdentityName,
+  isTeacherNameEquivalent,
+  resolveLinkedUserForTeacher,
+  isTeacherRecordMatch
+} from '@/lib/workflow';
 import { isInvalidMapel, normalizeScheduleMapel } from '@/lib/dataIntegrityGuard';
 import DokumenView from './DokumenView';
 
@@ -49,27 +56,19 @@ export function isRealSubmittedJournal(j: any): boolean {
   return true;
 }
 
-// Helper: Normalisasi nama guru untuk perbandingan presisi tanpa false substring collision
+// Helper: Normalisasi nama guru & pencocokan via helper terpusat (menjaga kompatibilitas internal)
 function normalizeTeacherName(name?: string | null): string {
-  if (!name) return '';
-  return name
-    .toLowerCase()
-    .replace(/,.*$/, '') // Hapus gelar setelah koma (misal: ", S.Pd.")
-    .replace(/\b(s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Hapus singkatan gelar
-    .replace(/[^a-z0-9\s]/gi, ' ') // Ganti tanda baca dengan spasi
-    .replace(/\s+/g, ' ') // Rapikan multi-spasi
-    .trim();
+  return normalizeTeacherIdentityName(name);
 }
 
 function isTeacherMatch(teacherName?: string | null, candidateName?: string | null, nip?: string | null): boolean {
   if (!teacherName || !candidateName) return false;
-  const normTeacher = normalizeTeacherName(teacherName);
-  const normCandidate = normalizeTeacherName(candidateName);
-
-  if (normTeacher && normCandidate && normTeacher === normCandidate) return true;
+  if (isTeacherNameEquivalent(teacherName, candidateName)) return true;
 
   if (nip) {
     const normNip = normalizeTeacherName(nip);
+    const normTeacher = normalizeTeacherName(teacherName);
+    const normCandidate = normalizeTeacherName(candidateName);
     if (normNip && (normNip === normTeacher || normNip === normCandidate)) return true;
   }
 
@@ -172,8 +171,31 @@ export default function AdminVerifView({
           safeUsersPromise
         ]);
 
-        if (teachersRes.data) setAllTeachers(teachersRes.data);
-        if ((usersRes as any)?.data) setAllUsers((usersRes as any).data);
+        const baseTeachers = teachersRes.data || [];
+        const usersList = (usersRes as any)?.data || [];
+        if ((usersRes as any)?.data) setAllUsers(usersList);
+
+        const linkedUserIds = new Set(
+          baseTeachers
+            .map((t: any) => resolveLinkedUserForTeacher(t, usersList)?.id)
+            .filter(Boolean)
+            .map((id: any) => String(id))
+        );
+        const missingBkTeachers = usersList
+          .filter((u: any) => isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
+          .map((u: any) => ({
+            id: `bk-user-${u.id}`,
+            user_id: u.id,
+            username: u.username,
+            nip: u.username || '-',
+            nama_guru: (u.nama || u.username || 'Guru BK').trim(),
+            mata_pelajaran: 'BK',
+            wajib_hadir_hanya_mengajar: false
+          }));
+
+        if (teachersRes.data || missingBkTeachers.length > 0) {
+          setAllTeachers([...baseTeachers, ...missingBkTeachers]);
+        }
         if (piketRes.data) setAllPiketSchedule(piketRes.data);
         if (penugasanRes.data) setAllPenugasanPiket(penugasanRes.data);
         if (jadwalRes.data) {
@@ -781,7 +803,8 @@ export default function AdminVerifView({
         }
       }
       if (!p.timestamp) return false;
-      if (p.timestamp.includes(targetDate)) return true;
+      const witaStr = extractWitaDateStr(p.timestamp);
+      if (witaStr) return witaStr === targetDate;
       try {
         return getWitaDateStr(new Date(p.timestamp)) === targetDate;
       } catch {
@@ -789,39 +812,31 @@ export default function AdminVerifView({
       }
     });
 
-    const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
-
     return allTeachers
       .filter(t => {
-        const hasSubmitted = submittedList.some(p => 
-          isTeacherMatch(t.nama_guru, p.nama_guru, t.nip)
+        const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
+        const hasSubmitted = submittedList.some(p =>
+          isTeacherRecordMatch(p, t, linkedUser)
         );
         return !hasSubmitted;
       })
       .map(t => {
-        const namaNorm = normalizeName(t.nama_guru);
-        const firstName = namaNorm.split(/\s+/)[0] || '';
-        const nipNorm = normalizeName(t.nip);
+        const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
 
         // Check scheduled classes today
         const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
           if (j.hari !== effectiveDayName) return false;
           if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
-          const jNorm = normalizeName(j.nama_guru);
-          return (nipNorm && nipNorm === jNorm) || 
-            (namaNorm === jNorm) || 
-            (firstName.length >= 2 && (firstName === jNorm || firstName.startsWith(jNorm)));
+          return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
         });
 
         // Check piket today (jadwal_piket & penugasan_piket)
-        const inJadwalPiket = allPiketSchedule.some((p: any) => 
-          p.hari === effectiveDayName && isGuruDiPiket(p.daftar_guru, t.nama_guru)
+        const inJadwalPiket = allPiketSchedule.some((p: any) =>
+          p.hari === effectiveDayName &&
+          [t.nama_guru, linkedUser?.nama].some(alias => alias && isGuruDiPiket(p.daftar_guru, alias))
         );
-        const inPenugasanPiket = allPenugasanPiket.some((p: any) => 
-          p.hari === effectiveDayName && (
-            (p.guru_id && (p.guru_id === t.id || p.guru_id === t.user_id)) ||
-            isTeacherMatch(p.guru_nama, t.nama_guru, t.nip)
-          )
+        const inPenugasanPiket = allPenugasanPiket.some((p: any) =>
+          p.hari === effectiveDayName && isTeacherRecordMatch(p, t, linkedUser)
         );
         const hasPiketToday = inJadwalPiket || inPenugasanPiket;
 
@@ -831,7 +846,15 @@ export default function AdminVerifView({
         const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
         const isLegacyInList = guruHanyaMengajarList.some((item: string) => {
           const itemClean = item.trim().toLowerCase();
-          return item === t.id || (t.user_id && item === t.user_id) || (itemClean && (itemClean === t.nama_guru?.toLowerCase().trim() || (t.nip && itemClean === t.nip.toLowerCase().trim())));
+          return (
+            item === t.id ||
+            (t.user_id && item === t.user_id) ||
+            (linkedUser?.id && item === linkedUser.id) ||
+            (itemClean &&
+              (itemClean === t.nama_guru?.toLowerCase().trim() ||
+                (linkedUser?.nama && itemClean === linkedUser.nama.toLowerCase().trim()) ||
+                (t.nip && itemClean === t.nip.toLowerCase().trim())))
+          );
         });
         const isTeacherExempt = isExplicitExempt || (!hasExplicitSetting && (isLegacyInList || aturanGlobal === 'Hari_Mengajar_Saja'));
 
@@ -849,10 +872,11 @@ export default function AdminVerifView({
           isFreeFromPresence,
           isAlpa: !isFreeFromPresence,
           tanggal: targetDate,
-          isUnsubmitted: true
+          isUnsubmitted: true,
+          search_aliases: [t.nama_guru, linkedUser?.nama, linkedUser?.username, t.nip].filter(Boolean).join(' ')
         };
       });
-  }, [allTeachers, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, allPiketSchedule, allPenugasanPiket, aturanGlobal, guruHanyaMengajarList, holidayInfo]);
+  }, [allTeachers, allUsers, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, allPiketSchedule, allPenugasanPiket, aturanGlobal, guruHanyaMengajarList, holidayInfo]);
 
   const unsubmittedJurnal = useMemo(() => {
     if (allTeachers.length === 0) return [];
@@ -862,12 +886,11 @@ export default function AdminVerifView({
     const targetDate = date || effectiveDate;
     const submittedList = jurnalList.filter(j => j.tanggal === targetDate && j.status_verifikasi !== 'Tidak Masuk Kelas' && isRealSubmittedJournal(j));
 
-    const normalizeName = (s: string) => (s || '').toLowerCase().trim().replace(/z/g, 's');
-
     // R2: Teachers who have submitted attendance with status Sakit, Izin, or Dinas Luar must not be flagged as unsubmitted delinquency
     const isTeacherOnLeave = (teacher: any) => {
+      const linkedUser = resolveLinkedUserForTeacher(teacher, allUsers);
       return presensiList.some(p => {
-        if (!isTeacherMatch(teacher.nama_guru, p.nama_guru, teacher.nip)) return false;
+        if (!isTeacherRecordMatch(p, teacher, linkedUser)) return false;
         if (p.status_verifikasi === 'Ditolak') return false;
         const jp = (p.jenis_presensi || '').toLowerCase();
         const di = (p.detail_izin || '').toLowerCase();
@@ -896,32 +919,20 @@ export default function AdminVerifView({
       .filter(t => {
         if (isTeacherOnLeave(t)) return false;
 
-        const hasSubmitted = submittedList.some(j => 
-          (j.guru_id && (j.guru_id === t.user_id || j.guru_id === t.id)) ||
-          isTeacherMatch(t.nama_guru, j.nama_guru, t.nip)
+        const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
+        const hasSubmitted = submittedList.some(j =>
+          isTeacherRecordMatch(j, t, linkedUser)
         );
         return !hasSubmitted;
       })
       .map(t => {
-        // Check schedule on this day
-        const namaNorm = normalizeName(t.nama_guru);
-        const firstName = namaNorm.split(/\s+/)[0] || '';
-        const nipNorm = normalizeName(t.nip);
-        const isTeacherBk =
-          isBkAccount(t.mata_pelajaran) ||
-          allUsers.some(
-            u =>
-              isBkAccount(u.role) &&
-              ((t.user_id && u.id === t.user_id) || isTeacherMatch(t.nama_guru, u.nama, t.nip))
-          );
+        const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
+        const isTeacherBk = isBkAccount(t.mata_pelajaran, linkedUser?.role);
 
         const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
           if (j.hari !== effectiveDayName) return false;
           if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
-          const jNorm = normalizeName(j.nama_guru);
-          return (nipNorm && nipNorm === jNorm) || 
-            (namaNorm === jNorm) || 
-            (firstName.length >= 2 && (firstName === jNorm || firstName.startsWith(jNorm)));
+          return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
         });
 
         return {
@@ -945,7 +956,8 @@ export default function AdminVerifView({
             ? `Belum mengisi jurnal KBM untuk ${scheduledClasses.length} kelas terjadwal pada hari ${effectiveDayName}` 
             : `Belum mengisi jurnal pembelajaran untuk tanggal ${targetDate}`,
           tanggal: targetDate,
-          isUnsubmitted: true
+          isUnsubmitted: true,
+          search_aliases: [t.nama_guru, linkedUser?.nama, linkedUser?.username, t.nip].filter(Boolean).join(' ')
         };
       });
   }, [allTeachers, allUsers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, holidayInfo]);
@@ -962,38 +974,43 @@ export default function AdminVerifView({
 
     // Teachers assigned to picket today (from jadwal_piket or penugasan_piket)
     const assignedTeachers = allTeachers.filter(t => {
-      const inJadwal = piketToday ? isGuruDiPiket(piketToday.daftar_guru, t.nama_guru) : false;
+      const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
+      const inJadwal = piketToday
+        ? [t.nama_guru, linkedUser?.nama].some(alias => alias && isGuruDiPiket(piketToday.daftar_guru, alias))
+        : false;
       const inPenugasan = allPenugasanPiket.some((p: any) =>
-        p.hari === effectiveDayName && (
-          (p.guru_id && (p.guru_id === t.id || p.guru_id === t.user_id)) ||
-          isTeacherMatch(p.guru_nama, t.nama_guru, t.nip)
-        )
+        p.hari === effectiveDayName && isTeacherRecordMatch(p, t, linkedUser)
       );
       return inJadwal || inPenugasan;
     });
 
     return assignedTeachers
       .filter(t => {
-        const hasSubmitted = submittedList.some(p => 
-          isTeacherMatch(t.nama_guru, p.guru_pelapor, t.nip)
+        const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
+        const hasSubmitted = submittedList.some(p =>
+          isTeacherRecordMatch(p, t, linkedUser)
         );
         return !hasSubmitted;
       })
-      .map(t => ({
-        id: `unsub-piket-${t.id}`,
-        guru_pelapor: t.nama_guru,
-        nama_guru: t.nama_guru,
-        nip: t.nip || '-',
-        mata_pelajaran: t.mata_pelajaran || 'Petugas Piket',
-        task_type: 'Piket',
-        pesan_belum: 'tidak membuat laporan piket',
-        status_verifikasi: 'tidak membuat laporan piket',
-        status_label: 'tidak membuat laporan piket',
-        catatan_apel: 'tidak membuat laporan piket',
-        tanggal: targetDate,
-        isUnsubmitted: true
-      }));
-  }, [allTeachers, allPiketSchedule, allPenugasanPiket, piketList, date, effectiveDate, effectiveDayName, holidayInfo]);
+      .map(t => {
+        const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
+        return {
+          id: `unsub-piket-${t.id}`,
+          guru_pelapor: t.nama_guru,
+          nama_guru: t.nama_guru,
+          nip: t.nip || '-',
+          mata_pelajaran: t.mata_pelajaran || 'Petugas Piket',
+          task_type: 'Piket',
+          pesan_belum: 'tidak membuat laporan piket',
+          status_verifikasi: 'tidak membuat laporan piket',
+          status_label: 'tidak membuat laporan piket',
+          catatan_apel: 'tidak membuat laporan piket',
+          tanggal: targetDate,
+          isUnsubmitted: true,
+          search_aliases: [t.nama_guru, linkedUser?.nama, linkedUser?.username, t.nip].filter(Boolean).join(' ')
+        };
+      });
+  }, [allTeachers, allUsers, allPiketSchedule, allPenugasanPiket, piketList, date, effectiveDate, effectiveDayName, holidayInfo]);
 
   // Reactive Instant Client-side Filter Calculation (Zero flicker, zero reload)
   const displayList = useMemo(() => {
@@ -1039,7 +1056,11 @@ export default function AdminVerifView({
         }
         if (!inDateRange) return;
 
-        const alreadyInBase = baseSubmitted.some((j: any) => isTeacherMatch(j.nama_guru, p.nama_guru, null));
+        const leaveProfile = { nama_guru: p.nama_guru, user_id: p.user_id, nip: p.nip };
+        const leaveLinkedUser = resolveLinkedUserForTeacher(leaveProfile, allUsers);
+        const alreadyInBase = baseSubmitted.some((j: any) =>
+          isTeacherRecordMatch(j, leaveProfile, leaveLinkedUser)
+        );
         if (!alreadyInBase) {
           const leaveLabel = (jp === 'sakit' || di.includes('sakit')) ? 'Sakit' : 'Izin';
           synthesizedLeaveList.push({
@@ -1065,6 +1086,17 @@ export default function AdminVerifView({
       ? [...baseSubmitted, ...synthesizedLeaveList]
       : rawSubmittedList;
 
+    const matchesLinkedTeacherSearch = (item: any, q: string) =>
+      allTeachers.some((t: any) => {
+        const linked = resolveLinkedUserForTeacher(t, allUsers);
+        return (
+          isTeacherRecordMatch(item, t, linked) &&
+          `${t.nama_guru || ''} ${t.nip || ''} ${linked?.nama || ''} ${linked?.username || ''}`
+            .toLowerCase()
+            .includes(q)
+        );
+      });
+
     // Filter unsubmitted items by search
     const filteredUnsubmitted = unsubmittedList.filter((item: any) => {
       if (!search) return true;
@@ -1076,7 +1108,8 @@ export default function AdminVerifView({
         (item.mata_pelajaran || '').toLowerCase().includes(q) ||
         (item.pesan_belum || '').toLowerCase().includes(q) ||
         (item.status_label || '').toLowerCase().includes(q) ||
-        (item.status_verifikasi || '').toLowerCase().includes(q)
+        (item.status_verifikasi || '').toLowerCase().includes(q) ||
+        (item.search_aliases || '').toLowerCase().includes(q)
       );
     });
 
@@ -1103,6 +1136,7 @@ export default function AdminVerifView({
       // Search filter
       if (!search) return true;
       const q = search.toLowerCase();
+      if (matchesLinkedTeacherSearch(item, q)) return true;
       if (activeTab === 'Presensi') {
         return (
           (item.nama_guru || '').toLowerCase().includes(q) ||
@@ -1158,6 +1192,8 @@ export default function AdminVerifView({
     verifFilter, 
     activeTab, 
     search, 
+    allTeachers,
+    allUsers,
     presensiList, 
     jurnalList, 
     piketList, 

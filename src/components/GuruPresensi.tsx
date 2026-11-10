@@ -597,7 +597,7 @@ export default function GuruPresensi({
     const newPresensi: any = {
       id: presensiId,
       timestamp: getWitaTimestamp(),
-      nama_guru: user.nama,
+      nama_guru: (user.nama || '').trim(),
       user_id: user.id,
       tipe_absen: tipeAbsen,
       jenis_presensi: jenisPresensi,
@@ -867,7 +867,7 @@ export default function GuruPresensi({
     // R3: Record unfilled journals and piket automatically upon presensi pulang
     if (tipeAbsen === 'Pulang') {
       recordUnfilledJournalsAndPiket(
-        { nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id },
+        { nama_guru: (user.nama || '').trim(), user_id: user.id, sekolah_id: user.sekolah_id },
         getWitaDateStr(),
         dailyState || {}
       ).catch(e => console.warn('[GuruPresensi] Auto-record unfilled journals/piket warning:', e));
@@ -881,7 +881,7 @@ export default function GuruPresensi({
       for (let dayOffset = 0; dayOffset < daysCount; dayOffset++) {
         const targetD = addDaysToDateStr(startD, dayOffset);
         autoFillKbmJournalsForLeave(
-          { nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id },
+          { nama_guru: (user.nama || '').trim(), user_id: user.id, sekolah_id: user.sekolah_id },
           targetD,
           leaveType,
           { detail_izin: detailIzin, keterangan: keterangan, link_bukti: driveUrl || (fileToUpload ? undefined : '-') }

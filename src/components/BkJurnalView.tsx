@@ -82,7 +82,7 @@ export default function BkJurnalView({
 }: BkJurnalViewProps) {
   const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
   const userId = user?.id || '';
-  const counselorName = user?.nama || user?.name || 'Guru BK';
+  const counselorName = (user?.nama || user?.name || 'Guru BK').trim();
 
   const cacheKey = `sipjam_jurnal_bk_cache_${sekolahId}`;
   const draftKey = `sipjam_jurnal_bk_draft_${userId}`;
@@ -526,7 +526,8 @@ export default function BkJurnalView({
           error = retryRes.error;
         }
 
-        if (error && !isSchemaCacheOrMissingTableError(error)) {
+        const savedLocallyOnly = Boolean(error && isSchemaCacheOrMissingTableError(error));
+        if (error && !savedLocallyOnly) {
           throw error;
         }
 
@@ -540,13 +541,21 @@ export default function BkJurnalView({
           window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
         }
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil Diperbarui',
-          text: 'Data jurnal konseling BK berhasil diperbarui.',
-          timer: 1600,
-          showConfirmButton: false
-        });
+        if (savedLocallyOnly) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Tersimpan di Cache Lokal',
+            text: 'Tabel jurnal_bk belum tersedia di server sekolah ini sehingga pembaruan baru tersimpan sementara di perangkat Anda dan belum dapat dibaca Admin.'
+          });
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil Diperbarui',
+            text: 'Data jurnal konseling BK berhasil diperbarui.',
+            timer: 1600,
+            showConfirmButton: false
+          });
+        }
       } else {
         // CREATE
         const newId =
@@ -570,7 +579,8 @@ export default function BkJurnalView({
           const retryRes = await supabase.from('jurnal_bk').insert([fallbackInsertRecord]);
           error = retryRes.error;
         }
-        if (error && !isSchemaCacheOrMissingTableError(error)) {
+        const savedLocallyOnly = Boolean(error && isSchemaCacheOrMissingTableError(error));
+        if (error && !savedLocallyOnly) {
           throw error;
         }
 
@@ -581,13 +591,21 @@ export default function BkJurnalView({
           window.dispatchEvent(new CustomEvent('sipjam:jurnal_bk_updated'));
         }
 
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil Disimpan',
-          text: 'Catatan bimbingan konseling berhasil disimpan.',
-          timer: 1600,
-          showConfirmButton: false
-        });
+        if (savedLocallyOnly) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Tersimpan di Cache Lokal',
+            text: 'Tabel jurnal_bk belum tersedia di server sekolah ini sehingga catatan baru tersimpan di perangkat Anda dan belum dapat terbaca di akun Admin.'
+          });
+        } else {
+          Swal.fire({
+            icon: 'success',
+            title: 'Berhasil Disimpan',
+            text: 'Catatan bimbingan konseling berhasil disimpan.',
+            timer: 1600,
+            showConfirmButton: false
+          });
+        }
       }
 
       handleResetForm();

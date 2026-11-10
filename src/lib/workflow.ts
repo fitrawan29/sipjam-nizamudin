@@ -19,6 +19,192 @@ export function isBkAccount(roleOrMapel?: string | null, extra?: string | null):
   return check(roleOrMapel) || check(extra);
 }
 
+/**
+ * Normalisasi nama guru (trim spasi awal/akhir, hapus gelar akademik & tanda baca)
+ * untuk pencocokan identitas yang akurat.
+ */
+export function normalizeTeacherIdentityName(name?: string | null): string {
+  if (!name) return '';
+  return String(name)
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/,.*$/, '')
+    .replace(/\b(prof|dr|drs|dra|ir|hj|kh|s\.?\s*pd\.?\s*i?|m\.?\s*pd\.?|s\.?\s*kom\.?|s\.?\s*si\.?|s\.?\s*ag\.?|s\.?\s*e\.?|s\.?\s*t\.?|s\.?\s*psi\.?|s\.?\s*kep\.?|m\.?\s*si\.?|m\.?\s*kom\.?|gr)\b/gi, '')
+    .replace(/[^a-z0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Mengecek apakah dua varian nama merujuk ke guru yang sama:
+ * - Sama persis setelah normalisasi & trim (" Alva Rolan Saerang" == "Alva Rolan Saerang")
+ * - Singkatan inisial tengah ("Alva R. Saerang, S.Pd., GR" == "Alva Rolan Saerang")
+ * - Nama tengah terlewati ("Alva Saerang" == "Alva Rolan Saerang")
+ */
+export function isTeacherNameEquivalent(
+  nameA?: string | null,
+  nameB?: string | null,
+  allowSingleWordFirstToken: boolean = false
+): boolean {
+  const normA = normalizeTeacherIdentityName(nameA);
+  const normB = normalizeTeacherIdentityName(nameB);
+  if (!normA || !normB) return false;
+  if (normA === normB) return true;
+
+  const tA = normA.split(' ').filter(Boolean);
+  const tB = normB.split(' ').filter(Boolean);
+  if (tA.length === 0 || tB.length === 0) return false;
+
+  if (tA.length === 1 || tB.length === 1) {
+    if (!allowSingleWordFirstToken) return false;
+    const single = tA.length === 1 ? tA[0] : tB[0];
+    const multiFirst = tA.length === 1 ? tB[0] : tA[0];
+    return single.length >= 2 && single === multiFirst;
+  }
+
+  // Same token count: allow 1-char initial abbreviations when >=1 full word (>=2 chars) matches identically
+  if (tA.length === tB.length) {
+    let commonFullWords = 0;
+    const allPosMatch = tA.every((tokA, i) => {
+      const tokB = tB[i];
+      if (tokA === tokB) {
+        if (tokA.length >= 2) commonFullWords++;
+        return true;
+      }
+      return (tokA.length === 1 && tokB.startsWith(tokA)) || (tokB.length === 1 && tokA.startsWith(tokB));
+    });
+    if (allPosMatch && commonFullWords >= 1) return true;
+  }
+
+  // Subsequence alignment with identical first and last names (e.g. "Alva Saerang" vs "Alva Rolan Saerang")
+  if (tA[0] === tB[0] && tA[tA.length - 1] === tB[tB.length - 1]) {
+    const shorter = tA.length <= tB.length ? tA : tB;
+    const longer = tA.length <= tB.length ? tB : tA;
+    let idx = 0;
+    for (const sTok of shorter) {
+      let found = false;
+      while (idx < longer.length) {
+        const lTok = longer[idx++];
+        if (lTok === sTok || (sTok.length === 1 && lTok.startsWith(sTok)) || (lTok.length === 1 && sTok.startsWith(lTok))) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Menautkan baris data_guru ke akun login pada tabel users menggunakan user_id,
+ * kecocokan nip == username, atau variasi nama yang setara.
+ */
+export function resolveLinkedUserForTeacher(teacher: any, usersList: any[] = []): any | null {
+  if (!teacher || !Array.isArray(usersList) || usersList.length === 0) return null;
+  if (teacher.user_id) {
+    const byId = usersList.find(u => u && String(u.id) === String(teacher.user_id));
+    if (byId) return byId;
+  }
+  const cleanNip = (teacher.nip || '').trim().toLowerCase();
+  const cleanGuruUsername = (teacher.username || '').trim().toLowerCase();
+  if ((cleanNip && cleanNip !== '-') || cleanGuruUsername) {
+    const byUsername = usersList.find(u => {
+      const un = (u?.username || '').trim().toLowerCase();
+      return un && ((cleanNip && cleanNip !== '-' && un === cleanNip) || (cleanGuruUsername && un === cleanGuruUsername));
+    });
+    if (byUsername) return byUsername;
+  }
+  const byExactName = usersList.find(
+    u => normalizeTeacherIdentityName(u?.nama) && normalizeTeacherIdentityName(u?.nama) === normalizeTeacherIdentityName(teacher.nama_guru)
+  );
+  if (byExactName) return byExactName;
+
+  return usersList.find(u => isTeacherNameEquivalent(teacher.nama_guru, u?.nama, false)) || null;
+}
+
+/**
+ * Pencocokan terpusat antara record transaksi (presensi, jurnal, jurnal_bk, piket)
+ * dan profil guru + akun user tertaut.
+ */
+export function isTeacherRecordMatch(
+  record: {
+    user_id?: string | null;
+    guru_id?: string | null;
+    nama_guru?: string | null;
+    guru_pelapor?: string | null;
+    guru_nama?: string | null;
+    nip?: string | null;
+    nip_guru?: string | null;
+    guru_nip?: string | null;
+    username?: string | null;
+  } | null | undefined,
+  teacher: {
+    id?: string | null;
+    user_id?: string | null;
+    nama_guru?: string | null;
+    nama?: string | null;
+    nip?: string | null;
+    username?: string | null;
+  } | null | undefined,
+  linkedUser?: {
+    id?: string | null;
+    nama?: string | null;
+    username?: string | null;
+  } | null,
+  options?: { allowSingleWordFirstToken?: boolean }
+): boolean {
+  if (!record || !teacher) return false;
+
+  // 1. Direct ID match (preserves strong link even when names diverge completely)
+  const teacherIds = [teacher.user_id, linkedUser?.id, teacher.id]
+    .filter(Boolean)
+    .map(v => String(v).trim());
+  const recIds = [record.user_id, record.guru_id]
+    .filter(Boolean)
+    .map(v => String(v).trim());
+  if (recIds.some(rid => teacherIds.includes(rid))) {
+    return true;
+  }
+
+  // 2. NIP / Username identifier match (case-insensitive)
+  const identSet = new Set(
+    [teacher.nip, teacher.username, linkedUser?.username]
+      .map(v => (v || '').trim().toLowerCase())
+      .filter(v => v && v !== '-')
+  );
+  const recIdents = [record.nip, record.nip_guru, record.guru_nip, record.username]
+    .map(v => (v || '').trim().toLowerCase())
+    .filter(v => v && v !== '-');
+  if (recIdents.some(ri => identSet.has(ri))) {
+    return true;
+  }
+
+  const recordName = record.nama_guru || record.guru_pelapor || record.guru_nama || '';
+  const normRecSimple = normalizeTeacherIdentityName(recordName);
+  if (normRecSimple && identSet.has(normRecSimple)) {
+    return true;
+  }
+
+  // 3. Name variant matching against both data_guru.nama_guru and linked users.nama
+  const allowSingle = Boolean(options?.allowSingleWordFirstToken);
+  const candidateNames = [teacher.nama_guru, teacher.nama, linkedUser?.nama].filter(Boolean) as string[];
+  for (const alias of candidateNames) {
+    if (isTeacherNameEquivalent(recordName, alias, allowSingle)) {
+      return true;
+    }
+    const cleanAlias = normalizeTeacherIdentityName(alias);
+    if (cleanAlias && recIdents.includes(cleanAlias)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export type GuruDailyState = {
   tanggal: string;
   isLibur: boolean;
@@ -923,12 +1109,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       }
     }
 
-    // Cek Pengecualian Kehadiran Guru:
-    // Guru yang dikecualikan (wajib hadir HANYA saat hari mengajar)
+    // Cek Pengecualian Kehadiran Guru & tautkan data_guru walaupun kolom user_id absen atau nama berbeda tipis:
     let isTeacherExempt = false;
     let isTeacherBk = false;
     let teacherDataGuruId: string | null = null;
     let teacherDataGuruNip: string | null = null;
+    let teacherCanonicalNama: string | null = null;
     let explicitTeacherSetting: boolean | null = null;
     try {
       let tQ = supabase.from('data_guru').select('id, nama_guru, nip, mata_pelajaran, wajib_hadir_hanya_mengajar, sekolah_id');
@@ -944,16 +1130,24 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       }
       const { data: tDataRaw, error: tErrQuery } = await tQ;
       let tData = tDataRaw;
-      if (tErrQuery) {
-        let fbTQ = supabase.from('data_guru').select('*').eq('nama_guru', cleanTeacherName);
+      if (tErrQuery || !tData || tData.length === 0) {
+        let fbTQ = supabase.from('data_guru').select('*');
         if (sekolahId) fbTQ = fbTQ.eq('sekolah_id', sekolahId);
         const fbRes = await fbTQ;
-        tData = fbRes.data as any;
+        const allSchoolTeachers = Array.isArray(fbRes.data) ? fbRes.data : [];
+        tData = allSchoolTeachers.filter((teacher: any) =>
+          isTeacherRecordMatch(
+            { user_id: userId, nama_guru: namaGuru, nip: username, username },
+            teacher,
+            { id: userId, nama: namaGuru, username }
+          )
+        );
       }
       if (tData && tData.length > 0) {
         for (const teacher of tData) {
           if (!teacherDataGuruId && teacher.id) teacherDataGuruId = String(teacher.id);
           if (!teacherDataGuruNip && teacher.nip) teacherDataGuruNip = String(teacher.nip);
+          if (!teacherCanonicalNama && teacher.nama_guru) teacherCanonicalNama = String(teacher.nama_guru).trim();
           if (isBkAccount(teacher.mata_pelajaran)) {
             isTeacherBk = true;
           }
@@ -1164,12 +1358,31 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         const { data: jpiket } = await jpQuery;
         if (jpiket && jpiket.length > 0) {
           const piketHariIni = jpiket[0];
-          if (isGuruDiPiket(piketHariIni.daftar_guru, namaGuru) || isGuruDiPiket(piketHariIni.daftar_guru, cleanTeacherName)) {
+          if (
+            isGuruDiPiket(piketHariIni.daftar_guru, namaGuru) ||
+            isGuruDiPiket(piketHariIni.daftar_guru, cleanTeacherName) ||
+            (teacherCanonicalNama && isGuruDiPiket(piketHariIni.daftar_guru, teacherCanonicalNama))
+          ) {
             state.isPiket = true;
           }
         }
       }
     }
+
+    const teacherIdentityProfile = {
+      id: teacherDataGuruId,
+      user_id: userId,
+      nama_guru: teacherCanonicalNama || namaGuru,
+      nama: namaGuru,
+      nip: teacherDataGuruNip,
+      username
+    };
+    const teacherLinkedUser = {
+      id: userId,
+      nama: namaGuru,
+      username
+    };
+    const teacherFirstToken = (normalizeTeacherIdentityName(cleanTeacherName).split(' ')[0] || cleanTeacherName).trim();
 
     // 4. Cek Presensi Hari Ini
     // Ambil SEMUA presensi guru ini (tanpa filter timestamp range yang bisa gagal karena format campuran)
@@ -1192,12 +1405,25 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     const { data: allPresensiRaw, error: presensiErr } = await presensiQuery;
     let allPresensi = allPresensiRaw;
-    if (presensiErr && userId) {
+    const hasNameAliasDiff = Boolean(
+      teacherCanonicalNama &&
+      normalizeTeacherIdentityName(teacherCanonicalNama) !== normalizeTeacherIdentityName(cleanTeacherName)
+    );
+    if ((presensiErr || !allPresensi || allPresensi.length === 0 || hasNameAliasDiff) && (cleanTeacherName || teacherFirstToken)) {
+      const needle = teacherFirstToken.length >= 2 ? teacherFirstToken : cleanTeacherName;
       let fbPresensiQuery = supabase.from('presensi_guru').select('*').order('timestamp', { ascending: false }).limit(50);
       if (sekolahId) fbPresensiQuery = fbPresensiQuery.eq('sekolah_id', sekolahId);
-      fbPresensiQuery = fbPresensiQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+      fbPresensiQuery = fbPresensiQuery.ilike('nama_guru', `%${needle}%`);
       const fbRes = await fbPresensiQuery;
-      allPresensi = fbRes.data;
+      const fbFiltered = (fbRes.data || []).filter((p: any) =>
+        isTeacherRecordMatch(p, teacherIdentityProfile, teacherLinkedUser)
+      );
+      if (presensiErr || !allPresensi || allPresensi.length === 0) {
+        allPresensi = fbFiltered;
+      } else if (fbFiltered.length > 0) {
+        const seenP = new Set(allPresensi.map((p: any) => p.id));
+        allPresensi = [...allPresensi, ...fbFiltered.filter((p: any) => !seenP.has(p.id))];
+      }
     }
 
     if (allPresensi) {
@@ -1349,12 +1575,17 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
       const { data: lpRaw, error: lpErr } = await piketQuery;
       let lp = lpRaw;
-      if (lpErr && userId) {
+      if ((lpErr || !lp || lp.length === 0 || hasNameAliasDiff) && (teacherFirstToken || cleanTeacherName)) {
+        const needle = teacherFirstToken.length >= 2 ? teacherFirstToken : cleanTeacherName;
         let fbPiketQuery = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
         if (sekolahId) fbPiketQuery = fbPiketQuery.eq('sekolah_id', sekolahId);
-        fbPiketQuery = fbPiketQuery.ilike('guru_pelapor', `%${cleanTeacherName}%`);
+        fbPiketQuery = fbPiketQuery.ilike('guru_pelapor', `%${needle}%`);
         const fbRes = await fbPiketQuery;
-        lp = fbRes.data;
+        if (Array.isArray(fbRes.data)) {
+          lp = fbRes.data.filter((l: any) =>
+            isTeacherRecordMatch(l, teacherIdentityProfile, teacherLinkedUser)
+          );
+        }
       }
       
       if (lp && lp.length > 0) {
@@ -1387,12 +1618,17 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     const { data: jurnalRaw, error: jurnalErr } = await jurnalQuery;
     let jurnal = jurnalRaw;
-    if (jurnalErr && userId) {
+    if ((jurnalErr || !jurnal || jurnal.length === 0 || hasNameAliasDiff) && (teacherFirstToken || cleanTeacherName)) {
+      const needle = teacherFirstToken.length >= 2 ? teacherFirstToken : cleanTeacherName;
       let fbJurnalQuery = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
       if (sekolahId) fbJurnalQuery = fbJurnalQuery.eq('sekolah_id', sekolahId);
-      fbJurnalQuery = fbJurnalQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
+      fbJurnalQuery = fbJurnalQuery.ilike('nama_guru', `%${needle}%`);
       const fbRes = await fbJurnalQuery;
-      jurnal = fbRes.data;
+      if (Array.isArray(fbRes.data)) {
+        jurnal = fbRes.data.filter((j: any) =>
+          isTeacherRecordMatch(j, teacherIdentityProfile, teacherLinkedUser)
+        );
+      }
     }
 
     if (jurnal) {
@@ -1443,12 +1679,19 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         const { data: bkRaw, error: bkErr } = await bkQuery;
         let bkEntries: any[] = Array.isArray(bkRaw) ? bkRaw : [];
 
-        if (bkErr && !isSchemaCacheOrMissingTableError(bkErr) && cleanTeacherName) {
-          let fbBkQuery = supabase.from('jurnal_bk').select('*').eq('tanggal', todayStr);
-          if (sekolahId) fbBkQuery = fbBkQuery.eq('sekolah_id', sekolahId);
-          fbBkQuery = fbBkQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
-          const fbRes = await fbBkQuery;
-          if (Array.isArray(fbRes.data)) bkEntries = fbRes.data;
+        if ((bkErr && !isSchemaCacheOrMissingTableError(bkErr)) || (!bkErr && bkEntries.length === 0 && (hasNameAliasDiff || teacherFirstToken.length >= 2))) {
+          const bkNeedle = teacherFirstToken.length >= 2 ? teacherFirstToken : cleanTeacherName;
+          if (bkNeedle) {
+            let fbBkQuery = supabase.from('jurnal_bk').select('*').eq('tanggal', todayStr);
+            if (sekolahId) fbBkQuery = fbBkQuery.eq('sekolah_id', sekolahId);
+            fbBkQuery = fbBkQuery.ilike('nama_guru', `%${bkNeedle}%`);
+            const fbRes = await fbBkQuery;
+            if (Array.isArray(fbRes.data)) {
+              bkEntries = fbRes.data.filter((b: any) =>
+                isTeacherRecordMatch(b, teacherIdentityProfile, teacherLinkedUser)
+              );
+            }
+          }
         }
 
         // Merge localStorage fallback/offline cache if running in browser
@@ -1460,12 +1703,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
               const cachedList = JSON.parse(cachedRaw);
               if (Array.isArray(cachedList)) {
                 const seenIds = new Set(bkEntries.map((item: any) => item.id));
-                const cleanNorm = cleanTeacherName.toLowerCase();
                 for (const item of cachedList) {
                   if (!item || seenIds.has(item.id) || item.tanggal !== todayStr) continue;
-                  const itemNama = (item.nama_guru || '').split(',')[0].trim().toLowerCase();
-                  const ownerMatch = (bkOwnerId && item.guru_id === bkOwnerId) || (cleanNorm && (itemNama.includes(cleanNorm) || cleanNorm.includes(itemNama)));
-                  if (ownerMatch) {
+                  if (isTeacherRecordMatch(item, teacherIdentityProfile, teacherLinkedUser)) {
                     bkEntries.push(item);
                     seenIds.add(item.id);
                   }

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
+import { resolveLinkedUserForTeacher, isTeacherRecordMatch, isBkAccount } from '@/lib/workflow';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
@@ -170,7 +171,7 @@ export default function AdminRekapView({
       // 1. Fetch all teachers from data_guru to seed the map (ensures 0 attendance teachers appear)
       let guruQuery = supabase
         .from('data_guru')
-        .select('nama_guru, nip, mata_pelajaran, user_id')
+        .select('*')
         .not('nama_guru', 'ilike', '%test guru%')
         .not('nama_guru', 'ilike', '%guru test%')
         .order('nama_guru', { ascending: true });
@@ -183,9 +184,13 @@ export default function AdminRekapView({
       if (user?.sekolah_id) {
         userQuery = userQuery.eq('sekolah_id', user.sekolah_id);
       }
+      const safeUserPromise = Promise.resolve(userQuery).then(
+        (res: any) => (res?.error ? { data: [] } : res),
+        () => ({ data: [] })
+      );
       const [{ data: guruList }, { data: userAccounts }] = await Promise.all([
         guruQuery,
-        userQuery
+        safeUserPromise
       ]);
 
       // 2. Fetch presensi_guru (both single-day and multi-day spans)
@@ -366,29 +371,63 @@ export default function AdminRekapView({
         return tuIdentifiers.has(n) || tuIdentifiers.has(c) || (nip && tuIdentifiers.has(nip)) || (uid && tuIdentifiers.has(uid)) || mapel.includes('tata usaha');
       };
 
+      // Gabungkan guru & akun BK yang belum ada di data_guru agar pemetaan identitas konsisten
+      const safeUsersList = userAccounts || [];
+      const baseTeachers = guruList || [];
+      const linkedUserIds = new Set(
+        baseTeachers
+          .map((g: any) => resolveLinkedUserForTeacher(g, safeUsersList)?.id)
+          .filter(Boolean)
+          .map((id: any) => String(id))
+      );
+      const unlinkedBkTeachers = safeUsersList
+        .filter((u: any) => isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
+        .map((u: any) => ({
+          id: `bk-user-${u.id}`,
+          user_id: u.id,
+          username: u.username,
+          nip: u.username || '-',
+          nama_guru: (u.nama || u.username || 'Guru BK').trim(),
+          mata_pelajaran: 'BK'
+        }));
+      const effectiveTeachers = [...baseTeachers, ...unlinkedBkTeachers];
+      const teacherEntries = effectiveTeachers
+        .filter((g: any) => {
+          const rawName = g?.nama_guru?.trim();
+          return rawName && !isTestGuruName(g.nama_guru) && !isTestGuruName(rawName);
+        })
+        .map((g: any) => ({
+          teacher: g,
+          linkedUser: resolveLinkedUserForTeacher(g, safeUsersList),
+          canonicalName: canonicalizeTeacherRekapName(g.nama_guru)
+        }));
+
+      const resolveRekapCanonicalName = (record: any, fallbackRawName: string) => {
+        const matched = teacherEntries.find(e =>
+          isTeacherRecordMatch(record, e.teacher, e.linkedUser)
+        );
+        return matched ? matched.canonicalName : canonicalizeTeacherRekapName(fallbackRawName);
+      };
+
       // Seed map with all teachers and staff from data_guru (excluding test accounts)
       const pMap: Record<string, any> = {};
-      guruList?.forEach(g => {
-        const rawName = g.nama_guru?.trim();
-        if (g.nama_guru && rawName && !isTestGuruName(g.nama_guru) && !isTestGuruName(rawName)) {
-          const cName = canonicalizeTeacherRekapName(rawName);
-          const isTuPerson = isStaffTU(g) || tuIdentifiers.has(cName.toLowerCase());
-          if (!pMap[cName]) {
-            pMap[cName] = {
-              nama: cName,
-              isTU: isTuPerson,
-              hadir: 0,
-              izin: 0,
-              sakit: 0,
-              dinasLuar: 0,
-              pulangCepat: 0,
-              telatDetik: 0,
-              piket: 0,
-              jurnal: 0
-            };
-          } else if (isTuPerson) {
-            pMap[cName].isTU = true;
-          }
+      teacherEntries.forEach(({ teacher: g, canonicalName: cName }) => {
+        const isTuPerson = isStaffTU(g) || tuIdentifiers.has(cName.toLowerCase());
+        if (!pMap[cName]) {
+          pMap[cName] = {
+            nama: cName,
+            isTU: isTuPerson,
+            hadir: 0,
+            izin: 0,
+            sakit: 0,
+            dinasLuar: 0,
+            pulangCepat: 0,
+            telatDetik: 0,
+            piket: 0,
+            jurnal: 0
+          };
+        } else if (isTuPerson) {
+          pMap[cName].isTU = true;
         }
       });
 
@@ -399,7 +438,7 @@ export default function AdminRekapView({
       presensi?.forEach(p => {
         const nama = p.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = canonicalizeTeacherRekapName(nama);
+        const canonicalNama = resolveRekapCanonicalName(p, nama);
         const isTuPerson = isStaffTU(p) || tuIdentifiers.has(canonicalNama.toLowerCase());
         if (!pMap[canonicalNama]) {
           pMap[canonicalNama] = {
@@ -525,7 +564,7 @@ export default function AdminRekapView({
       [...(jurnal || []), ...(bkJurnal || [])].forEach(j => {
         const nama = j.nama_guru?.trim();
         if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = canonicalizeTeacherRekapName(nama);
+        const canonicalNama = resolveRekapCanonicalName(j, nama);
         if (pMap[canonicalNama]) pMap[canonicalNama].jurnal++;
         jMap[canonicalNama] = (jMap[canonicalNama] || 0) + 1;
       });
@@ -535,7 +574,7 @@ export default function AdminRekapView({
       piket?.forEach(pk => {
         const nama = pk.guru_pelapor?.trim();
         if (!nama || isTestGuruName(nama)) return;
-        const canonicalNama = canonicalizeTeacherRekapName(nama);
+        const canonicalNama = resolveRekapCanonicalName(pk, nama);
         if (pMap[canonicalNama]) pMap[canonicalNama].piket++;
         pkMap[canonicalNama] = (pkMap[canonicalNama] || 0) + 1;
       });
