@@ -16,9 +16,11 @@ export function useWaliKelas(
       return;
     }
 
-    if (user?.wali_kelas) {
+    const directWali = user?.wali_kelas || (user as any)?.penugasan?.kelas_binaan || (user as any)?.penugasan?.kelas || (user as any)?.kelas_binaan || (user as any)?.assignedKelas || (user as any)?.assigned_kelas || (user as any)?.waliKelas;
+    if (directWali) {
       setIsWaliKelas(true);
-      setAssignedKelas(typeof user.wali_kelas === 'string' ? user.wali_kelas : (user.wali_kelas.kelas || null));
+      const parsed = typeof directWali === 'string' ? directWali : (directWali.kelas || directWali.nama_kelas || directWali.kelas_binaan || null);
+      setAssignedKelas(parsed);
       return;
     }
 
@@ -30,11 +32,24 @@ export function useWaliKelas(
         }
         const { data } = await query;
         if (data && data.length > 0) {
-          const found = data.find(w => 
-            (user?.id && w.guru_id === user.id) ||
-            (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
-            (user?.username && w.nip && w.nip === user.username)
-          );
+          const cleanUserNama = (user?.nama || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
+          const found = data.find(w => {
+            const matchId = Boolean(
+              (user?.id && w.guru_id && (w.guru_id === user.id || w.guru_id === (user as any).data_guru_id || w.guru_id === (user as any).guru_id || w.guru_id === (user as any).user_id)) ||
+              ((user as any)?.guru_id && w.guru_id && w.guru_id === (user as any).guru_id) ||
+              ((user as any)?.data_guru_id && w.guru_id && w.guru_id === (user as any).data_guru_id)
+            );
+            const cleanWaliNama = (w.nama_guru || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
+            const matchName = Boolean(
+              (user?.nama && w.nama_guru && user.nama.toLowerCase().trim() === w.nama_guru.toLowerCase().trim()) ||
+              (cleanUserNama && cleanWaliNama && (cleanUserNama === cleanWaliNama || cleanUserNama.includes(cleanWaliNama) || cleanWaliNama.includes(cleanUserNama)))
+            );
+            const matchNip = Boolean(
+              (user?.username || (user as any)?.nip) && w.nip &&
+              (w.nip === user?.username || w.nip === (user as any)?.nip || String(w.nip).trim() === String((user as any)?.nip || user?.username).trim())
+            );
+            return matchId || matchName || matchNip;
+          });
           if (found) {
             setIsWaliKelas(true);
             setAssignedKelas(found.kelas);

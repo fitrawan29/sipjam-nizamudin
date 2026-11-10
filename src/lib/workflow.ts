@@ -1225,7 +1225,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       // If teacher has an active sick/leave record where today is within [tanggal_mulai, tanggal_selesai]
       const multiDayLeave = allPresensi.find((p: any) => {
         if (p.status_verifikasi === 'Ditolak') return false;
-        const isLeaveType = !isLateArrival(p) && (p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.detail_izin === 'Sakit' || (Boolean(p.detail_izin) && p.detail_izin.includes('Izin')));
+        const isLeaveType = !isLateArrival(p) && (p.jenis_presensi === 'Izin' || p.jenis_presensi === 'Sakit' || p.jenis_presensi === 'Cuti' || p.detail_izin === 'Sakit' || p.detail_izin === 'Cuti' || (Boolean(p.detail_izin) && (p.detail_izin.includes('Izin') || p.detail_izin.includes('Cuti'))));
         if (!isLeaveType) return false;
         if (p.tanggal_mulai && p.tanggal_selesai) {
           return todayStr >= p.tanggal_mulai && todayStr <= p.tanggal_selesai;
@@ -1307,7 +1307,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       return state;
     }
 
-    if (state.activeLeaveRecord || jp === 'Izin' || jp === 'Sakit') {
+    if (state.activeLeaveRecord || jp === 'Izin' || jp === 'Sakit' || jp === 'Cuti') {
       state.isIzinSakit = true;
       state.bebasAlpa = true;
       state.isAlpa = false;

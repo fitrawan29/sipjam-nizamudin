@@ -134,7 +134,7 @@ export function normalizeClassKey(val: any): string {
 }
 
 /**
- * Standardizes Indonesian grade notations (e.g., 'viia' -> '7a', 'xmerdekaa' -> '10merdekaa').
+ * Standardizes Indonesian grade notations (e.g., 'viia' -> '7a', 'xmerdekaa' -> '10merdekaa', 'via' -> '6a').
  */
 export function canonicalizeGradeNotation(s: string): string {
   return s
@@ -143,7 +143,13 @@ export function canonicalizeGradeNotation(s: string): string {
     .replace(/^x(?=[a-z0-9]|$)/i, '10')
     .replace(/^ix(?=[a-z0-9]|$)/i, '9')
     .replace(/^viii(?=[a-z0-9]|$)/i, '8')
-    .replace(/^vii(?=[a-z0-9]|$)/i, '7');
+    .replace(/^vii(?=[a-z0-9]|$)/i, '7')
+    .replace(/^vi(?=[a-z0-9]|$)/i, '6')
+    .replace(/^v(?=[a-z0-9]|$)/i, '5')
+    .replace(/^iv(?=[a-z0-9]|$)/i, '4')
+    .replace(/^iii(?=[a-z0-9]|$)/i, '3')
+    .replace(/^ii(?=[a-z0-9]|$)/i, '2')
+    .replace(/^i(?=[a-z0-9]|$)/i, '1');
 }
 
 export function toCanonicalClass(val: any): string {
@@ -175,7 +181,11 @@ export function extractAssignedClasses(user: any): string[] {
   add(user.kelas_binaan);
   add(user.penugasan?.kelas_binaan);
   add(user.penugasan?.kelas);
+  add(user.penugasan?.assignedKelas);
+  add(user.penugasan?.wali_kelas);
   add(user.wali_kelas);
+  add(user.waliKelas);
+  add(user.kelas);
 
   return result;
 }
@@ -329,9 +339,22 @@ export function canWaliKelasIntervene(
     waliKelasList &&
     waliKelasList.some(w => {
       if (toCanonicalClass(w.kelas) !== targetCanon) return false;
-      const matchId = Boolean(user.id && w.guru_id && w.guru_id === user.id);
-      const matchName = Boolean(user.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim());
-      const matchNip = Boolean((user.username || user.nip) && w.nip && (w.nip === user.username || w.nip === user.nip));
+      const matchId = Boolean(
+        (user.id && w.guru_id && (w.guru_id === user.id || w.guru_id === user.data_guru_id || w.guru_id === user.guru_id || w.guru_id === user.user_id)) ||
+        (user.guru_id && w.guru_id && w.guru_id === user.guru_id) ||
+        (user.data_guru_id && w.guru_id && w.guru_id === user.data_guru_id) ||
+        (user.user_id && w.guru_id && w.guru_id === user.user_id)
+      );
+      const cleanUserNama = (user.nama || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
+      const cleanWaliNama = (w.nama_guru || '').split(',')[0].replace(/^(dr|dra|drs|ir|prof|h|hj|ust|ustadz|ustadzah)\.?\s+/i, '').toLowerCase().trim();
+      const matchName = Boolean(
+        (user.nama && w.nama_guru && user.nama.toLowerCase().trim() === w.nama_guru.toLowerCase().trim()) ||
+        (cleanUserNama && cleanWaliNama && (cleanUserNama === cleanWaliNama || cleanUserNama.includes(cleanWaliNama) || cleanWaliNama.includes(cleanUserNama)))
+      );
+      const matchNip = Boolean(
+        (user.username || user.nip) && w.nip &&
+        (w.nip === user.username || w.nip === user.nip || String(w.nip).trim() === String(user.nip || user.username).trim())
+      );
       return matchId || matchName || matchNip;
     })
   );

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
-import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance, canWaliKelasIntervene } from '@/lib/presensiIntervensi';
+import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance, canWaliKelasIntervene, toCanonicalClass } from '@/lib/presensiIntervensi';
 import { getWitaDateStr, formatPresensiTime } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -71,8 +71,8 @@ export default function RekapSiswaView({
   // Wali Kelas feature states
   const [waliKelasList, setWaliKelasList] = useState<any[]>([]);
   const [activeWaliKelas, setActiveWaliKelas] = useState<any | null>(null);
-  const userAssignedKelas = propAssignedKelas || user?.penugasan?.kelas_binaan || (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas);
-  const isOwnHomeroomClass = Boolean(userAssignedKelas && activeWaliKelas?.kelas && activeWaliKelas.kelas === userAssignedKelas);
+  const userAssignedKelas = propAssignedKelas || user?.penugasan?.kelas_binaan || (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas) || (user as any)?.kelas_binaan || (user as any)?.assignedKelas || (user as any)?.assigned_kelas;
+  const isOwnHomeroomClass = Boolean(userAssignedKelas && activeWaliKelas?.kelas && (activeWaliKelas.kelas === userAssignedKelas || toCanonicalClass(activeWaliKelas.kelas) === toCanonicalClass(userAssignedKelas)));
   const isReadOnly = isGlobalReadOnly && !isOwnHomeroomClass;
   const [showWaliInput, setShowWaliInput] = useState(false);
   const [waliTanggal, setWaliTanggal] = useState<string>(getWitaDateStr());
@@ -151,7 +151,8 @@ export default function RekapSiswaView({
         // Fallback assignment: ensure Wali Kelas with assigned prop or profile gets access
         const fallbackKelas = typeof propAssignedKelas === 'string' ? propAssignedKelas :
           (typeof user?.penugasan?.kelas_binaan === 'string' ? user?.penugasan?.kelas_binaan :
-          (typeof user?.wali_kelas === 'string' ? user?.wali_kelas : (user?.wali_kelas?.kelas || '')));
+          (typeof user?.wali_kelas === 'string' ? user?.wali_kelas : (user?.wali_kelas?.kelas || ''))) ||
+          (user as any)?.kelas_binaan || (user as any)?.assignedKelas || (user as any)?.assigned_kelas || '';
 
         if ((!userWalis || userWalis.length === 0) && fallbackKelas) {
           const synthesized = [{ id: 'fallback-' + fallbackKelas, kelas: fallbackKelas, nama_guru: user?.nama || 'Wali Kelas' }];
@@ -482,10 +483,15 @@ export default function RekapSiswaView({
 
     // Guard Otorisasi: Wali Kelas dari kelas binaan terkait atau Administrator yang berhak menyimpan intervensi presensi
     // Wali kelas tetap berhak intervensi meskipun berstatus presensi dinas luar, izin, sakit, cuti, atau status non-hadir lainnya
-    const authCheck = canWaliKelasIntervene(user, activeWaliKelas.kelas, undefined, waliKelasList);
+    const authCheck = canWaliKelasIntervene(
+      { ...user, assignedKelas: propAssignedKelas || user?.assignedKelas || userAssignedKelas },
+      activeWaliKelas.kelas,
+      undefined,
+      waliKelasList
+    );
     const isWaliVerified = isAdmin || isSuperadmin || authCheck.allowed || Boolean(
-      (userAssignedKelas && activeWaliKelas?.kelas && activeWaliKelas.kelas === userAssignedKelas) ||
-      (waliKelasList && waliKelasList.some(w => (w.kelas === activeWaliKelas.kelas || authCheck.allowed) && (
+      (userAssignedKelas && activeWaliKelas?.kelas && (activeWaliKelas.kelas === userAssignedKelas || toCanonicalClass(activeWaliKelas.kelas) === toCanonicalClass(userAssignedKelas))) ||
+      (waliKelasList && waliKelasList.some(w => (toCanonicalClass(w.kelas) === toCanonicalClass(activeWaliKelas.kelas) || authCheck.allowed) && (
         (user?.id && w.guru_id === user.id) ||
         (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
         (user?.username && w.nip && w.nip === user.username)
@@ -586,6 +592,9 @@ export default function RekapSiswaView({
     propAssignedKelas,
     user?.penugasan?.kelas_binaan,
     userWaliKelasString,
+    (user as any)?.kelas_binaan,
+    (user as any)?.assignedKelas,
+    (user as any)?.assigned_kelas,
     ...waliKelasList.map(w => w.kelas)
   ].filter(Boolean);
   const allowedClasses = (isAdmin || user?.role === 'Admin' || isKepalaSekolah || isReadOnly)
@@ -594,7 +603,7 @@ export default function RekapSiswaView({
 
   const tarikRekap = async () => {
     const targetKelas = (!isAdmin && !isKepalaSekolah && !isReadOnly) && allowedClasses.length > 0 
-      ? (allowedClasses.includes(kelas) ? kelas : allowedClasses[0]) 
+      ? (allowedClasses.some(c => toCanonicalClass(c) === toCanonicalClass(kelas)) ? kelas : allowedClasses[0]) 
       : kelas;
 
     if (!targetKelas) {
@@ -607,7 +616,11 @@ export default function RekapSiswaView({
       return;
     }
 
-    if (!isAdmin && !isKepalaSekolah && !isReadOnly && allowedClasses.length > 0 && !allowedClasses.includes(targetKelas)) {
+    const isClassPermitted = isAdmin || isKepalaSekolah || isReadOnly || allowedClasses.length === 0 ||
+      allowedClasses.includes(targetKelas) ||
+      allowedClasses.some(c => toCanonicalClass(c) === toCanonicalClass(targetKelas));
+
+    if (!isClassPermitted) {
       Swal.fire({
         icon: 'warning',
         title: 'Akses Ditolak',

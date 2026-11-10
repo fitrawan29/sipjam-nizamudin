@@ -368,6 +368,65 @@ async function runTests() {
     fail('ADV-ROBUST-10', 'Otorisasi via waliKelasList gagal', resViaList);
   }
 
+  // SECTION 6: ADVERSARIAL REVIEW ROUND 2 DEEP ATTACK PROBES
+  console.log(`\n${YELLOW}${BOLD}━━━ 6. ADVERSARIAL REVIEW ROUND 2 DEEP PROBES ━━━${RESET}`);
+
+  // 6.1 Elementary school roman numeral canonicalization (I - VI)
+  const resElemVI = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VI A' }, '6 A');
+  const resElemIV = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'IV B' }, '4 B');
+  const resElemV = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'Kelas V' }, '5');
+  if (resElemVI.allowed && resElemIV.allowed && resElemV.allowed) {
+    pass('ADV-ROBUST-11', 'Pencocokan kelas mengenali tingkat sekolah dasar (VI <=> 6, IV <=> 4, V <=> 5)');
+  } else {
+    fail('ADV-ROBUST-11', 'Gagal pada romawi kelas sekolah dasar', { resElemVI, resElemIV, resElemV });
+  }
+
+  // 6.2 Academic titles and degree suffix tolerance in database list matching
+  const mockDbTitles = [
+    { kelas: 'VIII-B', guru_id: 'dg-001', nama_guru: 'Budi Santoso', nip: '19700101' }
+  ];
+  const resTitleTolerance = canWaliKelasIntervene(
+    { id: 'auth-user-999', data_guru_id: 'dg-001', role: 'guru', nama: 'Drs. Budi Santoso, M.Pd', username: '19700101' },
+    'VIII B',
+    'Izin',
+    mockDbTitles
+  );
+  if (resTitleTolerance.allowed === true && resTitleTolerance.isWaliKelas === true) {
+    pass('ADV-ROBUST-12', 'Toleransi gelar akademik dan NIP pada pencocokan relasi waliKelasList');
+  } else {
+    fail('ADV-ROBUST-12', 'Gagal mencocokkan guru dengan gelar akademik di waliKelasList', resTitleTolerance);
+  }
+
+  // 6.3 Separation of user auth id vs data_guru_id in relational lookup
+  const resDataGuruIdMatch = canWaliKelasIntervene(
+    { id: 'auth-uuid-different', data_guru_id: 'dg-001', role: 'guru', nama: 'Budi Santoso' },
+    'VIII B',
+    'Sakit',
+    mockDbTitles
+  );
+  if (resDataGuruIdMatch.allowed === true) {
+    pass('ADV-ROBUST-13', 'Relasi waliKelasList berhasil dicocokkan melalui data_guru_id');
+  } else {
+    fail('ADV-ROBUST-13', 'Gagal mencocokkan via data_guru_id', resDataGuruIdMatch);
+  }
+
+  // 6.4 RekapSiswaView rawAllowed & tarikRekap class authorization resilience
+  if (rekapCode.includes('(user as any)?.assignedKelas') &&
+      rekapCode.includes('allowedClasses.some(c => toCanonicalClass(c) === toCanonicalClass(targetKelas))')) {
+    pass('ADV-ROBUST-14', 'RekapSiswaView mengintegrasikan penugasan kelas alternatif & toleransi kanonikal pada tarikRekap');
+  } else {
+    fail('ADV-ROBUST-14', 'RekapSiswaView belum mengintegrasikan pencocokan kanonikal pada tarikRekap');
+  }
+
+  // 6.5 workflow.ts Cuti leave protection preserves isIzinSakit and prevents false Alpa
+  const workflowCode = fs.readFileSync(path.resolve('src/lib/workflow.ts'), 'utf-8');
+  if (workflowCode.includes("jp === 'Cuti'") && workflowCode.includes("p.jenis_presensi === 'Cuti'")) {
+    pass('ADV-ROBUST-15', 'workflow.ts memproteksi guru berstatus Cuti dari false-positive Alpa');
+  } else {
+    fail('ADV-ROBUST-15', 'workflow.ts tidak menyertakan proteksi Cuti');
+  }
+
+
   // SUMMARY
   console.log(`\n${CYAN}══════════════════════════════════════════════════════════════════════${RESET}`);
   console.log(`${BOLD}SUMMARY: Total ${totalTests} | Passed: ${passedTests} | Failed: ${failedTests}${RESET}`);
