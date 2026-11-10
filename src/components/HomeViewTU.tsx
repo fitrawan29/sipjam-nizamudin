@@ -5,6 +5,7 @@ import {
   getWitaTimeStr, 
   getWitaDayName, 
   getWitaDateStr, 
+  extractWitaDateStr,
   formatPresensiTime 
 } from '@/lib/wita';
 import { supabase } from '@/lib/supabaseClient';
@@ -233,6 +234,7 @@ export default function HomeViewTU({
       // Extract today's records
       const todayPresensi = (presensiList || []).filter((p: any) => {
         const ts = p.timestamp || '';
+        if (extractWitaDateStr(ts) === todayStr) return true;
         if (ts.startsWith(todayStr)) return true;
         const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
         if (slashMatch) {
@@ -580,14 +582,25 @@ export default function HomeViewTU({
       });
     } else if (dailyState.presensiPulang) {
       const ts = dailyState.presensiPulang.timestamp || '';
-      const timeOnly = formatPresensiTime(ts) || (ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : '');
+      const timeOnly = formatPresensiTime(ts) || (ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : ''));
+      const isPulangCepat = dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat';
       const isAuto = dailyState.presensiPulang.is_auto_checkout || dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout';
-      steps.push({
-        label: 'Presensi Pulang',
-        status: 'done',
-        detail: isAuto ? `Lupa Checkout · ${timeOnly} WITA` : `Pulang · ${timeOnly} WITA`,
-        icon: isAuto ? 'fa-clock-rotate-left' : 'fa-right-from-bracket'
-      });
+      if (isPulangCepat) {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'active',
+          detail: `⚠️ Pulang Cepat · ${timeOnly} WITA`,
+          icon: 'fa-person-walking-dashed-line-arrow-right',
+          targetView: 'view-guru-presensi'
+        });
+      } else {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'done',
+          detail: isAuto ? `Lupa Checkout · ${timeOnly} WITA` : `Pulang · ${timeOnly} WITA`,
+          icon: isAuto ? 'fa-clock-rotate-left' : 'fa-right-from-bracket'
+        });
+      }
     } else if (dailyState.canPresensiPulang) {
       steps.push({
         label: 'Presensi Pulang',
@@ -630,11 +643,14 @@ export default function HomeViewTU({
     if ((dailyState.jurnalDitolak?.length ?? 0) > 0) {
       return { text: `⚠️ ${dailyState.jurnalDitolak.length} entri Jurnal Kegiatan ditolak admin. Silakan periksa di menu Jurnal Kegiatan.`, color: 'text-red-600 dark:text-red-400' };
     }
-    if (!dailyState.jurnalKegiatan) {
-      return { text: 'Presensi datang berhasil. Silakan isi Jurnal Kegiatan administrasi hari ini.', color: 'text-amber-600 dark:text-amber-400' };
-    }
     if (dailyState.presensiPulangDitolak) {
       return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan kirim ulang di menu Presensi TU.', color: 'text-red-600 dark:text-red-400' };
+    }
+    if (dailyState.presensiPulang && (dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat')) {
+      return { text: '⚠️ Anda tercatat Pulang Cepat hari ini karena tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
+    }
+    if (!dailyState.jurnalKegiatan) {
+      return { text: 'Presensi datang berhasil. Silakan isi Jurnal Kegiatan administrasi hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     }
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) {
       return { text: 'Jurnal kegiatan telah lengkap! Silakan lakukan Presensi Pulang sebelum meninggalkan sekolah.', color: 'text-green-600 dark:text-green-400' };

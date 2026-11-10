@@ -136,7 +136,7 @@ async function runAll() {
     assert.strictEqual(res.isPulangCepat, false, 'Guru yang sudah pulang normal bukan Pulang Cepat');
   });
 
-  runTest('1.3: Guru yang mengisi Jurnal Kegiatan TIDAK terpengaruh aturan Pulang Cepat (Lupa Checkout biasa)', () => {
+  runTest('1.3: Guru yang mengisi Jurnal Kegiatan tetapi tidak presensi pulang => Pulang Cepat (jadwal KBM tetap tidak ditandai kosong)', () => {
     const teacher = { nama_guru: 'Budi Santoso, S.Pd.', user_id: 'usr-budi-1', sekolah_id: 'sch-1' };
     const teacherPresensi = [
       {
@@ -176,12 +176,13 @@ async function runAll() {
 
     const res = evaluatePulangCepatDanJurnal(teacher, teacherPresensi, allSchedules, allJournals);
     assert.strictEqual(res.isEligibleAutoCheckout, true);
-    assert.strictEqual(res.isPulangCepat, false, 'Guru yang isi Jurnal Kegiatan tidak dihitung Pulang Cepat');
-    assert.strictEqual(res.statusPresensi, 'Lupa Checkout', 'Mendapat status standar Lupa Checkout');
+    assert.strictEqual(res.hasJurnalKegiatan, true);
+    assert.strictEqual(res.isPulangCepat, true, 'Tidak presensi pulang wajib dihitung Pulang Cepat meski mengisi Jurnal Kegiatan');
+    assert.strictEqual(res.statusPresensi, 'Pulang Cepat', 'Mendapat status Pulang Cepat');
     assert.strictEqual(res.emptySchedules.length, 0, 'Tidak boleh ada jadwal kosong yang ditandai');
   });
 
-  runTest('1.4: Guru yang mengisi seluruh jadwal KBM dengan lengkap TIDAK terpengaruh aturan Pulang Cepat', () => {
+  runTest('1.4: Guru yang mengisi seluruh jadwal KBM lengkap tetapi tidak presensi pulang => Pulang Cepat (jadwal kosong 0)', () => {
     const teacher = { nama_guru: 'Budi Santoso, S.Pd.', user_id: 'usr-budi-1', sekolah_id: 'sch-1' };
     const teacherPresensi = [
       {
@@ -221,12 +222,12 @@ async function runAll() {
     ];
 
     const res = evaluatePulangCepatDanJurnal(teacher, teacherPresensi, allSchedules, allJournals);
-    assert.strictEqual(res.isPulangCepat, false, 'Mengisi jadwal KBM lengkap => bukan Pulang Cepat');
-    assert.strictEqual(res.statusPresensi, 'Lupa Checkout');
+    assert.strictEqual(res.isPulangCepat, true, 'Mengisi jadwal KBM lengkap namun tidak presensi pulang => Pulang Cepat');
+    assert.strictEqual(res.statusPresensi, 'Pulang Cepat');
     assert.strictEqual(res.emptySchedules.length, 0);
   });
 
-  runTest('1.5: Guru yang TIDAK memiliki jadwal mengajar hari ini TIDAK terpengaruh aturan Pulang Cepat', () => {
+  runTest('1.5: Guru/BK/TU tanpa jadwal KBM tetapi melakukan presensi datang tanpa presensi pulang => Pulang Cepat', () => {
     const teacher = { nama_guru: 'Budi Santoso, S.Pd.', user_id: 'usr-budi-1', sekolah_id: 'sch-1' };
     const teacherPresensi = [
       {
@@ -240,11 +241,11 @@ async function runAll() {
         sekolah_id: 'sch-1'
       }
     ];
-    const allSchedules: any[] = []; // Hari non-teaching / bebas KBM
+    const allSchedules: any[] = []; // Hari non-teaching / BK / TU
 
     const res = evaluatePulangCepatDanJurnal(teacher, teacherPresensi, allSchedules, []);
-    assert.strictEqual(res.isPulangCepat, false, 'Tidak ada jadwal hari ini => bukan Pulang Cepat');
-    assert.strictEqual(res.statusPresensi, 'Lupa Checkout');
+    assert.strictEqual(res.isPulangCepat, true, 'Presensi datang tanpa presensi pulang pada hari tanpa jadwal mengajar => Pulang Cepat');
+    assert.strictEqual(res.statusPresensi, 'Pulang Cepat');
     assert.strictEqual(res.emptySchedules.length, 0);
   });
 
@@ -599,7 +600,7 @@ async function runAll() {
     );
   });
 
-  runTest('6.2: evaluatePulangCepatDanJurnal recognizes substitute teacher "Inval - Jurnal Kegiatan"', () => {
+  runTest('6.2: evaluatePulangCepatDanJurnal recognizes substitute teacher "Inval - Jurnal Kegiatan" (Pulang Cepat without empty schedules)', () => {
     const teacher = { nama_guru: 'Ahmad Fauzi', user_id: 'usr-inval', sekolah_id: 'sch-1' };
     const teacherPresensi = [
       {
@@ -638,8 +639,9 @@ async function runAll() {
     ];
 
     const res = evaluatePulangCepatDanJurnal(teacher, teacherPresensi, allSchedules, allJournals);
-    assert.strictEqual(res.isPulangCepat, false, 'Guru inval yang mengisi Inval - Jurnal Kegiatan tidak dihitung Pulang Cepat');
-    assert.strictEqual(res.statusPresensi, 'Lupa Checkout');
+    assert.strictEqual(res.hasJurnalKegiatan, true, 'Inval - Jurnal Kegiatan tetap terdeteksi sebagai jurnal kegiatan');
+    assert.strictEqual(res.isPulangCepat, true, 'Guru inval tanpa presensi pulang wajib terhitung Pulang Cepat');
+    assert.strictEqual(res.statusPresensi, 'Pulang Cepat');
     assert.strictEqual(res.emptySchedules.length, 0);
   });
 

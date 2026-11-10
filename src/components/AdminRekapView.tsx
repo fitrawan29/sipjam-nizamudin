@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
+import { getWitaDateStr, getWitaTimeStr, extractWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
 import { resolveLinkedUserForTeacher, isTeacherRecordMatch, isBkAccount } from '@/lib/workflow';
+import { isBeforeCutoff } from '@/lib/attendanceAlpa';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
@@ -219,10 +220,28 @@ export default function AdminRekapView({
         multiDayQuery = multiDayQuery.eq('sekolah_id', user.sekolah_id);
       }
 
-      const [{ data: presensiSingle }, { data: presensiMulti }] = await Promise.all([
+      let allPulangRows: any[] = [];
+      let pulangAllQuery = supabase
+        .from('presensi_guru')
+        .select('id, nama_guru, user_id, timestamp, tipe_absen, jenis_presensi, status_verifikasi, is_auto_checkout')
+        .eq('tipe_absen', 'Pulang')
+        .neq('status_verifikasi', 'Ditolak')
+        .not('nama_guru', 'ilike', '%test guru%')
+        .not('nama_guru', 'ilike', '%guru test%')
+        .gte('timestamp', start)
+        .lte('timestamp', end);
+      if (user?.sekolah_id) {
+        pulangAllQuery = pulangAllQuery.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const [{ data: presensiSingle }, { data: presensiMulti }, pulangAllRes] = await Promise.all([
         presensiQuery,
-        multiDayQuery
+        multiDayQuery,
+        Promise.resolve(pulangAllQuery).catch(() => ({ data: [] }))
       ]);
+      if (Array.isArray((pulangAllRes as any)?.data)) {
+        allPulangRows = (pulangAllRes as any).data;
+      }
 
       const presensiMap = new Map<string, any>();
       (presensiSingle || []).forEach(p => presensiMap.set(p.id, p));
@@ -314,11 +333,12 @@ export default function AdminRekapView({
       let telatPenaltiAktif = true;
       let batasJamPenalti = 4;
       let penaltiHariAlpa = 1;
+      let jamPulangAkhir = '22:00';
       try {
         let telatCfgQuery = supabase
           .from('pengaturan')
           .select('key, value')
-          .in('key', ['akumulasi_telat_aktif', 'batas_jam_penalti_telat', 'jumlah_hari_penalti_telat']);
+          .in('key', ['akumulasi_telat_aktif', 'batas_jam_penalti_telat', 'jumlah_hari_penalti_telat', 'jam_pulang_akhir']);
         if (user?.sekolah_id) {
           telatCfgQuery = telatCfgQuery.eq('sekolah_id', user.sekolah_id);
         }
@@ -327,11 +347,13 @@ export default function AdminRekapView({
           const aktifRow = telatCfgRows.find((r: any) => r.key === 'akumulasi_telat_aktif');
           const jamRow = telatCfgRows.find((r: any) => r.key === 'batas_jam_penalti_telat');
           const hariRow = telatCfgRows.find((r: any) => r.key === 'jumlah_hari_penalti_telat');
+          const pulangAkhirRow = telatCfgRows.find((r: any) => r.key === 'jam_pulang_akhir');
           if (aktifRow?.value !== undefined && aktifRow?.value !== null && aktifRow?.value !== '') {
             telatPenaltiAktif = String(aktifRow.value) !== 'false';
           }
           if (Number(jamRow?.value) > 0) batasJamPenalti = Number(jamRow?.value);
           if (Number(hariRow?.value) > 0) penaltiHariAlpa = Math.floor(Number(hariRow?.value));
+          if (pulangAkhirRow?.value) jamPulangAkhir = String(pulangAkhirRow.value);
         }
       } catch (_) {}
       const batasDetikPenalti = Math.round(batasJamPenalti * 3600);
@@ -433,6 +455,7 @@ export default function AdminRekapView({
 
       // Track credited dates per teacher to prevent double counting
       const creditedLeaveDates: Record<string, Set<string>> = {};
+      const datangWorkDates: Record<string, Set<string>> = {};
 
       // Aggregate presensi
       presensi?.forEach(p => {
@@ -459,11 +482,12 @@ export default function AdminRekapView({
         if (!creditedLeaveDates[canonicalNama]) {
           creditedLeaveDates[canonicalNama] = new Set<string>();
         }
+        if (!datangWorkDates[canonicalNama]) {
+          datangWorkDates[canonicalNama] = new Set<string>();
+        }
 
         if (p.tipe_absen === 'Pulang') {
-          if (p.jenis_presensi === 'Pulang Cepat' || p.status_verifikasi === 'Pulang Cepat') {
-            pMap[canonicalNama].pulangCepat++;
-          }
+          // Pulang Cepat is computed uniformly below from explicit Pulang rows and missing-checkout workdays
         } else if (
           p.tipe_absen === 'Datang' || 
           p.jenis_presensi === 'Sakit' || 
@@ -547,6 +571,10 @@ export default function AdminRekapView({
             }
           } else if (p.jenis_presensi === 'Dinas Luar') {
             pMap[canonicalNama].dinasLuar++;
+            const dStr = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).substring(0, 10) : '');
+            if (dStr && dStr >= startDateStr && dStr <= endDateStr && detailLower !== 'cuti') {
+              datangWorkDates[canonicalNama].add(dStr);
+            }
           } else if (
             p.jenis_presensi === 'Sekolah' || 
             p.jenis_presensi === 'Izin Terlambat' || 
@@ -554,9 +582,61 @@ export default function AdminRekapView({
           ) {
             pMap[canonicalNama].hadir++;
             pMap[canonicalNama].telatDetik += (p.keterlambatan_detik || 0);
+            const dStr = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).substring(0, 10) : '');
+            if (dStr && dStr >= startDateStr && dStr <= endDateStr) {
+              datangWorkDates[canonicalNama].add(dStr);
+            }
           }
           // Record Alpa dari DB tidak dijumlah langsung — Alpa dihitung dari selisih
         }
+      });
+
+      // Hitung Pulang Cepat untuk Guru, BK, dan TU (deduplicated per tanggal):
+      // Setiap hari kerja dengan presensi datang yang sah namun tidak ada presensi pulang normal (lewat batas cutoff) -> Pulang Cepat
+      const normalPulangDates: Record<string, Set<string>> = {};
+      const explicitPulangCepatDates: Record<string, Set<string>> = {};
+      const pulangMerged = new Map<string, any>();
+      [...(presensi || []), ...allPulangRows].forEach(p => {
+        if (p?.tipe_absen === 'Pulang' && p?.status_verifikasi !== 'Ditolak') {
+          const key = p.id || `${p.nama_guru || ''}_${p.timestamp || ''}`;
+          pulangMerged.set(key, p);
+        }
+      });
+      pulangMerged.forEach(p => {
+        const nama = p.nama_guru?.trim();
+        if (!nama || isTestGuruName(nama)) return;
+        const canonicalNama = resolveRekapCanonicalName(p, nama);
+        if (!pMap[canonicalNama]) return;
+        const dStr = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).substring(0, 10) : '');
+        if (!dStr || dStr < startDateStr || dStr > endDateStr) return;
+        const isAutoOrFast =
+          p.jenis_presensi === 'Pulang Cepat' ||
+          p.status_verifikasi === 'Pulang Cepat' ||
+          p.status_verifikasi === 'Lupa Checkout' ||
+          Boolean(p.is_auto_checkout);
+        if (isAutoOrFast) {
+          if (!explicitPulangCepatDates[canonicalNama]) explicitPulangCepatDates[canonicalNama] = new Set<string>();
+          explicitPulangCepatDates[canonicalNama].add(dStr);
+        } else {
+          if (!normalPulangDates[canonicalNama]) normalPulangDates[canonicalNama] = new Set<string>();
+          normalPulangDates[canonicalNama].add(dStr);
+        }
+      });
+      const todayWita = getWitaDateStr();
+      const currentTimeWita = getWitaTimeStr();
+      const isTodayPastCutoff = !isBeforeCutoff(currentTimeWita, jamPulangAkhir);
+      Object.keys(pMap).forEach(k => {
+        const pcDates = new Set<string>();
+        const normals = normalPulangDates[k];
+        for (const dStr of explicitPulangCepatDates[k] || []) {
+          if (!normals?.has(dStr)) pcDates.add(dStr);
+        }
+        for (const dStr of datangWorkDates[k] || []) {
+          if ((dStr < todayWita || (dStr === todayWita && isTodayPastCutoff)) && !normals?.has(dStr)) {
+            pcDates.add(dStr);
+          }
+        }
+        pMap[k].pulangCepat = pcDates.size;
       });
 
       // Aggregate jurnal (KBM/Kegiatan + Jurnal BK)
@@ -1114,7 +1194,7 @@ export default function AdminRekapView({
                       {/* Print Signature Dewan Guru */}
                       <div className="hidden print:block mt-8">
                         <p className="text-[8pt] text-black italic mb-4">
-                          * Keterangan Presensi Pulang Cepat: Tercatat apabila guru melakukan presensi datang namun tidak menyelesaikan kewajiban jurnal pembelajaran dan tidak melakukan presensi pulang.
+                          * Keterangan Presensi Pulang Cepat: Tercatat apabila guru atau guru BK melakukan presensi datang pada hari tersebut namun tidak melakukan presensi pulang.
                         </p>
                         <PrintSignature
                           leftTitle="Mengetahui,"
@@ -1202,6 +1282,9 @@ export default function AdminRekapView({
 
                         {/* Print Signature Tenaga TU */}
                         <div className="hidden print:block mt-8">
+                          <p className="text-[8pt] text-black italic mb-4">
+                            * Keterangan Presensi Pulang Cepat: Tercatat apabila staf Tata Usaha melakukan presensi datang pada hari tersebut namun tidak melakukan presensi pulang.
+                          </p>
                           <PrintSignature
                             leftTitle="Mengetahui,"
                             leftSubtitle="Pengelola Data / Admin"

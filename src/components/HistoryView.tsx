@@ -236,6 +236,7 @@ export default function HistoryView({
                             <h3 className="text-xs font-bold text-gray-900 dark:text-white">{item.tipe_absen} - {item.jenis_presensi}</h3>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                                 item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                (item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
                                 item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                 (item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
                                 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'

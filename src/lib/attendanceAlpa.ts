@@ -580,14 +580,21 @@ export function isTeacherJournalMatch(
   return matchTeacherTokens(teacher.nama_guru, journal.nama_guru);
 }
 
+function isFullDayLeaveRecord(rec: any): boolean {
+  if (!rec || isLateArrival(rec)) return false;
+  const fields = [rec.jenis_presensi, rec.detail_izin, rec.status_verifikasi]
+    .map(v => String(v || '').trim().toLowerCase());
+  return fields.some(v => v === 'izin' || v === 'sakit' || v === 'cuti');
+}
+
 /**
- * Evaluates whether a teacher qualifies for "Pulang Cepat" and determines empty schedules.
+ * Evaluates whether an employee (Guru, BK, or Tata Usaha) qualifies for "Pulang Cepat"
+ * and determines empty KBM schedules.
  * Conditions for Pulang Cepat:
- * - Checked in (valid Datang)
- * - Has teaching schedule on that day
- * - Did NOT fill teaching journals (or has empty schedules)
- * - Did NOT perform presensi pulang
- * - Did NOT fill Jurnal Kegiatan
+ * - Checked in (valid non-Alpa, non-Ditolak, non-leave Datang)
+ * - Did NOT perform valid presensi pulang
+ * Empty KBM schedules are still computed only for teaching schedules without matching journals
+ * (and omitted when Jurnal Kegiatan is filled) so journal delinquency rules remain unchanged.
  */
 export function evaluatePulangCepatDanJurnal(
   teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string },
@@ -612,10 +619,8 @@ export function evaluatePulangCepatDanJurnal(
     };
   }
 
-  // 2. Must not be on full day leave
-  const isLeave = ['Izin', 'Sakit'].includes(validDatang.jenis_presensi || '') ||
-    ['Izin', 'Sakit'].includes(validDatang.detail_izin || '');
-  if (isLeave) {
+  // 2. Must not be on full day leave (Izin / Sakit / Cuti, excluding Izin Terlambat)
+  if (isFullDayLeaveRecord(validDatang)) {
     return {
       isEligibleAutoCheckout: false,
       isPulangCepat: false,
@@ -628,8 +633,8 @@ export function evaluatePulangCepatDanJurnal(
     };
   }
 
-  // 3. Must NOT already have any Pulang record (normal checkout protects from pulang cepat)
-  const hasPulang = teacherPresensi.some(r => r.tipe_absen === 'Pulang');
+  // 3. Must NOT already have a non-rejected Pulang record (normal checkout protects from pulang cepat)
+  const hasPulang = teacherPresensi.some(r => r.tipe_absen === 'Pulang' && r.status_verifikasi !== 'Ditolak');
   if (hasPulang) {
     return {
       isEligibleAutoCheckout: false,
@@ -644,13 +649,13 @@ export function evaluatePulangCepatDanJurnal(
   }
 
   // Find journals for this teacher
-  const teacherJournals = (allJournalsToday || []).filter(j => 
+  const teacherJournals = (allJournalsToday || []).filter(j =>
     isTeacherJournalMatch(teacher, j) && j.status_verifikasi !== 'Ditolak'
   );
 
-  // Check if teacher filled Jurnal Kegiatan
+  // Check if teacher filled Jurnal Kegiatan (preserved so no false Tidak Masuk Kelas is flagged)
   const hasJurnalKegiatan = teacherJournals.some(j =>
-    (j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || 
+    (j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) ||
     (j.mapel && j.mapel.includes('Jurnal Kegiatan')) ||
     ((j.kegiatan || j.keterangan) && (!j.kelas || j.kelas === '-'))
   );
@@ -660,61 +665,56 @@ export function evaluatePulangCepatDanJurnal(
     isTeacherScheduleMatch(teacher, s)
   );
 
-  // If teacher filled Jurnal Kegiatan -> Rule: "Guru yang mengisi jurnal kegiatan atau melakukan presensi pulang dengan normal tidak terpengaruh oleh aturan ini."
   if (hasJurnalKegiatan) {
     return {
       isEligibleAutoCheckout: true,
-      isPulangCepat: false,
-      statusPresensi: 'Lupa Checkout',
+      isPulangCepat: true,
+      statusPresensi: 'Pulang Cepat',
       teachingSchedules: teacherSchedules,
       emptySchedules: [],
       filledJournals: teacherJournals,
       hasJurnalKegiatan: true,
-      reason: 'Teacher filled Jurnal Kegiatan (exempt from Pulang Cepat)'
+      reason: 'Checked in without presensi pulang (Pulang Cepat; Jurnal Kegiatan filled)'
     };
   }
 
-  // If teacher has NO teaching schedules today -> Rule: Not eligible for Pulang Cepat
   if (teacherSchedules.length === 0) {
     return {
       isEligibleAutoCheckout: true,
-      isPulangCepat: false,
-      statusPresensi: 'Lupa Checkout',
+      isPulangCepat: true,
+      statusPresensi: 'Pulang Cepat',
       teachingSchedules: [],
       emptySchedules: [],
       filledJournals: teacherJournals,
       hasJurnalKegiatan: false,
-      reason: 'Teacher has no teaching schedule today'
+      reason: 'Checked in without presensi pulang (Pulang Cepat; no teaching schedule today)'
     };
   }
 
   // Find empty schedules (schedules without matching accepted teaching journal)
   const emptySchedules = teacherSchedules.filter(s => {
-    return !teacherJournals.some(j => 
+    return !teacherJournals.some(j =>
       j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, s)
     );
   });
 
   const filledTeachingJournals = teacherSchedules.filter(s => {
-    return teacherJournals.some(j => 
+    return teacherJournals.some(j =>
       j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, s)
     );
   });
 
-  // If teacher has teaching schedule and has empty schedules (did not fill journals):
-  const isPulangCepat = emptySchedules.length > 0;
-
   return {
     isEligibleAutoCheckout: true,
-    isPulangCepat,
-    statusPresensi: isPulangCepat ? 'Pulang Cepat' : 'Lupa Checkout',
+    isPulangCepat: true,
+    statusPresensi: 'Pulang Cepat',
     teachingSchedules: teacherSchedules,
     emptySchedules,
     filledJournals: filledTeachingJournals,
     hasJurnalKegiatan: false,
-    reason: isPulangCepat 
+    reason: emptySchedules.length > 0
       ? 'Teacher has teaching schedule, did not fill journal, and did not checkout (Pulang Cepat)'
-      : 'Teacher filled all teaching schedules'
+      : 'Checked in without presensi pulang (Pulang Cepat; teaching journals filled)'
   };
 }
 
@@ -732,14 +732,15 @@ export function evaluatePulangCepatDanJurnal(
 export async function evaluateAndApplyAutoCheckout(
   targetDateStr?: string,
   sekolahId?: string,
-  options?: EvaluateAutoAlpaOptions
+  options?: EvaluateAutoAlpaOptions,
+  client: any = supabase
 ): Promise<AutoCheckoutResult> {
   const evaluatedDate = normalizeDateStr(targetDateStr);
   const todayWita = getWitaDateStr();
   const currentTimeWita = getWitaTimeStr();
 
   // 1. Fetch jam_pulang_akhir from pengaturan
-  let configQuery = supabase.from('pengaturan').select('*').eq('key', 'jam_pulang_akhir');
+  let configQuery = client.from('pengaturan').select('*').eq('key', 'jam_pulang_akhir');
   if (sekolahId) {
     configQuery = configQuery.eq('sekolah_id', sekolahId);
   }
@@ -763,7 +764,7 @@ export async function evaluateAndApplyAutoCheckout(
   const startOfDay = getWitaStartOfDay(evaluatedDate);
   const endOfDay = getWitaEndOfDay(evaluatedDate);
 
-  let query = supabase
+  let query = client
     .from('presensi_guru')
     .select('*')
     .gte('timestamp', startOfDay)
@@ -779,7 +780,7 @@ export async function evaluateAndApplyAutoCheckout(
     throw new Error(`Failed to query attendance for ${evaluatedDate}: ${error.message}`);
   }
 
-  const presensiRecords = (records || []).filter(rec => {
+  const presensiRecords = (records || []).filter((rec: any) => {
     const ts = rec.timestamp || '';
     return extractWitaDateStr(ts) === evaluatedDate || ts.startsWith(evaluatedDate) || (ts >= startOfDay && ts <= endOfDay);
   });
@@ -787,7 +788,7 @@ export async function evaluateAndApplyAutoCheckout(
   // 3b. Fetch all schedules and journals for the evaluated date
   const hariEvaluasi = getDayNameFromDate(evaluatedDate);
 
-  let jadwalQuery = supabase
+  let jadwalQuery = client
     .from('jadwal_pelajaran')
     .select('id, nama_guru, user_id, sekolah_id, kelas, mapel, mata_pelajaran, jam_mulai, jam_selesai')
     .eq('hari', hariEvaluasi);
@@ -800,7 +801,7 @@ export async function evaluateAndApplyAutoCheckout(
     console.error('[attendanceAlpa] Error fetching schedules for auto-checkout:', jadwalErr.message);
   }
 
-  let jurnalQuery = supabase
+  let jurnalQuery = client
     .from('jurnal_pembelajaran')
     .select('id, nama_guru, user_id, sekolah_id, kelas, mapel, keterangan, status_verifikasi, tanggal')
     .eq('tanggal', evaluatedDate);
@@ -812,6 +813,30 @@ export async function evaluateAndApplyAutoCheckout(
     console.error('[attendanceAlpa] Error fetching journals for auto-checkout:', jurnalErr.message);
   }
 
+  // Safely identify BK accounts so unfilled-duty fallback does not misclassify BK without sessions
+  const bkIdentifiers = new Set<string>();
+  const bkNames: string[] = [];
+  try {
+    let dgQ: any = client.from('data_guru').select('user_id, nama, role, mata_pelajaran');
+    if (sekolahId && typeof dgQ?.eq === 'function') dgQ = dgQ.eq('sekolah_id', sekolahId);
+    const dgRes = await dgQ;
+    for (const r of dgRes?.data || []) {
+      if (isBkAccount(r?.role, r?.mata_pelajaran)) {
+        if (r?.user_id) bkIdentifiers.add(String(r.user_id).trim());
+        if (r?.nama) bkNames.push(r.nama);
+      }
+    }
+    let usrQ: any = client.from('users').select('id, nama, role, mata_pelajaran');
+    if (sekolahId && typeof usrQ?.eq === 'function') usrQ = usrQ.eq('sekolah_id', sekolahId);
+    const usrRes = await usrQ;
+    for (const u of usrRes?.data || []) {
+      if (isBkAccount(u?.role, u?.mata_pelajaran)) {
+        if (u?.id) bkIdentifiers.add(String(u.id).trim());
+        if (u?.nama) bkNames.push(u.nama);
+      }
+    }
+  } catch (_) {}
+
   // Group by teacher - consolidate records that share user_id or match normalized teacher name
   const teacherGroups: (typeof presensiRecords)[] = [];
   for (const rec of presensiRecords) {
@@ -820,7 +845,7 @@ export async function evaluateAndApplyAutoCheckout(
     if (!recName && !recUid) continue;
 
     const existingGroup = teacherGroups.find(group => {
-      return group.some(item => {
+      return group.some((item: any) => {
         if (rec.sekolah_id && item.sekolah_id && rec.sekolah_id !== item.sekolah_id) {
           return false;
         }
@@ -844,20 +869,18 @@ export async function evaluateAndApplyAutoCheckout(
   for (const teacherRecs of teacherGroups) {
     // Check if teacher has valid Datang
     const validDatang = teacherRecs.find(
-      r => r.tipe_absen === 'Datang' && r.status_verifikasi !== 'Ditolak' && r.status_verifikasi !== 'Alpa'
+      (r: any) => r.tipe_absen === 'Datang' && r.status_verifikasi !== 'Ditolak' && r.status_verifikasi !== 'Alpa'
     );
     if (!validDatang) continue;
 
-    // Skip teachers on full-day leave
-    const isLeave = ['Izin', 'Sakit'].includes(validDatang.jenis_presensi || '') ||
-      ['Izin', 'Sakit'].includes(validDatang.detail_izin || '');
-    if (isLeave) continue;
+    // Skip employees on full-day leave (Izin / Sakit / Cuti, excluding Izin Terlambat)
+    if (isFullDayLeaveRecord(validDatang)) continue;
 
-    // Check if teacher already has any Pulang record
-    const hasPulang = teacherRecs.some(r => r.tipe_absen === 'Pulang');
+    // Check if employee already has a non-rejected Pulang record
+    const hasPulang = teacherRecs.some((r: any) => r.tipe_absen === 'Pulang' && r.status_verifikasi !== 'Ditolak');
     if (hasPulang) continue;
 
-    // Evaluate Pulang Cepat vs Lupa Checkout
+    // Evaluate Pulang Cepat
     const evalResult = evaluatePulangCepatDanJurnal(
       {
         nama_guru: validDatang.nama_guru,
@@ -874,7 +897,9 @@ export async function evaluateAndApplyAutoCheckout(
     const targetJenis = isPulangCepat ? 'Pulang Cepat' : 'Auto-Checkout';
     const targetLokasi = isPulangCepat ? 'Sistem Otomatis (Pulang Cepat)' : 'Sistem Otomatis (Lupa Checkout)';
     const targetCatatan = isPulangCepat
-      ? 'Auto-checkout: Guru pulang cepat (tidak mengisi jurnal & tidak presensi pulang)'
+      ? (evalResult.emptySchedules.length > 0
+          ? 'Auto-checkout: Guru pulang cepat (tidak mengisi jurnal & tidak presensi pulang)'
+          : 'Auto-checkout: Pulang cepat (melakukan presensi datang tetapi tidak melakukan presensi pulang)')
       : 'Auto-checkout: Guru tidak melakukan presensi pulang';
 
     // Insert explicit auto-checkout record
@@ -890,7 +915,7 @@ export async function evaluateAndApplyAutoCheckout(
           tipe_absen: 'Pulang',
           jenis_presensi: 'Pulang Cepat',
           status_verifikasi: 'Pulang Cepat',
-          catatan_admin: 'Auto-checkout: Guru pulang cepat (tidak mengisi jurnal & tidak presensi pulang)',
+          catatan_admin: targetCatatan,
           sekolah_id: validDatang.sekolah_id,
           lokasi: 'Sistem Otomatis (Pulang Cepat)',
           jarak: '0 m',
@@ -911,10 +936,10 @@ export async function evaluateAndApplyAutoCheckout(
           is_auto_checkout: true
         };
 
-    let { error: insErr } = await supabase.from('presensi_guru').insert(autoRecord);
+    let { error: insErr } = await client.from('presensi_guru').insert(autoRecord);
     if (insErr && (insErr.message.includes('schema cache') || insErr.message.includes('column'))) {
       const { is_auto_checkout: _, user_id: _u, catatan_admin: _c, ...baseAutoRecord } = autoRecord;
-      const retry = await supabase.from('presensi_guru').insert(baseAutoRecord);
+      const retry = await client.from('presensi_guru').insert(baseAutoRecord);
       if (!retry.error) {
         insErr = null;
       }
@@ -924,6 +949,10 @@ export async function evaluateAndApplyAutoCheckout(
       console.error(`[attendanceAlpa] Failed to insert auto-checkout for ${validDatang.nama_guru}:`, insErr.message);
     } else {
       let jurnalsCreated = 0;
+      const isBkUser = Boolean(
+        (validDatang.user_id && bkIdentifiers.has(String(validDatang.user_id).trim())) ||
+        bkNames.some(bn => matchTeacherTokens(validDatang.nama_guru, bn))
+      );
       // R3: Auto-record unfilled KBM, Kegiatan, and Piket duties
       const unfilledRes = await recordUnfilledJournalsAndPiket(
         {
@@ -933,10 +962,17 @@ export async function evaluateAndApplyAutoCheckout(
         },
         evaluatedDate,
         {
+          isBk: isBkUser,
           jadwalKBM: evalResult.teachingSchedules,
-          jurnalKBM: (allJurnalToday || []).filter(j => isTeacherJournalMatch(validDatang, j)),
-          jurnalKegiatan: (allJurnalToday || []).find(j => isTeacherJournalMatch(validDatang, j) && (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')) || null
-        }
+          jurnalKBM: (allJurnalToday || []).filter((j: any) => isTeacherJournalMatch(validDatang, j)),
+          jurnalKegiatan: (allJurnalToday || []).find((j: any) =>
+            isTeacherJournalMatch(validDatang, j) &&
+            j.status_verifikasi !== 'Ditolak' &&
+            j.status_verifikasi !== 'Tidak Melaksanakan Kegiatan' &&
+            ((j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || (j.mapel && j.mapel.includes('Jurnal Kegiatan')))
+          ) || null
+        },
+        client
       );
       jurnalsCreated = unfilledRes.unfilledKbmCount + (unfilledRes.unfilledKegiatanCreated ? 1 : 0);
 

@@ -576,7 +576,7 @@ export default function HomeViewGuru({
     if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.presensiPulang) {
       if (dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat') {
-        return { text: '⚠️ Anda tercatat Pulang Cepat karena tidak mengisi jurnal kegiatan dan tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
+        return { text: '⚠️ Anda tercatat Pulang Cepat hari ini karena tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
       }
       if (dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout' || dailyState.presensiPulang.is_auto_checkout) {
         return { text: 'ℹ️ Presensi pulang Anda dicatat otomatis oleh sistem (Lupa Checkout).', color: 'text-amber-600 dark:text-amber-400' };
