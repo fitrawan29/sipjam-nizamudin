@@ -115,6 +115,71 @@ export function isPiketPulangAllowed(
   }
 }
 
+function isTimeStringVal(val: any): boolean {
+  return typeof val === 'string' && /\d{1,2}[:.]\d{1,2}/.test(val);
+}
+
+/**
+ * Normalizes class strings by removing 'Kelas ' prefix, stripping punctuation (spaces, dashes, dots, underscores),
+ * and lowercasing for robust comparison.
+ */
+export function normalizeClassKey(val: any): string {
+  if (!val) return '';
+  const raw = typeof val === 'string' ? val : (val.kelas || val.nama_kelas || val.kelas_binaan || '');
+  return String(raw)
+    .trim()
+    .toLowerCase()
+    .replace(/^kelas\s+/i, '')
+    .replace(/[\s_\-.]+/g, '');
+}
+
+/**
+ * Standardizes Indonesian grade notations (e.g., 'viia' -> '7a', 'xmerdekaa' -> '10merdekaa').
+ */
+export function canonicalizeGradeNotation(s: string): string {
+  return s
+    .replace(/^xii(?=[a-z0-9]|$)/i, '12')
+    .replace(/^xi(?=[a-z0-9]|$)/i, '11')
+    .replace(/^x(?=[a-z0-9]|$)/i, '10')
+    .replace(/^ix(?=[a-z0-9]|$)/i, '9')
+    .replace(/^viii(?=[a-z0-9]|$)/i, '8')
+    .replace(/^vii(?=[a-z0-9]|$)/i, '7');
+}
+
+export function toCanonicalClass(val: any): string {
+  return canonicalizeGradeNotation(normalizeClassKey(val));
+}
+
+export function extractAssignedClasses(user: any): string[] {
+  const result: string[] = [];
+  if (!user) return result;
+
+  const add = (val: any) => {
+    if (!val) return;
+    if (typeof val === 'string') {
+      val.split(/[,;/]+/).forEach(v => {
+        const t = v.trim();
+        if (t) result.push(t);
+      });
+    } else if (Array.isArray(val)) {
+      val.forEach(item => add(item));
+    } else if (typeof val === 'object') {
+      if (val.kelas) add(val.kelas);
+      if (val.nama_kelas) add(val.nama_kelas);
+      if (val.kelas_binaan) add(val.kelas_binaan);
+    }
+  };
+
+  add(user.assignedKelas);
+  add(user.assigned_kelas);
+  add(user.kelas_binaan);
+  add(user.penugasan?.kelas_binaan);
+  add(user.penugasan?.kelas);
+  add(user.wali_kelas);
+
+  return result;
+}
+
 /**
  * Checks student attendance intervention permission specifically for Wali Kelas.
  * Window 1 (Pagi): currentTime <= batasPagi (default 12:00 WITA)
@@ -128,12 +193,18 @@ export function isPiketPulangAllowed(
 export function isWaliKelasIntervensiAllowed(
   batasPagi: string = '12:00',
   jamPulangMulai: string = '11:00',
-  jamBatasMalam?: string,
-  currentTimeStr?: string,
+  jamBatasMalam?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null,
+  currentTimeStr?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null,
   teacherStatusOrPresensi?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null
 ): WaliIntervensiCheck {
   try {
-    const rawCurrent = (currentTimeStr || getWitaTimeStr() || '00:00').trim();
+    let effectiveCurrentTime: string | undefined = undefined;
+
+    if (typeof currentTimeStr === 'string' && isTimeStringVal(currentTimeStr)) {
+      effectiveCurrentTime = currentTimeStr;
+    }
+
+    const rawCurrent = (effectiveCurrentTime || getWitaTimeStr() || '00:00').trim();
     const current = normalizeTime(rawCurrent);
     const pagi = normalizeTime(batasPagi || '12:00');
     const pulangStart = normalizeTime(jamPulangMulai || '11:00');
@@ -209,12 +280,19 @@ export function canWaliKelasIntervene(
   user: {
     id?: string;
     nama?: string;
+    username?: string;
+    nip?: string;
     role?: string;
-    wali_kelas?: string | { kelas?: string } | null;
-    penugasan?: { kelas_binaan?: string } | null;
+    wali_kelas?: any;
+    penugasan?: any;
+    kelas_binaan?: string;
+    assignedKelas?: string;
+    assigned_kelas?: string;
+    [key: string]: any;
   } | null | undefined,
-  targetClass: string,
-  teacherStatusOrPresensi?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null
+  targetClass: string | { kelas?: string; nama_kelas?: string } | null | undefined,
+  teacherStatusOrPresensi?: string | { status?: string; jenis_presensi?: string; detail_izin?: string; tipe_absen?: string } | null,
+  waliKelasList?: Array<{ kelas: string; guru_id?: string; nama_guru?: string; nip?: string }> | null
 ): WaliKelasIntervensiAuthCheck {
   if (!user) {
     return {
@@ -235,15 +313,30 @@ export function canWaliKelasIntervene(
     };
   }
 
-  // Extract user's assigned homeroom class
-  const assigned = user.penugasan?.kelas_binaan ||
-    (typeof user.wali_kelas === 'string' ? user.wali_kelas : user.wali_kelas?.kelas) ||
-    '';
+  const targetCanon = toCanonicalClass(targetClass);
+  if (!targetCanon) {
+    return {
+      allowed: false,
+      isWaliKelas: false,
+      reason: 'Akses ditolak: Kelas sasaran tidak valid.'
+    };
+  }
 
-  const cleanAssigned = assigned.trim().toLowerCase().replace(/^kelas\s+/i, '');
-  const cleanTarget = (targetClass || '').trim().toLowerCase().replace(/^kelas\s+/i, '');
+  const assignedClasses = extractAssignedClasses(user);
+  const isDirectlyAssigned = assignedClasses.some(c => toCanonicalClass(c) === targetCanon);
 
-  const isMatched = Boolean(cleanAssigned && cleanTarget && (cleanAssigned === cleanTarget));
+  const isAssignedInList = Boolean(
+    waliKelasList &&
+    waliKelasList.some(w => {
+      if (toCanonicalClass(w.kelas) !== targetCanon) return false;
+      const matchId = Boolean(user.id && w.guru_id && w.guru_id === user.id);
+      const matchName = Boolean(user.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim());
+      const matchNip = Boolean((user.username || user.nip) && w.nip && (w.nip === user.username || w.nip === user.nip));
+      return matchId || matchName || matchNip;
+    })
+  );
+
+  const isMatched = isDirectlyAssigned || isAssignedInList;
 
   if (!isMatched) {
     return {

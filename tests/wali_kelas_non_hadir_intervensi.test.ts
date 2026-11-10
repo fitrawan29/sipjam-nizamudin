@@ -269,6 +269,105 @@ async function runTests() {
     fail('REGRESS-04', 'Pencatatan sumber_perubahan Wali Kelas tidak utuh');
   }
 
+  // SECTION 5: ADVERSARIAL EDGE CASES & POLYMORPHIC RESILIENCE
+  console.log(`\n${YELLOW}${BOLD}━━━ 5. ADVERSARIAL ROBUSTNESS: CLASS FORMATTING & POLYMORPHIC ARGUMENTS ━━━${RESET}`);
+
+  // 5.1 Hyphen, space, and punctuation tolerance in class matching
+  const resHyphenSpace = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VII-A' }, 'VII A');
+  if (resHyphenSpace.allowed === true && resHyphenSpace.isWaliKelas === true) {
+    pass('ADV-ROBUST-01', 'Pencocokan kelas toleran terhadap tanda hubung vs spasi ("VII-A" vs "VII A")');
+  } else {
+    fail('ADV-ROBUST-01', 'Pencocokan tanda hubung vs spasi gagal', resHyphenSpace);
+  }
+
+  // 5.2 Prefix "Kelas" with hyphen vs standard ("Kelas VII-A" vs "VII A")
+  const resPrefixHyphen = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'Kelas VII-A' }, 'VII A');
+  if (resPrefixHyphen.allowed === true) {
+    pass('ADV-ROBUST-02', 'Pencocokan kelas toleran terhadap prefix "Kelas " dan tanda hubung');
+  } else {
+    fail('ADV-ROBUST-02', 'Pencocokan prefix "Kelas " dan tanda hubung gagal', resPrefixHyphen);
+  }
+
+  // 5.3 Roman numeral vs Arabic numeral canonicalization ("VII A" vs "7 A", "X Merdeka A" vs "10 Merdeka A")
+  const resRomanArabic = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VII A' }, '7 A');
+  const resMerdekaRoman = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'X Merdeka A' }, '10 Merdeka A');
+  if (resRomanArabic.allowed === true && resMerdekaRoman.allowed === true) {
+    pass('ADV-ROBUST-03', 'Pencocokan kelas mengenali ekuivalensi angka romawi & arab (VII <=> 7, X <=> 10)');
+  } else {
+    fail('ADV-ROBUST-03', 'Pencocokan angka romawi & arab gagal', { resRomanArabic, resMerdekaRoman });
+  }
+
+  // 5.4 Support for direct user properties (user.kelas_binaan, user.assignedKelas, user.assigned_kelas)
+  const resKelasBinaan = canWaliKelasIntervene({ role: 'guru', kelas_binaan: 'IX A' }, 'IX A');
+  const resAssignedKelas = canWaliKelasIntervene({ role: 'guru', assignedKelas: 'IX A' }, 'IX A');
+  const resAssigned_Kelas = canWaliKelasIntervene({ role: 'guru', assigned_kelas: 'IX A' }, 'IX A');
+  if (resKelasBinaan.allowed && resAssignedKelas.allowed && resAssigned_Kelas.allowed) {
+    pass('ADV-ROBUST-04', 'Dukungan properti penugasan variatif (kelas_binaan, assignedKelas, assigned_kelas)');
+  } else {
+    fail('ADV-ROBUST-04', 'Gagal mengenali properti alternatif kelas binaan pada user');
+  }
+
+  // 5.5 Target class passed as object ({ kelas: 'X Merdeka A' }) without runtime crash
+  try {
+    const resTargetObj = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'X Merdeka A' }, { kelas: 'X Merdeka A' } as any);
+    if (resTargetObj.allowed === true) {
+      pass('ADV-ROBUST-05', 'Mendukung targetClass dalam bentuk objek ({ kelas: "..." }) tanpa TypeError');
+    } else {
+      fail('ADV-ROBUST-05', 'TargetClass objek menghasilkan allowed: false', resTargetObj);
+    }
+  } catch (err: any) {
+    fail('ADV-ROBUST-05', 'TargetClass objek memicu runtime exception', err);
+  }
+
+  // 5.6 Support for array and delimited multi-class assignments
+  const resArrayWali = canWaliKelasIntervene({ role: 'guru', wali_kelas: [{ kelas: 'VIII B' }] }, 'VIII B');
+  const resCommaWali = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VIII A, VIII B' }, 'VIII B');
+  if (resArrayWali.allowed && resCommaWali.allowed) {
+    pass('ADV-ROBUST-06', 'Mendukung wali_kelas dalam bentuk array objek dan string multi-kelas koma');
+  } else {
+    fail('ADV-ROBUST-06', 'Gagal memproses array atau multi-kelas koma', { resArrayWali, resCommaWali });
+  }
+
+  // 5.7 Polymorphic 4th argument on isWaliKelasIntervensiAllowed with non-time teacher status string
+  const resPolyStatusString = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', 'Dinas Luar' as any);
+  if (resPolyStatusString.phase !== 'malam_tutup' || resPolyStatusString.pesan.includes('Status intervensi tidak dapat diproses') === false) {
+    pass('ADV-ROBUST-07', 'isWaliKelasIntervensiAllowed fleksibel menerima status guru sebagai argumen ke-4 tanpa runtime error');
+  } else {
+    fail('ADV-ROBUST-07', 'isWaliKelasIntervensiAllowed gagal pada argumen status string ke-4', resPolyStatusString);
+  }
+
+  // 5.8 Polymorphic 4th argument with object payload
+  const resPolyStatusObj = isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', { status: 'Izin' } as any);
+  if (resPolyStatusObj.pesan !== 'Status intervensi tidak dapat diproses.') {
+    pass('ADV-ROBUST-08', 'isWaliKelasIntervensiAllowed fleksibel menerima objek presensi guru tanpa crash');
+  } else {
+    fail('ADV-ROBUST-08', 'isWaliKelasIntervensiAllowed crash saat menerima objek pada argumen ke-4', resPolyStatusObj);
+  }
+
+  // 5.9 Cross-class intervention attempt while teacher is on Cuti
+  const resCrossClassCuti = canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VII A' }, 'VII B', 'Cuti');
+  if (resCrossClassCuti.allowed === false && resCrossClassCuti.reason.includes('bukan wali kelas')) {
+    pass('ADV-ROBUST-09', 'Guru berstatus cuti tetap ditolak saat mencoba intervensi presensi kelas paralel lain');
+  } else {
+    fail('ADV-ROBUST-09', 'Guru cuti salah diizinkan intervensi kelas lain', resCrossClassCuti);
+  }
+
+  // 5.10 Integration with external waliKelasList database records
+  const mockDbWaliList = [
+    { kelas: '7-A', guru_id: 'guru-999', nama_guru: 'Ade Fitrawan', nip: '19870101' }
+  ];
+  const resViaList = canWaliKelasIntervene(
+    { id: 'guru-999', role: 'guru', nama: 'Ade Fitrawan' },
+    'VII A',
+    'Dinas Luar',
+    mockDbWaliList
+  );
+  if (resViaList.allowed === true && resViaList.isWaliKelas === true) {
+    pass('ADV-ROBUST-10', 'Otorisasi intervensi berhasil terverifikasi melalui data relasi waliKelasList');
+  } else {
+    fail('ADV-ROBUST-10', 'Otorisasi via waliKelasList gagal', resViaList);
+  }
+
   // SUMMARY
   console.log(`\n${CYAN}══════════════════════════════════════════════════════════════════════${RESET}`);
   console.log(`${BOLD}SUMMARY: Total ${totalTests} | Passed: ${passedTests} | Failed: ${failedTests}${RESET}`);

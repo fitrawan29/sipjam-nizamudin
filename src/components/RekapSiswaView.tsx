@@ -482,10 +482,10 @@ export default function RekapSiswaView({
 
     // Guard Otorisasi: Wali Kelas dari kelas binaan terkait atau Administrator yang berhak menyimpan intervensi presensi
     // Wali kelas tetap berhak intervensi meskipun berstatus presensi dinas luar, izin, sakit, cuti, atau status non-hadir lainnya
-    const authCheck = canWaliKelasIntervene(user, activeWaliKelas.kelas);
+    const authCheck = canWaliKelasIntervene(user, activeWaliKelas.kelas, undefined, waliKelasList);
     const isWaliVerified = isAdmin || isSuperadmin || authCheck.allowed || Boolean(
       (userAssignedKelas && activeWaliKelas?.kelas && activeWaliKelas.kelas === userAssignedKelas) ||
-      (waliKelasList && waliKelasList.some(w => w.kelas === activeWaliKelas.kelas && (
+      (waliKelasList && waliKelasList.some(w => (w.kelas === activeWaliKelas.kelas || authCheck.allowed) && (
         (user?.id && w.guru_id === user.id) ||
         (user?.nama && w.nama_guru && w.nama_guru.toLowerCase().trim() === user.nama.toLowerCase().trim()) ||
         (user?.username && w.nip && w.nip === user.username)
@@ -915,10 +915,14 @@ export default function RekapSiswaView({
     return dStr;
   };
 
-  const isWaliKelasUser = isAdmin || user?.role === 'Admin' || isKepalaSekolah || isReadOnly || Boolean(
+  const isWaliKelasUser = isAdmin || isSuperadmin || user?.role === 'Admin' || isKepalaSekolah || isReadOnly || Boolean(
     propAssignedKelas || 
+    userAssignedKelas ||
     user?.wali_kelas || 
     user?.penugasan?.kelas_binaan || 
+    (user as any)?.kelas_binaan ||
+    (user as any)?.assignedKelas ||
+    (user as any)?.assigned_kelas ||
     waliKelasList.length > 0
   );
 
