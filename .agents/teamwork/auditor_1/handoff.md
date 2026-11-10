@@ -1,92 +1,43 @@
-# Handoff Report: Victory Audit for PAI & PAK Religion Separation
+# Handoff Report — Victory Audit
 
 ## 1. Observation
-
-1. **Commit History & Provenance**:
-   - `git log --oneline --grep="agama"` reveals iterative progression:
-     * `27c1e61`: `feat: pemisahan siswa berdasarkan status agama untuk mapel PAI dan PAK`
-     * `55aa185`: `fix(agama): perbaiki isolasi absensi kbm dan normalisasi akronim pai pak`
-     * `c3424f0`: `fix(agama): perbaiki akronim berurutan, sanitasi moslem christian, isolasi payload jurnal dan reset filter`
-     * `16387cf`: `fix(agama): isolasi fallback presensi kbm lintas agama dan evaluasi string polimorfik`
-
-2. **Core Logic Implementation**:
-   - `src/lib/agamaFilter.ts` implements:
-     * `isPaiSubject(mapelName)` (lines 26-39) using `/\b(pai)(?:bp|[\d]+|[xvi]+)?\b/i` and `'islam'` inclusion.
-     * `isPakSubject(mapelName)` (lines 44-57) using `/\b(pak)(?:bp|[\d]+|[xvi]+)?\b/i` and `'kristen'`, `'protestan'`, `'katolik'`.
-     * `isIslamStudent(student)` (lines 71-89) supporting polymorphic objects, strings, and case-insensitive aliases (`islam`, `muslim`, `moslem`).
-     * `isKristenStudent(student)` (lines 94-111) supporting polymorphic objects, strings, and case-insensitive aliases (`kristen`, `protestan`, `katolik`, `christian`, `catholic`).
-     * `isStudentEligibleForSubject(student, mapelName)` (lines 119-134) returning `true` for general subjects, isolating PAI to Islam, and PAK to Kristen.
-     * `filterStudentsBySubject(students, mapelName)` (lines 142-158) returning filtered arrays for PAI and PAK, and unchanged arrays for general subjects.
-
-3. **Domain Cross-Wiring**:
-   - `src/components/GuruJurnal.tsx`:
-     * Line 752: `const filteredData = filterStudentsBySubject(data, mapel); setStudents(filteredData);`
-     * Lines 836-841: Attendance state merger preserves only eligible students in `filteredData`.
-     * Lines 995-1002: Save payload `cleanAbsensiForSave` only records eligible student keys.
-   - `src/components/RekapSiswaView.tsx`:
-     * Line 609: `const filteredSiswa = filterStudentsBySubject(siswa || [], mapel);`
-     * Lines 241, 316, 692: `findLastKbmJournal(dayJournals, s)` passes individual student context to prevent cross-religion fallback attendance bleed.
-   - `src/lib/presensiIntervensi.ts`:
-     * Lines 325-330: `findLastKbmJournal` filters candidate journals using `isStudentEligibleForSubject(student, j.mapel)`.
-     * Lines 375-378: `resolveDailyStudentAttendance` nullifies `activeJournal` if student is ineligible for its subject.
-   - `src/components/GradebookView.tsx`:
-     * Line 1230: `const filtered = filterStudentsBySubject(data || [], selectedMapel);`
-   - `src/components/RaporView.tsx`:
-     * Line 948: `const eligibleMapels = activeMapels.filter(mapel => isStudentEligibleForSubject(student, mapel));`
-   - `src/components/AdminKelasView.tsx`:
-     * Lines 1653-1656: `selectedClassForWorkspace.students.filter(s => rosterMapelFilter !== 'ALL' && !isStudentEligibleForSubject(s, rosterMapelFilter) ? false : ...)`
-   - `src/components/AdminDataView.tsx`:
-     * Line 2403: `if (filterMapelSiswa !== 'ALL' && !isStudentEligibleForSubject(item, filterMapelSiswa)) return false;`
-
-4. **Independent Execution Results**:
-   - `npx tsx tests/agama_pai_pak_isolation.test.ts`: 29 / 29 checks passed (exit code 0).
-   - `npx tsc --noEmit`: 0 TypeScript errors (exit code 0).
-   - `npm test`: 77 / 77 test suites passed cleanly (exit code 0).
-   - `npm run build`: Next.js 16.3.4 (Turbopack) build completed cleanly (exit code 0).
+- Target Feature: Wali kelas attendance intervention on student attendance when teacher has non-hadir status (Dinas Luar, Izin, Sakit, Cuti, etc.).
+- Lineage of commits:
+  * `9d8e2dc`: Initial implementation of `canWaliKelasIntervene` and basic non-hadir authorization.
+  * `066329f`: Hardening against object `targetClass` parameters and non-time 4th arguments; added aliases `isWaliKelasIntervensiAuthorized` and `validateWaliKelasIntervensi`.
+  * `fe8daf6`: Canonical grade mapping for SD levels (I-VI), academic title tolerance in relational lookups, and `workflow.ts` Cuti protection.
+  * `109ee7d`: Extraction of centralized `isMatchingWaliGuru` SSOT helper, compound titles (`Prof. Dr. Ir.`, `Dra. Hj.`, `KH.`) and degrees without commas, hook and view synchronization.
+- Independent Execution Commands and Exact Outputs:
+  * `npx tsx tests/wali_kelas_non_hadir_intervensi.test.ts`: 44 / 44 tests PASS (100%).
+  * `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: 59 / 59 tests PASS (100%).
+  * `npx tsc --noEmit`: Exited with code 0 (0 type errors).
+  * `npm test`: Exited with code 0 across all 85 test suites (100% PASS).
+  * `npm run build`: Next.js 16.3.4 (Turbopack) production build completed successfully; 13/13 static pages compiled without errors.
 
 ## 2. Logic Chain
-
-1. Requirements R1 specifies that in a single class, student rosters for PAI must strictly contain only students with religion Islam, and PAK must strictly contain only students with religion Kristen/Katolik across presensi, jurnal, penilaian, and student lists.
-2. Observation 2 and 3 show that `filterStudentsBySubject` and `isStudentEligibleForSubject` are uniformly deployed across `GuruJurnal.tsx` (presensi & teaching journals), `RekapSiswaView.tsx` (attendance recaps), `GradebookView.tsx` (assessments), `RaporView.tsx` (report cards), and `AdminKelasView.tsx` / `AdminDataView.tsx` (student rosters).
-3. Observation 1 shows an adversarial review cycle in git commits where edge cases (such as fallback attendance bleed, polymorphic string evaluation, word boundary false positives, and CSV aliases) were surfaced and repaired.
-4. Requirement R2 specifies preservation of general subjects without regression. Observation 2 demonstrates that for any subject outside PAI and PAK, `isStudentEligibleForSubject` returns `true` and `filterStudentsBySubject` returns the entire class without modification.
-5. Independent test execution (Observation 4) validates that all 29 targeted assertions pass, all 77 repository test suites pass without regression, the TypeScript compiler passes without errors, and Next.js builds successfully.
-6. Therefore, the implementation is genuine, non-facaded, functionally complete, and satisfies all acceptance criteria.
+- Step 1: The user requirement R1 dictates that a homeroom teacher (wali kelas) must be allowed to record / intervene in student attendance for their assigned class even if their own teacher attendance status is Dinas Luar, Izin, Sakit, Cuti, or any other non-present status.
+- Step 2: Inspection of `canWaliKelasIntervene` in `src/lib/presensiIntervensi.ts` confirms that if the teacher is verified as the homeroom teacher for the target class (via `extractAssignedClasses` or `waliKelasList` matching with `isMatchingWaliGuru`), the function returns `{ allowed: true, isWaliKelas: true, teacherStatus: rawStatus }` regardless of whether the teacher's status is Hadir or non-hadir.
+- Step 3: The requirement R2 mandates preservation of existing business rules and zero regression. Non-homeroom teachers are strictly blocked with `{ allowed: false, isWaliKelas: false, reason: 'Akses ditolak: Pengguna bukan wali kelas dari kelas binaan terkait.' }`. Time windows (pagi <= 12:00, pulang <= jam pulang + 60m) are strictly enforced by `isWaliKelasIntervensiAllowed`, locking after cutoff.
+- Step 4: The UI integration in `RekapSiswaView.tsx` and hook `useWaliKelas.ts` uses the same normalized helper `isMatchingWaliGuru`, ensuring that teachers with compound titles or alternate ID formats do not suffer false lockouts from their class selection or banner.
+- Step 5: Independent test execution confirms that all 44 unit and adversarial assertions pass, 59 intervensi regression assertions pass, and the entire test suite of 85 test files passes without failure.
 
 ## 3. Caveats
-
-- Unverified aspects: The SQL migration file `supabase/migrations/20261109_add_agama_to_data_siswa.sql` has been created and verified locally, but applying it to the live hosted PostgreSQL database requires the database administrator to execute the migration or notify PostgREST on the production Supabase cloud instance.
-- Minor Robustness Risk: If a student's `agama` column is `NULL` or empty, that student will be excluded from PAI and PAK classes until their religious status is set in master data. They remain included in all general subjects.
+- Production deployment requires regular database schema and RLS policies already present in the workspace.
+- Live Supabase Realtime websocket subscriptions under extreme intermittent network loss were not simulated in local headless testing.
 
 ## 4. Conclusion
-
-**Verdict: VICTORY CONFIRMED.**
-The feature is authentically implemented, free from hardcoded shortcuts or facades, rigorously stress-tested across edge cases, and leaves zero regressions in existing system features.
+- The victory claim is verified and genuine.
+- VERDICT: **VICTORY CONFIRMED**.
+- All acceptance criteria for R1 and R2 are fully met, with zero regressions, zero cheating, and clean compilation and build.
 
 ## 5. Verification Method
-
-To independently verify this result:
-1. Run the isolation test suite:
-   ```bash
-   npx tsx tests/agama_pai_pak_isolation.test.ts
-   ```
-   *Expected*: Total Checks: 29 | Passed: 29 | Failed: 0 (exit code 0).
-2. Run the repository-wide regression test suite:
-   ```bash
-   npm test
-   ```
-   *Expected*: All 77 test suites pass cleanly (exit code 0).
-3. Run the TypeScript typecheck:
-   ```bash
-   npx tsc --noEmit
-   ```
-   *Expected*: 0 compilation errors (exit code 0).
-4. Run the production build:
-   ```bash
-   npm run build
-   ```
-   *Expected*: Next.js build succeeds with static pages generated (exit code 0).
-5. Invalidation conditions:
-   - Any check failing in `tests/agama_pai_pak_isolation.test.ts`.
-   - General subjects failing to load all students in a class.
-   - PAI loading non-Islamic students or PAK loading non-Christian students.
+- Execute the canonical verification commands:
+  ```bash
+  npx tsx tests/wali_kelas_non_hadir_intervensi.test.ts
+  npx tsx tests/wali_kelas_and_piket_intervensi.test.ts
+  npx tsc --noEmit
+  npm test
+  npm run build
+  ```
+- Inspect audit report file at:
+  `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\audit_report.md`
