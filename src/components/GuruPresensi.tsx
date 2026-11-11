@@ -317,7 +317,7 @@ export default function GuruPresensi({
       isSwitchingRef.current = true;
       try {
         const result = await Swal.fire({
-          title: 'Ganti Jenis Presensi?',
+          title: 'Ganti ke Izin / Sakit?',
           text: `Foto selfie yang telah diambil tidak dapat digunakan sebagai lampiran ${val}. Hapus foto selfie?`,
           icon: 'warning',
           showCancelButton: true,
@@ -842,11 +842,7 @@ export default function GuruPresensi({
           .from('presensi_guru')
           .update({ link_bukti: 'gagal_upload' })
           .eq('id', presensiId);
-        if (isSelfie) {
-          showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun foto bukti gagal diunggah ke Google Drive.', 'warning');
-        } else {
-          showToast('Upload Dokumen Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun dokumen bukti gagal diunggah ke Google Drive.', 'warning');
-        }
+        showToast('Sinkronisasi Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun berkas bukti gagal diunggah ke Google Drive.', 'warning');
       } finally {
         setUploadProgress({ active: false, percent: 0, status: '' });
       }
@@ -1379,7 +1375,7 @@ export default function GuruPresensi({
                             type="button"
                             onClick={async () => {
                               const result = await Swal.fire({
-                                title: 'Ganti File Dokumen?',
+                                title: 'Ganti Surat Izin?',
                                 text: `Hapus file ${file.name} dan pilih dokumen lain?`,
                                 icon: 'question',
                                 showCancelButton: true,
