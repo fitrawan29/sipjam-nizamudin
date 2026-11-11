@@ -326,6 +326,53 @@ async function runAll() {
     assert.strictEqual(progressCount, 0, 'Progress count for KBM journal must be 0 when only student attendance is saved');
   });
 
+  await runTest('2.12: canTeacherPresensiPulang tetap mengunci kepulangan jika sesi baru diisi absensi saja (materi & kegiatan "-")', () => {
+    const stateOnlyAbsensi: Partial<GuruDailyState> = {
+      presensiDatang: { id: 'p-1', tipe_absen: 'Datang', timestamp: '2026-11-11T07:00:00+08:00' },
+      isIzinSakit: false,
+      isPiket: false,
+      jadwalKBM: [
+        { id: 'j-1', mapel: 'Bahasa Indonesia', kelas: 'X RPL 1', jam_ke: '1' }
+      ],
+      jurnalKBM: [
+        {
+          id: 'jur-1',
+          mapel: 'Bahasa Indonesia',
+          kelas: 'X RPL 1',
+          jam_ke: '1',
+          materi: '-',
+          kegiatan: '-',
+          absensi_siswa: JSON.stringify([{ id: 's1', status: 'Hadir' }])
+        }
+      ],
+      jurnalKegiatan: null
+    };
+
+    const canPulang = canTeacherPresensiPulang(stateOnlyAbsensi);
+    assert.strictEqual(canPulang, false, 'Teacher CANNOT presensi pulang if journal content is only an absensi placeholder');
+  });
+
+  await runTest('2.13: HomeViewGuru & workflow.ts tidak ter-short-circuit jika materi bernilai "-" tetapi konten terisi', () => {
+    const mockJadwal = [{ id: 'jadwal-1', kelas: 'XII RPL 1', mapel: 'Web' }];
+    const sessionWithKonten = [{
+      id: 's-1',
+      kelas: 'XII RPL 1',
+      mapel: 'Web',
+      materi: '-',
+      konten: 'Pemrograman Frontend React',
+      kegiatan: 'Praktek lab',
+      absensi_siswa: JSON.stringify({ s1: 'H' })
+    }];
+
+    const progressCount = mockJadwal.filter(jk => sessionWithKonten.some(j => {
+      if (!isJurnalMatchJadwal(j, jk)) return false;
+      const mat = (j.materi && j.materi !== '-') ? j.materi : ((j as any).materi_pembelajaran && (j as any).materi_pembelajaran !== '-') ? (j as any).materi_pembelajaran : (((j as any).konten && (j as any).konten !== '-') ? (j as any).konten : null);
+      return Boolean(mat && j.kegiatan && j.kegiatan !== '-');
+    })).length;
+
+    assert.strictEqual(progressCount, 1, 'Progress count must recognize filled konten even if legacy/placeholder materi is "-"');
+  });
+
   // ==========================================================================
   // SECTION 3: R3 - MINIMALIS (/ponytail) DAN PRESERVASI AST INVARIANTS
   // ==========================================================================

@@ -289,7 +289,7 @@ export function evaluateReminderConditions(
     } else if (hasClassesToday) {
       // Regular teaching day: verify if all scheduled classes have matching journals
       const missingSchedules = dailyState.jadwalKBM.filter(
-        jk => !(dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))
+        jk => !(dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
       );
       if (missingSchedules.length > 0) {
         const total = dailyState.jadwalKBM.length;

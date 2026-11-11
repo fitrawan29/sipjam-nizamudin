@@ -602,7 +602,7 @@ export default function GuruJurnal({
         }
       } else if (state.hasBlockedSchedule) {
         setDateBlok(state.blokInfo || (state.activeBloks && state.activeBloks[0]) || null);
-        const hasPendingUnblocked = state.jadwalKBM.some((jk: any) => !jk.isBlocked && !(state.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk)));
+        const hasPendingUnblocked = state.jadwalKBM.some((jk: any) => !jk.isBlocked && !(state.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-')));
         if (hasPendingUnblocked) {
           setTipeJurnal('Jurnal KBM');
         } else {
@@ -705,7 +705,7 @@ export default function GuruJurnal({
 
     // Pilih jadwal hari ini yang belum diisi jurnalnya terlebih dahulu, fallback ke jadwal pertama hari ini
     const j =
-      jadwalHariIni.find((jk: any) => !(dailyState.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk))) ||
+      jadwalHariIni.find((jk: any) => !(dailyState.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk) && !(jr.materi === '-' && jr.kegiatan === '-'))) ||
       jadwalHariIni[0];
 
     const matchedMapel = mapelList.find(m =>
@@ -1395,11 +1395,12 @@ export default function GuruJurnal({
       }
 
       // Cek sesi yang sudah ada di jurnal_pembelajaran agar absensi dan jurnal terhubung dalam sesi yang sama
+      const tgl = tanggal || getWitaDateStr();
       const cleanNama = (user?.nama || '').split(',')[0].trim();
       let existingSessionQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
-        .eq('tanggal', tanggal)
+        .eq('tanggal', tgl)
         .eq('kelas', kelas);
       if (user?.sekolah_id) existingSessionQuery = existingSessionQuery.eq('sekolah_id', user.sekolah_id);
       if (user?.id && cleanNama) {

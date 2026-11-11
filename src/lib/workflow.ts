@@ -1858,7 +1858,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const blockedSchedules = state.jadwalKBM.filter((jk: any) => jk.isBlocked);
 
       const unblockedFulfilled = unblockedSchedules.every(jk => 
-        state.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk))
+        state.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
       );
       const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 
@@ -1936,7 +1936,7 @@ export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolea
   const blockedSchedules = (state.jadwalKBM || []).filter((jk: any) => jk.isBlocked);
 
   const unblockedFulfilled = unblockedSchedules.every((jk: any) => 
-    (state.jurnalKBM || []).some((j: any) => isJurnalMatchJadwal(j, jk))
+    (state.jurnalKBM || []).some((j: any) => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
   );
   const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 

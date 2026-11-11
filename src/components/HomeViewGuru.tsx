@@ -525,8 +525,8 @@ export default function HomeViewGuru({
       }
     } else {
       const filled = (dailyState.jurnalKBM || []).filter(j => {
-        const mat = j.materi || j.materi_pembelajaran || j.konten;
-        return Boolean(mat && mat !== '-' && j.kegiatan && j.kegiatan !== '-');
+        const mat = (j.materi && j.materi !== '-') ? j.materi : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : ((j.konten && j.konten !== '-') ? j.konten : null));
+        return Boolean(mat && j.kegiatan && j.kegiatan !== '-');
       }).length;
       const total = (dailyState.jadwalKBM || []).length;
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang?.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang?.jenis_presensi === 'Pulang Cepat';
@@ -1343,10 +1343,14 @@ export default function HomeViewGuru({
                         ? Object.keys(matchingJurnal.absensi_siswa).length > 0
                         : String(matchingJurnal.absensi_siswa).trim().length > 2)
                     );
+                    const matVal = (matchingJurnal?.materi && matchingJurnal.materi !== '-') 
+                      ? matchingJurnal.materi 
+                      : ((matchingJurnal?.materi_pembelajaran && matchingJurnal.materi_pembelajaran !== '-') 
+                        ? matchingJurnal.materi_pembelajaran 
+                        : ((matchingJurnal?.konten && matchingJurnal.konten !== '-') ? matchingJurnal.konten : null));
                     const isJurnalFilled = Boolean(
                       matchingJurnal &&
-                      (matchingJurnal.materi || matchingJurnal.materi_pembelajaran || matchingJurnal.konten) &&
-                      matchingJurnal.materi !== '-' &&
+                      matVal &&
                       matchingJurnal.kegiatan &&
                       matchingJurnal.kegiatan !== '-'
                     );
@@ -1416,8 +1420,8 @@ export default function HomeViewGuru({
                       Progres Jurnal: <strong className="text-gray-900 dark:text-white">
                         {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => {
                           if (!isJurnalMatchJadwal(j, jk)) return false;
-                          const mat = j.materi || j.materi_pembelajaran || j.konten;
-                          return Boolean(mat && mat !== '-' && j.kegiatan && j.kegiatan !== '-');
+                          const mat = (j.materi && j.materi !== '-') ? j.materi : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : ((j.konten && j.konten !== '-') ? j.konten : null));
+                          return Boolean(mat && j.kegiatan && j.kegiatan !== '-');
                         })).length}
                       </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked).length}</strong> kelas reguler
                     </span>
