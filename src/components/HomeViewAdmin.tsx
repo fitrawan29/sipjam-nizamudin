@@ -361,7 +361,7 @@ export default function HomeViewAdmin({
       const isTeacherMatch = (record: any, teacher: any, linkedUser?: any, allowSingleWord = false) =>
         isTeacherRecordMatch(record, teacher, linkedUser, { allowSingleWordFirstToken: allowSingleWord });
 
-      // Helper: Memastikan jurnal pembelajaran benar-benar riil diisi oleh guru (bukan auto-record delinquency / auto-fill berhalangan)
+      // Helper: Memastikan jurnal pembelajaran benar-benar riil diisi oleh guru (bukan auto-record delinquency / auto-fill berhalangan / placeholder absensi mandiri)
       const isRealJournal = (j: any): boolean => {
         if (!j) return false;
         const sv = j.status_verifikasi;
@@ -370,6 +370,8 @@ export default function HomeViewAdmin({
         if (ket === 'tidak masuk kelas' || ket === 'tidak melaksanakan kegiatan apapun' || ket === 'auto-fill sistem karena guru berhalangan hadir') return false;
         const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
         if (mat === 'tidak masuk kelas' || mat === 'tidak melaksanakan kegiatan apapun' || mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
+        // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan masih "-") bukan merupakan jurnal KBM yang selesai
+        if (j.materi === '-' && j.kegiatan === '-') return false;
         return true;
       };
 

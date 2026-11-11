@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import assert from 'assert';
 import { isJurnalMatchJadwal, canTeacherPresensiPulang, GuruDailyState } from '../src/lib/workflow';
+import { isRealSubmittedJournal } from '../src/components/AdminVerifView';
+import { evaluateTeacherWarningsSync } from '../src/lib/warningSystem';
 
 let passed = 0;
 let failed = 0;
@@ -371,6 +373,98 @@ async function runAll() {
     })).length;
 
     assert.strictEqual(progressCount, 1, 'Progress count must recognize filled konten even if legacy/placeholder materi is "-"');
+  });
+
+  await runTest('2.14: isRealSubmittedJournal menolak placeholder sesi absensi-only (materi & kegiatan "-")', () => {
+    const absensiOnly = {
+      id: 'jur-abs-only',
+      mapel: 'Matematika',
+      kelas: 'VII-A',
+      materi: '-',
+      kegiatan: '-',
+      status_verifikasi: 'Menunggu',
+      absensi_siswa: JSON.stringify({ s1: 'H', s2: 'S' })
+    };
+    assert.strictEqual(
+      isRealSubmittedJournal(absensiOnly),
+      false,
+      'isRealSubmittedJournal must return false for attendance-only placeholder'
+    );
+  });
+
+  await runTest('2.15: HomeViewAdmin isRealJournal menolak placeholder sesi absensi-only (materi & kegiatan "-")', () => {
+    const homeAdminPath = path.join(root, 'src', 'components', 'HomeViewAdmin.tsx');
+    const homeAdminContent = fs.readFileSync(homeAdminPath, 'utf8');
+
+    // Verify static implementation in HomeViewAdmin
+    assert.ok(
+      homeAdminContent.includes('// Sesi yang baru diisi absensi siswa saja (materi dan kegiatan masih "-") bukan merupakan jurnal KBM yang selesai'),
+      'HomeViewAdmin must explicitly guard against attendance-only placeholder in isRealJournal'
+    );
+    assert.ok(
+      homeAdminContent.includes('if (j.materi === \'-\' && j.kegiatan === \'-\') return false;'),
+      'HomeViewAdmin isRealJournal must return false when both materi and kegiatan are hyphen'
+    );
+  });
+
+  await runTest('2.16: evaluateTeacherWarningsSync tidak menghitung absensi-only sebagai pemenuhan jurnal harian', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const dayName = new Date().toLocaleDateString('id-ID', { weekday: 'long', timeZone: 'Asia/Makassar' });
+    const teacherName = 'Budi Santoso';
+    const teacherJadwal = [
+      { id: 'jadwal-1', hari: dayName, kelas: 'VII A', mata_pelajaran: 'Matematika', nama_guru: teacherName }
+    ];
+    const absensiOnlyRecords = [
+      {
+        id: 'j-1',
+        nama_guru: teacherName,
+        tanggal: today,
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: '-',
+        kegiatan: '-',
+        absensi_siswa: JSON.stringify({ s1: 'H' }),
+        status_verifikasi: 'Menunggu'
+      }
+    ];
+
+    const stats = evaluateTeacherWarningsSync(
+      't-1',
+      teacherName,
+      false, // isExemptNonTeaching
+      'sch-1',
+      [{ key: 'aturan_kehadiran_guru', value: 'Semua_Hari' }, { key: 'hari_sekolah', value: '6' }],
+      [], // holidaysData
+      teacherJadwal,
+      [], // penugasanData
+      [], // legacyPiketData
+      [{ nama_guru: teacherName, tipe_absen: 'Datang', timestamp: `${today}T07:00:00+08:00`, status_verifikasi: 'Disetujui' }],
+      absensiOnlyRecords,
+      [] // piketRecords
+    );
+
+    assert.strictEqual(
+      stats.stats.jurnal.filled,
+      0,
+      'Absensi-only record must NOT increment filled journals in stats'
+    );
+  });
+
+  await runTest('2.17: isRealSubmittedJournal menerima sesi jika konten terisi meskipun materi bernilai "-"', () => {
+    const sessionWithKonten = {
+      id: 'jur-konten',
+      mapel: 'Matematika',
+      kelas: 'VII-A',
+      materi: '-',
+      konten: 'Persamaan Linear Satu Variabel',
+      kegiatan: 'Diskusi kelompok',
+      status_verifikasi: 'Menunggu'
+    };
+    assert.strictEqual(
+      isRealSubmittedJournal(sessionWithKonten),
+      true,
+      'isRealSubmittedJournal must return true when konten is filled'
+    );
   });
 
   // ==========================================================================

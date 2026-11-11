@@ -42,7 +42,7 @@ export function isDelinquencyJournal(j: any): boolean {
   return false;
 }
 
-// Helper: Memastikan jurnal benar-benar diisi oleh guru dengan materi pembelajaran riil (bukan auto-record delinquency / auto-fill berhalangan)
+// Helper: Memastikan jurnal benar-benar diisi oleh guru dengan materi pembelajaran riil (bukan auto-record delinquency / auto-fill berhalangan / placeholder absensi mandiri)
 export function isRealSubmittedJournal(j: any): boolean {
   if (!j) return false;
   if (j._sourceTable === 'jurnal_bk' || j.isJurnalBk || j.bidang_bimbingan || j.jenis_layanan) return true;
@@ -53,6 +53,8 @@ export function isRealSubmittedJournal(j: any): boolean {
   if (ket === 'auto-fill sistem karena guru berhalangan hadir') return false;
   const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
   if (mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
+  // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan masih "-") bukan merupakan jurnal yang telah diserahkan
+  if (j.materi === '-' && j.kegiatan === '-') return false;
   return true;
 }
 

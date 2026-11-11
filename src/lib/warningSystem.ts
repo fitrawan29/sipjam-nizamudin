@@ -279,7 +279,10 @@ export function evaluateTeacherWarningsSync(
         const uniqueFilled = new Set();
         dayJournals.forEach(j => {
           if (j.kelas && j.mapel && j.kelas !== '-') {
-            uniqueFilled.add(`${j.kelas}_${j.mapel}`);
+            // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan "-") tidak dihitung sebagai jurnal selesai
+            if (!(j.materi === '-' && j.kegiatan === '-')) {
+              uniqueFilled.add(`${j.kelas}_${j.mapel}`);
+            }
           }
         });
         filledCount = Math.min(uniqueFilled.size, requiredJournals);
