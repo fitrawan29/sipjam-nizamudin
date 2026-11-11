@@ -6,7 +6,8 @@ import {
   getWitaDayName, 
   getWitaDateStr, 
   extractWitaDateStr,
-  formatPresensiTime 
+  formatPresensiTime,
+  parseTimeToMinutes
 } from '@/lib/wita';
 import { supabase } from '@/lib/supabaseClient';
 import { renderUserAvatar } from '@/lib/avatars';
@@ -124,6 +125,12 @@ export default function HomeViewTU({
   const [akumulasiTelat, setAkumulasiTelat] = useState({ detik: 0, alpa: 0 });
   const [telatConfig, setTelatConfig] = useState({ aktif: true, batasJam: 4, penaltiHari: 1 });
   const [configSyncTick, setConfigSyncTick] = useState(0);
+  const [jamPresensi, setJamPresensi] = useState({
+    pulangMulai: '11:00',
+    pulangJumat: '11:00',
+    pulangAkhir: '22:00',
+    effectivePulangMulai: '11:00',
+  });
 
   // Multi-format WITA month matcher
   const matchWitaMonth = (ts: string | null | undefined, targetMonth: string): boolean => {
@@ -188,6 +195,19 @@ export default function HomeViewTU({
 
         const ph = cfgRows.find((r: any) => r.key === 'jumlah_hari_penalti_telat')?.value;
         if (Number(ph) > 0) penaltiHariTelat = Math.floor(Number(ph));
+
+        let jpm = '11:00';
+        let jpj = '11:00';
+        let jpa = '22:00';
+        const jpmRow = cfgRows.find((r: any) => r.key === 'jam_pulang_mulai')?.value;
+        if (jpmRow) jpm = jpmRow;
+        const jpjRow = cfgRows.find((r: any) => r.key === 'jam_pulang_jumat')?.value;
+        if (jpjRow) jpj = jpjRow;
+        const jpaRow = cfgRows.find((r: any) => r.key === 'jam_pulang_akhir')?.value;
+        if (jpaRow) jpa = jpaRow;
+        const isJumat = getWitaDayName() === 'Jumat';
+        const eff = isJumat ? (jpj || jpm) : jpm;
+        setJamPresensi({ pulangMulai: jpm, pulangJumat: jpj, pulangAkhir: jpa, effectivePulangMulai: eff });
       }
 
       setTelatConfig({ aktif: aktifTelat, batasJam: batasJamTelat, penaltiHari: penaltiHariTelat });
@@ -709,13 +729,35 @@ export default function HomeViewTU({
         });
       }
     } else if (dailyState.canPresensiPulang) {
-      steps.push({
-        label: 'Presensi Pulang',
-        status: 'active',
-        detail: 'Tugas administrasi dan piket selesai, silakan absen pulang',
-        icon: 'fa-right-from-bracket',
-        targetView: 'view-guru-presensi'
-      });
+      const currentMinutes = parseTimeToMinutes(getWitaTimeStr());
+      const pulangMulaiMinutes = parseTimeToMinutes(jamPresensi.effectivePulangMulai);
+      const pulangAkhirMinutes = parseTimeToMinutes(jamPresensi.pulangAkhir);
+      const isBeforePulang = currentMinutes < pulangMulaiMinutes;
+      const isAfterPulang = currentMinutes > pulangAkhirMinutes;
+
+      if (isBeforePulang) {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'locked',
+          detail: `Tugas administrasi selesai · Dibuka pukul ${jamPresensi.effectivePulangMulai} WITA`,
+          icon: 'fa-right-from-bracket',
+        });
+      } else if (isAfterPulang) {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'locked',
+          detail: `Presensi pulang telah ditutup (${jamPresensi.pulangAkhir} WITA)`,
+          icon: 'fa-right-from-bracket',
+        });
+      } else {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'active',
+          detail: 'Tugas administrasi dan piket selesai, silakan absen pulang',
+          icon: 'fa-right-from-bracket',
+          targetView: 'view-guru-presensi'
+        });
+      }
     } else {
       const missingParts: string[] = [];
       if (dailyState.isPiket && !dailyState.laporanPiket) missingParts.push('laporan piket');
@@ -769,6 +811,18 @@ export default function HomeViewTU({
       return { text: 'Presensi datang berhasil. Silakan isi Jurnal Kegiatan administrasi hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     }
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) {
+      const currentMinutes = parseTimeToMinutes(getWitaTimeStr());
+      const pulangMulaiMinutes = parseTimeToMinutes(jamPresensi.effectivePulangMulai);
+      const pulangAkhirMinutes = parseTimeToMinutes(jamPresensi.pulangAkhir);
+      const isBeforePulang = currentMinutes < pulangMulaiMinutes;
+      const isAfterPulang = currentMinutes > pulangAkhirMinutes;
+
+      if (isBeforePulang) {
+        return { text: `Jurnal kegiatan dan piket telah lengkap! Presensi Pulang dibuka pukul ${jamPresensi.effectivePulangMulai} WITA.`, color: 'text-emerald-600 dark:text-emerald-400' };
+      }
+      if (isAfterPulang) {
+        return { text: `Waktu Presensi Pulang hari ini telah berakhir (ditutup pukul ${jamPresensi.pulangAkhir} WITA).`, color: 'text-amber-600 dark:text-amber-400' };
+      }
       return { text: 'Jurnal kegiatan dan piket telah lengkap! Silakan lakukan Presensi Pulang sebelum meninggalkan sekolah.', color: 'text-green-600 dark:text-green-400' };
     }
     if (dailyState.presensiPulang) {

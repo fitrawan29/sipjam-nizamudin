@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   getWitaTimeStr, 
   getWitaDayName, 
-  getWitaDateStr, formatPresensiTime 
+  getWitaDateStr, formatPresensiTime,
+  parseTimeToMinutes
 } from '@/lib/wita';
 import { 
   getGuruDailyState, 
   GuruDailyState, 
-  isJurnalMatchJadwal 
+  isJurnalMatchJadwal,
+  evaluatePresensiPulangTiming
 } from '@/lib/workflow';
 import { supabase } from '@/lib/supabaseClient';
 import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
@@ -412,6 +414,19 @@ export default function HomeViewGuru({
     if (!dailyState) return [];
     const steps: { label: string; status: 'done' | 'active' | 'locked' | 'skipped'; detail: string; icon: string }[] = [];
 
+    const pulangTiming = evaluatePresensiPulangTiming(
+      dailyState.jamPresensi || {
+        datangMulai: '06:45',
+        datangBatas: '07:15',
+        datangAkhir: '08:00',
+        pulangMulai: jadwalWali.jamPulangMulai || '11:00',
+        pulangJumat: '11:00',
+        pulangAkhir: '22:00',
+        effectivePulangMulai: jadwalWali.jamPulangMulai || '11:00',
+      }
+    );
+    const { isBefore: isBeforePulang, isAfter: isAfterPulang, effectivePulangMulai, pulangAkhir } = pulangTiming;
+
     // Step 1: Presensi Datang
     if (dailyState.isLibur) {
       steps.push({ label: 'Hari Libur', status: 'skipped', detail: dailyState.keteranganLibur || 'Libur', icon: 'fa-calendar-xmark' });
@@ -540,7 +555,28 @@ export default function HomeViewGuru({
         steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket' });
       }
     } else if (dailyState.canPresensiPulang) {
-      steps.push({ label: 'Presensi Pulang', status: 'active', detail: 'Semua tugas selesai, silakan absen pulang', icon: 'fa-right-from-bracket' });
+      if (isBeforePulang) {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'locked',
+          detail: `Semua tugas selesai · Dibuka pukul ${effectivePulangMulai} WITA`,
+          icon: 'fa-right-from-bracket'
+        });
+      } else if (isAfterPulang) {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'locked',
+          detail: `Presensi pulang telah ditutup (${pulangAkhir} WITA)`,
+          icon: 'fa-right-from-bracket'
+        });
+      } else {
+        steps.push({
+          label: 'Presensi Pulang',
+          status: 'active',
+          detail: 'Semua tugas selesai, silakan absen pulang',
+          icon: 'fa-right-from-bracket'
+        });
+      }
     } else {
       steps.push({ label: 'Presensi Pulang', status: 'locked', detail: 'Selesaikan semua tugas terlebih dahulu', icon: 'fa-right-from-bracket' });
     }
@@ -583,12 +619,32 @@ export default function HomeViewGuru({
       }
       return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-green-600 dark:text-green-400' };
     }
+
+    const pulangTiming = evaluatePresensiPulangTiming(
+      dailyState.jamPresensi || {
+        datangMulai: '06:45',
+        datangBatas: '07:15',
+        datangAkhir: '08:00',
+        pulangMulai: jadwalWali.jamPulangMulai || '11:00',
+        pulangJumat: '11:00',
+        pulangAkhir: '22:00',
+        effectivePulangMulai: jadwalWali.jamPulangMulai || '11:00',
+      }
+    );
+    const { isBefore: isBeforePulang, isAfter: isAfterPulang, effectivePulangMulai, pulangAkhir } = pulangTiming;
+
     if (isBk) {
       const bkFilledCount = dailyState.jurnalBK?.length ?? 0;
       if (bkFilledCount > 0) {
+        if (isBeforePulang) {
+          return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`, color: 'text-emerald-600 dark:text-emerald-400' };
+        }
         return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Lakukan Presensi Pulang jika jam tugas selesai.`, color: 'text-green-600 dark:text-green-400' };
       }
       if (dailyState.canPresensiPulang) {
+        if (isBeforePulang) {
+          return { text: `Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi. Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`, color: 'text-emerald-600 dark:text-emerald-400' };
+        }
         return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi, atau lakukan Presensi Pulang jika jam tugas selesai.', color: 'text-emerald-600 dark:text-emerald-400' };
       }
       return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi dan konseling siswa.', color: 'text-emerald-600 dark:text-emerald-400' };
@@ -598,7 +654,21 @@ export default function HomeViewGuru({
     }
     if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
     if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
-    if (dailyState.canPresensiPulang && !dailyState.presensiPulang) return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
+    if (dailyState.canPresensiPulang && !dailyState.presensiPulang) {
+      if (isBeforePulang) {
+        return {
+          text: `Semua tugas selesai! Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`,
+          color: 'text-emerald-600 dark:text-emerald-400'
+        };
+      }
+      if (isAfterPulang) {
+        return {
+          text: `Waktu Presensi Pulang hari ini telah berakhir (ditutup pukul ${pulangAkhir} WITA).`,
+          color: 'text-amber-600 dark:text-amber-400'
+        };
+      }
+      return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
+    }
     return null;
   };
 

@@ -1,5 +1,5 @@
 import { supabase, isSchemaCacheOrMissingTableError } from './supabaseClient';
-import { getWitaDateStr, getWitaDayName, extractWitaDateStr } from './wita';
+import { getWitaDateStr, getWitaDayName, extractWitaDateStr, getWitaTimeStr, parseTimeToMinutes } from './wita';
 import { isInvalidMapel } from './dataIntegrityGuard';
 import type { SistemBlok } from '@/types/database';
 
@@ -256,6 +256,17 @@ export type GuruDailyState = {
   presensiPulangDitolak: any | null;
   laporanPiketDitolak: any | null;
   jurnalDitolak: any[];
+
+  // Jam operasional presensi hari ini
+  jamPresensi?: {
+    datangMulai: string;
+    datangBatas: string;
+    datangAkhir: string;
+    pulangMulai: string;
+    pulangJumat: string;
+    pulangAkhir: string;
+    effectivePulangMulai: string;
+  };
 
   // Multi-State Arrival & Departure
   arrivalState?: string | null;
@@ -1082,6 +1093,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let hariSekolah = 6;
     let aturanKehadiran = 'Semua_Hari';
     let guruHanyaMengajarList: string[] = [];
+    let jamPulangMulai = '11:00';
+    let jamPulangJumat = '11:00';
+    let jamPulangAkhir = '22:00';
+    let jamDatangMulai = '06:45';
+    let jamDatangBatas = '07:15';
+    let jamDatangAkhir = '08:00';
 
     if (pengaturanRows && pengaturanRows.length > 0) {
       const hsRow = pengaturanRows.find((p: any) => p.key === 'hari_sekolah');
@@ -1107,7 +1124,36 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
           guruHanyaMengajarList = [ghmRow.value];
         }
       }
+      const jpm = pengaturanRows.find((p: any) => p.key === 'jam_pulang_mulai');
+      if (jpm && jpm.value) jamPulangMulai = jpm.value;
+      const jpj = pengaturanRows.find((p: any) => p.key === 'jam_pulang_jumat');
+      if (jpj && jpj.value) jamPulangJumat = jpj.value;
+      else if (pengaturanRows.some((p: any) => p.jam_pulang_jumat)) {
+        const jRow = pengaturanRows.find((p: any) => p.jam_pulang_jumat);
+        if (jRow?.jam_pulang_jumat) jamPulangJumat = jRow.jam_pulang_jumat;
+      }
+      const jpa = pengaturanRows.find((p: any) => p.key === 'jam_pulang_akhir');
+      if (jpa && jpa.value) jamPulangAkhir = jpa.value;
+      const jdm = pengaturanRows.find((p: any) => p.key === 'jam_datang_mulai');
+      if (jdm && jdm.value) jamDatangMulai = jdm.value;
+      const jdb = pengaturanRows.find((p: any) => p.key === 'jam_datang_batas');
+      if (jdb && jdb.value) jamDatangBatas = jdb.value;
+      const jda = pengaturanRows.find((p: any) => p.key === 'jam_datang_akhir');
+      if (jda && jda.value) jamDatangAkhir = jda.value;
     }
+
+    const isHariJumat = getWitaDayName(now) === 'Jumat';
+    const effectivePulangMulai = isHariJumat ? (jamPulangJumat || jamPulangMulai) : jamPulangMulai;
+
+    state.jamPresensi = {
+      datangMulai: jamDatangMulai,
+      datangBatas: jamDatangBatas,
+      datangAkhir: jamDatangAkhir,
+      pulangMulai: jamPulangMulai,
+      pulangJumat: jamPulangJumat,
+      pulangAkhir: jamPulangAkhir,
+      effectivePulangMulai,
+    };
 
     // Cek Pengecualian Kehadiran Guru & tautkan data_guru walaupun kolom user_id absen atau nama berbeda tipis:
     let isTeacherExempt = false;
@@ -1896,5 +1942,43 @@ export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolea
 
   return unblockedFulfilled && blockedFulfilled;
 }
+
+/**
+ * Helper untuk mengevaluasi status waktu presensi pulang hari ini.
+ * - isBefore: true jika jam saat ini belum mencapai jam buka presensi pulang (belum sampai presensi pulang)
+ * - isOpen: true jika jam saat ini berada dalam rentang jam buka s.d. jam tutup presensi pulang
+ * - isAfter: true jika jam saat ini telah melewati batas akhir presensi pulang
+ */
+export function evaluatePresensiPulangTiming(
+  jamPresensi?: GuruDailyState['jamPresensi'] | null,
+  customNow?: Date
+): {
+  isBefore: boolean;
+  isOpen: boolean;
+  isAfter: boolean;
+  effectivePulangMulai: string;
+  pulangAkhir: string;
+} {
+  const effectivePulangMulai = jamPresensi?.effectivePulangMulai || jamPresensi?.pulangMulai || '11:00';
+  const pulangAkhir = jamPresensi?.pulangAkhir || '22:00';
+
+  const currentTimeStr = getWitaTimeStr(customNow || new Date());
+  const currentMinutes = parseTimeToMinutes(currentTimeStr);
+  const startMinutes = parseTimeToMinutes(effectivePulangMulai);
+  const endMinutes = parseTimeToMinutes(pulangAkhir);
+
+  const isBefore = currentMinutes < startMinutes;
+  const isAfter = currentMinutes > endMinutes;
+  const isOpen = !isBefore && !isAfter;
+
+  return {
+    isBefore,
+    isOpen,
+    isAfter,
+    effectivePulangMulai,
+    pulangAkhir,
+  };
+}
+
 
 

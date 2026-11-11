@@ -932,6 +932,24 @@ export default function GuruPresensi({
 
   const isPulangLocked = tipeAbsen === 'Pulang' && dailyState && !dailyState.canPresensiPulang;
 
+  const isJumatToday = getWitaDayName(new Date()) === 'Jumat';
+  const effectivePulangMulai = isJumatToday ? (jamPresensi.pulangJumat || jamPresensi.pulangMulai) : jamPresensi.pulangMulai;
+  const currentWitaParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Makassar',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false
+  }).formatToParts(new Date());
+  const currentWitaH = parseInt(currentWitaParts.find(p => p.type === 'hour')?.value || '0', 10);
+  const currentWitaM = parseInt(currentWitaParts.find(p => p.type === 'minute')?.value || '0', 10);
+  const currentMinutesVal = currentWitaH * 60 + currentWitaM;
+  const parseTimeMinutes = (timeStr: string) => {
+    if (!timeStr) return 0;
+    const [h, m] = String(timeStr).trim().replace(/\./g, ':').split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+  };
+  const isPulangBeforeTime = tipeAbsen === 'Pulang' && currentMinutesVal < parseTimeMinutes(effectivePulangMulai);
+
   // Pulang options for Multi-State Transitions:
   // Teachers can select between "Hadir di Sekolah" and "Dinas Luar" when checking out,
   // supporting all 4 state transitions ("Hadir di Sekolah" <-> "Dinas Luar").
@@ -1168,6 +1186,13 @@ export default function GuruPresensi({
                 {isPulangLocked && (
                    <div className="bg-orange-50 text-orange-700 p-3 rounded-xl text-[11px] font-bold border border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
                      <i className="fa-solid fa-triangle-exclamation mr-1"></i> {dailyState.lockedReason}
+                   </div>
+                )}
+
+                {tipeAbsen === 'Pulang' && dailyState?.canPresensiPulang && isPulangBeforeTime && !isPulangLocked && (
+                   <div className="bg-amber-50 text-amber-800 p-3 rounded-xl text-[11px] font-bold border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800 flex items-center gap-2">
+                     <i className="fa-regular fa-clock text-amber-600 dark:text-amber-400 shrink-0"></i>
+                     <span>Semua tugas hari ini telah selesai. Presensi Pulang baru dibuka pukul {effectivePulangMulai} WITA{isJumatToday ? ' (Jadwal Khusus Hari Jumat)' : ''}.</span>
                    </div>
                 )}
                 

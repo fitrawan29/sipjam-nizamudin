@@ -252,3 +252,24 @@ export function formatPresensiTime(rawTime: string | null | undefined | Date): s
   return null;
 }
 
+/**
+ * Konversi string waktu "HH:mm" atau "HH.mm" ke menit sejak tengah malam (0 - 1439).
+ * Menggunakan formatPresensiTime untuk normalisasi string terlebih dahulu.
+ */
+export function parseTimeToMinutes(timeStr: string | null | undefined): number {
+  if (!timeStr) return 0;
+  const str = String(timeStr).trim();
+  const normalized = formatPresensiTime(str) || str;
+  const match = normalized.match(/(?:^|\s|T)?(\d{1,2})[:.](\d{2})/);
+  if (match) {
+    const h = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    if (!isNaN(h) && !isNaN(m)) {
+      return h * 60 + m;
+    }
+  }
+  const [h, m] = str.replace(/\./g, ':').split(':').map(Number);
+  return (!isNaN(h) ? h : 0) * 60 + (!isNaN(m) ? m : 0);
+}
+
+

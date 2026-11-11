@@ -1,40 +1,34 @@
-# BRIEFING — 2026-11-11T03:05:20Z
+# BRIEFING — 2026-11-11T05:06:00Z
 
 ## Mission
-Sentinel coordinating project execution for attendance policy adjustments (admin) and KBM journal edit/delete features (teacher role).
+Conduct task interview and route user request for separating student attendance from KBM journal while keeping them counted together.
 
 ## 🔒 My Identity
 - Archetype: sentinel
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- R3: Hanya lakukan perbaikan R1 dan R2, jangan merubah hal lain yang ada di aplikasi. Terapkan prinsip solusi minimal dan tepat sasaran (ponytail).
-- Git workflow rule: git status, git add ., git commit -m "...", git push origin main.
-
-## Routing Decision
-- **Path**: General (`teamwork_orchestrator`)
-- **Rationale**: Multi-part software engineering task involving admin presence policy, teacher attendance requirements for non-teaching teachers/TU staff, and KBM journal edit/delete UI and backend functionality.
 
 ## Active Orchestrator
-- Active orchestrator: 59588c2c-30d7-43ba-9674-4233e746c526
-- Orchestrator state folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\
+- Active orchestrator: [TBD]
+- Orchestrator state folder: [TBD]
 
 ## User Context
-- **Last user request**: Approved task prompt received
-- **Pending clarifications**: none
+- **Last user request**: sesuaikan agar pengisian absensi siswa pada mapel tersebut dipisahkan dengan pengisian jurnal KBM namun masih terhitung sekaligus. (Catatan: gunakan pendekatan /ponytail - solusi yang paling simpel, minimal, to-the-point, dan hindari over-engineering)
+- **Pending clarifications**: Task interview in progress via teamwork_interviewer (dfce4f93-193b-4de8-9293-a8a78903c49d)
 - **Delivered results**: [none]
 
 ## Project Status
-- **Phase**: in progress (Orchestrator actively running Phase 0 Survey)
+- **Phase**: not started
 
 ## Victory Audit Status
-- **Auditor**: [to be spawned on victory claim]
+- **Auditor**: to be spawned on victory claim
 - **Triggered**: no
 - **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Verbatim approved user request
+- [none]
