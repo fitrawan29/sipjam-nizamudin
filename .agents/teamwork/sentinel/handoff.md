@@ -1,31 +1,30 @@
-# Handoff Report — Sentinel
+# Handoff Report: Pemisahan Antarmuka Pengisian Absensi Siswa dan Jurnal KBM
 
 ## Observation
-Permintaan pengguna mencakup:
-1. R1: Pengaturan kebijakan kehadiran guru dan staf TU tanpa jam KBM agar tetap wajib presensi (datang, piket jika ditugaskan, jurnal kegiatan, dan pulang) serta tidak terbaca "bebas presensi" pada hari aktif sekolah.
-2. R2: Penambahan fitur edit dan hapus jurnal KBM pada antarmuka role guru mandiri tanpa batasan waktu khusus.
-3. R3: Batasan perubahan minimal dan tepat sasaran tanpa merusak fitur lain, serta kepatuhan aturan Git GEMINI.md (status, add, commit, push origin main).
+- User meminta pemisahan antarmuka pengisian absensi siswa dan pengisian jurnal KBM agar guru dapat mengisi dan menyimpan absensi secara terpisah tanpa harus langsung mengisi form materi jurnal KBM, dan sebaliknya.
+- Meskipun terpisah secara antarmuka, data kehadiran siswa dan jurnal KBM harus tetap saling terhubung serta terhitung sekaligus dalam sesi/jam mengajar KBM mata pelajaran yang bersangkutan.
+- Pendekatan yang diminta adalah minimalis (/ponytail), menghindari over-engineering dan dependensi berlebih, serta memenuhi aturan git push ke origin/main pada GEMINI.md.
 
 ## Logic Chain
-- Routing dievaluasi ke General (`teamwork_orchestrator`) karena pekerjaan mencakup penyesuaian multi-komponen (konfigurasi admin, logika workflow, dan antarmuka role guru).
-- Timwork Swarm menjalankan fase survey (3 Explorers), perencanaan dekomposisi, implementasi paralel (Worker M1 & Worker M2), serta gate review berlapis (2 Reviewers, 2 Challengers, Forensic Auditor).
-- Pada gerbang iterasi 1, auditor internal mendeteksi pelanggaran AST invariant pada `workflow.ts`, sehingga veto ditegakkan dan iterasi remediasi dijalankan secara ketat.
-- Iterasi 2 berhasil diselesaikan dengan hasil tes lulus 100%, certified CLEAN oleh Forensic Auditor 2.
-- Git workflow rule dijalankan: commit `28549a2` di-push ke `origin main`.
-- Independent Victory Auditor (`b896c705-baa9-46e6-b540-8c775a204be8`) menjalankan 3-fase audit independen (timeline, integrity check, independent test execution) dan menyatakan **VICTORY CONFIRMED**.
+1. **Routing**: Pola SWE Light (`teamwork_swe`) dipilih sesuai parameter tugas self-contained dengan instruksi minimalis.
+2. **Implementasi & Hardening (4 Commit)**:
+   - `a79793c`: Penyediaan antarmuka terpisah antara Absensi Siswa dan Form Jurnal KBM pada `GuruJurnal.tsx` dan `HomeViewGuru.tsx`, serta integrasi penyimpanan independen tanpa merusak session linkage.
+   - `b7d90df`: Sanitasi query guru bergelar akademik, perbaikan submit enter form absensi, dan akurasi progres jurnal.
+   - `ed18066`: Penguncian presensi pulang ketika sesi baru diisi absensi saja tanpa materi KBM, serta validasi konten materi.
+   - `f7758f0`: Pengecualian sesi placeholder absensi mandiri dari antrean verifikasi admin dan agregasi jurnal disiplin agar tidak menimbulkan false alarm.
+3. **Audit Kemenangan Independen**:
+   - `teamwork_victory_auditor` dijalankan secara blocking (ConvId: `db28f9a1-894f-412c-b551-e19a2e378008`).
+   - Melalui evaluasi Fase A (Timeline), Fase B (Integritas tanpa stub/kecurangan), dan Fase C (Eksekusi pengujian independen), seluruh kriteria terpenuhi dengan hasil `VERDICT: VICTORY CONFIRMED`.
 
 ## Caveats
-- Tidak ada known issues atau broken contracts.
-- Filter tenancy (`sekolah_id`) dan guard kepemilikan (`user.nama`) ditegakkan pada operasi edit/hapus jurnal KBM.
+- Perangkat iOS WebKit atau browser tertentu memerlukan izin kamera saat guru mengambil dokumentasi foto KBM (standar browser permission).
+- Pada kasus ekstrem jika dua perangkat membuka sesi yang sama di milidetik identik, PostgreSQL menerapkan row update 'last write wins'.
 
 ## Conclusion
-Seluruh acceptance criteria pada ORIGINAL_REQUEST.md telah terpenuhi 100% dan terverifikasi secara independen. Kode telah tersinkronisasi di branch utama repository (`origin main`).
+Seluruh kebutuhan (R1, R2, R3) dan acceptance criteria berhasil dipenuhi secara penuh dan tuntas dengan pendekatan /ponytail. Kode terverifikasi dan telah di-push ke remote repository `origin/main`.
 
 ## Verification Method
-- Canonical Test Suite: 88 unit/integration test suites passing via `npm test` (0 failures).
-- Adversarial Suites: `tests/adversarial_r1_kebijakan_presensi.test.ts` (40/40 assertions) & `tests/adversarial_r2_jurnal_edit_delete.test.ts` (28/28 assertions) passed.
-- Feature Capability Suite: `tests/jurnal_edit_delete_r2.test.ts` (19/19 assertions) passed.
-- Sistem Blok Verification: `tests/sistem_blok_verification.test.ts` (205/205 assertions) passed.
-- TypeScript Compilation: `npx tsc --noEmit` exited clean (0 errors).
-- Production Build: `npm run build` completed successfully (13/13 static routes).
-- Git Verification: `git status` clean, branch main tersinkronisasi dengan origin/main.
+- **Automated Tests**: `npx tsx tests/absensi_jurnal_pemisahan_verification.test.ts` (23/23 tests PASSED).
+- **TypeScript Checking**: `npx tsc --noEmit` (0 errors).
+- **Production Build**: `npm run build` (Next.js production build succeeded with exit code 0).
+- **Git Push Verification**: `git status` clean, branch `main` sinkron dengan `origin/main` pada commit `f7758f0`.
