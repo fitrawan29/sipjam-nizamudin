@@ -321,6 +321,14 @@ export async function evaluateAndApplyAutoAlpa(
   const { data: allJadwalRaw } = await allJadwalQuery;
   const allJadwalToday = (allJadwalRaw || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
 
+  // Fetch all weekly schedules to identify teachers with KBM vs without KBM
+  let allWeeklyJadwalQuery = supabase
+    .from('jadwal_pelajaran')
+    .select('id, nama_guru, user_id, sekolah_id, mata_pelajaran, mapel');
+  if (sekolahId) allWeeklyJadwalQuery = allWeeklyJadwalQuery.eq('sekolah_id', sekolahId);
+  const { data: allWeeklyJadwalRaw } = await allWeeklyJadwalQuery;
+  const allWeeklyJadwal = (allWeeklyJadwalRaw || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+
   // Fetch semua guru aktif
   let guruQuery = supabase
     .from('data_guru')
@@ -400,6 +408,23 @@ export async function evaluateAndApplyAutoAlpa(
       guru.wajib_hadir_hanya_mengajar = true;
     }
 
+    // TU staff and teachers without KBM hours are strictly non-exempt
+    const isTu = (guru.mata_pelajaran || '').toLowerCase().includes('tata usaha') ||
+      (guru.mata_pelajaran || '').toLowerCase().includes('tu (administrasi)') ||
+      (guru.mata_pelajaran || '').toLowerCase() === 'tu';
+
+    const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
+
+    const hasAnyWeeklyKbm = !isTu && allWeeklyJadwal.some((j: any) => {
+      if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;
+      if (guru.user_id && j.user_id && String(j.user_id) === String(guru.user_id)) return true;
+      const jNama = (j.nama_guru || '').toLowerCase().trim();
+      if (!jNama || !cleanName) return false;
+      return jNama === namaNorm || jNama === cleanName || (cleanName.length >= 3 && jNama.includes(cleanName)) || (jNama.length >= 3 && cleanName.includes(jNama));
+    });
+
+    const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
+
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const hasExplicitTeacherSetting = guru.wajib_hadir_hanya_mengajar !== null && guru.wajib_hadir_hanya_mengajar !== undefined;
     const isTeacherInLegacyList = (guru.id && guruHanyaMengajarList.includes(guru.id)) ||
@@ -407,11 +432,13 @@ export async function evaluateAndApplyAutoAlpa(
       guruHanyaMengajarList.includes(guru.nama_guru) ||
       (guru.user_id && guruHanyaMengajarList.includes(guru.user_id));
 
-    const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar) ||
-      (!hasExplicitTeacherSetting && (isTeacherInLegacyList || isSchoolHariMengajarSaja));
+    // const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)
+    const isTeacherExempt = !isNonKbmOrTu && (
+      Boolean(guru.wajib_hadir_hanya_mengajar) ||
+      (!hasExplicitTeacherSetting && (isTeacherInLegacyList || isSchoolHariMengajarSaja))
+    );
 
     if (isTeacherExempt) {
-      const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
 
       const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
         if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;

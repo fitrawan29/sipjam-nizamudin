@@ -1,66 +1,53 @@
-## 2026-11-06T00:44:32Z
-You are a Teamwork Worker for Milestone 2 (Penyelarasan Template Master Data & Impor CSV).
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\
-Path to ORIGINAL_REQUEST.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
-Path to PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\PROJECT.md
+## 2026-11-11T03:29:33Z
+
+You are a Worker subagent for Milestone 2 in SIPJAM app.
+Your state folder is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
 MANDATORY INTEGRITY WARNING:
 DO NOT CHEAT. All implementations must be genuine. DO NOT hardcode test results, create dummy/facade implementations, or circumvent the intended task. A teamwork_auditor will independently verify your work. Integrity violations WILL be detected and your work WILL be rejected.
 
-You MUST read ORIGINAL_REQUEST.md and PROJECT.md before starting work.
-You MUST also read the Explorer handoff reports for Milestone 2:
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_1\handoff.md (CSV templates harmonization)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_2\handoff.md (CSV parsing, validation & upsert engine)
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_m2_3\handoff.md (CSV upload feedback & robustness)
+Read these reference files before starting:
+- ORIGINAL_REQUEST: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+- PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\PROJECT.md
+- Explorer 2 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\explorer_survey_r2\handoff.md
 
-File ownership:
-You have exclusive write ownership of:
-1. `src/components/AdminDataView.tsx`
-2. `src/lib/dataIntegrityGuard.ts`
-3. `src/components/AdminKelasView.tsx`
+Your exclusive write ownership is restricted to these files:
+- src/components/RekapJurnalView.tsx
+- src/components/GuruJurnal.tsx
 
-Your task:
-1. In `src/components/AdminDataView.tsx`:
-   - In `templates` record (lines 228–285), add `Data_Kelas`:
-     ```ts
-     Data_Kelas: {
-       filename: 'Template_Data_Kelas.csv',
-       headers: ['nama_kelas', 'tingkat', 'jurusan'],
-       sample: ['X Merdeka', '10', 'Umum']
-     }
-     ```
-   - Ensure all 7 entity templates (`Data_Kelas`, `Data_Siswa`, `Data_Guru`, `Data_Mapel`, `Kalender_Pendidikan`, `Jadwal_Pelajaran`, `Wali_Kelas`) are harmonized with target table schemas.
-   - Strictly preserve existing invariants:
-     * `Template_Kalender_Pendidikan.csv` MUST NOT contain `'id'` (asserted by tests/production_admin_adjustments.test.ts:688).
-     * `Template_Jadwal_Pelajaran.csv` MUST NOT contain `'id'` (asserted by tests/production_admin_adjustments.test.ts:696).
-     * `Template_Data_Guru.csv` MUST contain `'sekolah_id'` (asserted by tests/data_guru_csv_import_sekolah_id_validation.test.ts:834).
-   - In `handleFileUpload`:
-     * Preserve toast `showToast('Unggah Berhasil', ...)` for test invariant compliance (`tests/ui_ux_improvements_audit.test.ts:84`).
-     * Dispatch `window.dispatchEvent(new CustomEvent('sipjam:kelas-updated'))` upon successful import when `tabObj.id === 'Data_Kelas' || tabObj.id === 'Data_Siswa'`.
-     * Provide clear row-level feedback if error occurs (`Baris ${i}`).
-2. In `src/lib/dataIntegrityGuard.ts`:
-   - `normalizeCsvHeaders`:
-     * Add normalization mappings for `data_kelas` / `kelas`: `nama_kelas`, `tingkat`, `jurusan`, `kelas`, `rombel`.
-     * Clean BOM, trim spaces, handle case-insensitivity.
-   - `parseAndValidateMasterCsv`:
-     * Add validation for `data_kelas`: validate `nama_kelas` is non-empty, auto-generate UUID `id`.
-     * Check required headers pre-validation (fail early with row error if required columns are missing).
-     * Clean Excel apostrophes on NISN, phone, NIP.
-     * Ensure legacy non-UUID IDs are replaced with valid UUIDs to prevent Postgres error 22P02.
-   - `importMasterDataFromCsv`:
-     * Add `data_kelas` upsert: upsert to `data_kelas` with `onConflict: 'sekolah_id, nama_kelas'`; if PGRST205 or schema cache missing, gracefully fallback to updating classes in `data_siswa` / `wali_kelas`.
-     * For `data_siswa`: fetch existing students in `data_siswa` by `(sekolah_id, nisn)` and map their existing UUID `id`, so re-uploading students with updated classes updates existing rows instead of creating duplicate student rows!
-3. In `src/components/AdminKelasView.tsx`:
-   - Add "Template CSV" and "Impor CSV" buttons in `AdminKelasView` toolbar for administrative convenience, allowing admins to download `Template_Data_Kelas.csv` and upload class CSV directly from the sub-menu.
-   - Listen to `sipjam:kelas-updated` event to refresh class directory cards and rosters.
-4. Run verification commands:
-   - `npx tsc --noEmit`
-   - `npm test`
-5. Follow the Git workflow rule in GEMINI.md:
-   - `git status`
-   - `git add .`
-   - `git commit -m "feat: selaraskan seluruh template master data dan mekanisme impor CSV dengan skema database"`
-   - `git push origin main`
-6. Write a complete handoff report to:
-   `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md`
-   and notify the orchestrator with `send_message`.
+DO NOT modify files owned by Milestone 1 (`AdminConfigView.tsx`, `workflow.ts`, `HomeViewTU.tsx`, `HomeViewGuru.tsx`, `AdminVerifView.tsx`, `HomeViewAdmin.tsx`, `attendanceAlpa.ts`).
+
+Objective: Implement Milestone 2 (Requirement R2):
+"Tambahkan kemampuan pada antarmuka dan backend role guru untuk mengedit dan menghapus jurnal KBM yang telah mereka buat sendiri tanpa batasan waktu khusus, sehingga para guru dapat menyesuaikan data jurnal KBM mereka secara mandiri."
+
+Detailed Tasks:
+1. In `src/components/RekapJurnalView.tsx`:
+   - In personal mode table (`activeMode === 'pribadi'` / `controlledMode === 'pribadi'`), in column 12 (`Catatan`), inside `<div className="mt-1.5 no-print not-italic flex items-center gap-1.5 flex-wrap">`:
+     * Add "Edit" button (amber/indigo button with icon `fa-pen-to-square` / `fa-edit`).
+     * Add "Hapus" button (red button with icon `fa-trash-can`).
+     * Keep existing "Detail" button intact.
+     * Ensure these buttons are inside `no-print` container so the 12-column print layout is 100% unaffected.
+   - In `modal-detail-jurnal` (when viewing details of a journal belonging to the current teacher in personal mode):
+     * Add "Edit Jurnal" and "Hapus Jurnal" action buttons next to the "Tutup" button.
+   - Deletion implementation:
+     * Show confirmation dialog using SweetAlert2 (`Swal.fire`).
+     * When confirmed, execute Supabase deletion scoped to teacher:
+       `await supabase.from('jurnal_pembelajaran').delete().eq('id', targetJurnal.id).eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`
+     * If successful, remove from local `jurnalList` state, display success feedback, and refresh data.
+   - Edit implementation:
+     * Create an Edit Modal dialog (`isEditModalOpen`, `editingJurnal`) that pre-fills existing values:
+       tanggal, jam_ke, pertemuan_ke, mapel, kelas, lokasi_kbm, tujuan_pembelajaran, kktp, konten/materi, kegiatan, refleksi/catatan, absensi siswa (H, I, S, A).
+     * Support preserving existing photo documentation (`link_bukti_foto`) or uploading a new photo.
+     * Validate required inputs.
+     * When submitted, execute Supabase update scoped to teacher:
+       `await supabase.from('jurnal_pembelajaran').update(payload).eq('id', editingJurnal.id).eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`
+     * If the journal was previously 'Ditolak', reset `status_verifikasi` to 'Menunggu' (or standard auto-verification) and clear `catatan_penolakan`.
+     * If successful, update local state, close modal, display success feedback, and refresh data.
+   - Ensure NO TIME RESTRICTIONS ("tanpa batasan waktu khusus"): teachers can freely edit and delete their own journals from any date (today, yesterday, past weeks, past months).
+2. In `src/components/GuruJurnal.tsx`:
+   - Ensure seamless coordination with `RekapJurnalView` when embedded in sub-tab `rekap-pribadi`.
+3. Verification:
+   - Run typecheck: `npx tsc --noEmit`
+   - Run existing journal tests: `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`
+   - Verify that all builds and tests pass cleanly.

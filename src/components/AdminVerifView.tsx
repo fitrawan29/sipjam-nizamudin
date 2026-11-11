@@ -840,6 +840,14 @@ export default function AdminVerifView({
         );
         const hasPiketToday = inJadwalPiket || inPenugasanPiket;
 
+        // Check if teacher is TU staff or teacher without KBM hours across all timetable
+        const isTu = (t.mata_pelajaran || '').toLowerCase().includes('tata usaha') ||
+          (linkedUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+        const totalTeacherSchedules = isTu ? 0 : allJadwalPelajaran.filter((j: any) =>
+          isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true })
+        ).length;
+        const isNonKbmOrTu = isTu || totalTeacherSchedules === 0;
+
         // Check if teacher is in category "wajib hadir pada jadwal KBM"
         const isExplicitExempt = t.wajib_hadir_hanya_mengajar === true || String(t.wajib_hadir_hanya_mengajar) === 'true' || t.wajib_hadir_hanya_mengajar === 1 || String(t.wajib_hadir_hanya_mengajar) === '1';
         const isExplicitNonExempt = t.wajib_hadir_hanya_mengajar === false || String(t.wajib_hadir_hanya_mengajar) === 'false' || t.wajib_hadir_hanya_mengajar === 0 || String(t.wajib_hadir_hanya_mengajar) === '0';
@@ -856,7 +864,7 @@ export default function AdminVerifView({
                 (t.nip && itemClean === t.nip.toLowerCase().trim())))
           );
         });
-        const isTeacherExempt = isExplicitExempt || (!hasExplicitSetting && (isLegacyInList || aturanGlobal === 'Hari_Mengajar_Saja'));
+        const isTeacherExempt = !isNonKbmOrTu && (isExplicitExempt || (!hasExplicitSetting && (isLegacyInList || aturanGlobal === 'Hari_Mengajar_Saja')));
 
         const isFreeFromPresence = isTeacherExempt && scheduledClasses.length === 0 && !hasPiketToday;
 

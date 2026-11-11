@@ -594,14 +594,20 @@ export default function GuruJurnal({
           q = q.ilike('nama_guru', `%${cleanNama}%`);
         }
         const { data } = await q;
-        if (data && data.length > 0) {
-          setRejectedJournals(data);
-        }
+        setRejectedJournals(data || []);
       } catch (err) {
         console.warn('Failed to fetch rejected journals:', err);
       }
     };
     fetchRejected();
+
+    const handleJurnalUpdated = () => {
+      fetchRejected();
+    };
+    window.addEventListener('sipjam:jurnal-updated', handleJurnalUpdated);
+    return () => {
+      window.removeEventListener('sipjam:jurnal-updated', handleJurnalUpdated);
+    };
   }, [user?.nama, user?.id, user?.sekolah_id]);
 
   const allRejectedJournals = (() => {
@@ -1155,7 +1161,7 @@ export default function GuruJurnal({
         }
 
         // Presensi mapel tersimpan di jurnal_pembelajaran (absensi_siswa & kehadiran_murid)
-        showToast('Berhasil', 'Jurnal KBM dan presensi mapel berhasil disimpan!', 'success', {
+        showToast('Berhasil', 'Jurnal berhasil disimpan! Jurnal KBM dan presensi mapel berhasil disimpan!', 'success', {
           toast: true,
           position: 'top-end',
           timer: 3000,

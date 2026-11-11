@@ -1,115 +1,109 @@
-# Handoff Report: Milestone 1 — Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa
-
-**Agent**: `worker_m1`  
-**Milestone**: Milestone 1 (Sub Menu Kelas & Pemusatan Penentuan Kelas Siswa)  
-**Date**: 2026-11-06  
-**Status**: COMPLETE (Implementation & Verification Gate Passed)  
-
----
+# Handoff Report: Milestone 1 — Kebijakan Presensi Guru & Staf TU Tanpa Jam KBM (Requirement R1)
 
 ## 1. Observation
 
-Direct observations from codebase inspection, implementation, and verification:
+### 1.1 Root Causes of "Bebas Presensi" / "Bebas Hadir" Identified
+1. **`AdminConfigView.tsx`**:
+   - Lines 700–717: Attendance policy dropdown only had general descriptions without explaining policies for TU staff and teachers without KBM hours.
+   - Lines 743: Mass action button "Set Semua Hanya Hari KBM" executed `onClick={() => setExemptTeacherIds(guruList.map(g => g.id).filter(Boolean))}`, which set `wajib_hadir_hanya_mengajar = true` for all teachers, indiscriminately marking TU staff and teachers with 0 KBM hours as exempt.
+   - Lines 347–353: Saving config updated `data_guru.wajib_hadir_hanya_mengajar = true` based on raw `exemptTeacherIds` without checking whether a user was TU staff or had 0 teaching hours.
+2. **`workflow.ts`**:
+   - Lines 1190–1205: Determined `isTeacherExempt` by evaluating `explicitTeacherSetting` and falling back to `aturanKehadiran === 'Hari_Mengajar_Saja'`. If a teacher had 0 KBM hours or was TU, they were evaluated as exempt.
+   - Lines 1505–1520: Evaluated `if (isTeacherExempt && !hasTeachingObligation)`, setting `state.isNonTeachingDay = true`, `state.bebasAlpa = true`, and `state.lockedReason = 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran).'`.
+   - Lines 1761 & 1838: Had fallback `if (state.jadwalKBM.length === 0 && state.isPiket) isJurnalDone = true;`, which allowed teachers without KBM to skip Jurnal Kegiatan if assigned piket.
+3. **`AdminVerifView.tsx` & `HomeViewAdmin.tsx`**:
+   - In `AdminVerifView.tsx` (lines 859–861): Evaluated `isFreeFromPresence = isTeacherExempt && scheduledClasses.length === 0 && !hasPiketToday;` and rendered `pesan_belum: 'Bebas Hadir'`, `status_label: 'Bebas Hadir'`.
+   - In `HomeViewAdmin.tsx` (lines 402–404, 434): Evaluated `isExemptNonTeaching = isTeacherExempt && targetCount === 0; isFreeFromPresence = isExemptNonTeaching && !hasPiketDuty;` and rendered `presensiDatangStatus: 'Bebas Hadir'`.
+4. **`attendanceAlpa.ts`**:
+   - Lines 410–446: When `isTeacherExempt` was true and `!hasTeachingToday && !hasPiketDuty`, executed `continue;`, skipping attendance evaluation and preventing Alpa creation for absent non-KBM personnel.
+5. **`HomeViewTU.tsx`**:
+   - Lines 23–37 & 280–320: Did not check for piket assignment (`penugasan_piket` / `jadwal_piket`) or submission (`laporan_piket`), and did not include "Laporan Piket" in workflow steps or checkout prerequisites.
+6. **`HomeViewGuru.tsx`**:
+   - Lines 421–426 & 1056–1070: Rendered a "Bebas Presensi / Bebas Kehadiran & Jurnal" hero card whenever `dailyState.isNonTeachingDay` was set, which falsely informed teachers without KBM that they did not need to attend.
 
-1. **New Component Implementation (`src/components/AdminKelasView.tsx`)**:
-   - Implemented `AdminKelasView` component (652 lines) conforming strictly to blueprints from `explorer_m1_1` and data mutation rules from `explorer_m1_3`.
-   - **Executive Statistics Header**: Displays Total Kelas, Total Siswa Teralokasi, and Siswa Tanpa Kelas with quick click action.
-   - **Unallocated Students Warning Banner**: Conditionally rendered when `unassignedStudents.length > 0`, highlighting unallocated students with a direct launcher button to assign them immediately.
-   - **Toolbar Controls**: Search input (filtering class name, homeroom teacher, and major/jurusan), grade level pills filter (`ALL`, `10`, `11`, `12`), "+ Tambah Kelas Baru" button with SweetAlert2 modal, and "Naik Kelas" button triggering `NaikKelasModal.tsx`.
-   - **Responsive Class Directory Grid**: 1 column on mobile, 2 columns on tablet, 3 columns on desktop. Displays class name, grade pill badge, homeroom teacher (`wali_kelas.nama_guru` or italicized "Belum ditentukan"), total students, and male/female breakdown badges.
-   - **Centralized Allocation Workspace Slide-over Drawer**:
-     * Tab 1: Interactive class roster with multi-selection checkboxes, search roster, and batch "Pindahkan Siswa" to another class dropdown, unallocated pool, or "Lulus".
-     * Tab 2: Inbound student allocation ("Alokasikan Siswa Masuk") with filter for unallocated students vs students from other classes, multi-select checkboxes, and batch allocate to this class button.
-   - **Standalone Quick "Siswa Tanpa Kelas" Drawer**: Allows rapid multi-selection of unallocated students and one-click assignment to any target class.
-   - **Cascading Class Rename**: Safely cascades updates to `data_siswa.kelas`, `wali_kelas.kelas`, `jadwal_pelajaran.kelas`, and `data_kelas.nama_kelas` (defensively wrapped).
-   - **Zero-Student Delete Protection**: Guard prevents deletion of any class with `totalSiswa > 0`, requiring students to be moved first.
-   - **Strict RBAC & Defensive Schema-Cache**: Guarded by `isMasterDataModificationAllowed(user?.role)` with red lock card fallback; queries to `data_kelas` wrapped in `isSchemaCacheOrMissingTableError`.
-
-2. **Integration into Master Data (`src/components/AdminDataView.tsx`)**:
-   - Imported `AdminKelasView` from `./AdminKelasView`.
-   - Exported `normalizeAdminTab(tab?: string)` normalizing `Data_Kelas`, `data_kelas`, `Kelas`, and `kelas` to `'Data_Kelas'`.
-   - Inserted `{ id: 'Data_Kelas', label: 'Kelas', table: 'data_kelas' }` right after `Data_Siswa` in `tabs`.
-   - Updated `loadData()` to short-circuit immediately when `activeTab === 'Data_Kelas'`.
-   - Rendered `<AdminKelasView user={user} />` inside the dedicated sub-view branch of the top-level ternary, cleanly hiding generic table search, filters, pagination, and action bars.
-
-3. **Navigation & Route Aliasing (`src/lib/navigation.ts`)**:
-   - Registered `'view-admin-kelas'` and `'view-kelas'` in `VIEW_ALIASES` mapping to `{ view: 'view-admin-data', tab: 'Data_Kelas' }`.
-   - Registered `'view-admin-kelas'` and `'view-kelas'` in `SIDEBAR_TOUR_ALIASES['view-admin-data']`.
-   - Added `'view-admin-kelas'` to `dataTour` attributes in `getConsolidatedMenuItems`.
-   - Strengthened `evaluateTabRBAC` to strictly guard `view-admin-kelas`, `view-kelas`, and tabs `Data_Kelas`, `data_kelas`, `Kelas`, and `kelas` for non-admin roles.
-
-4. **Verification Results**:
-   - `npx tsc --noEmit` executed with 0 compilation errors.
-   - `npx tsx tests/master_data_admin_role_restriction.test.ts` passed 8/8 tests.
-   - `npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts` passed 16/16 tests (all master classes intact).
-   - `npx tsx tests/m6_master_data_polish.test.ts` passed 31/31 tests.
-   - `npm test` executed across all 54 test files with 100% pass rate and zero regressions.
-   - Git committed and pushed to `main` branch (`commit a7c1892`).
+### 1.2 Verification Commands Executed & Outputs
+- `npx tsc --noEmit` -> Exited with code `0` (clean, zero TypeScript compilation errors).
+- `npx tsx tests/tu_refinements_and_admin_rekap.test.ts` -> Exited with code `0` (82 passed, 0 failed).
+- `npx tsx tests/pulang_cepat_guru_bk_tu.test.ts` -> Exited with code `0` (3 passed, 0 failed).
+- `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts` -> Exited with code `0` (20 passed, 0 failed).
+- `npx tsx tests/jurnal_edit_delete_r2.test.ts` -> Exited with code `0` (19 passed, 0 failed).
 
 ---
 
 ## 2. Logic Chain
 
-1. **Centralized Allocation Paradigm**:
-   - In accordance with R1 in `ORIGINAL_REQUEST.md`, student class membership must be managed and centralized directly within the master data `Kelas` sub-menu.
-   - Ground truth for student enrollment is recorded on `data_siswa.kelas`.
-   - By creating `AdminKelasView.tsx`, admins have full visibility over class enrollments, gender distribution, unallocated students, and homeroom teachers, along with two-way batch allocation tools (outbound transfer and inbound import).
-
-2. **Multi-Tenant Safety & Data Integrity**:
-   - All Supabase mutations (`data_siswa.update`, `wali_kelas.update`, `jadwal_pelajaran.update`) are strictly scoped by `.eq('sekolah_id', user.sekolah_id)` and `.in('id', studentIds)` to prevent cross-tenant mutations or accidental updates.
-   - Cascading rename checks for existing homeroom teacher rows in `wali_kelas` before update to avoid `uq_wali_kelas_sekolah_kelas` unique constraint violations (`23505`).
-   - Guard prevents class deletion when `totalSiswa > 0`, ensuring students are never inadvertently orphaned.
-
-3. **Seamless UX & Reactivity**:
-   - State updates in `AdminKelasView` apply immediate in-memory updates via `setAllStudents` with rollback handling on error, eliminating disruptive full page reloads and preserving active scroll and filter positions.
-   - SweetAlert2 provides clear confirmation dialogues, and `showToast` provides non-blocking feedback for administrative actions.
+1. **Classification of Users & Schedule Binding**:
+   - In `AdminConfigView.tsx`, loading `jadwal_pelajaran` alongside `data_guru` allows calculating each teacher's total teaching schedule assignments (`getTeacherKbmCount`).
+   - TU staff are identified via `mata_pelajaran` containing `'tata usaha'` or user role `'tata_usaha'`.
+   - Teachers with 0 schedules across all days are identified as "Guru Tanpa Jam KBM".
+   - Teachers with $\ge 1$ schedule are identified as "Guru KBM (N Jadwal)".
+2. **Policy Guidelines & Safe Admin Configuration**:
+   - Added responsive policy guide cards in Tab 4 "Kebijakan Guru" explicitly defining the distinction between "Guru Hadir Sesuai KBM" (only mandatory on teaching/piket days) and "Guru Hadir Setiap Hari & Staf TU / Tanpa Jam KBM" (mandatory presence on every active school day).
+   - The mass action button "Set Semua Hanya Hari KBM" was corrected to filter `guruList.filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0)`, strictly preventing TU staff and non-KBM teachers from being set to exempt.
+   - On saving, `exemptIds` is strictly intersected with `validExemptTeachers`, guaranteeing that TU staff and non-KBM teachers are updated with `wajib_hadir_hanya_mengajar = false`.
+   - On the UI teacher cards, badges (`Staf Tata Usaha`, `Guru Tanpa Jam KBM`, `Guru KBM (N Jadwal)`) are displayed, and toggle switches for TU and non-KBM teachers are locked with informative tooltips and warning toasts.
+3. **Core Engine Exemption Protection (`workflow.ts`, `AdminVerifView.tsx`, `HomeViewAdmin.tsx`, `attendanceAlpa.ts`)**:
+   - In `workflow.ts`, `AdminVerifView.tsx`, `HomeViewAdmin.tsx`, and `attendanceAlpa.ts`, any user who is TU staff or has 0 total teaching assignments is flagged with `isNonKbmOrTu = true`.
+   - When `isNonKbmOrTu` is true, `isTeacherExempt` is strictly forced to `false`.
+   - As a result:
+     - On active school days, they are never marked `isNonTeachingDay` or `isFreeFromPresence`.
+     - In `AdminVerifView.tsx` and `HomeViewAdmin.tsx`, they are never displayed as "Bebas Hadir"; they are tracked as active attendees (or Alpa if overdue).
+     - In `attendanceAlpa.ts`, they are never skipped by the exemption check.
+4. **Enforcing the 4-Step Workflow**:
+   - Both in `workflow.ts` and `HomeViewTU.tsx`:
+     1. Presensi Datang is required first.
+     2. Laporan Piket is required if the user has piket duties today (`dailyState.isPiket` and `!dailyState.laporanPiket`).
+     3. Jurnal Kegiatan is strictly required (`state.jurnalKegiatan`) for non-exempt / non-KBM users and TU staff before departure. Piket duty alone does not waive the Jurnal Kegiatan requirement for daily personnel.
+     4. Presensi Pulang (`canPresensiPulang`) is only unlocked when both Jurnal Kegiatan and Laporan Piket (if on duty) are completed.
+5. **Eliminating False Hero Banner in `HomeViewGuru.tsx`**:
+   - The "Bebas Presensi" hero card is restricted to `dailyState?.isNonTeachingDay && dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja'`.
+   - When teachers without KBM log in, they see their active 4-step workflow and an interactive card informing them to complete Jurnal Kegiatan.
 
 ---
 
 ## 3. Caveats
 
-1. **Physical `data_kelas` Table State**:
-   - The Supabase database may or may not have a physical `data_kelas` table populated depending on migration history. `AdminKelasView.tsx` defensively falls back to distinct classes derived from `data_siswa.kelas` and `wali_kelas.kelas`, ensuring 100% operational continuity even when `data_kelas` is absent (`PGRST205`).
-2. **Milestone 2 Scoping**:
-   - The CSV template download and upload pipelines for `Template_Data_Kelas.csv` and parser harmonization in `dataIntegrityGuard.ts` are scheduled for Milestone 2. In Milestone 1, `loadData` cleanly short-circuits when `Data_Kelas` is active, guaranteeing zero errors when clicking the `Kelas` tab.
+- **Timetable Dynamics**: If an admin later assigns new teaching schedules in `jadwal_pelajaran` to a teacher who previously had 0 KBM hours, the system dynamically recalculates `getTeacherKbmCount > 0`, allowing the teacher to be configured into "Hari_Mengajar_Saja" if desired.
+- **TU Piket Navigation**: Staf TU are assigned to `penugasan_piket` only when school policy directs them to piket duties. If assigned, their workflow steps render "Laporan Piket" pointing to `'view-guru-piket'` and require its submission before checkout.
+- **Milestone Isolation**: No files owned by Milestone 2 (`src/components/RekapJurnalView.tsx`, `src/components/GuruJurnal.tsx`) were modified by this worker.
 
 ---
 
 ## 4. Conclusion
 
-Milestone 1 is complete and fully verified:
-- `src/components/AdminKelasView.tsx` is implemented with comprehensive executive stats, class directory cards, slide-over allocation workspace, unassigned student launcher, cascading rename, zero-student delete guard, and `NaikKelasModal` integration.
-- `src/components/AdminDataView.tsx` integrates the `Data_Kelas` tab right after `Data_Siswa`, normalizes tab parameters, short-circuits `loadData`, and isolates modular rendering.
-- `src/lib/navigation.ts` registers canonical route aliases `view-admin-kelas` and `view-kelas` and guards them via `evaluateTabRBAC`.
-- All type checks, security tests, master data integrity checks, and full regression test suites passed with 100% success.
-- Changes were committed and pushed to `main`.
+Milestone 1 (Requirement R1) has been fully implemented across all 7 assigned files:
+1. `src/components/AdminConfigView.tsx`: Tab 4 provides clear policy guidelines, categorizes personnel with clear badges, restricts the mass action button to active KBM teachers, enforces non-exempt persistence (`wajib_hadir_hanya_mengajar = false`) on save, and locks manual toggles for TU and non-KBM staff.
+2. `src/lib/workflow.ts`: Eliminates false `isTeacherExempt` and `isNonTeachingDay` for TU and non-KBM teachers, and strictly requires Jurnal Kegiatan and Piket for checkout.
+3. `src/components/AdminVerifView.tsx` & `src/components/HomeViewAdmin.tsx`: Eliminates false "Bebas Hadir" labels for TU staff and non-KBM teachers on school days.
+4. `src/lib/attendanceAlpa.ts`: Protects TU staff and non-KBM teachers from being bypassed during daily Alpa audits.
+5. `src/components/HomeViewTU.tsx`: Adds piket duty detection, renders "Laporan Piket" when assigned, and enforces it before `canPresensiPulang`.
+6. `src/components/HomeViewGuru.tsx`: Eliminates false "Bebas Presensi" banner for non-KBM teachers on active school days, rendering their active workflow steps.
 
 ---
 
 ## 5. Verification Method
 
-To independently verify the implementation:
+To independently verify this implementation, run:
 
-1. **Static Typecheck**:
-   ```powershell
-   npx tsc --noEmit
-   ```
-   *Expected result*: Exit code 0, 0 errors.
+```bash
+# 1. Type correctness verification
+npx tsc --noEmit
 
-2. **Route Aliasing & RBAC Security Verification**:
-   ```powershell
-   npx tsx tests/master_data_admin_role_restriction.test.ts
-   ```
-   *Expected result*: All 8 tests pass.
+# 2. Existing TU refinements & Admin Recap test suite
+npx tsx tests/tu_refinements_and_admin_rekap.test.ts
 
-3. **Master Data Integrity Verification**:
-   ```powershell
-   npx tsx tests/jadwal_mapel_validity_and_master_integrity.test.ts
-   ```
-   *Expected result*: All 16 checks pass, confirming `data_kelas: master class levels (X Merdeka, XI Merdeka, XII Merdeka) 100% intact`.
+# 3. Universal Pulang Cepat test suite
+npx tsx tests/pulang_cepat_guru_bk_tu.test.ts
 
-4. **Full Regression Suite Gate**:
-   ```powershell
-   npm test
-   ```
-   *Expected result*: All 54 test files pass 100% with exit code 0.
+# 4. Standard duties & journal verification test suite
+npx tsx tests/jurnal_r1_r2_r3_verification.test.ts
+
+# 5. Milestone 2 edit/delete test suite (confirming zero regression)
+npx tsx tests/jurnal_edit_delete_r2.test.ts
+```
+
+### Invalidation Conditions
+- Any occurrence of `status_label = 'Bebas Hadir'` or `lockedReason = 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran).'` for a TU staff user or teacher without KBM hours on active school days.
+- Any ability of the mass action button "Set Semua Hanya Hari KBM" to set TU staff or teachers with 0 KBM hours to `wajib_hadir_hanya_mengajar = true`.
+- Any ability of TU staff or non-KBM teachers to complete `canPresensiPulang` without submitting `jurnalKegiatan` or `laporanPiket` (if assigned).
+- Any compilation or test failure in `npx tsc --noEmit` or unit test runners.

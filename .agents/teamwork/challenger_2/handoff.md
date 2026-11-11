@@ -1,183 +1,219 @@
-# Handoff Report: Challenger 2 (Empirical Verification of R3 & R4)
+# Handoff Report — Challenger 2: Adversarial Stress Test of Milestone 2 (Requirement R2)
 
-## Verdict: APPROVE
+**Verdict**: **APPROVE**  
+**Role**: Empirical Challenger (critic, specialist)  
+**Target Milestone**: Milestone 2 — Requirement R2: Fitur Edit dan Hapus Jurnal KBM pada Role Guru  
+**Timestamp**: 2026-11-11T03:57:30Z  
 
 ---
 
 ## 1. Observation
 
-### 1.1 Target Source Code Inspections
-1. **`src/app/globals.css`** (lines 271-292, 312-328, 490-493):
-   - `.sipjam-print-watermark` in `@media print`:
-     ```css
-     .sipjam-print-watermark {
-       display: flex !important;
-       position: fixed;
-       top: 50%;
-       left: 50%;
-       transform: translate(-50%, -50%) rotate(-45deg);
-       opacity: 0.07;
-       pointer-events: none;
-       z-index: 9999;
-       flex-direction: column;
-       align-items: center;
-       justify-content: center;
-       text-align: center;
-       color: #000;
-       white-space: nowrap;
-       line-height: 1.2;
-       font-weight: 900;
+### 1.1. Source Code Inspections
+1. **Unrestricted Historical Editing (Scenario A)**:
+   - File: `src/components/RekapJurnalView.tsx` (Lines 2269-2275):
+     The date input has zero `min` or `max` attributes:
+     ```tsx
+     <input
+       type="date"
+       value={editTanggal}
+       onChange={e => setEditTanggal(e.target.value)}
+       required
+       className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+     />
+     ```
+   - No time boundary checks (such as `isTodayOnly`, `waktuEditHabis`, or 24-hour cutoff limits) exist in `handleOpenEditModal` or `handleSaveEdit`. Historical records from 30+ days ago load cleanly into edit state and generate valid update payloads.
+
+2. **Rejected Journal Resubmission & Cleanup (Scenario B)**:
+   - File: `src/components/RekapJurnalView.tsx` (Lines 1030-1064):
+     ```typescript
+     let nextStatus = editingJurnal.status_verifikasi;
+     if (editingJurnal.status_verifikasi === 'Ditolak') {
+       nextStatus = (isMateriLengkap && isKegiatanLengkap && isAbsensiLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
+     }
+     ...
+     if (editingJurnal.status_verifikasi === 'Ditolak') {
+       payload.status_verifikasi = nextStatus;
+       payload.catatan_admin = null;
+       payload.alasan_penolakan = null;
+       payload.catatan_penolakan = null;
+       payload.keterangan_penolakan = null;
      }
      ```
-   - Target hidden elements in `@media print`:
-     ```css
-     header, nav, aside, .swal2-container, .no-print,
-     .app-header, .page-transition > .no-print,
-     #gemini-chat, #antigravity, #sidecar, [class*="ai-"], [id*="ai-"], [id*="gemini-"],
-     [data-tour="ai-assistant-btn"],
-     [aria-label*="Asisten AI"],
-     [role="dialog"][aria-label*="Asisten AI"],
-     .fa-robot,
-     [data-testid="spotlight-box"],
-     [data-testid="tooltip-card"],
-     button.fixed,
-     div.fixed:not(.sipjam-print-watermark) {
-       display: none !important;
-       visibility: hidden !important;
-       height: 0 !important;
-       overflow: hidden !important;
-     }
+     When editing a rejected journal, `status_verifikasi` transitions out of `'Ditolak'` into `'Disetujui'` (if complete) or `'Menunggu'` (if pending items remain). All four rejection note fields (`catatan_admin`, `alasan_penolakan`, `catatan_penolakan`, and `keterangan_penolakan`) are explicitly reset to `null`.
+
+3. **Scoped Deletion & Update Isolation (Scenario C)**:
+   - File: `src/components/RekapJurnalView.tsx` (Lines 922-933 & 1065-1076):
+     ```typescript
+     // Delete operation
+     let query = supabase
+       .from('jurnal_pembelajaran')
+       .delete()
+       .eq('id', targetJurnal.id);
+     if (user?.nama) query = query.eq('nama_guru', user.nama);
+     if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
      ```
-   - Screen media isolation:
-     ```css
-     @media screen {
-       .print-only,
-       .sipjam-print-watermark { display: none !important; }
-     }
+     ```typescript
+     // Update operation
+     let query = supabase
+       .from('jurnal_pembelajaran')
+       .update(payload)
+       .eq('id', editingJurnal.id);
+     if (user?.nama) query = query.eq('nama_guru', user.nama);
+     if (user?.sekolah_id) query = query.eq('sekolah_id', user.sekolah_id);
      ```
+     Mutations strictly enforce `id`, `nama_guru = user.nama`, and `sekolah_id = user.sekolah_id`, preventing cross-teacher and cross-school deletion.
 
-2. **`src/components/AIAssistant/AIAssistant.tsx`** (lines 170-178, 188-193):
-   - Floating button: `<button type="button" data-tour="ai-assistant-btn" aria-label="Buka Asisten AI SIPJAM" ... className="... no-print print:hidden">` containing `<i className="fa-solid fa-robot ..."></i>`.
-   - Floating chat dialog: `<div role="dialog" aria-label="Panel Asisten AI SIPJAM" className="... no-print print:hidden">`.
+4. **Synthetic Placeholder and Supervisor Boundary Protection (Scenario D)**:
+   - Personal table row: `!isReadOnly && !j.id?.startsWith('unfilled-') && (tabMode === 'pribadi' || controlledMode === 'pribadi')` (Line 1820).
+   - Modal detail: `!selectedJurnal.id?.startsWith('unfilled-') && (tabMode === 'pribadi' || controlledMode === 'pribadi')` (Line 2166).
+   - Handlers:
+     `if (!jurnal || !jurnal.id || jurnal.id.startsWith('unfilled-')) return;` (Line 860).
+     `if (!targetJurnal || !targetJurnal.id || targetJurnal.id.startsWith('unfilled-')) return;` (Line 904).
+   - Class mode table (`tabMode === 'kelas' ? (`): contains only the `Detail` button (Lines 1660-1668); `handleOpenEditModal` and `handleDeleteJurnal` buttons are completely excluded from classroom supervisor tables.
 
-3. **`src/components/DokumenView.tsx`** (lines 11, 230-244, 451):
-   - Imports and renders `<PrintHeader user={user} sekolahId={user?.sekolah_id} />`.
-   - Standardized print subheader title: `"Laporan Kelengkapan Perangkat Pembelajaran Kurikulum Merdeka"`.
-   - Interactive UI controls wrapped in `no-print`.
-   - Official document print table defined under `print-only hidden print:block`.
-   - Bottom block renders `<PrintSignature />`.
+5. **Invariant Protection & Print Layout (Scenario E)**:
+   - Personal table header (Lines 1680-1695) contains exactly 12 `<th>` elements: No, Hari/Tanggal, Tujuan Pembelajaran, KKTP, Konten, Kegiatan Pembelajaran, Kelas, Mata Pelajaran, Absensi Murid (H/I/S/A), Lokasi KBM, Foto Dokumentasi, Catatan.
+   - Body row (Lines 1709-1841) contains exactly 12 `<td>` elements.
+   - Action buttons (Detail, Edit, Hapus) are wrapped inside `<div className="mt-1.5 no-print not-italic flex items-center gap-1.5 flex-wrap">` within `<td>` column 12 (Lines 1811-1840).
+   - Both `modal-detail-jurnal` (Line 2014) and `modal-edit-jurnal` (Line 2208) carry `no-print`.
 
-4. **`src/components/RekapJurnalView.tsx`** (lines 538, 555-585, 661-668):
-   - Table header background standardized to `print:bg-gray-100`.
-   - Table cell padding standardized to `px-2 py-1.5 print:p-1.5`.
-   - Raw GPS geotag div hidden with `no-print`: `<div className="... no-print">...</div>`.
+### 1.2. Automated Test Execution Commands and Results
+Direct execution of the new adversarial test harness:
+```powershell
+npx tsx tests/adversarial_r2_jurnal_edit_delete.test.ts
+```
+*Output*:
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔥 ADVERSARIAL STRESS TEST SUITE: MILESTONE 2 (REQUIREMENT R2)
+   Fitur Edit dan Hapus Jurnal KBM pada Role Guru Mandiri
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-5. **`src/lib/qrSiswa.ts`** (lines 736-1136):
-   - `generateStudentCardCanvas`:
-     - Canvas dimensions: 600 x 960 px.
-     - Header: gradient `#0B4619` -> `#166534`, gold bar `#EAB308`, "KARTU PRESENSI DIGITAL", school name in `#FEF08A` with dynamic font scaling (24px -> 21px -> 18px), subtitle "Sistem Informasi Presensi Siswa".
-     - QR Box: 270x270 px white container at (165, 205).
-     - QR Matrix: 210x210 px drawn module-by-module in `#0B4619` from `generateQrMatrix(idStr)`.
-     - Monospace Badge: `ID: ${idStr}`.
-     - Student Metadata: Nama Siswa (24px -> 22px -> 19px), status pill "SISWA AKTIF", NISN (monospace), Kelas, Sekolah, Gender.
-     - Footer: Instructions and branding "SIPJAM • Dokumen Resmi Presensi".
-     - Built-in graceful fallback when `typeof document === 'undefined'`.
-   - `downloadStudentCardPng`:
-     - Filename sanitization via `replace(/[/\\?%*:|"<>]/g, '').trim().replace(/\s+/g, '_')`.
-     - File download triggered via temporary `<a>` element.
-     - Gracefully catches `SecurityError` or tainted canvas and returns `false`.
-   - `printStudentQrCardWithSchool`:
-     - Opens popup print window with full student metadata and SVG QR.
-     - HTML entity escaping via `escapeHtml` preventing XSS injection.
-     - Invokes `window.onload = function() { window.print(); };`.
-     - Gracefully returns when `window.open` returns `null` (popup blocker).
+--- SCENARIO A: Unrestricted Historical Editing (30+ Days Past) ---
+  ✔ [PASS] A.1: Absence of arbitrary time restrictions or recency blocks in RekapJurnalView
+  ✔ [PASS] A.2: Date input field in edit form has no min/max date cutoff constraints
+  ✔ [PASS] A.3: Behavioral simulation of 35-day-old journal edit payload generation
 
-6. **`src/components/AdminDataView.tsx`** (lines 905-930, 950-975, 2020-2035):
-   - Renders "Download Kartu" button per student in `activeTab === 'Data_Siswa'`.
-   - QR preview modal offers both "Cetak / Simpan PDF" and "Download Gambar (PNG)".
-   - Batch print includes `schoolName` in each card header and window title.
+--- SCENARIO B: Rejected Journal Editing & Verification Reset ---
+  ✔ [PASS] B.1: Code contains explicit logic to transition from Ditolak and clear rejection metadata
+  ✔ [PASS] B.2: Fully corrected journal transitions from Ditolak to Disetujui
+  ✔ [PASS] B.3: Partially corrected journal transitions from Ditolak to Menunggu
+  ✔ [PASS] B.4: Rejection notes are eradicated on resubmission
+  ✔ [PASS] B.5: Non-rejected journal (Disetujui) maintains its approval status when editing minor typo
 
-### 1.2 Automated Empirical Test Execution
-1. **Adversarial Test Suite (`tests/adversarial_r3_r4_challenger_2.test.ts`)**:
-   - Executed via `npx tsx tests/adversarial_r3_r4_challenger_2.test.ts`.
-   - Results: **102 tests passed, 0 failed**.
-   - Verified AST-level CSS rules, canvas drawing simulation (fillRect, fillText, gradients), font scaling, filename sanitization, XSS escaping, popup blocker recovery, tainted canvas recovery, identifier priority, and multi-tenant isolation.
+--- SCENARIO C: Scoped Deletion & Multi-Tenant Security ---
+  ✔ [PASS] C.1: Deletion query strictly chains id, nama_guru, and sekolah_id
+  ✔ [PASS] C.2: Update query strictly chains id, nama_guru, and sekolah_id
+  ✔ [PASS] C.3: Adversarial test - Cross-teacher deletion attempt simulation
+  ✔ [PASS] C.4: Adversarial test - Cross-tenant/school deletion attempt simulation
 
-2. **TypeScript Compilation Check**:
-   - Command: `npx tsc --noEmit`.
-   - Output: Exited with code 0 (0 errors).
+--- SCENARIO D: Boundary & Security Protection ---
+  ✔ [PASS] D.1: Synthetic placeholder rows (unfilled-kbm- / unfilled-kegiatan-) shielded in table
+  ✔ [PASS] D.2: Synthetic placeholder rows shielded in detail modal
+  ✔ [PASS] D.3: handleOpenEditModal rejects synthetic unfilled placeholders
+  ✔ [PASS] D.4: handleDeleteJurnal rejects synthetic unfilled placeholders
+  ✔ [PASS] D.5: Class mode (Rekapan Jurnal Per Kelas) hides Edit and Hapus buttons in table
+  ✔ [PASS] D.6: Class mode hides Edit and Hapus buttons in detail modal
+  ✔ [PASS] D.7: isReadOnly prop disables all Edit and Hapus actions
 
-3. **Full Project Test Suite**:
-   - Command: `npm test`.
-   - Output: Exited with code 0 across all 19 test files (all checks passed).
+--- SCENARIO E: Invariant Protection & Print Layout ---
+  ✔ [PASS] E.1: Personal table header preserves exactly 12 columns in exact sequence
+  ✔ [PASS] E.2: Personal table row preserves exactly 12 <td> cells
+  ✔ [PASS] E.3: Action buttons (Detail, Edit, Hapus) are wrapped inside no-print
+  ✔ [PASS] E.4: Modals (modal-detail-jurnal and modal-edit-jurnal) carry no-print class
 
-4. **Production Build Verification**:
-   - Command: `npm run build`.
-   - Output: Next.js 16.3.4 Turbopack build compiled successfully in 1717ms, TypeScript finished in 1471ms, static routes generated cleanly.
+--- SCENARIO F: Component Coordination & Form Validation ---
+  ✔ [PASS] F.1: Form validation prevents submission of empty required fields
+  ✔ [PASS] F.2: Attendance summary formatting strict regex match
+  ✔ [PASS] F.3: Photo preservation and Google Drive upload fallback
+  ✔ [PASS] F.4: sipjam:jurnal-updated custom event dispatched on delete and edit
+  ✔ [PASS] F.5: GuruJurnal listens to sipjam:jurnal-updated to refresh rejection list
+
+====================================================================
+🏁 ADVERSARIAL STRESS TEST COMPLETE: 28 PASSED, 0 FAILED
+====================================================================
+```
+
+Additional test suites executed:
+- `npx tsx tests/jurnal_edit_delete_r2.test.ts`: 19 passed, 0 failed.
+- `npx tsx tests/jurnal_kbm_r1_r2_r3_verification.test.ts`: 14 passed, 0 failed.
+- `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`: 20 passed, 0 failed.
+- `npx tsc --noEmit`: 0 errors.
 
 ---
 
 ## 2. Logic Chain
 
-1. **R3 Print Formatting & Watermark Verification**:
-   - Observation 1.1 shows that `@media print` in `src/app/globals.css` specifically declares `.sipjam-print-watermark { display: flex !important; position: fixed; ... }` and protects it from blanket fixed element removal via `div.fixed:not(.sipjam-print-watermark)`.
-   - Observation 1.1 and 1.2 show that floating buttons (`[data-tour="ai-assistant-btn"]`), AI dialogs (`[aria-label*="Asisten AI"]`, `[role="dialog"][aria-label*="Asisten AI"]`), robot icons (`.fa-robot`), and fixed buttons (`button.fixed`) are unconditionally assigned `display: none !important; visibility: hidden !important;` in `@media print`, while also carrying `no-print print:hidden` utility classes in JSX.
-   - Observation 1.3 and 1.4 show that `DokumenView.tsx` and `RekapJurnalView.tsx` incorporate official Kop Surat headers (`PrintHeader`), standardized table styling (`px-2 py-1.5`, `print:bg-gray-100`), official signatures (`PrintSignature`), and hide raw GPS coordinates (`no-print`), ensuring identical formatting between teacher and admin document prints.
-   - Observation 1.2 confirms through empirical automated testing that all 24 print CSS and component rules pass without contradiction.
+1. **Compliance with Requirement R2 ("tanpa batasan waktu khusus")**:
+   - Observations 1.1 (A.1, A.2, A.3) verify that no calendar cutoffs, elapsed-day comparisons, or recency guards inhibit modifying or deleting entries from past days, weeks, or months.
+   - Teachers can adjust journals from earlier periods without being locked out.
 
-2. **R4 Student QR Card Generation & Download Verification**:
-   - Observation 1.5 shows that `generateStudentCardCanvas` draws a 600 x 960 px portrait ID card containing all mandatory fields: Student Name (`student.nama_siswa`), NISN (`student.nisn`), Class (`student.kelas`), School Name (`schoolName`), and sharp QR code matrix (`generateQrMatrix`).
-   - Observation 1.5 shows that `downloadStudentCardPng` sanitizes the output filename (`Kartu_Presensi_${safeName}_${safeId}.png`) and triggers a clean browser download while catching canvas errors safely.
-   - Observation 1.5 shows that `printStudentQrCardWithSchool` renders a school-branded card with escaped HTML strings and automated `window.print()` invocation.
-   - Observation 1.6 shows that `AdminDataView.tsx` exposes "Download Kartu" directly on the student list and provides dual download/print options in the preview modal.
-   - Observation 1.2 confirms through 78 automated canvas simulation and adversarial stress tests that extreme text lengths, missing fields, illegal filename characters, XSS payloads, popup blockers, and tainted canvas exceptions are safely and reliably handled.
+2. **Integrity of Rejection Workflows (Scenario B)**:
+   - Observation 1.1 (B.1-B.5) proves that updating a rejected journal transitions its verification state to `'Disetujui'` or `'Menunggu'` while simultaneously wiping out stale rejection notes (`catatan_admin`, `alasan_penolakan`, `catatan_penolakan`, `keterangan_penolakan`).
+   - Non-rejected journals (`Disetujui`) retain their status on typographical corrections.
 
-3. **System Integrity & Non-Regression**:
-   - Observations 1.2 (items 2, 3, 4) prove that TypeScript type checking passes with 0 errors, the full regression suite passes 100%, and the Next.js production build succeeds with 0 errors.
+3. **Multi-Tenant and Access Scoping (Scenario C & D)**:
+   - Observations 1.1 (C.1-C.4) and (D.1-D.7) establish that mutations are strictly bounded by `targetJurnal.id`, `user.nama`, and `user.sekolah_id`.
+   - Simulated cross-teacher deletions and cross-tenant mutations produce 0 row matches.
+   - Synthetic placeholder rows (`unfilled-kbm-` and `unfilled-kegiatan-`) are shielded from deletion and editing both in the UI and within the handler guards.
+   - Supervisor class views (`tabMode === 'kelas'`) are strictly view-only, hiding Edit and Delete buttons in both the table and detail modal.
+
+4. **Preservation of Document and Print Layout (Scenario E)**:
+   - Observations 1.1 (E.1-E.4) confirm that the 12-column table structure and header order are 100% preserved.
+   - All newly introduced action buttons and interactive modals reside within `no-print` containers, guaranteeing that physical printouts and exported PDF reports remain cleanly formatted without button artifacts.
 
 ---
 
 ## 3. Caveats
 
-- **Browser-Specific Print Dialogs**: While HTML structure, `@media print` CSS rules, and print triggers are fully tested and compliant with W3C standards, the final layout rasterization depends on the client's browser print engine (Chromium, WebKit, Gecko).
-- No other caveats.
+1. **State Refresh Nuance on Same-Day Rejected Journals in `GuruJurnal.tsx`**:
+   - When a journal is rejected today and the teacher updates it in `RekapJurnalView`, `sipjam:jurnal-updated` triggers `fetchRejected()`.
+   - While `rejectedJournals` state is updated, `dailyState.jurnalDitolak` (which is loaded on initial mount via `getGuruDailyState`) is only refreshed on full page load or checkState invocation.
+   - This causes no data corruption or database inaccuracy (database record is properly updated), but means the warning banner in `panel-input` remains visible until page refresh.
+2. **Drive Upload Credentials**:
+   - In environments where Google Drive API tokens are expired or offline, `handleSaveEdit` gracefully falls back to FileReader DataURL storage.
 
 ---
 
 ## 4. Conclusion
 
-Requirements **R3** (Print layout CSS rules, hiding robot & floating buttons while preserving school watermark, teacher document print standardization) and **R4** (Student QR card generation, PNG download, branded print layout in AdminDataView) are **FULLY SATISFIED AND EMPIRICALLY VERIFIED**.
+The implementation of Milestone 2 (Requirement R2) has been empirically tested and proven to be sound, secure, and compliant with all specified requirements and invariants.
 
-All 102 adversarial tests in `tests/adversarial_r3_r4_challenger_2.test.ts` passed. All builds and type checks passed.
-
-**Verdict: APPROVE**.
+**Verdict: APPROVE**
 
 ---
 
 ## 5. Verification Method
 
-To independently reproduce and verify this assessment:
+To independently reproduce the adversarial verification:
 
-1. **Run Challenger 2 Adversarial Suite**:
-   ```bash
-   npx tsx tests/adversarial_r3_r4_challenger_2.test.ts
+1. **Run the Adversarial Test Suite**:
+   ```powershell
+   npx tsx tests/adversarial_r2_jurnal_edit_delete.test.ts
    ```
-   *Expected output: 102 tests passed, 0 failed.*
+   *Expected outcome*: 28 tests pass, 0 fail.
 
-2. **Run TypeScript Check**:
-   ```bash
+2. **Run Worker M2 Test Suite**:
+   ```powershell
+   npx tsx tests/jurnal_edit_delete_r2.test.ts
+   ```
+   *Expected outcome*: 19 tests pass, 0 fail.
+
+3. **Run Regression Suites**:
+   ```powershell
+   npx tsx tests/jurnal_kbm_r1_r2_r3_verification.test.ts
+   npx tsx tests/jurnal_r1_r2_r3_verification.test.ts
+   ```
+   *Expected outcome*: 14/14 and 20/20 tests pass.
+
+4. **Verify TypeScript Compilation**:
+   ```powershell
    npx tsc --noEmit
    ```
-   *Expected output: Exits with code 0 (0 errors).*
+   *Expected outcome*: Exits with code 0.
 
-3. **Run Project Test Suite**:
-   ```bash
-   npm test
-   ```
-   *Expected output: Exits with code 0 (all test suites pass).*
-
-4. **Run Production Build**:
-   ```bash
-   npm run build
-   ```
-   *Expected output: Next.js optimized production build succeeds.*
+5. **Invalidation Conditions**:
+   - Any reintroduction of time-cutoff checks (e.g. `isTodayOnly`) on editing.
+   - Any failure to reset `status_verifikasi` or clear rejection notes upon editing a rejected journal.
+   - Any modification to the 12-column personal journal table header.

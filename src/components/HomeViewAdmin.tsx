@@ -183,6 +183,7 @@ export default function HomeViewAdmin({
       let presensiTodayQ = supabase.from('presensi_guru').select('*').gte('timestamp', getWitaStartOfDay(todayStr)).lte('timestamp', getWitaEndOfDay(todayStr));
       let jurnalQ = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
       let jadwalQ = supabase.from('jadwal_pelajaran').select('*').eq('hari', dayName);
+      let allWeeklyJadwalQ = supabase.from('jadwal_pelajaran').select('id, nama_guru, user_id, mata_pelajaran, mapel');
       let piketScheduleQ = supabase.from('jadwal_piket').select('*').eq('hari', dayName);
       let piketLaporanQ = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
@@ -198,6 +199,7 @@ export default function HomeViewAdmin({
         presensiTodayQ = presensiTodayQ.eq('sekolah_id', user.sekolah_id);
         jurnalQ = jurnalQ.eq('sekolah_id', user.sekolah_id);
         jadwalQ = jadwalQ.eq('sekolah_id', user.sekolah_id);
+        allWeeklyJadwalQ = allWeeklyJadwalQ.eq('sekolah_id', user.sekolah_id);
         piketScheduleQ = piketScheduleQ.eq('sekolah_id', user.sekolah_id);
         piketLaporanQ = piketLaporanQ.eq('sekolah_id', user.sekolah_id);
         penugasanPiketQ = penugasanPiketQ.eq('sekolah_id', user.sekolah_id);
@@ -227,6 +229,7 @@ export default function HomeViewAdmin({
         presensiTodayRes,
         jurnalRes, 
         jadwalRes, 
+        allWeeklyJadwalRes,
         piketScheduleRes, 
         piketLaporanRes,
         penugasanPiketRes,
@@ -241,6 +244,7 @@ export default function HomeViewAdmin({
         safePresensiTodayPromise,
         jurnalQ,
         jadwalQ,
+        allWeeklyJadwalQ,
         piketScheduleQ,
         piketLaporanQ,
         penugasanPiketQ,
@@ -300,6 +304,7 @@ export default function HomeViewAdmin({
         }));
       const teachers = [...rawTeachers, ...missingBkTeachers];
       const jadwalList = (jadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+      const allWeeklyJadwalList = (allWeeklyJadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
       const assignedPiketTeachers = penugasanPiketRes.data || [];
@@ -399,8 +404,15 @@ export default function HomeViewAdmin({
               (cItem && (cItem === cleanStr(nama) || (teacher.nip && cItem === cleanStr(teacher.nip))))
             );
           });
-        const isTeacherExempt = isExplicitExempt ||
-          (!hasExplicitTeacherSetting && (isTeacherInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja'));
+        const isTu = (teacher.mata_pelajaran || '').toLowerCase().includes('tata usaha') ||
+          (linkedUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+        const hasAnyWeeklyKbm = !isTu && allWeeklyJadwalList.some((j: any) =>
+          isTeacherMatch(j, teacher, linkedUser, true)
+        );
+        const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
+
+        const isTeacherExempt = !isNonKbmOrTu && (isExplicitExempt ||
+          (!hasExplicitTeacherSetting && (isTeacherInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja')));
         const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)

@@ -62,3 +62,42 @@ Perubahan aturan validasi tidak boleh mengubah alur presensi reguler, validasi u
 
 Conduct an independent post-victory audit (timeline, cheating detection, independent test execution, and requirement fulfillment).
 Write your audit verdict report to c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\audit_report.md and notify me with send_message when done.
+
+
+## 2026-11-11T03:48:48Z
+You are the Forensic Integrity Auditor for SIPJAM application enhancements (Milestones 1 & 2).
+Your state folder is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+
+Read these reference files before starting:
+- ORIGINAL_REQUEST: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+- PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\PROJECT.md
+- Worker M1 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
+- Worker M2 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
+
+Your task is to conduct an uncompromising, independent forensic integrity audit on all code modifications introduced in Milestones 1 & 2:
+1. Examine code in:
+   - `src/components/AdminConfigView.tsx`
+   - `src/lib/workflow.ts`
+   - `src/components/HomeViewTU.tsx`
+   - `src/components/HomeViewGuru.tsx`
+   - `src/components/AdminVerifView.tsx`
+   - `src/components/HomeViewAdmin.tsx`
+   - `src/lib/attendanceAlpa.ts`
+   - `src/components/RekapJurnalView.tsx`
+   - `src/components/GuruJurnal.tsx`
+2. Perform Integrity Forensics Checks:
+   - Check for cheating: Are there hardcoded strings matching specific test IDs, names, or synthetic checks?
+   - Check for facades: Are the edit and delete implementations real, executing genuine Supabase `.update()` and `.delete()` calls?
+   - Check for bypasses: Does the admin policy properly update `data_guru` and `pengaturan`? Does workflow genuinely enforce the 4-step workflow?
+   - Check for time limits: Is there any hidden time window restriction on editing/deleting KBM journals?
+   - Check for tampering: Were any unrelated features or files tampered with?
+3. Execute static analysis and codebase inspections.
+4. Issue an unambiguous binary verdict:
+   - CLEAN (no integrity violations, all implementations genuine)
+   - INTEGRITY VIOLATION (with detailed forensic evidence)
+
+Write your complete audit report and verdict to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\handoff.md
+Update c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\auditor_1\progress.md.
+When finished, send a brief message to the orchestrator.

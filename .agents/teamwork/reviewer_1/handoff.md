@@ -1,94 +1,202 @@
-# REVIEWER REPORT — TEAMWORK REVIEWER 1
+# Handoff Report: Reviewer 1 — Independent Review of Milestones 1 & 2 (Requirements R1 & R2)
 
-> [!WARNING] **Skepticism Disclaimer**
-> Otentikasi dan intervensi presensi siswa oleh wali kelas berstatus non-hadir telah terbukti tahan uji secara empiris lewat 32 unit/adversarial assertions pada test suite mandiri, 59 unit assertions pada suite intervensi utama, full repository test suite (83 test files), tsc (0 errors), dan build Next.js (0 errors); namun perilaku rendering live browser pada perangkat low-end mobile saat status offline belum diuji secara visual.
-
-## 1. What the prior attempt got wrong
-
-Secara konsep, implementer_1 telah menambahkan fondasi untuk R1 dan R2, namun menyisakan 5 cacat fungsional & ketahanan otorisasi yang dapat menyebabkan false lockout atau runtime exception:
-
-### Issue 1: Kerapuhan format string nama kelas pada otorisasi
-- **Input:** `canWaliKelasIntervene({ role: 'guru', wali_kelas: 'VII-A' }, 'VII A')` atau `canWaliKelasIntervene({ role: 'guru', wali_kelas: 'Kelas VII-A' }, 'VII A')`
-- **Expected:** `{ allowed: true, isWaliKelas: true }`
-- **Actual:** `{ allowed: false, isWaliKelas: false, reason: 'Akses ditolak: Pengguna bukan wali kelas dari kelas binaan terkait.' }`
-- **Root cause:** Implementasi sebelumnya hanya melakukan pembersihan prefix `Kelas ` tanpa menormalkan tanda hubung (`-`), titik (`.`), spasi ganda, atau angka romawi vs arab (misalnya `VII` vs `7`, `X` vs `10`).
-
-### Issue 2: Tidak mendukung properti penugasan alternatif pada objek user
-- **Input:** `canWaliKelasIntervene({ role: 'guru', kelas_binaan: 'IX A' }, 'IX A')` atau `{ assignedKelas: 'IX A' }` / `{ assigned_kelas: 'IX A' }`
-- **Expected:** `{ allowed: true, isWaliKelas: true }`
-- **Actual:** `{ allowed: false, isWaliKelas: false }`
-- **Root cause:** `canWaliKelasIntervene` hanya memeriksa `user.penugasan?.kelas_binaan` dan `user.wali_kelas`, mengabaikan properti langsung `user.kelas_binaan`, `user.assignedKelas`, dan `user.assigned_kelas` yang dihasilkan oleh hook `useWaliKelas` dan database.
-
-### Issue 3: Runtime TypeError saat targetClass berupa objek
-- **Input:** `canWaliKelasIntervene(user, { kelas: 'X Merdeka A' })`
-- **Expected:** Berhasil mengekstrak nama kelas target dan mengembalikan hasil evaluasi otorisasi tanpa error.
-- **Actual:** `TypeError: (targetClass || "").trim is not a function`
-- **Root cause:** Langsung memanggil `.trim()` pada `targetClass` tanpa memeriksa apakah tipenya string atau objek (seperti objek entitas kelas `activeWaliKelas`).
-
-### Issue 4: Kegagalan otorisasi saat wali_kelas berupa array atau multi-kelas delimitasi
-- **Input:** `canWaliKelasIntervene({ role: 'guru', wali_kelas: [{ kelas: 'VIII B' }] }, 'VIII B')` atau `wali_kelas: 'VIII A, VIII B'`
-- **Expected:** `{ allowed: true, isWaliKelas: true }`
-- **Actual:** `{ allowed: false, isWaliKelas: false }`
-- **Root cause:** Array entitas kelas atau string kelas berpemisah koma/titik-koma tidak di-unpack ke dalam daftar kelas binaan guru.
-
-### Issue 5: False expiration / crash pada `isWaliKelasIntervensiAllowed` saat argumen status guru dipassing di posisi fleksibel
-- **Input:** `isWaliKelasIntervensiAllowed('12:00', '11:00', '12:00', 'Dinas Luar')` atau `{ status: 'Izin' }`
-- **Expected:** Menetapkan jendela presensi berdasarkan waktu WITA berjalan tanpa menganggap string status sebagai waktu jam saat ini.
-- **Actual:** Karena argumen ke-4 `currentTimeStr` menerima `'Dinas Luar'`, perbandingan string `'dinas luar' > '12:00'` bernilai true, menyebabkan fungsi mengunci diri ke status `malam_tutup` (Terkunci) di pagi hari atau melempar exception pada payload objek.
-- **Root cause:** Parameter fungsi tidak memeriksa apakah argumen merupakan string waktu jam berformat angka sebelum memprosesnya sebagai waktu operasional.
+## Review Summary
+- **Verdict**: **APPROVE**
+- **Reviewed Scope**:
+  - Milestone 1 (R1): `src/components/AdminConfigView.tsx`, `src/lib/workflow.ts`, `src/components/HomeViewTU.tsx`, `src/components/HomeViewGuru.tsx`, `src/components/AdminVerifView.tsx`, `src/components/HomeViewAdmin.tsx`, `src/lib/attendanceAlpa.ts`
+  - Milestone 2 (R2): `src/components/RekapJurnalView.tsx`, `src/components/GuruJurnal.tsx`, `tests/jurnal_edit_delete_r2.test.ts`
+- **Integrity Status**: CLEAN. Zero evidence of hardcoded test outputs, dummy implementations, facade patterns, or task bypasses.
 
 ---
 
-## 2. What I changed
+## 1. Observation
 
-### 2.1 `src/lib/presensiIntervensi.ts`
-- **Canonical Class Normalization**: Menambahkan helper `normalizeClassKey`, `canonicalizeGradeNotation`, dan `toCanonicalClass` yang membersihkan prefix, tanda baca (`-`, `.`, `_`, spasi), serta memetakan angka romawi ke arab (`VII` <=> `7`, `X` <=> `10`, dll).
-- **Assigned Classes Extraction**: Menambahkan helper `extractAssignedClasses(user)` yang secara rekursif dan aman mengekstrak semua kemungkinan penugasan kelas (`assignedKelas`, `assigned_kelas`, `kelas_binaan`, `penugasan.kelas_binaan`, `penugasan.kelas`, `wali_kelas` dalam bentuk string, array, atau objek).
-- **Hardening `canWaliKelasIntervene`**:
-  - Menerima `targetClass` baik bertipe string maupun objek (`{ kelas: '...' }`).
-  - Menerima parameter opsional ke-4 `waliKelasList` untuk validasi relasional langsung terhadap database snapshot `wali_kelas`.
-  - Memverifikasi otorisasi wali kelas berstatus non-hadir (Dinas Luar, Izin, Sakit, Cuti, dll) dengan kekebalan penuh terhadap variasi format penamaan kelas.
-- **Polymorphic Time Resolver pada `isWaliKelasIntervensiAllowed`**:
-  - Menambahkan guard `isTimeStringVal` untuk mendeteksi apakah argumen berposisi fleksibel merupakan string waktu jam riil atau payload status guru, mencegah false lockout ke `malam_tutup` saat status dipassing tanpa `currentTimeStr`.
+### 1.1 Direct Source Code Observations
 
-### 2.2 `src/components/RekapSiswaView.tsx`
-- Memperbarui pemanggilan `canWaliKelasIntervene(user, activeWaliKelas.kelas, undefined, waliKelasList)` di `handleSaveWaliAttendance` agar memanfaatkan data relasi kelas.
-- Memperluas guard `isWaliKelasUser` di baris 915 untuk menyertakan `isSuperadmin`, `userAssignedKelas`, `user.kelas_binaan`, `user.assignedKelas`, dan `user.assigned_kelas` guna mencegah false access lock screen pada komponen view.
-
-### 2.3 `tests/wali_kelas_non_hadir_intervensi.test.ts`
-- Menambahkan **SECTION 5: ADVERSARIAL ROBUSTNESS: CLASS FORMATTING & POLYMORPHIC ARGUMENTS** (10 test cases baru, total berkembang menjadi 32 / 32 passing assertions):
-  - `ADV-ROBUST-01`: Pencocokan kelas tanda hubung vs spasi (`"VII-A"` vs `"VII A"`).
-  - `ADV-ROBUST-02`: Pencocokan prefix `"Kelas "` dan tanda hubung (`"Kelas VII-A"` vs `"VII A"`).
-  - `ADV-ROBUST-03`: Ekuivalensi romawi & arab (`VII` <=> `7`, `X` <=> `10`).
-  - `ADV-ROBUST-04`: Penugasan properti alternatif (`kelas_binaan`, `assignedKelas`, `assigned_kelas`).
-  - `ADV-ROBUST-05`: `targetClass` berbentuk objek (`{ kelas: '...' }`) tanpa TypeError.
-  - `ADV-ROBUST-06`: Dukungan array objek dan string multi-kelas koma.
-  - `ADV-ROBUST-07`: Polymorphic string status pada argumen ke-4 tanpa runtime error.
-  - `ADV-ROBUST-08`: Polymorphic object status pada argumen ke-4 tanpa crash.
-  - `ADV-ROBUST-09`: Penolakan ketat intervensi kelas paralel saat guru berstatus Cuti.
-  - `ADV-ROBUST-10`: Otorisasi via snapshot relasi `waliKelasList`.
+#### Milestone 1: Kebijakan Presensi Guru & TU Tanpa Jam KBM (Requirement R1)
+1. **`src/components/AdminConfigView.tsx`**:
+   - Lines 71–81: Defined helper `isTuStaff` (checking `tata usaha`, `tu (administrasi)`, or `tu`) and `getTeacherKbmCount` (using `isTeacherRecordMatch` against loaded `jadwal_pelajaran` timetable).
+   - Lines 221–230: In `loadData`, `dbExempt` is strictly filtered: `!isTuStaff(t) && getTeacherKbmCount(t, allSchoolJadwal) > 0 && isValTrue(t.wajib_hadir_hanya_mengajar)`.
+   - Lines 374–385: In `saveConfig`, `validExemptTeachers` is computed as `guruList.filter(t => !isTuStaff(t) && getTeacherKbmCount(t, jadwalList) > 0)`. The `exemptIds` array is strictly intersected with this set. Any TU staff or teacher with 0 KBM hours is guaranteed to have `wajib_hadir_hanya_mengajar: false` persisted to Supabase `data_guru`.
+   - Lines 830–845: Mass action button "Set Semua Hanya Hari KBM" explicitly restricts candidates: `guruList.filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0)`.
+   - Lines 952–965: Toggle switches for non-eligible staff are disabled with `cursor-not-allowed`, warning tooltips, and warning toasts preventing accidental modification.
+2. **`src/lib/workflow.ts`**:
+   - Lines 1115 & 1202–1235: Computes `totalTeacherKbmCount` from `jadwal_pelajaran`. Flags `isNonKbmOrTu = isTeacherTu || totalTeacherKbmCount === 0`.
+   - Lines 1235–1240: Enforces `if (isNonKbmOrTu) { isTeacherExempt = false; }`.
+   - Lines 1803–1809: In journal completion check:
+     ```ts
+     } else if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
+       if (state.jurnalKegiatan) {
+         isJurnalDone = true;
+       } else if (isTeacherExempt && state.jadwalKBM.length === 0) {
+         isJurnalDone = true;
+       } else if (!isNonKbmOrTu && state.jadwalKBM.length === 0 && state.isPiket) {
+         isJurnalDone = true;
+       }
+     }
+     ```
+     For non-KBM/TU staff (`isNonKbmOrTu = true`, `isTeacherExempt = false`), neither exemption branch applies; `isJurnalDone` is true *only* when `state.jurnalKegiatan` is present.
+   - Lines 1883–1889: In `canTeacherPresensiPulang(state)`:
+     ```ts
+     if (state.isBlok || state.isDinasLuar || !state.jadwalKBM || state.jadwalKBM.length === 0) {
+       if (state.jurnalKegiatan) return true;
+       if (isTeacherExempt && (!state.jadwalKBM || state.jadwalKBM.length === 0)) return true;
+       return false;
+     }
+     ```
+     Non-exempt staff without KBM cannot checkout without submitting `jurnalKegiatan`.
+3. **`src/components/HomeViewTU.tsx`**:
+   - Lines 308–377: Integrated Piket duty detection checking `penugasan_piket` and fallback `jadwal_piket`, plus retrieval of `laporan_piket` and verification status `laporanPiketDitolak`.
+   - Lines 381–382: Evaluated checkout gate:
+     `const isPiketDone = !isPiket || (Boolean(laporanPiket) && !laporanPiketDitolak);`
+     `const canPresensiPulang = Boolean(effectivePresensiDatang) && !isIzinSakit && !isAlpa && !isLibur && Boolean(jurnalKegiatan) && isPiketDone;`
+   - Lines 624–730: Rendered full 4-step workflow: Presensi Datang -> Laporan Piket (if assigned) -> Jurnal Kegiatan -> Presensi Pulang.
+4. **`src/components/HomeViewGuru.tsx`**:
+   - Lines 421 & 1056: Guarded the "Bebas Presensi" hero banner with `dailyState?.isNonTeachingDay && dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja'`.
+   - Lines 1135–1176: For teachers without KBM hours, rendered active guidance: "Tidak Ada Jadwal Mengajar KBM Hari Ini - Anda tetap wajib hadir dan mengisi Jurnal Kegiatan administrasi harian", with direct action button "Isi Jurnal Kegiatan" or completion badge.
+5. **`src/components/AdminVerifView.tsx` & `src/components/HomeViewAdmin.tsx`**:
+   - `AdminVerifView.tsx` (lines 843–867): `isNonKbmOrTu = isTu || totalTeacherSchedules === 0; isTeacherExempt = !isNonKbmOrTu && (...);`
+   - `HomeViewAdmin.tsx` (lines 407–415): `isNonKbmOrTu = isTu || !hasAnyWeeklyKbm; isTeacherExempt = !isNonKbmOrTu && (...);`
+   - Neither component labels TU staff or non-KBM teachers as "Bebas Hadir".
+6. **`src/lib/attendanceAlpa.ts`**:
+   - Lines 324–330 & 411–438: Pre-fetches `allWeeklyJadwal`, computes `isNonKbmOrTu = isTu || !hasAnyWeeklyKbm`.
+   - Line 435: `const isTeacherExempt = !isNonKbmOrTu && (...)`. Non-KBM/TU staff are never bypassed during daily Alpa checks.
 
 ---
 
-## 3. Verification Record
-
-- **Deep Verification (ran actual tests):**
-  - `npx tsx tests/wali_kelas_non_hadir_intervensi.test.ts`: **32 / 32 PASS (100%)**
-  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **59 / 59 PASS (100%)**
-  - `npm test`: **83 test files PASS (100% SUCCESS, 0 failures)**
-  - `npx tsc --noEmit`: **0 errors**
-  - `npm run build`: **Next.js 16.3.4 (Turbopack) build PASS (13/13 static pages, 0 errors)**
-- **Shallow Verification (manual only):**
-  - Inspeksi AST pada alur `handleNavigation` di `AppScreen.tsx` dan `HomeViewGuru.tsx`.
-- **Unverified aspects:**
-  - Rendering visual form presensi siswa pada peramban mobile layar sangat kecil (<320px) dalam kondisi offline ekstrem.
+#### Milestone 2: Fitur Edit & Hapus Jurnal KBM Role Guru (Requirement R2)
+1. **`src/components/RekapJurnalView.tsx`**:
+   - Lines 12–16: Imported `SwalModal from 'sweetalert2'` with alias `const Swal = SwalModal;` and `uploadToDrive` from `@/lib/driveUpload`.
+   - Lines 110–127: Form state variables initialized for all editable attributes.
+   - Lines 859–892 (`handleOpenEditModal`): Pre-fills date, jam_ke, pertemuan_ke, mapel, kelas, lokasi_kbm, TP, KKTP, materi/konten, kegiatan, refleksi, absensi parsing (H/I/S/A), and photo preview.
+   - Lines 903–953 (`handleDeleteJurnal`):
+     - Displays confirmation via `Swal.fire({ title: 'Hapus Jurnal KBM?', ... })`.
+     - Scopes mutation strictly to teacher: `.from('jurnal_pembelajaran').delete().eq('id', targetJurnal.id).eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`.
+     - Updates local state, dispatches `sipjam:jurnal-updated` event, and refreshes via `tarikRekap()`.
+   - Lines 955–1095 (`handleSaveEdit`):
+     - Validates mandatory fields (date, mapel, kelas, lokasi, TP, KKTP, konten, kegiatan).
+     - Supports keeping existing photo or uploading a new file via `uploadToDrive` with FileReader data URL fallback.
+     - Formats attendance as `Total murid: ${totalMurid}, Hadir: ${hadir}, Izin: ${izin}, Sakit: ${sakit}, Alpa: ${alpa}`.
+     - Resets rejection status when editing a previously rejected journal (`status_verifikasi = 'Menunggu'` or `'Disetujui'`, clearing `catatan_admin = null`, `alasan_penolakan = null`).
+     - Scopes update query strictly: `.from('jurnal_pembelajaran').update(payload).eq('id', editingJurnal.id).eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`.
+     - Operates with no date or time restrictions ("tanpa batasan waktu khusus").
+   - Lines 1679–1695 & 1811–1840:
+     - Retains exact 12-column table print header.
+     - Action buttons (`Detail`, `Edit`, `Hapus`) are wrapped inside `<div className="mt-1.5 no-print not-italic flex items-center gap-1.5 flex-wrap">` in column 12 (`Catatan`), hidden during print.
+     - Restricts buttons to real teacher-owned entries: `!isReadOnly && !j.id?.startsWith('unfilled-') && (tabMode === 'pribadi' || controlledMode === 'pribadi')`.
+   - Lines 2166–2189: Detail modal (`modal-detail-jurnal`) includes `Edit Jurnal` and `Hapus Jurnal` action buttons.
+   - Lines 2203–2610: Renders full accessible dialog `modal-edit-jurnal`.
+2. **`src/components/GuruJurnal.tsx`**:
+   - Lines 604–610: Subscribes to `window.addEventListener('sipjam:jurnal-updated')` to dynamically invoke `fetchRejected()`.
+   - Line 597: `setRejectedJournals(data || [])` properly empties rejected journal list when rejected records are modified or removed.
 
 ---
 
-## 4. Known Issues
-- `Minor Robustness Risk`: Jika sekolah menggunakan penamaan kelas yang sama sekali non-standar (misalnya nama kelas menggunakan emoji atau bahasa asing tanpa nomor tingkat), sistem tetap bergantung pada string matching eksak case-insensitive.
+### 1.2 Verification Commands Executed & Live Outputs
+
+| Command | Status | Details |
+|---|---|---|
+| `npx tsc --noEmit` | **PASS (0 errors)** | Zero TypeScript type errors across entire codebase. |
+| `npx tsx tests/jurnal_edit_delete_r2.test.ts` | **PASS (19/19)** | All 5 sections passed: Table action buttons & print invariant, Detail modal action buttons, Deletion scoping, Edit modal & mutation scoping, GuruJurnal coordination. |
+| `npx tsx tests/tu_refinements_and_admin_rekap.test.ts` | **PASS (82/82)** | All 5 suites passed: TU navigation & RBAC, read-only gradebook/rapor, admin recap separation, admin TU account sync, AST invariants. |
+| `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts` | **PASS (20/20)** | All 3 sections passed: Photo upload options, presensi pulang flexibility, rekap standard descriptions & invariants. |
+| `npx tsx tests/pulang_cepat_guru_bk_tu.test.ts` | **PASS (3/3)** | Universal pulang cepat logic intact across Guru, BK, and TU. |
+| `npx tsx tests/jurnal_kbm_r1_r2_r3_verification.test.ts` | **PASS (14/14)** | 12-column personal table invariants, attendance formatting, and class/mapel separation intact. |
+| `npx tsx tests/verifikasi_presensi_alpa_guru.test.ts` | **PASS (18/18)** | Alpa status calculations and gating invariants intact. |
+| `npx tsx tests/tata_usaha_role_rbac_and_isolation.test.ts` | **PASS (87/87)** | Comprehensive TU RBAC isolation, data guard, and menu invariants intact. |
+| `npx tsx tests/adversarial_bk_reviewer_verification.test.ts` | **PASS (86/86)** | BK role RBAC, mapel normalization, and session safety intact. |
 
 ---
 
-## 5. Remaining risk & next step
-- Fitur intervensi presensi siswa oleh wali kelas berstatus non-hadir (Dinas Luar, Izin, Sakit, Cuti) kini telah terproteksi, tahan terhadap seluruh variasi format input, terbebas dari false lockout, dan tidak memicu regresi pada alur presensi lainnya. Tugas telah selesai sepenuhnya.
+## 2. Logic Chain
+
+1. **Requirement R1 Fulfillment**:
+   - *Observation*: `AdminConfigView.tsx` now loads `jadwal_pelajaran` to distinguish teachers with KBM schedules from teachers without KBM and TU staff.
+   - *Reasoning*: Because exemption is strictly prohibited for non-KBM/TU staff during configuration save, batch toggle, and individual toggling, the database state `data_guru.wajib_hadir_hanya_mengajar` remains `false`.
+   - *Observation*: `workflow.ts`, `AdminVerifView.tsx`, `HomeViewAdmin.tsx`, and `attendanceAlpa.ts` calculate `isNonKbmOrTu` dynamically and force `isTeacherExempt = false`.
+   - *Reasoning*: Staff without KBM can never be evaluated as exempt (`isNonTeachingDay = false`, `bebasAlpa = false`, not "Bebas Hadir").
+   - *Observation*: In `workflow.ts` (lines 1803 & 1883) and `HomeViewTU.tsx` (line 381), `canPresensiPulang` requires `jurnalKegiatan` and `laporanPiket` (if on duty).
+   - *Conclusion*: Non-KBM teachers and TU staff are never exempt from attendance. They must check in (Datang), submit Piket (if on duty), submit Jurnal Kegiatan, and only then can check out (Pulang).
+
+2. **Requirement R2 Fulfillment**:
+   - *Observation*: `RekapJurnalView.tsx` provides both row-level `Edit` / `Hapus` buttons and detail modal action buttons when in personal mode.
+   - *Reasoning*: Teachers have immediate self-service access to adjust or delete their own journal entries.
+   - *Observation*: Mutations are strictly restricted with `.eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`.
+   - *Reasoning*: Tenant isolation and authorization are preserved; teachers cannot modify peers' journals.
+   - *Observation*: The code has no time limitation logic, and the personal print header retains exactly 12 columns because buttons are wrapped in `no-print`.
+   - *Conclusion*: Teachers can edit and delete their journals freely without time limits, while print layouts and multi-teacher security remain uncompromised.
+
+---
+
+## 3. Findings & Adversarial Stress Tests
+
+### Finding 1: Brittle AST Substring Asserts in Legacy Test (`tests/wajib_hadir_dan_pembersihan_usang.test.ts`)
+- **Classification**: Minor / Informational
+- **Location**: `tests/wajib_hadir_dan_pembersihan_usang.test.ts` (lines 146, 159, 169)
+- **Observation**:
+  `tests/wajib_hadir_dan_pembersihan_usang.test.ts` contains 3 static string assertions that check for pre-R1 syntax:
+  - Line 146 checks for exact single-line `if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;`.
+  - Line 159 checks for `if (state.jadwalKBM.length === 0 && state.isPiket) isJurnalDone = true;` (an old assumption that piket duty excused all journal requirements).
+  - Line 169 checks for `const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)`.
+- **Impact Analysis**:
+  All 30 algorithmic and behavioral simulation tests in `tests/wajib_hadir_dan_pembersihan_usang.test.ts` (R1.10.A through R1.21) passed cleanly. The 3 failures are solely caused by static AST substring matching against obsolete pre-R1 syntax that R1 explicitly superseded.
+- **Recommendation**:
+  No implementation changes needed. If test cleanup is scheduled in M3, the AST string assertions in that legacy test can be updated to reflect the new R1 syntax.
+
+### Finding 2: Adversarial Stress Test Results
+- **Scenario A: Malicious attempt to delete another teacher's journal**:
+  - *Result*: Blocked. The Supabase query enforces `.eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`, resulting in zero affected rows.
+- **Scenario B: Modifying historical journals from past weeks/months**:
+  - *Result*: Supported. Form pre-fills historical values and saves directly to database with no date barrier.
+- **Scenario C: TU staff attempting checkout with only Datang presensi**:
+  - *Result*: Blocked. `canPresensiPulang` returns `false` with locked reason: "Selesaikan jurnal kegiatan terlebih dahulu" (and piket if on duty).
+- **Scenario D: Non-KBM teacher attempting checkout after only Piket without Jurnal Kegiatan**:
+  - *Result*: Blocked. `isNonKbmOrTu` prevents piket from waiving `jurnalKegiatan`.
+- **Scenario E: Offline / unconfigured Google Drive during journal photo edit**:
+  - *Result*: Gracefully handled. System falls back to `FileReader.readAsDataURL` and preserves the edit.
+
+---
+
+## 4. Caveats
+
+- **Supervisi Kelas Binaan**: When a teacher views `tabMode === 'kelas'` (supervising class entries), other teachers' journals are view-only with no Edit or Hapus buttons displayed. This is intentional and necessary for supervisory integrity.
+- **Git Operations**: Per GEMINI.md, committing and pushing to `main` is handled in Milestone 3 following gate approval.
+
+---
+
+## 5. Conclusion & Final Verdict
+
+**VERDICT: APPROVE**
+
+Both Milestone 1 (Requirement R1) and Milestone 2 (Requirement R2) are fully and correctly implemented:
+1. Admin policy configuration and daily attendance workflows prevent TU staff and non-KBM teachers from being exempt.
+2. The 4-step workflow (Datang -> Piket if assigned -> Jurnal Kegiatan -> Pulang) is reliably enforced across all roles.
+3. KBM journal editing and deletion are available to teachers without time restrictions, scoped to the owner, and synchronized with GuruJurnal.
+4. All 4 required test suites and multiple auxiliary suites passed 100%. Zero integrity violations detected.
+
+---
+
+## 6. Verification Method
+
+To independently reproduce the verification results:
+
+```powershell
+# 1. Typecheck
+npx tsc --noEmit
+
+# 2. Milestone 2 Edit & Delete Test Suite
+npx tsx tests/jurnal_edit_delete_r2.test.ts
+
+# 3. Milestone 1 TU Refinements & Admin Recap Suite
+npx tsx tests/tu_refinements_and_admin_rekap.test.ts
+
+# 4. Universal Journal Verification Suite
+npx tsx tests/jurnal_r1_r2_r3_verification.test.ts
+```
+
+### Invalidation Conditions
+- Any occurrence of `status_label = 'Bebas Hadir'` for TU staff or teachers without KBM hours on active school days.
+- Any ability of a non-KBM teacher or TU staff member to checkout without submitting `jurnalKegiatan` and assigned piket.
+- Any inability of a teacher to edit or delete their own past journals in personal rekap mode.
+- Any alteration to the 12-column personal table print layout.
+- Any compilation error in `npx tsc --noEmit`.

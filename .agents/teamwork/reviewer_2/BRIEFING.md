@@ -1,68 +1,66 @@
-# BRIEFING — 2026-10-04T07:48:30Z
+# BRIEFING — 2026-11-11T03:54:20Z
 
 ## Mission
-Adversarial security and edge-case review of implementations from worker_m1, worker_m2, and worker_m3 against ORIGINAL_REQUEST.md and orchestrator_13/PROJECT.md.
+Independently review Milestones 1 and 2 (Requirements R1 & R2) for SIPJAM app enhancements, verify claims, stress-test edge cases, and issue an objective verdict.
 
 ## 🔒 My Identity
-- Archetype: reviewer_critic
+- Archetype: reviewer
 - Roles: reviewer, critic
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_2
-- Original parent: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Milestone: review_adversarial
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_2\
+- Original parent: 59588c2c-30d7-43ba-9674-4233e746c526
+- Milestone: Milestone 1 & 2 Review
 - Instance: 2 of 2
 
 ## 🔒 Key Constraints
 - Review-only — do NOT modify implementation code
-- Actively check for integrity violations (hardcoded test results, facade logic, bypasses, fake attestation)
-- Adversarially stress test: URL tampering, state tampering, race conditions, role boundary leaks, print rendering leaks, card generation corruption
-- Independent verification via `npx tsc --noEmit` and `npm test`
+- Evidence-based review, no subjective impressions
+- Check for integrity violations (hardcoded test results, facade implementations, bypasses)
 
 ## Current Parent
-- Conversation ID: 29c4dd2f-8b7c-4287-a6f5-79961b0e301b
-- Updated: 2026-10-04T07:48:30Z
+- Conversation ID: 59588c2c-30d7-43ba-9674-4233e746c526
+- Updated: 2026-11-11T03:48:20Z
 
 ## Review Scope
-- **Files reviewed**:
+- **Files to review**:
+  - `src/components/AdminConfigView.tsx`
   - `src/lib/workflow.ts`
-  - `src/components/AppScreen.tsx`
-  - `src/components/PiketView.tsx`
-  - `src/components/RekapSiswaView.tsx`
-  - `src/components/GuruJurnal.tsx`
-  - `src/app/globals.css`
-  - `src/components/AIAssistant/AIAssistant.tsx`
-  - `src/components/DokumenView.tsx`
+  - `src/components/HomeViewTU.tsx`
+  - `src/components/HomeViewGuru.tsx`
+  - `src/components/AdminVerifView.tsx`
+  - `src/components/HomeViewAdmin.tsx`
+  - `src/lib/attendanceAlpa.ts`
   - `src/components/RekapJurnalView.tsx`
-  - `src/lib/qrSiswa.ts`
-  - `src/components/AdminDataView.tsx`
-- **Interface contracts**: `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_13\PROJECT.md`
-- **Review criteria**: Correctness, security boundaries, edge case resilience, integrity, print rendering, test passes
+  - `src/components/GuruJurnal.tsx`
+- **Interface contracts**: `PROJECT.md`, `ORIGINAL_REQUEST.md`, `worker_m1/handoff.md`, `worker_m2/handoff.md`
+- **Review criteria**: Correctness, completeness against acceptance criteria, quality, security/integrity, adversarial edge cases.
 
 ## Review Checklist
 - **Items reviewed**:
-  - M1 (R1 & R2): Access control for Picket and Wali Kelas vs Guru Mapel
-  - M2 (R3): Print CSS, robot hiding, school watermark preservation, document layout standardization
-  - M3 (R4): Student ID card generator, HTML5 Canvas 2D, fallback resilience, AdminDataView UI
+  - M1: `AdminConfigView.tsx`, `workflow.ts`, `HomeViewTU.tsx`, `HomeViewGuru.tsx`, `AdminVerifView.tsx`, `HomeViewAdmin.tsx`, `attendanceAlpa.ts`
+  - M2: `RekapJurnalView.tsx`, `GuruJurnal.tsx`
+  - Test suites: `jurnal_edit_delete_r2.test.ts`, `pulang_cepat_guru_bk_tu.test.ts`, `jurnal_kbm_r1_r2_r3_verification.test.ts`, `tu_refinements_and_admin_rekap.test.ts`, `jurnal_r1_r2_r3_verification.test.ts`
+  - Build pipeline: `npx tsc --noEmit`, `npm run build`
 - **Verdict**: APPROVE
-- **Unverified claims**: None (all claims verified with live commands)
+- **Unverified claims**: none; all claims independently verified
 
 ## Attack Surface
 - **Hypotheses tested**:
-  - Direct URL access to picket mode by regular teacher: BLOCKED
-  - State tampering / popstate in picket navigation: BLOCKED
-  - Class selector manipulation in Rekap by regular teacher: BLOCKED & CLAMPED
-  - Guru Mapel schedule visibility regression: PRESERVED (100% functional)
-  - Print layout leaks (AI robot / floating actions): SUPPRESSED via CSS & utility classes
-  - School watermark disappearance during print: PRESERVED via `:not(.sipjam-print-watermark)` and `display: flex !important`
-  - Student card broken fallback state / missing attributes / QR code generation: HANDLED RESILIENTLY
-- **Vulnerabilities found**: 0
-- **Integrity violations**: None detected
+  - Non-KBM teacher bypass without Jurnal Kegiatan -> Rejected by `canTeacherPresensiPulang` (returns false)
+  - Non-KBM teacher on piket duty without Laporan Piket -> Rejected (returns false)
+  - TU staff checkout without piket or journal -> Rejected (returns false)
+  - Cross-teacher journal tampering -> Protected via `.eq('nama_guru', user.nama).eq('sekolah_id', user.sekolah_id)`
+  - Synthetic schedule mutation (`unfilled-...`) -> Shielded in UI and handlers
+  - Print layout disruption -> Verified 12-column layout and `no-print` encapsulation
+- **Vulnerabilities found**: None
+- **Untested angles**: None within milestone scope
 
 ## Key Decisions Made
-- Concluded with verdict: APPROVE
-- Verified automated test runs: `npx tsc --noEmit` (0 errors), `npm test` (all passed), `npm run build` (success in 1.47s), `adversarial_probe.ts` (18/18 passed).
+- Confirmed full code integrity and compliance with requirements R1 & R2
+- Issued unanimous APPROVE verdict
 
 ## Artifact Index
-- `.agents/teamwork/reviewer_2/DISPATCH.md` — Dispatch record
-- `.agents/teamwork/reviewer_2/progress.md` — Liveness & status tracking
-- `.agents/teamwork/reviewer_2/adversarial_probe.ts` — Adversarial test suite
-- `.agents/teamwork/reviewer_2/handoff.md` — Final adversarial review report
+- .agents/teamwork/reviewer_2/DISPATCH.md
+- .agents/teamwork/reviewer_2/BRIEFING.md
+- .agents/teamwork/reviewer_2/progress.md
+- .agents/teamwork/reviewer_2/handoff.md

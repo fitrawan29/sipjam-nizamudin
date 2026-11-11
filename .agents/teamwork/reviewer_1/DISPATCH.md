@@ -1,26 +1,35 @@
-## 2026-10-04T07:39:59Z
-You are Reviewer 1 (reviewer_1).
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1
+## 2026-11-11T03:48:13Z
+You are Reviewer 1 for SIPJAM application enhancements (Milestones 1 & 2).
+Your state folder is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1\
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 
-Read ORIGINAL_REQUEST.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the latest request at the bottom, 2026-10-04T07:11:46Z).
+Read these reference files before starting:
+- ORIGINAL_REQUEST: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+- PROJECT.md: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\PROJECT.md
+- Worker M1 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
+- Worker M2 handoff: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
 
-Read PROJECT.md at:
-c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_13\PROJECT.md
-
-Read the Worker handoffs:
-- worker_m1: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m1\handoff.md
-- worker_m2: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m2\handoff.md
-- worker_m3: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\worker_m3\handoff.md
-
-Your role is independent code review:
-1. Examine correctness, completeness, and robustness of:
-   - R1: Piket access restriction by schedule (workflow.ts, AppScreen.tsx, PiketView.tsx).
-   - R2: Attendance recap restriction for Wali Kelas vs Guru Mapel (AppScreen.tsx, RekapSiswaView.tsx, GuruJurnal.tsx).
-   - R3: Print layout alignment, hiding robot UI/floating buttons, preserving school watermark (globals.css, AIAssistant.tsx, DokumenView.tsx, RekapJurnalView.tsx).
-   - R4: Student QR card download with complete student identity and QR code (qrSiswa.ts, AdminDataView.tsx).
-2. Run build and type check:
-   `npx tsc --noEmit` and `npm run build`.
-3. Provide your explicit verdict: APPROVE or REQUEST_CHANGES.
-Write your full review report to `c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1\handoff.md`.
-Send a message to parent when completed.
+Your task is to independently review both Milestone 1 (Requirement R1) and Milestone 2 (Requirement R2):
+1. Review code modifications in:
+   - `src/components/AdminConfigView.tsx`
+   - `src/lib/workflow.ts`
+   - `src/components/HomeViewTU.tsx`
+   - `src/components/HomeViewGuru.tsx`
+   - `src/components/AdminVerifView.tsx`
+   - `src/components/HomeViewAdmin.tsx`
+   - `src/lib/attendanceAlpa.ts`
+   - `src/components/RekapJurnalView.tsx`
+   - `src/components/GuruJurnal.tsx`
+2. Verify completeness against Acceptance Criteria:
+   - Pengaturan Kebijakan Presensi (Admin): clear rules, non-KBM/TU not free from presence, can do Datang/Pulang, can do Jurnal Kegiatan and Piket if assigned.
+   - Fitur Jurnal KBM Role Guru: teachers can edit and delete their own KBM journals without time limits, changes persist, print layout intact, no regressions.
+3. Run verification commands:
+   - `npx tsc --noEmit`
+   - `npx tsx tests/jurnal_edit_delete_r2.test.ts`
+   - `npx tsx tests/tu_refinements_and_admin_rekap.test.ts`
+   - `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`
+4. Formulate an unambiguous verdict: APPROVE or REQUEST_CHANGES.
+Write your report and verdict to:
+c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1\handoff.md
+Update c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\reviewer_1\progress.md.
+When finished, send a brief message to the orchestrator.

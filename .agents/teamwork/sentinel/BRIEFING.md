@@ -1,37 +1,40 @@
-# BRIEFING — 2026-11-10T03:43:00Z
+# BRIEFING — 2026-11-11T03:05:20Z
 
 ## Mission
-Coordinate SWE Light execution and independent victory audit for Master Data CSV export implementation across all 9 tabs.
+Sentinel coordinating project execution for attendance policy adjustments (admin) and KBM journal edit/delete features (teacher role).
 
 ## 🔒 My Identity
 - Archetype: sentinel
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\
-- Orchestrator: 7a66eb17-7705-4e6a-b649-ebfad31d8c67
-- Victory Auditor: a22fcc9e-de06-4a83-bec0-401e9856c224
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\sentinel\
 
 ## 🔒 Key Constraints
 - No technical decisions — relay only
 - Victory Audit is MANDATORY before reporting completion
-- Integrity mode: demo
-- The team must NOT: use pre-built libraries or frameworks for core functionality
-- Preserve existing functionality & zero regression
-- Minimal implementation without extra dependencies (/ponytail)
+- R3: Hanya lakukan perbaikan R1 dan R2, jangan merubah hal lain yang ada di aplikasi. Terapkan prinsip solusi minimal dan tepat sasaran (ponytail).
+- Git workflow rule: git status, git add ., git commit -m "...", git push origin main.
+
+## Routing Decision
+- **Path**: General (`teamwork_orchestrator`)
+- **Rationale**: Multi-part software engineering task involving admin presence policy, teacher attendance requirements for non-teaching teachers/TU staff, and KBM journal edit/delete UI and backend functionality.
+
+## Active Orchestrator
+- Active orchestrator: 59588c2c-30d7-43ba-9674-4233e746c526
+- Orchestrator state folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator_1\
 
 ## User Context
-- **Last user request**: Approved prompt for CSV export feature on Master Data tabs.
+- **Last user request**: Approved task prompt received
 - **Pending clarifications**: none
-- **Delivered results**: CSV export feature for all 9 Master Data tabs fully implemented, hardened, verified, and audited with VICTORY CONFIRMED.
+- **Delivered results**: [none]
 
 ## Project Status
-- **Phase**: complete
-- **Route**: SWE Light (`teamwork_swe`) - 7a66eb17-7705-4e6a-b649-ebfad31d8c67
+- **Phase**: in progress (Orchestrator actively running Phase 0 Survey)
 
 ## Victory Audit Status
-- **Triggered**: yes
-- **Verdict**: VICTORY CONFIRMED
+- **Auditor**: [to be spawned on victory claim]
+- **Triggered**: no
+- **Verdict**: pending
 - **Retry count**: 0
 
 ## Artifact Index
-- .agents/teamwork/ORIGINAL_REQUEST.md — Authoritative user request record
-- .agents/teamwork/teamwork_swe_1/handoff.md — Orchestrator completion handoff
-- .agents/teamwork/sentinel_victory_auditor/handoff.md — Independent victory audit handoff
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Verbatim approved user request

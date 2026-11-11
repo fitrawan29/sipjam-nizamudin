@@ -9,7 +9,11 @@ import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceA
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { showToast } from '@/lib/toast';
+import SwalModal from 'sweetalert2';
+import { uploadToDrive } from '@/lib/driveUpload';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
+
+const Swal = SwalModal;
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 
@@ -102,6 +106,25 @@ export default function RekapJurnalView({
     const v = user?.wajib_hadir_hanya_mengajar || (user as any)?.wajibHadirHanyaMengajar;
     return v === true || v === 'true' || v === 1 || v === '1';
   });
+
+  // Edit & Delete Jurnal States (Milestone 2 - R2)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingJurnal, setEditingJurnal] = useState<any | null>(null);
+  const [editTanggal, setEditTanggal] = useState('');
+  const [editJamKe, setEditJamKe] = useState('');
+  const [editPertemuanKe, setEditPertemuanKe] = useState('');
+  const [editMapel, setEditMapel] = useState('');
+  const [editKelas, setEditKelas] = useState('');
+  const [editLokasiKbm, setEditLokasiKbm] = useState('');
+  const [editTujuanPembelajaran, setEditTujuanPembelajaran] = useState('');
+  const [editKktp, setEditKktp] = useState('');
+  const [editKonten, setEditKonten] = useState('');
+  const [editKegiatan, setEditKegiatan] = useState('');
+  const [editRefleksi, setEditRefleksi] = useState('');
+  const [editAbsensiCounts, setEditAbsensiCounts] = useState({ total: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0 });
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState<string>('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const checkIsHanyaKbm = useCallback((teacherName?: string, teacherNip?: string, teacherUserId?: string): boolean => {
     const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
@@ -832,6 +855,252 @@ export default function RekapJurnalView({
     return 'Total murid: 0, Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0';
   }
 
+  // Milestone 2 - R2: Edit and Delete Handlers (No time limits)
+  const handleOpenEditModal = (jurnal: any) => {
+    if (!jurnal || !jurnal.id || jurnal.id.startsWith('unfilled-')) return;
+    setEditingJurnal(jurnal);
+    setEditTanggal(jurnal.tanggal || '');
+    setEditJamKe(jurnal.jam_ke && jurnal.jam_ke !== '-' ? jurnal.jam_ke : '');
+    setEditPertemuanKe(jurnal.pertemuan_ke && jurnal.pertemuan_ke !== '-' ? jurnal.pertemuan_ke : '');
+    setEditMapel(jurnal.mapel && jurnal.mapel !== '-' ? jurnal.mapel : '');
+    setEditKelas(jurnal.kelas && jurnal.kelas !== '-' ? jurnal.kelas : '');
+    setEditLokasiKbm(jurnal.lokasi_kbm || jurnal.lokasi || '');
+    setEditTujuanPembelajaran(jurnal.tujuan_pembelajaran && jurnal.tujuan_pembelajaran !== '-' ? jurnal.tujuan_pembelajaran : '');
+    setEditKktp(jurnal.kktp && jurnal.kktp !== '-' ? jurnal.kktp : '');
+    setEditKonten(jurnal.konten || jurnal.materi_pembelajaran || jurnal.materi || '');
+    setEditKegiatan(jurnal.kegiatan_pembelajaran || jurnal.kegiatan || '');
+    setEditRefleksi(jurnal.catatan_refleksi && jurnal.catatan_refleksi !== '-' ? jurnal.catatan_refleksi : (jurnal.refleksi && jurnal.refleksi !== '-' ? jurnal.refleksi : ''));
+
+    // Attendance parsing
+    let parsedCounts = { total: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+    const rawFormatted = formatAbsensi(jurnal.absensi_siswa, jurnal.detail_absen, jurnal.kehadiran_murid);
+    const match = rawFormatted.match(/Total murid:\s*(\d+),\s*Hadir:\s*(\d+),\s*Izin:\s*(\d+),\s*Sakit:\s*(\d+),\s*Alpa:\s*(\d+)/i);
+    if (match) {
+      parsedCounts = {
+        total: parseInt(match[1], 10),
+        hadir: parseInt(match[2], 10),
+        izin: parseInt(match[3], 10),
+        sakit: parseInt(match[4], 10),
+        alpa: parseInt(match[5], 10),
+      };
+    }
+    setEditAbsensiCounts(parsedCounts);
+
+    setEditFile(null);
+    setEditPhotoPreview(jurnal.foto_kegiatan || jurnal.link_bukti_foto || '');
+    setIsEditModalOpen(true);
+  };
+
+  const updateAbsensiCount = (key: 'hadir' | 'izin' | 'sakit' | 'alpa', val: number) => {
+    setEditAbsensiCounts(prev => {
+      const nextVal = Math.max(0, val);
+      const updated = { ...prev, [key]: nextVal };
+      updated.total = updated.hadir + updated.izin + updated.sakit + updated.alpa;
+      return updated;
+    });
+  };
+
+  const handleDeleteJurnal = async (targetJurnal: any) => {
+    if (!targetJurnal || !targetJurnal.id || targetJurnal.id.startsWith('unfilled-')) {
+      return;
+    }
+
+    const confirmResult = await Swal.fire({
+      title: 'Hapus Jurnal KBM?',
+      html: `Apakah Anda yakin ingin menghapus jurnal mata pelajaran <b>${targetJurnal.mapel || '-'}</b> kelas <b>${targetJurnal.kelas || '-'}</b> tanggal <b>${targetJurnal.tanggal || '-'}</b>?<br/><span class="text-xs text-red-500 font-medium">Tindakan ini permanen dan data yang dihapus tidak dapat dipulihkan.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Ya, Hapus Jurnal',
+      cancelButtonText: 'Batal',
+    });
+
+    if (!confirmResult.isConfirmed) return;
+
+    try {
+      let query = supabase
+        .from('jurnal_pembelajaran')
+        .delete()
+        .eq('id', targetJurnal.id);
+
+      if (user?.nama) {
+        query = query.eq('nama_guru', user.nama);
+      }
+      if (user?.sekolah_id) {
+        query = query.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      setJurnalData(prev => prev ? prev.filter(item => item.id !== targetJurnal.id) : []);
+      if (selectedJurnal?.id === targetJurnal.id) {
+        setSelectedJurnal(null);
+      }
+
+      showToast('Jurnal KBM berhasil dihapus', undefined, 'success');
+      window.dispatchEvent(new CustomEvent('sipjam:jurnal-updated', { detail: { id: targetJurnal.id, action: 'delete' } }));
+      await tarikRekap();
+    } catch (err: any) {
+      console.error('[RekapJurnalView] Delete error:', err);
+      Swal.fire({
+        title: 'Gagal Menghapus Jurnal',
+        text: err?.message || 'Terjadi kesalahan saat menghapus jurnal KBM.',
+        icon: 'error'
+      });
+    }
+  };
+
+  const handleSaveEdit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!editingJurnal || !editingJurnal.id) return;
+
+    // Form validation
+    if (!editTanggal) {
+      showToast('Tanggal Wajib Diisi', 'Silakan pilih tanggal KBM.', 'warning');
+      return;
+    }
+    if (!editMapel || editMapel.trim() === '') {
+      showToast('Mata Pelajaran Wajib', 'Silakan pilih atau isi mata pelajaran.', 'warning');
+      return;
+    }
+    if (!editKelas || editKelas.trim() === '') {
+      showToast('Kelas Wajib', 'Silakan pilih atau isi kelas pembelajaran.', 'warning');
+      return;
+    }
+    if (!editLokasiKbm || editLokasiKbm.trim() === '') {
+      showToast('Lokasi KBM Wajib', 'Silakan isi lokasi pelaksanaan KBM.', 'warning');
+      return;
+    }
+    if (!editTujuanPembelajaran || editTujuanPembelajaran.trim() === '') {
+      showToast('Tujuan Pembelajaran Wajib', 'Silakan isi tujuan pembelajaran (TP).', 'warning');
+      return;
+    }
+    if (!editKktp || editKktp.trim() === '') {
+      showToast('KKTP Wajib', 'Silakan isi kriteria ketercapaian tujuan pembelajaran.', 'warning');
+      return;
+    }
+    if (!editKonten || editKonten.trim() === '') {
+      showToast('Materi / Konten Wajib', 'Silakan isi konten atau materi pembelajaran.', 'warning');
+      return;
+    }
+    if (!editKegiatan || editKegiatan.trim() === '') {
+      showToast('Kegiatan Wajib', 'Silakan isi rincian kegiatan pembelajaran.', 'warning');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      let finalPhotoUrl = editingJurnal.foto_kegiatan || editingJurnal.link_bukti_foto || '-';
+      if (editFile) {
+        try {
+          const driveUrl = await uploadToDrive(editFile, user?.nama || 'Guru', 'Jurnal KBM', 'Jurnal');
+          if (driveUrl && !driveUrl.startsWith('gagal')) {
+            finalPhotoUrl = driveUrl;
+          } else {
+            finalPhotoUrl = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve((reader.result as string) || '');
+              reader.onerror = () => resolve('');
+              reader.readAsDataURL(editFile);
+            });
+          }
+        } catch (photoErr) {
+          console.warn('[RekapJurnalView] Photo upload error, using local fallback:', photoErr);
+          finalPhotoUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve((reader.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(editFile);
+          });
+        }
+      }
+
+      const totalMurid = editAbsensiCounts.total > 0 
+        ? editAbsensiCounts.total 
+        : (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa);
+      const computedKehadiran = `Total murid: ${totalMurid}, Hadir: ${editAbsensiCounts.hadir}, Izin: ${editAbsensiCounts.izin}, Sakit: ${editAbsensiCounts.sakit}, Alpa: ${editAbsensiCounts.alpa}`;
+
+      const isMateriLengkap = Boolean(editKonten && editKonten.trim().length > 0);
+      const isKegiatanLengkap = Boolean(editKegiatan && editKegiatan.trim().length > 0);
+      const isFotoLengkap = Boolean(finalPhotoUrl && finalPhotoUrl.trim().length > 0 && finalPhotoUrl !== '-' && finalPhotoUrl !== 'pending:uploading' && finalPhotoUrl !== 'gagal_upload');
+      const isAbsensiLengkap = Boolean(totalMurid > 0);
+
+      let nextStatus = editingJurnal.status_verifikasi;
+      if (editingJurnal.status_verifikasi === 'Ditolak') {
+        nextStatus = (isMateriLengkap && isKegiatanLengkap && isAbsensiLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
+      }
+
+      const payload: any = {
+        tanggal: editTanggal,
+        jam_ke: editJamKe || '-',
+        pertemuan_ke: editPertemuanKe || '-',
+        mapel: editMapel,
+        kelas: editKelas,
+        lokasi_kbm: editLokasiKbm,
+        lokasi: editLokasiKbm,
+        tujuan_pembelajaran: editTujuanPembelajaran,
+        kktp: editKktp,
+        konten: editKonten,
+        materi: editKonten,
+        materi_pembelajaran: editKonten,
+        kegiatan: editKegiatan,
+        kegiatan_pembelajaran: editKegiatan,
+        catatan_refleksi: editRefleksi || '-',
+        refleksi: editRefleksi || '-',
+        kehadiran_murid: computedKehadiran,
+        link_bukti_foto: finalPhotoUrl,
+        foto_kegiatan: finalPhotoUrl,
+      };
+
+      if (editingJurnal.status_verifikasi === 'Ditolak') {
+        payload.status_verifikasi = nextStatus;
+        payload.catatan_admin = null;
+        payload.alasan_penolakan = null;
+        payload.catatan_penolakan = null;
+        payload.keterangan_penolakan = null;
+      }
+
+      let query = supabase
+        .from('jurnal_pembelajaran')
+        .update(payload)
+        .eq('id', editingJurnal.id);
+
+      if (user?.nama) {
+        query = query.eq('nama_guru', user.nama);
+      }
+      if (user?.sekolah_id) {
+        query = query.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const { error } = await query;
+      if (error) throw error;
+
+      const updatedEntry = { ...editingJurnal, ...payload };
+      setJurnalData(prev => prev ? prev.map(item => item.id === editingJurnal.id ? updatedEntry : item) : [updatedEntry]);
+
+      if (selectedJurnal?.id === editingJurnal.id) {
+        setSelectedJurnal(updatedEntry);
+      }
+
+      setIsEditModalOpen(false);
+      setEditingJurnal(null);
+      showToast('Jurnal KBM berhasil diperbarui', undefined, 'success');
+      window.dispatchEvent(new CustomEvent('sipjam:jurnal-updated', { detail: { id: editingJurnal.id, action: 'edit' } }));
+      await tarikRekap();
+    } catch (err: any) {
+      console.error('[RekapJurnalView] Edit error:', err);
+      Swal.fire({
+        title: 'Gagal Memperbarui Jurnal',
+        text: err?.message || 'Terjadi kesalahan saat memperbarui jurnal KBM.',
+        icon: 'error'
+      });
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   const filteredJurnal = (jurnalData || [])
     .filter(j => {
       // REQUIREMENT R1: Exclude any rows labeled "Libur" from the document output
@@ -1539,7 +1808,7 @@ export default function RekapJurnalView({
                                       </span>
                                     </div>
                                   )}
-                                  <div className="mt-1.5 no-print not-italic">
+                                  <div className="mt-1.5 no-print not-italic flex items-center gap-1.5 flex-wrap">
                                     <button
                                       type="button"
                                       onClick={() => setSelectedJurnal(j)}
@@ -1548,6 +1817,26 @@ export default function RekapJurnalView({
                                     >
                                       <i className="fa-solid fa-eye text-[9px]"></i> Detail
                                     </button>
+                                    {!isReadOnly && !j.id?.startsWith('unfilled-') && (tabMode === 'pribadi' || controlledMode === 'pribadi') && (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenEditModal(j)}
+                                          className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1"
+                                          title="Edit Jurnal KBM"
+                                        >
+                                          <i className="fa-solid fa-pen-to-square text-[9px]"></i> Edit
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteJurnal(j)}
+                                          className="text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline inline-flex items-center gap-1"
+                                          title="Hapus Jurnal KBM"
+                                        >
+                                          <i className="fa-solid fa-trash-can text-[9px]"></i> Hapus
+                                        </button>
+                                      </>
+                                    )}
                                   </div>
                                 </td>
                               </tr>
@@ -1873,15 +2162,449 @@ export default function RekapJurnalView({
                 )}
               </div>
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex items-center justify-between gap-2 flex-wrap">
+                {!isReadOnly && (tabMode === 'pribadi' || controlledMode === 'pribadi') && !selectedJurnal.id?.startsWith('unfilled-') && (selectedJurnal.nama_guru === user?.nama || selectedJurnal.user_id === user?.id || (user?.nama && selectedJurnal.nama_guru?.toLowerCase().includes(user.nama.toLowerCase()))) ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const target = selectedJurnal;
+                        setSelectedJurnal(null);
+                        handleOpenEditModal(target);
+                      }}
+                      className="btn-click px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <i className="fa-solid fa-pen-to-square"></i> Edit Jurnal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleDeleteJurnal(selectedJurnal);
+                      }}
+                      className="btn-click px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                    >
+                      <i className="fa-solid fa-trash-can"></i> Hapus Jurnal
+                    </button>
+                  </div>
+                ) : <div />}
                 <button
                   type="button"
                   onClick={() => setSelectedJurnal(null)}
-                  className="btn-click px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl text-xs font-bold transition"
+                  className="btn-click px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl text-xs font-bold transition ml-auto"
                 >
                   Tutup
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Milestone 2 - R2: Modal Edit Jurnal KBM (Tanpa Batasan Waktu) */}
+        {isEditModalOpen && editingJurnal && (
+          <div 
+            id="modal-edit-jurnal" 
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm no-print"
+            onClick={() => {
+              if (!isSavingEdit) {
+                setIsEditModalOpen(false);
+                setEditingJurnal(null);
+              }
+            }}
+          >
+            <div 
+              className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 space-y-4"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shadow-inner">
+                    <i className="fa-solid fa-pen-to-square"></i>
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                      Edit Jurnal KBM
+                    </h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Sesuaikan data jurnal pembelajaran mandiri &bull; Tanpa batasan waktu
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  disabled={isSavingEdit}
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setEditingJurnal(null);
+                  }}
+                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition disabled:opacity-50"
+                >
+                  <i className="fa-solid fa-xmark text-sm"></i>
+                </button>
+              </div>
+
+              {/* Rejection Notice if applicable */}
+              {editingJurnal.status_verifikasi === 'Ditolak' && (
+                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    <i className="fa-solid fa-circle-info text-amber-600"></i>
+                    <span>Jurnal Sebelumnya Ditolak</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    Setelah diperbaiki dan disimpan, status jurnal akan otomatis diperbarui kembali menjadi 'Menunggu' / 'Disetujui' dan catatan penolakan dibersihkan.
+                  </p>
+                </div>
+              )}
+
+              {/* Form Fields */}
+              <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+                {/* Row 1: Tanggal, Jam Ke, Pertemuan Ke */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Tanggal KBM <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={editTanggal}
+                      onChange={e => setEditTanggal(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Jam ke-
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 1-2 atau 3"
+                      value={editJamKe}
+                      onChange={e => setEditJamKe(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Pertemuan ke-
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Contoh: 1 atau 4"
+                      value={editPertemuanKe}
+                      onChange={e => setEditPertemuanKe(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Mapel, Kelas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Mata Pelajaran <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      list="edit-mapel-list"
+                      type="text"
+                      value={editMapel}
+                      onChange={e => setEditMapel(e.target.value)}
+                      placeholder="Pilih atau ketik mata pelajaran"
+                      required
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <datalist id="edit-mapel-list">
+                      {Array.from(new Set([...mapelList, ...assignedMapelList].filter(Boolean))).map((m: string) => (
+                        <option key={m} value={m} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      Kelas <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      list="edit-kelas-list"
+                      type="text"
+                      value={editKelas}
+                      onChange={e => setEditKelas(e.target.value)}
+                      placeholder="Pilih atau ketik kelas"
+                      required
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    />
+                    <datalist id="edit-kelas-list">
+                      {Array.from(new Set([...kelasList, ...assignedKelasList].filter(Boolean))).map((k: string) => (
+                        <option key={k} value={k} />
+                      ))}
+                    </datalist>
+                  </div>
+                </div>
+
+                {/* Row 3: Lokasi KBM */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Lokasi KBM <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={editLokasiKbm}
+                    onChange={e => setEditLokasiKbm(e.target.value)}
+                    placeholder="Contoh: Ruang Kelas VIII A, Laboratorium Komputer"
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Row 4: TP */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Tujuan Pembelajaran (TP) <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editTujuanPembelajaran}
+                    onChange={e => setEditTujuanPembelajaran(e.target.value)}
+                    placeholder="Tuliskan tujuan pembelajaran yang hendak dicapai..."
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Row 5: KKTP */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Kriteria Ketercapaian Tujuan Pembelajaran (KKTP) <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editKktp}
+                    onChange={e => setEditKktp(e.target.value)}
+                    placeholder="Tuliskan kriteria ketercapaian..."
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Row 6: Materi / Konten */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Materi / Konten Pembelajaran <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editKonten}
+                    onChange={e => setEditKonten(e.target.value)}
+                    placeholder="Tuliskan uraian materi pembelajaran..."
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Row 7: Kegiatan Pembelajaran */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Kegiatan Pembelajaran <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editKegiatan}
+                    onChange={e => setEditKegiatan(e.target.value)}
+                    placeholder="Tuliskan tahapan kegiatan pembelajaran yang dilaksanakan..."
+                    required
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Row 8: Catatan Refleksi */}
+                <div>
+                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                    Catatan Refleksi <span className="text-gray-400 font-normal">(Opsional)</span>
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editRefleksi}
+                    onChange={e => setEditRefleksi(e.target.value)}
+                    placeholder="Catatan refleksi, kendala, atau capaian siswa..."
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                {/* Row 9: Absensi Murid (H, I, S, A) */}
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">
+                      Absensi Siswa (H / I / S / A)
+                    </span>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                      Total: {editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa} siswa
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-green-700 dark:text-green-400 mb-0.5">
+                        Hadir (H)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editAbsensiCounts.hadir}
+                        onChange={e => updateAbsensiCount('hadir', parseInt(e.target.value, 10) || 0)}
+                        className="w-full px-2 py-1.5 text-center font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 mb-0.5">
+                        Izin (I)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editAbsensiCounts.izin}
+                        onChange={e => updateAbsensiCount('izin', parseInt(e.target.value, 10) || 0)}
+                        className="w-full px-2 py-1.5 text-center font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-blue-700 dark:text-blue-400 mb-0.5">
+                        Sakit (S)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editAbsensiCounts.sakit}
+                        onChange={e => updateAbsensiCount('sakit', parseInt(e.target.value, 10) || 0)}
+                        className="w-full px-2 py-1.5 text-center font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-red-700 dark:text-red-400 mb-0.5">
+                        Alpa (A)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editAbsensiCounts.alpa}
+                        onChange={e => updateAbsensiCount('alpa', parseInt(e.target.value, 10) || 0)}
+                        className="w-full px-2 py-1.5 text-center font-bold rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono italic">
+                    Ringkasan: Total murid: {editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa}, Hadir: {editAbsensiCounts.hadir}, Izin: {editAbsensiCounts.izin}, Sakit: {editAbsensiCounts.sakit}, Alpa: {editAbsensiCounts.alpa}
+                  </div>
+                </div>
+
+                {/* Row 10: Dokumentasi Foto */}
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                  <span className="block text-[11px] font-bold text-gray-800 dark:text-gray-200">
+                    Dokumentasi Foto KBM
+                  </span>
+                  {editPhotoPreview && editPhotoPreview !== '-' ? (
+                    <div className="flex flex-col sm:flex-row items-center gap-3">
+                      <img 
+                        src={transformGoogleDriveUrl(editPhotoPreview)} 
+                        alt="Preview Foto"
+                        className="h-24 w-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          if (target.src !== transformGoogleDriveUrl(editPhotoPreview)) {
+                            target.src = transformGoogleDriveUrl(editPhotoPreview);
+                          }
+                        }}
+                      />
+                      <div className="space-y-1.5 text-[11px] text-gray-600 dark:text-gray-300">
+                        <p className="font-medium text-gray-800 dark:text-gray-200">
+                          {editFile ? 'Foto Baru Dipilih (akan menggantikan foto lama)' : 'Foto Dokumentasi Saat Ini Tersimpan'}
+                        </p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <label className="btn-click px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg cursor-pointer inline-flex items-center gap-1 font-bold text-gray-800 dark:text-white transition">
+                            <i className="fa-solid fa-arrow-up-from-bracket text-[10px]"></i> Ganti Foto
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onClick={e => { (e.target as HTMLInputElement).value = ''; }}
+                              onChange={e => {
+                                const f = e.target.files?.[0];
+                                if (f) {
+                                  setEditFile(f);
+                                  setEditPhotoPreview(URL.createObjectURL(f));
+                                }
+                              }}
+                            />
+                          </label>
+                          {editFile && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditFile(null);
+                                setEditPhotoPreview(editingJurnal.foto_kegiatan || editingJurnal.link_bukti_foto || '');
+                              }}
+                              className="text-[10px] text-red-500 hover:underline font-bold"
+                            >
+                              Batal Ganti Foto
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="btn-click px-3.5 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-xl cursor-pointer inline-flex items-center gap-1.5 font-bold text-gray-800 dark:text-white transition">
+                        <i className="fa-solid fa-camera"></i> Unggah Foto Dokumentasi
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onClick={e => { (e.target as HTMLInputElement).value = ''; }}
+                          onChange={e => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              setEditFile(f);
+                              setEditPhotoPreview(URL.createObjectURL(f));
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
+                    Foto yang sudah ada akan tetap digunakan bila Anda tidak mengunggah foto baru.
+                  </p>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-gray-100 dark:border-gray-700">
+                  <button
+                    type="button"
+                    disabled={isSavingEdit}
+                    onClick={() => {
+                      setIsEditModalOpen(false);
+                      setEditingJurnal(null);
+                    }}
+                    className="btn-click px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="btn-click px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                  >
+                    {isSavingEdit ? (
+                      <>
+                        <i className="fa-solid fa-circle-notch fa-spin"></i> Menyimpan...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-floppy-disk"></i> Simpan Perubahan
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}

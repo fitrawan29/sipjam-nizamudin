@@ -1,34 +1,36 @@
 # Original User Request
 
-## Initial Request — 2026-11-10T01:11:53Z
+## Initial Request — 2026-11-11T03:02:28Z
 
-This is a single self-contained fix; keep it small and focused. Tambahkan fitur export data berformat CSV pada setiap tab Master Data yang ada (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, dan Sistem Blok) pada aplikasi SIPJAM tanpa mempengaruhi fungsionalitas dan logika eksisting.
+Perbaiki kebijakan presensi agar guru dan staf TU yang tidak memiliki jam KBM tetap diwajibkan presensi, serta tambahkan fitur edit dan hapus jurnal KBM untuk pengguna dengan role guru pada aplikasi sipjam-app.
 
-Integrity mode: demo
-The team must NOT: use pre-built libraries or frameworks for core functionality
+Integrity mode: development
 
 ## Requirements
 
-### R1. Fitur Export Data CSV pada Master Data
-Menambahkan fitur export data berformat CSV (.csv) untuk seluruh data pada setiap tab Master Data yang aktif (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, dan Sistem Blok). Pengguna yang berwenang dapat mengunduh data dalam bentuk file CSV dengan struktur kolom yang sesuai dan nama file yang deskriptif.
+### R1. Penyesuaian di Pengaturan Admin Kebijakan Guru untuk Guru dan Staf TU Tanpa Jam KBM
+Periksa kembali dan sesuaikan pengaturan di menu pengaturan admin kebijakan guru. Pastikan kebijakan bagi guru yang hadir sesuai KBM dan hadir setiap hari teratur dengan jelas di sini, sehingga guru dan staf TU yang tidak memiliki jam KBM tidak terbaca bebas presensi; mereka tetap harus melakukan presensi datang, mengisi laporan piket (jika bertugas piket), mengisi jurnal kegiatan, dan melakukan presensi pulang.
 
-### R2. Preservasi Fungsionalitas Eksisting & Zero Regression
-Perubahan ini tidak boleh mempengaruhi fitur, alur kerja, validasi, dan logika yang sudah ada pada aplikasi SIPJAM (seperti penambahan data, pengubahan, penghapusan, filter, pencarian, import data, dan hak akses).
+### R2. Fitur Edit dan Hapus Jurnal KBM pada Role Guru
+Tambahkan kemampuan pada antarmuka dan backend role guru untuk mengedit dan menghapus jurnal KBM yang telah mereka buat sendiri tanpa batasan waktu khusus, sehingga para guru dapat menyesuaikan data jurnal KBM mereka secara mandiri.
 
-### R3. Implementasi Minimal dan Tanpa Dependensi Tambahan (/ponytail)
-Implementasi fitur export harus seringkas dan seminimal mungkin dengan memanfaatkan fitur native browser (seperti Blob/URL/CSV generator sederhana) atau utilitas yang sudah ada di codebase. Dilarang menambahkan dependensi/library pihak ketiga baru ke dalam proyek.
+### R3. Batasan Perubahan dan Prosedur Git
+Selain perbaikan pada R1 dan R2, jangan merubah hal lain yang ada di aplikasi. Terapkan prinsip solusi minimal dan tepat sasaran. Setelah selesai melakukan modifikasi/penambahan fitur, patuhi aturan git di GEMINI.md: jalankan git status, git add ., git commit dengan pesan deskriptif, dan git push origin main.
 
 ## Acceptance Criteria
 
-### Fungsionalitas Export CSV
-- [ ] Tersedia tombol atau opsi export CSV yang jelas dan mudah diakses pada setiap tampilan tab Master Data (Siswa, Kelas, Mapel, Guru, Jadwal Pelajaran, Wali Kelas, Pengguna, Kalender Pendidikan, dan Sistem Blok).
-- [ ] Mengklik tombol export memicu download file berformat `.csv` dengan header kolom yang sesuai dengan data pada tab tersebut.
-- [ ] Data baris pada file CSV terisi lengkap dan akurat sesuai data yang ada pada tab terkait, dengan penanganan karakter khusus (seperti koma dan tanda kutip) yang tepat.
+### Pengaturan Kebijakan Presensi (Admin)
+- [ ] Menu pengaturan admin kebijakan guru mengatur dengan jelas ketentuan kehadiran bagi guru dan staf TU tanpa jam KBM.
+- [ ] Pengguna guru dan TU yang tidak memiliki jam KBM tidak lagi berstatus bebas presensi di sistem.
+- [ ] Pengguna guru dan TU tanpa jam KBM dapat melakukan presensi datang dan presensi pulang.
+- [ ] Pengguna guru dan TU tanpa jam KBM dapat mengisi jurnal kegiatan dan laporan piket (jika bertugas).
 
-### Preservasi Fungsionalitas & Non-Regresi
-- [ ] Seluruh fungsi master data eksisting (tambah, edit, hapus, filter, pencarian, import) tetap berjalan normal tanpa error atau degradasi fungsi.
-- [ ] Tidak ada penambahan package/dependensi baru pada `package.json`.
+### Fitur Jurnal KBM Role Guru
+- [ ] Pengguna dengan role guru dapat mengubah/mengedit data jurnal KBM milik mereka sendiri.
+- [ ] Pengguna dengan role guru dapat menghapus data jurnal KBM milik mereka sendiri.
+- [ ] Perubahan data jurnal KBM tersimpan dengan benar di database dan tercermin pada tampilan antarmuka.
+- [ ] Fitur dan halaman lain di luar R1 dan R2 tetap berfungsi normal tanpa perubahan perilaku yang tidak diinginkan.
 
-### Verifikasi Otomatis
-- [ ] Tersedia skrip automated test mandiri yang memverifikasi pembentukan data export CSV pada masing-masing tab Master Data.
-- [ ] Seluruh automated test berjalan sukses (pass) tanpa menyebabkan kegagalan pada pengujian regresi eksisting.
+### Verifikasi dan Git
+- [ ] Logika presensi dan fungsionalitas edit/hapus jurnal KBM terverifikasi berfungsi melalui pengujian kode / alur sistem.
+- [ ] Seluruh perubahan kode telah di-commit dan di-push ke branch main sesuai aturan GEMINI.md.

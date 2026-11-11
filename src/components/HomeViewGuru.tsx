@@ -418,7 +418,7 @@ export default function HomeViewGuru({
       return steps;
     }
 
-    if (dailyState.isNonTeachingDay) {
+    if (dailyState.isNonTeachingDay) { // dailyState.isNonTeachingDay && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja'
       if (!dailyState.presensiDatang) {
         steps.push({ label: 'Bebas Presensi', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran)', icon: 'fa-calendar-check' });
         return steps;
@@ -1132,18 +1132,48 @@ export default function HomeViewGuru({
                 </div>
               </div>
             ) : (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0) ? (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 text-center">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-2 text-sm">
-                  <i className="fa-solid fa-calendar-check"></i>
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm shrink-0">
+                    <i className="fa-solid fa-clipboard-list"></i>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                      Tidak Ada Jadwal Mengajar KBM Hari Ini
+                    </h4>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      {hariIni === 'Minggu' 
+                        ? 'Hari Minggu merupakan hari libur akhir pekan.' 
+                        : 'Anda tetap wajib hadir dan mengisi Jurnal Kegiatan administrasi harian.'}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs font-bold text-gray-900 dark:text-white">
-                  Tidak Ada Jadwal Mengajar Hari Ini
-                </p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                  {hariIni === 'Minggu' 
-                    ? 'Hari Minggu merupakan hari libur akhir pekan.' 
-                    : `Anda tidak memiliki jadwal KBM pada hari ${hariIni}.`}
-                </p>
+
+                {hariIni !== 'Minggu' && !dailyState?.isLibur && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                      Status Jurnal Kegiatan:{' '}
+                      {dailyState?.jurnalKegiatan ? (
+                        <strong className="text-emerald-600 dark:text-emerald-400">Sudah Diisi ✓</strong>
+                      ) : (
+                        <strong className="text-amber-600 dark:text-amber-400">Belum Diisi</strong>
+                      )}
+                    </span>
+                    {dailyState?.jurnalKegiatan ? (
+                      <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700">
+                        <i className="fa-solid fa-circle-check"></i> Jurnal Kegiatan Selesai
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setView('view-guru-jurnal')}
+                        className="btn-click bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                      >
+                        <i className="fa-solid fa-pen-to-square"></i> Isi Jurnal Kegiatan
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2.5">

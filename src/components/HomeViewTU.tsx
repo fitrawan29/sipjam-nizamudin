@@ -30,6 +30,9 @@ export interface TUDailyState {
   presensiPulangDitolak: any | null;
   jurnalKegiatan: any | null;
   jurnalDitolak: any[];
+  isPiket?: boolean;
+  laporanPiket?: any | null;
+  laporanPiketDitolak?: any | null;
   isIzinSakit: boolean;
   isDinasLuar: boolean;
   isAlpa: boolean;
@@ -302,8 +305,80 @@ export default function HomeViewTU({
         j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan'
       ) || acceptedJurnal[0] || null;
 
-      // Determine canPresensiPulang
-      const canPresensiPulang = Boolean(effectivePresensiDatang) && !isIzinSakit && !isAlpa && !isLibur && Boolean(jurnalKegiatan);
+      // 3.5 Check Piket duty today (penugasan_piket and jadwal_piket fallback)
+      let isPiket = false;
+      let laporanPiket: any = null;
+      let laporanPiketDitolak: any = null;
+
+      try {
+        let penugasanQuery = supabase
+          .from('penugasan_piket')
+          .select('*')
+          .eq('hari', hariIni);
+        if (user?.sekolah_id) {
+          penugasanQuery = penugasanQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: penugasanList } = await penugasanQuery;
+
+        const cleanStr = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+        const uClean = cleanStr(cleanName);
+
+        const isTuPiketMatch = (p: any): boolean => {
+          if (p.guru_id && user?.id && String(p.guru_id) === String(user.id)) return true;
+          if (p.guru_nip && user?.username && String(p.guru_nip).trim() === String(user.username).trim()) return true;
+          const pName = cleanStr(p.guru_nama);
+          if (!pName || !uClean) return false;
+          if (pName === uClean) return true;
+          if ((uClean.length >= 3 && pName.includes(uClean)) || (pName.length >= 3 && uClean.includes(pName))) return true;
+          const t1 = pName.split(/\s+/).filter(w => w.length > 2);
+          const t2 = uClean.split(/\s+/).filter(w => w.length > 2);
+          if (t1.length > 0 && t2.length > 0 && t1[0] === t2[0]) return true;
+          return false;
+        };
+
+        if (penugasanList && penugasanList.length > 0) {
+          isPiket = penugasanList.some(isTuPiketMatch);
+        }
+
+        // Fallback: jadwal_piket
+        if (!isPiket) {
+          let jpQuery = supabase.from('jadwal_piket').select('*').eq('hari', hariIni);
+          if (user?.sekolah_id) jpQuery = jpQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: jpiket } = await jpQuery;
+          if (jpiket && jpiket.length > 0) {
+            const piketHariIni = jpiket[0];
+            if (piketHariIni.daftar_guru) {
+              const daftarArr = piketHariIni.daftar_guru.split(',').map((n: string) => n.trim().toLowerCase());
+              isPiket = daftarArr.some((n: string) => n === cleanName || cleanName.includes(n) || n.includes(cleanName));
+            }
+          }
+        }
+
+        // If assigned piket, fetch laporan_piket
+        if (isPiket) {
+          let lpQuery = supabase
+            .from('laporan_piket')
+            .select('*')
+            .eq('tanggal', todayStr);
+          if (user?.sekolah_id) lpQuery = lpQuery.eq('sekolah_id', user.sekolah_id);
+          if (user?.id) {
+            lpQuery = lpQuery.or(`guru_id.eq.${user.id},guru_pelapor.ilike."%${cleanName}%"`);
+          } else {
+            lpQuery = lpQuery.ilike('guru_pelapor', `%${cleanName}%`);
+          }
+          const { data: lpList } = await lpQuery;
+          if (lpList && lpList.length > 0) {
+            laporanPiketDitolak = lpList.find((lp: any) => lp.status_verifikasi === 'Ditolak') || null;
+            laporanPiket = lpList.find((lp: any) => lp.status_verifikasi !== 'Ditolak') || null;
+          }
+        }
+      } catch (piketErr) {
+        console.warn('[HomeViewTU] Error checking piket duty:', piketErr);
+      }
+
+      // Determine canPresensiPulang: requires Datang, Jurnal Kegiatan, and (if on duty) Laporan Piket
+      const isPiketDone = !isPiket || (Boolean(laporanPiket) && !laporanPiketDitolak);
+      const canPresensiPulang = Boolean(effectivePresensiDatang) && !isIzinSakit && !isAlpa && !isLibur && Boolean(jurnalKegiatan) && isPiketDone;
 
       setDailyState({
         tanggal: todayStr,
@@ -315,6 +390,9 @@ export default function HomeViewTU({
         presensiPulangDitolak,
         jurnalKegiatan,
         jurnalDitolak: rejectedJurnal,
+        isPiket,
+        laporanPiket,
+        laporanPiketDitolak,
         isIzinSakit,
         isDinasLuar,
         isAlpa,
@@ -543,7 +621,35 @@ export default function HomeViewTU({
       return steps;
     }
 
-    // Step 2: Jurnal Kegiatan TU
+    // Step 2: Laporan Piket (jika ditugaskan piket hari ini)
+    if (dailyState.isPiket) {
+      if (dailyState.laporanPiketDitolak) {
+        steps.push({
+          label: 'Laporan Piket',
+          status: 'active',
+          detail: '⚠️ Ditolak Admin — Silakan isi ulang',
+          icon: 'fa-shield-halved',
+          targetView: 'view-guru-piket'
+        });
+      } else if (dailyState.laporanPiket) {
+        steps.push({
+          label: 'Laporan Piket',
+          status: 'done',
+          detail: 'Laporan piket selesai dilaporkan',
+          icon: 'fa-shield-halved'
+        });
+      } else {
+        steps.push({
+          label: 'Laporan Piket',
+          status: 'active',
+          detail: 'Belum mengisi laporan piket hari ini',
+          icon: 'fa-shield-halved',
+          targetView: 'view-guru-piket'
+        });
+      }
+    }
+
+    // Step 3: Jurnal Kegiatan TU
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
     if (hasJurnalDitolak) {
       steps.push({
@@ -562,16 +668,17 @@ export default function HomeViewTU({
         icon: 'fa-book-journal-whills'
       });
     } else {
+      const isWaitingPiket = dailyState.isPiket && !dailyState.laporanPiket;
       steps.push({
         label: 'Jurnal Kegiatan',
-        status: 'active',
-        detail: 'Belum mengisi jurnal kegiatan administrasi hari ini',
+        status: isWaitingPiket ? 'locked' : 'active',
+        detail: isWaitingPiket ? 'Selesaikan laporan piket dahulu' : 'Belum mengisi jurnal kegiatan administrasi hari ini',
         icon: 'fa-book-journal-whills',
-        targetView: 'view-guru-jurnal'
+        targetView: isWaitingPiket ? undefined : 'view-guru-jurnal'
       });
     }
 
-    // Step 3: Presensi Pulang
+    // Step 4: Presensi Pulang
     if (dailyState.presensiPulangDitolak) {
       steps.push({
         label: 'Presensi Pulang',
@@ -605,15 +712,18 @@ export default function HomeViewTU({
       steps.push({
         label: 'Presensi Pulang',
         status: 'active',
-        detail: 'Tugas administrasi selesai, silakan absen pulang',
+        detail: 'Tugas administrasi dan piket selesai, silakan absen pulang',
         icon: 'fa-right-from-bracket',
         targetView: 'view-guru-presensi'
       });
     } else {
+      const missingParts: string[] = [];
+      if (dailyState.isPiket && !dailyState.laporanPiket) missingParts.push('laporan piket');
+      if (!dailyState.jurnalKegiatan) missingParts.push('jurnal kegiatan');
       steps.push({
         label: 'Presensi Pulang',
         status: 'locked',
-        detail: 'Selesaikan jurnal kegiatan terlebih dahulu',
+        detail: `Selesaikan ${missingParts.join(' dan ') || 'tugas harian'} terlebih dahulu`,
         icon: 'fa-right-from-bracket'
       });
     }
@@ -640,6 +750,12 @@ export default function HomeViewTU({
     if (!dailyState.presensiDatang) {
       return { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
     }
+    if (dailyState.isPiket && dailyState.laporanPiketDitolak) {
+      return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan periksa di menu Piket.', color: 'text-red-600 dark:text-red-400' };
+    }
+    if (dailyState.isPiket && !dailyState.laporanPiket) {
+      return { text: 'Presensi datang berhasil. Anda memiliki tugas piket hari ini, silakan isi Laporan Piket.', color: 'text-amber-600 dark:text-amber-400' };
+    }
     if ((dailyState.jurnalDitolak?.length ?? 0) > 0) {
       return { text: `⚠️ ${dailyState.jurnalDitolak.length} entri Jurnal Kegiatan ditolak admin. Silakan periksa di menu Jurnal Kegiatan.`, color: 'text-red-600 dark:text-red-400' };
     }
@@ -653,7 +769,7 @@ export default function HomeViewTU({
       return { text: 'Presensi datang berhasil. Silakan isi Jurnal Kegiatan administrasi hari ini.', color: 'text-amber-600 dark:text-amber-400' };
     }
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) {
-      return { text: 'Jurnal kegiatan telah lengkap! Silakan lakukan Presensi Pulang sebelum meninggalkan sekolah.', color: 'text-green-600 dark:text-green-400' };
+      return { text: 'Jurnal kegiatan dan piket telah lengkap! Silakan lakukan Presensi Pulang sebelum meninggalkan sekolah.', color: 'text-green-600 dark:text-green-400' };
     }
     if (dailyState.presensiPulang) {
       return { text: 'Seluruh tugas administrasi dan presensi hari ini telah selesai. Terima kasih atas dedikasi Anda!', color: 'text-green-600 dark:text-green-400' };
