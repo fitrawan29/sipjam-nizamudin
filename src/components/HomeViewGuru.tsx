@@ -524,7 +524,10 @@ export default function HomeViewGuru({
         steps.push({ label: 'Jurnal Kegiatan', status: canOpen ? 'active' : 'locked', detail: canOpen ? 'Belum mengisi jurnal kegiatan' : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
       }
     } else {
-      const filled = (dailyState.jurnalKBM || []).length;
+      const filled = (dailyState.jurnalKBM || []).filter(j => {
+        const mat = j.materi || j.materi_pembelajaran || j.konten;
+        return Boolean(mat && mat !== '-' && j.kegiatan && j.kegiatan !== '-');
+      }).length;
       const total = (dailyState.jadwalKBM || []).length;
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang?.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang?.jenis_presensi === 'Pulang Cepat';
       if (isPulangCepat && total > filled) {
@@ -1411,7 +1414,11 @@ export default function HomeViewGuru({
                   <div className="flex items-center gap-2 flex-wrap">
                     <span>
                       Progres Jurnal: <strong className="text-gray-900 dark:text-white">
-                        {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))).length}
+                        {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => {
+                          if (!isJurnalMatchJadwal(j, jk)) return false;
+                          const mat = j.materi || j.materi_pembelajaran || j.konten;
+                          return Boolean(mat && mat !== '-' && j.kegiatan && j.kegiatan !== '-');
+                        })).length}
                       </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked).length}</strong> kelas reguler
                     </span>
                     <span>

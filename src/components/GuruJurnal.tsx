@@ -814,16 +814,19 @@ export default function GuruJurnal({
         const { data: absData } = await aQuery;
 
         // Cek data sesi KBM yang sudah tersimpan di jurnal_pembelajaran untuk kelas, mapel, dan tanggal ini
+        const cleanNama = (user?.nama || '').split(',')[0].trim();
         let sessionJQuery = supabase
           .from('jurnal_pembelajaran')
           .select('*')
           .eq('tanggal', tgl)
           .eq('kelas', kelas);
         if (user?.sekolah_id) sessionJQuery = sessionJQuery.eq('sekolah_id', user.sekolah_id);
-        if (user?.id) {
-          sessionJQuery = sessionJQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${user.nama}%"`);
-        } else if (user?.nama) {
-          sessionJQuery = sessionJQuery.ilike('nama_guru', `%${user.nama}%`);
+        if (user?.id && cleanNama) {
+          sessionJQuery = sessionJQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
+        } else if (user?.id) {
+          sessionJQuery = sessionJQuery.eq('user_id', user.id);
+        } else if (cleanNama) {
+          sessionJQuery = sessionJQuery.ilike('nama_guru', `%${cleanNama}%`);
         }
         const { data: sessionData } = await sessionJQuery;
         const matchingSession = (sessionData || []).find((j: any) =>
@@ -1055,16 +1058,19 @@ export default function GuruJurnal({
     const tgl = tanggal || getWitaDateStr();
 
     try {
+      const cleanNama = (user?.nama || '').split(',')[0].trim();
       let sQ = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('tanggal', tgl)
         .eq('kelas', kelas);
       if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
-      if (user?.id) {
-        sQ = sQ.or(`user_id.eq.${user.id},nama_guru.ilike."%${user.nama}%"`);
-      } else if (user?.nama) {
-        sQ = sQ.ilike('nama_guru', `%${user.nama}%`);
+      if (user?.id && cleanNama) {
+        sQ = sQ.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
+      } else if (user?.id) {
+        sQ = sQ.eq('user_id', user.id);
+      } else if (cleanNama) {
+        sQ = sQ.ilike('nama_guru', `%${cleanNama}%`);
       }
       const { data: existingSessions } = await sQ;
       const existing = (existingSessions || []).find((j: any) =>
@@ -1079,7 +1085,12 @@ export default function GuruJurnal({
           timestamp: getWitaTimestamp(),
           waktu_upload: getWitaTimestamp()
         };
-        const { error } = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existing.id);
+        let { error } = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existing.id);
+        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+          const { waktu_upload: _wu, catatan_khusus_siswa: _ck, ...compatiblePayload } = updatePayload;
+          const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existing.id);
+          error = retry.error;
+        }
         if (error) throw error;
       } else {
         const newSession = {
@@ -1109,7 +1120,12 @@ export default function GuruJurnal({
           waktu_upload: getWitaTimestamp(),
           ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
         };
-        const { error } = await supabase.from('jurnal_pembelajaran').insert([newSession]);
+        let { error } = await supabase.from('jurnal_pembelajaran').insert([newSession]);
+        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+          const { user_id: _u, waktu_upload: _wu, catatan_khusus_siswa: _ck, ...compatibleJurnal } = newSession;
+          const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
+          error = retry.error;
+        }
         if (error) throw error;
       }
 
@@ -1212,6 +1228,12 @@ export default function GuruJurnal({
 
   const handleJurnalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Guard: Jika pengguna menekan submit/Enter saat berada di sub-mode absensi, alihkan ke penyimpanan absensi mandiri
+    if (tipeJurnal === 'Jurnal KBM' && kbmSubMode === 'absensi') {
+      await handleSaveAbsensiOnly();
+      return;
+    }
 
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       return showToast(
@@ -1373,16 +1395,19 @@ export default function GuruJurnal({
       }
 
       // Cek sesi yang sudah ada di jurnal_pembelajaran agar absensi dan jurnal terhubung dalam sesi yang sama
+      const cleanNama = (user?.nama || '').split(',')[0].trim();
       let existingSessionQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('tanggal', tanggal)
         .eq('kelas', kelas);
       if (user?.sekolah_id) existingSessionQuery = existingSessionQuery.eq('sekolah_id', user.sekolah_id);
-      if (user?.id) {
-        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${user.nama}%"`);
-      } else if (user?.nama) {
-        existingSessionQuery = existingSessionQuery.ilike('nama_guru', `%${user.nama}%`);
+      if (user?.id && cleanNama) {
+        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
+      } else if (user?.id) {
+        existingSessionQuery = existingSessionQuery.eq('user_id', user.id);
+      } else if (cleanNama) {
+        existingSessionQuery = existingSessionQuery.ilike('nama_guru', `%${cleanNama}%`);
       }
       const { data: existingSessionRows } = await existingSessionQuery;
       const existingSessionRow = (existingSessionRows || []).find((j: any) =>
@@ -1404,6 +1429,7 @@ export default function GuruJurnal({
         const updatePayload: any = {
           ...newJurnal,
           id: existingSessionRow.id,
+          catatan_khusus_siswa: catatanSiswa || existingSessionRow.catatan_khusus_siswa || null,
           absensi_siswa: finalAbsensiJson,
           kehadiran_murid: finalKehadiranSummary,
         };

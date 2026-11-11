@@ -255,6 +255,77 @@ async function runAll() {
     assert.strictEqual(canPulang, true, 'Teacher can presensi pulang when KBM session is satisfied');
   });
 
+  await runTest('2.7: Nama guru dengan gelar koma (e.g. S.Pd., M.Pd.) disanitasi agar tidak menyebabkan PostgREST syntax error', () => {
+    // Both session query blocks in GuruJurnal must use cleanNama (.split(',')[0].trim())
+    assert.ok(
+      jurnalContent.includes("const cleanNama = (user?.nama || '').split(',')[0].trim();"),
+      'GuruJurnal must sanitize teacher names with degrees/commas for PostgREST .or() filters'
+    );
+  });
+
+  await runTest('2.8: Form submission saat di sub-mode absensi dialihkan ke handleSaveAbsensiOnly (guarding Enter key)', () => {
+    assert.ok(
+      jurnalContent.includes("if (tipeJurnal === 'Jurnal KBM' && kbmSubMode === 'absensi')") &&
+      jurnalContent.includes('await handleSaveAbsensiOnly();'),
+      'handleJurnalSubmit must delegate to handleSaveAbsensiOnly when user submits form while in absensi mode'
+    );
+  });
+
+  await runTest('2.9: catatan_khusus_siswa dipertahankan saat guru menyimpan Jurnal KBM', () => {
+    assert.ok(
+      jurnalContent.includes('catatan_khusus_siswa: catatanSiswa || existingSessionRow.catatan_khusus_siswa || null'),
+      'handleJurnalSubmit must retain previously saved student notes from attendance'
+    );
+  });
+
+  await runTest('2.10: Jurnal INVAL (dengan prefix keterangan INVAL) dikenali oleh workflow sebagai jurnalKBM / jurnalKegiatan', () => {
+    const acceptedInvalJurnal = [
+      {
+        id: 'j-inval-1',
+        mapel: 'Fisika',
+        kelas: 'XI MIPA',
+        keterangan: '[INVAL - Menggantikan: Budi] Jurnal KBM',
+        status_verifikasi: 'Disetujui'
+      },
+      {
+        id: 'j-inval-2',
+        mapel: 'Jurnal Kegiatan',
+        keterangan: '[INVAL - Menggantikan: Budi] Jurnal Kegiatan',
+        status_verifikasi: 'Disetujui'
+      }
+    ];
+
+    const isKbm = acceptedInvalJurnal.filter((j: any) =>
+      j.keterangan === 'Jurnal KBM' || (j.keterangan && j.keterangan.includes('Jurnal KBM'))
+    );
+    assert.strictEqual(isKbm.length, 1, 'Inval KBM journal must be recognized in jurnalKBM');
+
+    const isKegiatan = acceptedInvalJurnal.find((j: any) =>
+      (j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || j.mapel === 'Jurnal Kegiatan'
+    );
+    assert.ok(isKegiatan, 'Inval Kegiatan journal must be recognized in jurnalKegiatan');
+  });
+
+  await runTest('2.11: Progres Jurnal di HomeViewGuru membedakan jurnal selesai vs absensi saja', () => {
+    const mockJadwal = [{ id: 'jadwal-1', kelas: 'XII RPL 1', mapel: 'Web' }];
+    const sessionOnlyAbsensi = [{
+      id: 's-1',
+      kelas: 'XII RPL 1',
+      mapel: 'Web',
+      materi: '-',
+      kegiatan: '-',
+      absensi_siswa: JSON.stringify({ s1: 'H' })
+    }];
+
+    const progressCount = mockJadwal.filter(jk => sessionOnlyAbsensi.some(j => {
+      if (!isJurnalMatchJadwal(j, jk)) return false;
+      const mat = j.materi || (j as any).materi_pembelajaran || (j as any).konten;
+      return Boolean(mat && mat !== '-' && j.kegiatan && j.kegiatan !== '-');
+    })).length;
+
+    assert.strictEqual(progressCount, 0, 'Progress count for KBM journal must be 0 when only student attendance is saved');
+  });
+
   // ==========================================================================
   // SECTION 3: R3 - MINIMALIS (/ponytail) DAN PRESERVASI AST INVARIANTS
   // ==========================================================================

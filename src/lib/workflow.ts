@@ -1728,20 +1728,20 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
       state.jurnalDitolak = rejectedJurnal;
 
-      // Handle legacy data: keterangan bisa "-" atau "Jurnal KBM" atau "Jurnal Kegiatan"
+      // Handle legacy data: keterangan bisa "-" atau "Jurnal KBM" atau "Jurnal Kegiatan" (termasuk INVAL prefix)
       // mapel bisa "Jurnal Kegiatan" untuk jurnal kegiatan legacy
       state.jurnalKBM = acceptedJurnal.filter((j: any) => {
-        // Jurnal KBM jika keterangan === 'Jurnal KBM' ATAU (keterangan bukan 'Jurnal Kegiatan' DAN mapel bukan 'Jurnal Kegiatan')
-        if (j.keterangan === 'Jurnal KBM') return true;
+        // Jurnal KBM jika keterangan === 'Jurnal KBM' atau memuat 'Jurnal KBM' (termasuk prefix INVAL)
+        if (j.keterangan === 'Jurnal KBM' || (j.keterangan && j.keterangan.includes('Jurnal KBM'))) return true;
         if (j.mapel === 'Jurnal Kegiatan') return false;
-        if (j.keterangan === 'Jurnal Kegiatan') return false;
+        if (j.keterangan === 'Jurnal Kegiatan' || (j.keterangan && j.keterangan.includes('Jurnal Kegiatan'))) return false;
         // Legacy data: keterangan = "-" dan mapel berisi kelas_mapel -> ini adalah KBM
         if ((j.keterangan === '-' || !j.keterangan) && j.mapel && j.mapel !== 'Jurnal Kegiatan') return true;
         return false;
       });
       
       state.jurnalKegiatan = acceptedJurnal.find((j: any) => {
-        return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan';
+        return (j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || j.mapel === 'Jurnal Kegiatan';
       }) || null;
     }
 
