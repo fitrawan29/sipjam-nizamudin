@@ -145,103 +145,135 @@ export default function AdminVerifView({
   const [loading, setLoading] = useState(false);
   const [processingId, setProcessingId] = useState<string | number | null>(null);
 
-  // Load Auxiliary Master Data once
-  useEffect(() => {
-    const loadAuxData = async () => {
-      try {
-        let kalenderQ = supabase.from('kalender_pendidikan').select('*');
-        if (user?.sekolah_id) {
-          kalenderQ = kalenderQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
-        }
+  // Load Auxiliary Master Data
+  const loadAuxData = useCallback(async () => {
+    try {
+      let kalenderQ = supabase.from('kalender_pendidikan').select('*');
+      if (user?.sekolah_id) {
+        kalenderQ = kalenderQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
+      }
 
-        let usersQ = supabase.from('users').select('id, nama, username, role');
-        if (user?.sekolah_id) {
-          usersQ = usersQ.eq('sekolah_id', user.sekolah_id);
-        }
-        const safeUsersPromise = Promise.resolve(usersQ).then(
-          (res: any) => (res?.error ? { data: [] } : res),
-          () => ({ data: [] })
+      let usersQ = supabase.from('users').select('id, nama, username, role');
+      let teachersQ = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
+      let piketQ = supabase.from('jadwal_piket').select('*');
+      let jadwalQ = supabase.from('jadwal_pelajaran').select('*');
+      let penugasanQ = supabase.from('penugasan_piket').select('*');
+      let pengaturanQ = supabase.from('pengaturan').select('*');
+
+      if (user?.sekolah_id) {
+        usersQ = usersQ.eq('sekolah_id', user.sekolah_id);
+        teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
+        piketQ = piketQ.eq('sekolah_id', user.sekolah_id);
+        jadwalQ = jadwalQ.eq('sekolah_id', user.sekolah_id);
+        penugasanQ = penugasanQ.eq('sekolah_id', user.sekolah_id);
+        pengaturanQ = pengaturanQ.eq('sekolah_id', user.sekolah_id);
+      }
+      const safeUsersPromise = Promise.resolve(usersQ).then(
+        (res: any) => (res?.error ? { data: [] } : res),
+        () => ({ data: [] })
+      );
+
+      const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes, kalenderRes, usersRes] = await Promise.all([
+        teachersQ,
+        piketQ,
+        jadwalQ,
+        penugasanQ,
+        pengaturanQ,
+        kalenderQ,
+        safeUsersPromise
+      ]);
+
+      const baseTeachers = teachersRes.data || [];
+      const usersList = (usersRes as any)?.data || [];
+      if ((usersRes as any)?.data) setAllUsers(usersList);
+
+      const linkedUserIds = new Set(
+        baseTeachers
+          .map((t: any) => resolveLinkedUserForTeacher(t, usersList)?.id)
+          .filter(Boolean)
+          .map((id: any) => String(id))
+      );
+      const missingBkTeachers = usersList
+        .filter((u: any) => isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
+        .map((u: any) => ({
+          id: `bk-user-${u.id}`,
+          user_id: u.id,
+          username: u.username,
+          nip: u.username || '-',
+          nama_guru: (u.nama || u.username || 'Guru BK').trim(),
+          mata_pelajaran: 'BK',
+          wajib_hadir_hanya_mengajar: false
+        }));
+
+      if (teachersRes.data || missingBkTeachers.length > 0) {
+        setAllTeachers([...baseTeachers, ...missingBkTeachers]);
+      }
+      if (piketRes.data) setAllPiketSchedule(piketRes.data);
+      if (penugasanRes.data) setAllPenugasanPiket(penugasanRes.data);
+      if (jadwalRes.data) {
+        const cleanJadwal = jadwalRes.data.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+        setAllJadwalPelajaran(cleanJadwal);
+      }
+      if (kalenderRes.data) {
+        setKalenderEvents(kalenderRes.data);
+      }
+      if (pengaturanRes.data) {
+        const aturanRow = pengaturanRes.data.find(
+          (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
         );
+        if (aturanRow) setAturanGlobal('Hari_Mengajar_Saja');
 
-        const [teachersRes, piketRes, jadwalRes, penugasanRes, pengaturanRes, kalenderRes, usersRes] = await Promise.all([
-          supabase.from('data_guru').select('*').order('nama_guru', { ascending: true }),
-          supabase.from('jadwal_piket').select('*'),
-          supabase.from('jadwal_pelajaran').select('*'),
-          supabase.from('penugasan_piket').select('*'),
-          supabase.from('pengaturan').select('*'),
-          kalenderQ,
-          safeUsersPromise
-        ]);
-
-        const baseTeachers = teachersRes.data || [];
-        const usersList = (usersRes as any)?.data || [];
-        if ((usersRes as any)?.data) setAllUsers(usersList);
-
-        const linkedUserIds = new Set(
-          baseTeachers
-            .map((t: any) => resolveLinkedUserForTeacher(t, usersList)?.id)
-            .filter(Boolean)
-            .map((id: any) => String(id))
-        );
-        const missingBkTeachers = usersList
-          .filter((u: any) => isBkAccount(u.role) && !linkedUserIds.has(String(u.id)))
-          .map((u: any) => ({
-            id: `bk-user-${u.id}`,
-            user_id: u.id,
-            username: u.username,
-            nip: u.username || '-',
-            nama_guru: (u.nama || u.username || 'Guru BK').trim(),
-            mata_pelajaran: 'BK',
-            wajib_hadir_hanya_mengajar: false
-          }));
-
-        if (teachersRes.data || missingBkTeachers.length > 0) {
-          setAllTeachers([...baseTeachers, ...missingBkTeachers]);
+        const hsRow = pengaturanRes.data.find((p: any) => p.key === 'hari_sekolah' || p.hari_sekolah);
+        if (hsRow) {
+          const hsVal = parseInt(hsRow.value || hsRow.hari_sekolah, 10);
+          if (!isNaN(hsVal)) setHariSekolah(hsVal);
         }
-        if (piketRes.data) setAllPiketSchedule(piketRes.data);
-        if (penugasanRes.data) setAllPenugasanPiket(penugasanRes.data);
-        if (jadwalRes.data) {
-          const cleanJadwal = jadwalRes.data.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
-          setAllJadwalPelajaran(cleanJadwal);
-        }
-        if (kalenderRes.data) {
-          setKalenderEvents(kalenderRes.data);
-        }
-        if (pengaturanRes.data) {
-          const aturanRow = pengaturanRes.data.find(
-            (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
-          );
-          if (aturanRow) setAturanGlobal('Hari_Mengajar_Saja');
 
-          const hsRow = pengaturanRes.data.find((p: any) => p.key === 'hari_sekolah' || p.hari_sekolah);
-          if (hsRow) {
-            const hsVal = parseInt(hsRow.value || hsRow.hari_sekolah, 10);
-            if (!isNaN(hsVal)) setHariSekolah(hsVal);
-          }
-
-          const ghmRow = pengaturanRes.data.find((p: any) => p.key === 'guru_hanya_mengajar');
-          if (ghmRow && ghmRow.value) {
-            try {
-              const parsed = JSON.parse(ghmRow.value);
-              if (Array.isArray(parsed)) setGuruHanyaMengajarList(parsed);
-              else if (parsed && typeof parsed === 'object') {
-                const list: string[] = [];
-                if (Array.isArray(parsed.ids)) list.push(...parsed.ids);
-                if (Array.isArray(parsed.names)) list.push(...parsed.names);
-                setGuruHanyaMengajarList(list);
-              }
-            } catch {
-              // ignore json parse error
+        const ghmRow = pengaturanRes.data.find((p: any) => p.key === 'guru_hanya_mengajar');
+        if (ghmRow && ghmRow.value) {
+          try {
+            const parsed = JSON.parse(ghmRow.value);
+            if (Array.isArray(parsed)) setGuruHanyaMengajarList(parsed);
+            else if (parsed && typeof parsed === 'object') {
+              const list: string[] = [];
+              if (Array.isArray(parsed.ids)) list.push(...parsed.ids);
+              if (Array.isArray(parsed.names)) list.push(...parsed.names);
+              setGuruHanyaMengajarList(list);
             }
+          } catch {
+            // ignore json parse error
           }
         }
-      } catch (err) {
-        console.error('Error loading master data for verification:', err);
+      }
+    } catch (err) {
+      console.error('Error loading master data for verification:', err);
+    }
+  }, [user?.sekolah_id]);
+
+  useEffect(() => {
+    loadAuxData();
+    const handleConfigSync = () => {
+      loadAuxData();
+      loadData();
+    };
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' && e.newValue) {
+        handleConfigSync();
       }
     };
-
-    loadAuxData();
-  }, []);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sipjam:config_updated', handleConfigSync);
+      window.addEventListener('sipjam:guru_updated', handleConfigSync);
+      window.addEventListener('storage', handleStorageChange);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sipjam:config_updated', handleConfigSync);
+        window.removeEventListener('sipjam:guru_updated', handleConfigSync);
+        window.removeEventListener('storage', handleStorageChange);
+      }
+    };
+  }, [loadAuxData]);
 
   // Load Submissions Data & Subscribe to Realtime Updates
   useEffect(() => {
@@ -826,19 +858,20 @@ export default function AdminVerifView({
         const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
 
         // Check scheduled classes today
+        const targetDayLower = (effectiveDayName || '').trim().toLowerCase();
         const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
-          if (j.hari !== effectiveDayName) return false;
+          if ((j.hari || '').trim().toLowerCase() !== targetDayLower) return false;
           if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
           return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
         });
 
         // Check piket today (jadwal_piket & penugasan_piket)
         const inJadwalPiket = allPiketSchedule.some((p: any) =>
-          p.hari === effectiveDayName &&
+          (p.hari || '').trim().toLowerCase() === targetDayLower &&
           [t.nama_guru, linkedUser?.nama].some(alias => alias && isGuruDiPiket(p.daftar_guru, alias))
         );
         const inPenugasanPiket = allPenugasanPiket.some((p: any) =>
-          p.hari === effectiveDayName && isTeacherRecordMatch(p, t, linkedUser)
+          (p.hari || '').trim().toLowerCase() === targetDayLower && isTeacherRecordMatch(p, t, linkedUser)
         );
         const hasPiketToday = inJadwalPiket || inPenugasanPiket;
 
@@ -933,14 +966,30 @@ export default function AdminVerifView({
         const hasSubmitted = submittedList.some(j =>
           isTeacherRecordMatch(j, t, linkedUser)
         );
-        return !hasSubmitted;
+        if (hasSubmitted) return false;
+
+        const isTeacherBk = isBkAccount(t.mata_pelajaran, linkedUser?.role);
+        if (isTeacherBk) return true;
+
+        const targetDayLower = (effectiveDayName || '').trim().toLowerCase();
+        const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
+          if ((j.hari || '').trim().toLowerCase() !== targetDayLower) return false;
+          if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
+          return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
+        });
+
+        // Guru reguler yang tidak memiliki jadwal KBM hari ini tidak memiliki kewajiban jurnal KBM (Bebas KBM)
+        if (scheduledClasses.length === 0) return false;
+
+        return true;
       })
       .map(t => {
         const linkedUser = resolveLinkedUserForTeacher(t, allUsers);
         const isTeacherBk = isBkAccount(t.mata_pelajaran, linkedUser?.role);
 
+        const targetDayLower = (effectiveDayName || '').trim().toLowerCase();
         const scheduledClasses = allJadwalPelajaran.filter((j: any) => {
-          if (j.hari !== effectiveDayName) return false;
+          if ((j.hari || '').trim().toLowerCase() !== targetDayLower) return false;
           if (isInvalidMapel(j.mata_pelajaran || j.mapel)) return false;
           return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
         });
@@ -956,15 +1005,11 @@ export default function AdminVerifView({
             : (t.mata_pelajaran || 'Guru'),
           scheduledInfo: isTeacherBk
             ? `Layanan BK (${effectiveDayName})`
-            : scheduledClasses.length > 0 
-            ? `${scheduledClasses.length} Kelas Terjadwal (${effectiveDayName})` 
-            : `Bebas KBM (${effectiveDayName})`,
+            : `${scheduledClasses.length} Kelas Terjadwal (${effectiveDayName})`,
           task_type: 'Jurnal',
           pesan_belum: isTeacherBk
             ? `Belum mengisi jurnal BK untuk tanggal ${targetDate}`
-            : scheduledClasses.length > 0 
-            ? `Belum mengisi jurnal KBM untuk ${scheduledClasses.length} kelas terjadwal pada hari ${effectiveDayName}` 
-            : `Belum mengisi jurnal pembelajaran untuk tanggal ${targetDate}`,
+            : `Belum mengisi jurnal KBM untuk ${scheduledClasses.length} kelas terjadwal pada hari ${effectiveDayName}`,
           tanggal: targetDate,
           isUnsubmitted: true,
           search_aliases: [t.nama_guru, linkedUser?.nama, linkedUser?.username, t.nip].filter(Boolean).join(' ')
@@ -976,7 +1021,8 @@ export default function AdminVerifView({
     if (allTeachers.length === 0) return [];
     if (holidayInfo?.isHoliday) return []; // Non-delinquency holiday handling: zero teachers marked unsubmitted
 
-    const piketToday = allPiketSchedule.find((p: any) => p.hari === effectiveDayName);
+    const targetDayLower = (effectiveDayName || '').trim().toLowerCase();
+    const piketToday = allPiketSchedule.find((p: any) => (p.hari || '').trim().toLowerCase() === targetDayLower);
 
     // Always filter strictly by targetDate = date || effectiveDate
     const targetDate = date || effectiveDate;
@@ -989,7 +1035,7 @@ export default function AdminVerifView({
         ? [t.nama_guru, linkedUser?.nama].some(alias => alias && isGuruDiPiket(piketToday.daftar_guru, alias))
         : false;
       const inPenugasan = allPenugasanPiket.some((p: any) =>
-        p.hari === effectiveDayName && isTeacherRecordMatch(p, t, linkedUser)
+        (p.hari || '').trim().toLowerCase() === targetDayLower && isTeacherRecordMatch(p, t, linkedUser)
       );
       return inJadwal || inPenugasan;
     });

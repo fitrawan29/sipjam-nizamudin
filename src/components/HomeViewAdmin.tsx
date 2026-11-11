@@ -131,11 +131,15 @@ export default function HomeViewAdmin({
   }, [user?.sekolah_id]);
 
   useEffect(() => {
+    const handleGuruUpdated = () => {
+      loadAdminMatrix();
+    };
     const handleWindowConfigSync = (e: any) => {
       const updatedKop = e?.detail?.config?.kop_sekolah || e?.detail?.config?.NAMA_SEKOLAH;
       if (updatedKop) {
         setInternalSchoolName(updatedKop);
       }
+      loadAdminMatrix();
     };
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'sipjam_config_sync' && e.newValue) {
@@ -145,13 +149,16 @@ export default function HomeViewAdmin({
           if (updatedKop) {
             setInternalSchoolName(updatedKop);
           }
+          loadAdminMatrix();
         } catch (_) {}
       }
     };
     window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
+    window.addEventListener('sipjam:guru_updated', handleGuruUpdated);
     window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
+      window.removeEventListener('sipjam:guru_updated', handleGuruUpdated);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
@@ -183,7 +190,7 @@ export default function HomeViewAdmin({
       let presensiTodayQ = supabase.from('presensi_guru').select('*').gte('timestamp', getWitaStartOfDay(todayStr)).lte('timestamp', getWitaEndOfDay(todayStr));
       let jurnalQ = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
       let jadwalQ = supabase.from('jadwal_pelajaran').select('*').eq('hari', dayName);
-      let allWeeklyJadwalQ = supabase.from('jadwal_pelajaran').select('id, nama_guru, user_id, mata_pelajaran, mapel');
+      let allWeeklyJadwalQ = supabase.from('jadwal_pelajaran').select('*');
       let piketScheduleQ = supabase.from('jadwal_piket').select('*').eq('hari', dayName);
       let piketLaporanQ = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
@@ -303,8 +310,11 @@ export default function HomeViewAdmin({
           _virtualFromUser: true
         }));
       const teachers = [...rawTeachers, ...missingBkTeachers];
-      const jadwalList = (jadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const allWeeklyJadwalList = (allWeeklyJadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+      const targetDayLower = dayName.trim().toLowerCase();
+      const jadwalList = allWeeklyJadwalList.length > 0
+        ? allWeeklyJadwalList.filter((j: any) => (j.hari || '').trim().toLowerCase() === targetDayLower)
+        : (jadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
       const assignedPiketTeachers = penugasanPiketRes.data || [];

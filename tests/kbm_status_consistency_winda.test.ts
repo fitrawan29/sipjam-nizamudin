@@ -146,6 +146,72 @@ async function runTests() {
     );
   });
 
+  test('1.9: isJurnalMatchJadwal mencocokkan variasi angka Romawi dan Arab pada kelas', () => {
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'VII A', mapel: 'Bahasa Inggris' }, { kelas: '7A', mata_pelajaran: 'Bahasa Inggris' }),
+      true,
+      '"VII A" harus cocok dengan "7A"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '7 B', mapel: 'Matematika' }, { kelas: 'VIII B', mata_pelajaran: 'Matematika' }),
+      false,
+      'Kelas 7 tidak boleh cocok dengan Kelas 8'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'VIII B', mapel: 'IPA' }, { kelas: '8B', mata_pelajaran: 'IPA' }),
+      true,
+      '"VIII B" harus cocok dengan "8B"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'IX C', mapel: 'IPS' }, { kelas: '9 C', mata_pelajaran: 'IPS' }),
+      true,
+      '"IX C" harus cocok dengan "9 C"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'X Merdeka A', mapel: 'Fisika' }, { kelas: '10 Merdeka A', mata_pelajaran: 'Fisika' }),
+      true,
+      '"X Merdeka A" harus cocok dengan "10 Merdeka A"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: 'XII Merdeka C', mapel: 'Biologi' }, { kelas: '12 Merdeka C', mata_pelajaran: 'Biologi' }),
+      true,
+      '"XII Merdeka C" harus cocok dengan "12 Merdeka C"'
+    );
+  });
+
+  test('1.10: isJurnalMatchJadwal mencocokkan singkatan mata pelajaran umum Indonesia', () => {
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '7A', mapel: 'Bahasa Inggris' }, { kelas: '7A', mata_pelajaran: 'B. Inggris' }),
+      true,
+      '"Bahasa Inggris" harus cocok dengan "B. Inggris"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '7A', mapel: 'B.Inggris' }, { kelas: '7A', mata_pelajaran: 'Bahasa Inggris' }),
+      true,
+      '"B.Inggris" harus cocok dengan "Bahasa Inggris"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '8A', mapel: 'Matematika' }, { kelas: '8A', mata_pelajaran: 'MTK' }),
+      true,
+      '"Matematika" harus cocok dengan "MTK"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '9A', mapel: 'Pendidikan Jasmani' }, { kelas: '9A', mata_pelajaran: 'PJOK' }),
+      true,
+      '"Pendidikan Jasmani" harus cocok dengan "PJOK"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '7A', mapel: 'Bahasa Indonesia' }, { kelas: '7A', mata_pelajaran: 'B. Indonesia' }),
+      true,
+      '"Bahasa Indonesia" harus cocok dengan "B. Indonesia"'
+    );
+    assert.strictEqual(
+      isJurnalMatchJadwal({ kelas: '7A', mapel: 'Ilmu Pengetahuan Alam' }, { kelas: '7A', mata_pelajaran: 'IPA' }),
+      true,
+      '"Ilmu Pengetahuan Alam" harus cocok dengan "IPA"'
+    );
+  });
+
   // --- SECTION 2: Simulasi Logika Sinkronisasi Status KBM Admin vs Guru ---
   console.log('\n--- Section 2: Logika Sinkronisasi Status KBM Admin vs Guru ---');
 
@@ -462,6 +528,87 @@ async function runTests() {
     assert.strictEqual(squelched[0].id, 'real-1', 'Entri yang tersisa harus jurnal riil');
   });
 
+  test('2.9: Rekap Jurnal TIDAK menyaring delinquency guru jika jurnal riil diisi oleh guru lain (bukan pengganti)', () => {
+    const journalData = [
+      {
+        id: 'delinquency-guru-a',
+        nama_guru: 'Pak Guru A',
+        user_id: 'usr-a',
+        tanggal: '2026-11-11',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'tidak masuk kelas',
+        kegiatan: 'tidak masuk kelas',
+        status_verifikasi: 'Tidak Masuk Kelas',
+        keterangan: 'Tidak Masuk Kelas'
+      },
+      {
+        id: 'real-guru-b',
+        nama_guru: 'Ibu Guru B',
+        user_id: 'usr-b',
+        tanggal: '2026-11-11',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'Aljabar',
+        kegiatan: 'Latihan',
+        status_verifikasi: 'Disetujui',
+        keterangan: 'Jurnal KBM'
+      }
+    ];
+
+    const squelched = journalData.filter(j => {
+      const statusLower = (j.status_verifikasi || '').toLowerCase();
+      const ketLower = (j.keterangan || '').toLowerCase();
+      const matLower = (j.materi || '').toLowerCase();
+      const isDelinquency = statusLower === 'tidak masuk kelas' || ketLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas';
+      if (isDelinquency) {
+        const hasRealJournalForClass = journalData.some(rj => {
+          if (rj.id === j.id) return false;
+          if (rj.tanggal !== j.tanggal) return false;
+          const rjStatus = (rj.status_verifikasi || '').toLowerCase();
+          const rjMat = (rj.materi || '').trim().toLowerCase();
+          const rjKeg = (rj.kegiatan || '').trim().toLowerCase();
+          if (rjStatus === 'tidak masuk kelas' || rjMat === 'tidak masuk kelas' || (rjMat === '-' && rjKeg === '-')) return false;
+          if (!rjMat && !rjKeg) return false;
+          const teacherMatches = (!j.nama_guru || j.nama_guru === '-') ? true : isTeacherJournalMatch({ nama_guru: j.nama_guru, user_id: j.user_id }, rj);
+          if (!teacherMatches) return false;
+          return isJurnalMatchJadwal(rj, { kelas: j.kelas, mata_pelajaran: j.mapel });
+        });
+        if (hasRealJournalForClass) return false;
+      }
+      return true;
+    });
+
+    assert.strictEqual(squelched.length, 2, 'Delinquency Pak Guru A TIDAK boleh dihapus oleh jurnal Ibu Guru B');
+    assert.ok(squelched.some(j => j.id === 'delinquency-guru-a'), 'Entri Pak Guru A harus tetap ada');
+  });
+
+  test('2.10: workflow.ts mengecualikan entri "Tidak Masuk Kelas" dari jurnal KBM yang sah', () => {
+    const dailyJournals = [
+      {
+        id: 'delinquency-1',
+        nama_guru: 'Winda Wulansari',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'tidak masuk kelas',
+        kegiatan: 'tidak masuk kelas',
+        status_verifikasi: 'Tidak Masuk Kelas',
+        keterangan: 'tidak masuk kelas'
+      }
+    ];
+
+    const validKbm = dailyJournals.filter(j => {
+      if (j.status_verifikasi === 'Tidak Masuk Kelas' || (j.keterangan || '').toLowerCase() === 'tidak masuk kelas' || (j.materi || '').toLowerCase() === 'tidak masuk kelas') return false;
+      if (j.keterangan === 'Jurnal KBM' || (j.keterangan && j.keterangan.includes('Jurnal KBM'))) return true;
+      if (j.mapel === 'Jurnal Kegiatan') return false;
+      if (j.keterangan === 'Jurnal Kegiatan' || (j.keterangan && j.keterangan.includes('Jurnal Kegiatan'))) return false;
+      if ((j.keterangan === '-' || !j.keterangan) && j.mapel && j.mapel !== 'Jurnal Kegiatan') return true;
+      return false;
+    });
+
+    assert.strictEqual(validKbm.length, 0, 'Entri Tidak Masuk Kelas tidak boleh dianggap jurnal KBM valid');
+  });
+
   // --- SECTION 3: Verifikasi Kode Sumber Statis ---
   console.log('\n--- Section 3: Verifikasi Integritas Kode Sumber ---');
 
@@ -534,6 +681,34 @@ async function runTests() {
     assert.ok(
       guruJurnalSrc.includes('normalizeTeacherIdentityName') && guruJurnalSrc.includes('normName'),
       'GuruJurnal.tsx harus menormalisasi identitas sapaan guru untuk resolusi sesi'
+    );
+  });
+
+  test('3.10: workflow.ts isJurnalMatchJadwal contains Roman/Arabic grade numeral and subject abbreviation mappings', () => {
+    assert.ok(
+      workflowSrc.includes('romanToNum') && workflowSrc.includes('normSubject'),
+      'isJurnalMatchJadwal harus mendukung ekuivalensi angka romawi kelas dan singkatan mapel'
+    );
+  });
+
+  test('3.11: RekapJurnalView.tsx squelch logic verifies teacher identity via isTeacherJournalMatch', () => {
+    assert.ok(
+      rekapJurnalSrc.includes('teacherMatches') && rekapJurnalSrc.includes('isTeacherJournalMatch'),
+      'RekapJurnalView squelch harus memastikan jurnal riil milik guru yang bersangkutan'
+    );
+  });
+
+  test('3.12: RekapJurnalView.tsx presensiQ normalizes teacher name in personal mode', () => {
+    assert.ok(
+      rekapJurnalSrc.includes('normalizeTeacherIdentityName(user.nama)') && rekapJurnalSrc.includes('presensiQ.or'),
+      'RekapJurnalView presensiQ harus menormalisasi nama sapaan guru untuk personal mode'
+    );
+  });
+
+  test('3.13: GuruJurnal.tsx searches guruDigantikan in INVAL mode to resolve pre-existing delinquency records', () => {
+    assert.ok(
+      guruJurnalSrc.includes('targetSearchName') && guruJurnalSrc.includes('guruDigantikan?.nama'),
+      'GuruJurnal.tsx harus mencari sesi guruDigantikan saat mode INVAL'
     );
   });
 

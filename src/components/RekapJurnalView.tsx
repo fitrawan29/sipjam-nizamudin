@@ -518,12 +518,36 @@ export default function RekapJurnalView({
         // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar (including multi-day spans)
         let presensiQ = supabase.from('presensi_guru').select('*');
         if (user?.sekolah_id) presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
-        if (activeMode === 'pribadi' && user?.nama) presensiQ = presensiQ.eq('nama_guru', user.nama);
+        if (activeMode === 'pribadi' && user?.nama) {
+          const cleanName = normalizeTeacherIdentityName(user.nama);
+          const firstToken = cleanName.split(' ')[0] || cleanName;
+          if (user.id && firstToken) {
+            presensiQ = presensiQ.or(`user_id.eq.${user.id},nama_guru.ilike."%${firstToken}%"`);
+          } else if (user.id) {
+            presensiQ = presensiQ.eq('user_id', user.id);
+          } else if (firstToken) {
+            presensiQ = presensiQ.ilike('nama_guru', `%${firstToken}%`);
+          } else {
+            presensiQ = presensiQ.eq('nama_guru', user.nama);
+          }
+        }
         presensiQ = presensiQ.gte('timestamp', `${startDStr}T00:00:00`).lte('timestamp', `${endDStr}T23:59:59`);
 
         let multiPresensiQ = supabase.from('presensi_guru').select('*');
         if (user?.sekolah_id) multiPresensiQ = multiPresensiQ.eq('sekolah_id', user.sekolah_id);
-        if (activeMode === 'pribadi' && user?.nama) multiPresensiQ = multiPresensiQ.eq('nama_guru', user.nama);
+        if (activeMode === 'pribadi' && user?.nama) {
+          const cleanName = normalizeTeacherIdentityName(user.nama);
+          const firstToken = cleanName.split(' ')[0] || cleanName;
+          if (user.id && firstToken) {
+            multiPresensiQ = multiPresensiQ.or(`user_id.eq.${user.id},nama_guru.ilike."%${firstToken}%"`);
+          } else if (user.id) {
+            multiPresensiQ = multiPresensiQ.eq('user_id', user.id);
+          } else if (firstToken) {
+            multiPresensiQ = multiPresensiQ.ilike('nama_guru', `%${firstToken}%`);
+          } else {
+            multiPresensiQ = multiPresensiQ.eq('nama_guru', user.nama);
+          }
+        }
         multiPresensiQ = multiPresensiQ.lte('tanggal_mulai', endDStr).gte('tanggal_selesai', startDStr).neq('status_verifikasi', 'Ditolak');
 
         const [{ data: presensiRowsRaw }, { data: multiPresensiRows }] = await Promise.all([
@@ -1144,9 +1168,13 @@ export default function RekapJurnalView({
           const rjKeg = (rj.kegiatan || rj.kegiatan_pembelajaran || '').trim().toLowerCase();
           if (rjStatus === 'tidak masuk kelas' || rjMat === 'tidak masuk kelas' || (rjMat === '-' && rjKeg === '-')) return false;
           if (!rjMat && !rjKeg) return false;
+          // Verify teacher identity so another teacher's journal does not erroneously squelch this teacher's delinquency
+          const teacherMatches = (!j.nama_guru || j.nama_guru === '-') ? true : isTeacherJournalMatch({ nama_guru: j.nama_guru, user_id: j.user_id, sekolah_id: j.sekolah_id }, rj);
+          if (!teacherMatches) return false;
           const classMatches = rj.kelas && j.kelas && rj.kelas.trim().toLowerCase() === j.kelas.trim().toLowerCase();
           const mapelMatches = (rj.mapel || rj.mata_pelajaran || '').trim().toLowerCase() === (j.mapel || j.mata_pelajaran || '').trim().toLowerCase();
-          return classMatches && (mapelMatches || !j.mapel || j.mapel === '-');
+          const matchJadwal = isJurnalMatchJadwal(rj, { kelas: j.kelas, mata_pelajaran: j.mapel });
+          return (matchJadwal || (classMatches && (mapelMatches || !j.mapel || j.mapel === '-')));
         });
         if (hasRealJournalForClass) {
           return false;

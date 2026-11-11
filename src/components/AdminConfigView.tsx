@@ -8,7 +8,7 @@ import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
 import AdminBackupView from './AdminBackupView';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
-import { isMasterDataModificationAllowed, getStorageCache, setStorageCache } from '@/lib/dataIntegrityGuard';
+import { isMasterDataModificationAllowed, getStorageCache, setStorageCache, isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { formatKepalaSekolahLabel, normalizeStatusKepalaSekolah } from '@/utils/textUtils';
 import { isTeacherRecordMatch } from '@/lib/workflow';
 
@@ -248,12 +248,12 @@ export default function AdminConfigView({
           } catch (_) {}
 
           // Fetch teaching schedules to accurately identify teachers with KBM vs without KBM
-          let jadwalQuery = supabase.from('jadwal_pelajaran').select('id, nama_guru, user_id, mata_pelajaran, mapel');
+          let jadwalQuery = supabase.from('jadwal_pelajaran').select('*');
           if (user?.sekolah_id) {
             jadwalQuery = jadwalQuery.eq('sekolah_id', user.sekolah_id);
           }
           const { data: rawJadwal } = await jadwalQuery;
-          const allSchoolJadwal = rawJadwal || [];
+          const allSchoolJadwal = (rawJadwal || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
           setJadwalList(allSchoolJadwal);
 
           if (allPersonnel && allPersonnel.length > 0) {

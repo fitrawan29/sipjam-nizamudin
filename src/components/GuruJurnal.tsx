@@ -119,7 +119,7 @@ export default function GuruJurnal({
 
   // Guru Inval state
   const [isInval, setIsInval] = useState(false);
-  const [guruDigantikan, setGuruDigantikan] = useState<{ id: string; nama: string } | null>(null);
+  const [guruDigantikan, setGuruDigantikan] = useState<{ id: string; nama: string; user_id?: string | null } | null>(null);
   const [allGuruList, setAllGuruList] = useState<any[]>([]);
   const [myAssignments, setMyAssignments] = useState<any[]>([]); // store original assignments for reset
 
@@ -814,18 +814,20 @@ export default function GuruJurnal({
         const { data: absData } = await aQuery;
 
         // Cek data sesi KBM yang sudah tersimpan di jurnal_pembelajaran untuk kelas, mapel, dan tanggal ini
-        const normName = normalizeTeacherIdentityName(user?.nama || '');
-        const cleanNama = normName.split(' ')[0] || (user?.nama || '').split(',')[0].trim();
+        const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
+        const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
+        const normName = normalizeTeacherIdentityName(targetSearchName);
+        const cleanNama = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
         let sessionJQuery = supabase
           .from('jurnal_pembelajaran')
           .select('*')
           .eq('tanggal', tgl)
           .eq('kelas', kelas);
         if (user?.sekolah_id) sessionJQuery = sessionJQuery.eq('sekolah_id', user.sekolah_id);
-        if (user?.id && cleanNama) {
-          sessionJQuery = sessionJQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
-        } else if (user?.id) {
-          sessionJQuery = sessionJQuery.eq('user_id', user.id);
+        if (targetSearchUserId && cleanNama) {
+          sessionJQuery = sessionJQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${cleanNama}%"`);
+        } else if (targetSearchUserId) {
+          sessionJQuery = sessionJQuery.eq('user_id', targetSearchUserId);
         } else if (cleanNama) {
           sessionJQuery = sessionJQuery.ilike('nama_guru', `%${cleanNama}%`);
         }
@@ -1059,18 +1061,20 @@ export default function GuruJurnal({
     const tgl = tanggal || getWitaDateStr();
 
     try {
-      const normName = normalizeTeacherIdentityName(user?.nama || '');
-      const cleanNama = normName.split(' ')[0] || (user?.nama || '').split(',')[0].trim();
+      const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
+      const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
+      const normName = normalizeTeacherIdentityName(targetSearchName);
+      const cleanNama = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
       let sQ = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('tanggal', tgl)
         .eq('kelas', kelas);
       if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
-      if (user?.id && cleanNama) {
-        sQ = sQ.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
-      } else if (user?.id) {
-        sQ = sQ.eq('user_id', user.id);
+      if (targetSearchUserId && cleanNama) {
+        sQ = sQ.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${cleanNama}%"`);
+      } else if (targetSearchUserId) {
+        sQ = sQ.eq('user_id', targetSearchUserId);
       } else if (cleanNama) {
         sQ = sQ.ilike('nama_guru', `%${cleanNama}%`);
       }
@@ -1398,18 +1402,20 @@ export default function GuruJurnal({
 
       // Cek sesi yang sudah ada di jurnal_pembelajaran agar absensi dan jurnal terhubung dalam sesi yang sama
       const tgl = tanggal || getWitaDateStr();
-      const normName = normalizeTeacherIdentityName(user?.nama || '');
-      const cleanNama = normName.split(' ')[0] || (user?.nama || '').split(',')[0].trim();
+      const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
+      const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
+      const normName = normalizeTeacherIdentityName(targetSearchName);
+      const cleanNama = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
       let existingSessionQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('tanggal', tgl)
         .eq('kelas', kelas);
       if (user?.sekolah_id) existingSessionQuery = existingSessionQuery.eq('sekolah_id', user.sekolah_id);
-      if (user?.id && cleanNama) {
-        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${cleanNama}%"`);
-      } else if (user?.id) {
-        existingSessionQuery = existingSessionQuery.eq('user_id', user.id);
+      if (targetSearchUserId && cleanNama) {
+        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${cleanNama}%"`);
+      } else if (targetSearchUserId) {
+        existingSessionQuery = existingSessionQuery.eq('user_id', targetSearchUserId);
       } else if (cleanNama) {
         existingSessionQuery = existingSessionQuery.ilike('nama_guru', `%${cleanNama}%`);
       }
@@ -1584,7 +1590,7 @@ export default function GuruJurnal({
   const handleGuruDigantikanChange = async (guruId: string) => {
     const selected = allGuruList.find(g => g.id === guruId);
     if (!selected) return;
-    setGuruDigantikan({ id: selected.id, nama: selected.nama_guru });
+    setGuruDigantikan({ id: selected.id, nama: selected.nama_guru, user_id: selected.user_id || null });
     setMapel('');
     setKelas('');
 

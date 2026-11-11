@@ -528,15 +528,24 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
   let query = supabase
     .from('jadwal_pelajaran')
     .select('*')
-    .eq('hari', hari)
     .order('kelas', { ascending: true });
   if (sekolahId) query = query.eq('sekolah_id', sekolahId);
-  const { data: allJadwalRaw } = await query;
+  const { data: allJadwalRaw, error: qErr } = await query;
+  let rawList = (allJadwalRaw && !qErr) ? allJadwalRaw : [];
+  if (rawList.length === 0 && sekolahId) {
+    const fbRes = await supabase.from('jadwal_pelajaran').select('*').order('kelas', { ascending: true });
+    if (Array.isArray(fbRes.data)) rawList = fbRes.data;
+  }
   
-  if (!allJadwalRaw || allJadwalRaw.length === 0) return [];
+  if (rawList.length === 0) return [];
+
+  const targetHari = (hari || '').trim().toLowerCase();
+  const dayFiltered = rawList.filter((j: any) =>
+    (j.hari || '').trim().toLowerCase() === targetHari
+  );
 
   // Filter out any invalid / non-existent subjects (such as "teknik informasi" or "teknologi informasi")
-  const allJadwal = allJadwalRaw.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+  const allJadwal = dayFiltered.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
   if (allJadwal.length === 0) return [];
 
   const uuidMatches = userId ? allJadwal.filter((j: any) => j.user_id === userId) : [];
@@ -548,6 +557,16 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
   const userNorm = username ? normalizeName(username) : '';
 
   const nameMatches = allJadwal.filter((j: any) => {
+    // Direct match via canonical isTeacherRecordMatch
+    if (isTeacherRecordMatch(
+      j,
+      { nama_guru: namaGuru, user_id: userId, nip: username, username },
+      { id: userId, nama: namaGuru, username },
+      { allowSingleWordFirstToken: true }
+    )) {
+      return true;
+    }
+
     const jNama = (j.nama_guru || '').trim();
     if (!jNama) return false;
     const jNorm = normalizeName(jNama);
@@ -619,7 +638,15 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   // Kelas harus cocok dan tidak boleh kosong
   if (!jKelas || !jdKelas) return false;
 
-  const normKelas = (k: string) => k.replace(/^kelas\s+/i, '').replace(/[\s\-_.]/g, '');
+  const romanToNum: Record<string, string> = {
+    xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7'
+  };
+  const normKelas = (k: string) =>
+    k
+      .replace(/^kelas\s+/i, '')
+      .replace(/[\s\-_.]/g, '')
+      .replace(/^(xii|xi|x|ix|viii|vii)/i, m => romanToNum[m.toLowerCase()] || m);
+
   const nJKelas = normKelas(jKelas);
   const nJdKelas = normKelas(jdKelas);
 
@@ -636,8 +663,10 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
     const jdLetter = getParallelLetter(jdKelas) || getSuffixLetter(jdMapel) || getSuffixLetter(jMapel);
 
     if (jLetter && jdLetter && jLetter === jdLetter) {
-      const getGrade = (k: string) =>
-        k.match(/^(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])\b/i)?.[1]?.toLowerCase();
+      const getGrade = (k: string) => {
+        const m = k.match(/^(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])\b/i)?.[1]?.toLowerCase();
+        return m ? (romanToNum[m] || m) : '';
+      };
       const jGrade = getGrade(jKelas);
       const jdGrade = getGrade(jdKelas);
       if (jGrade && jdGrade && jGrade === jdGrade) {
@@ -659,9 +688,34 @@ export function isJurnalMatchJadwal(jurnal: any, jadwal: any): boolean {
   const jdMapelClean = jdMapel.includes('_') ? (jdMapel.split('_').pop() || '').trim() : jdMapel;
   if (jMapelClean === jdMapelClean) return true;
 
+  // Normalisasi singkatan umum mata pelajaran (e.g. "B. Inggris" <-> "Bahasa Inggris", "MTK" <-> "Matematika")
+  const normSubject = (m: string) => {
+    let s = m.toLowerCase().replace(/[\.\-_/]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (/^b(hs|hsa)?\s*ing(gris)?\b|^english\b/i.test(s)) return 'bahasa inggris';
+    if (/^b(hs|hsa)?\s*ind(onesia)?\b/i.test(s)) return 'bahasa indonesia';
+    if (/^(mtk|mat|matematika|math)\b/i.test(s)) return 'matematika';
+    if (/^(pjok|penjas|penjasorkes|pendidikan jasmani)\b/i.test(s)) return 'pjok';
+    if (/^(pai|p a i|pendidikan agama islam|agama islam)\b/i.test(s)) return 'pendidikan agama islam';
+    if (/^(pak|p a k|pendidikan agama kristen|agama kristen)\b/i.test(s)) return 'pendidikan agama kristen';
+    if (/^(pkn|ppkn|pendidikan kewarganegaraan|pendidikan pancasila)\b/i.test(s)) return 'ppkn';
+    if (/^(ipa|ilmu pengetahuan alam)\b/i.test(s)) return 'ipa';
+    if (/^(ips|ilmu pengetahuan sosial)\b/i.test(s)) return 'ips';
+    if (/^(tik|informatika|teknologi informasi)\b/i.test(s)) return 'informatika';
+    if (/^(sbk|seni budaya)\b/i.test(s)) return 'seni budaya';
+    if (/^(bk|bimbingan konseling)\b/i.test(s)) return 'bimbingan konseling';
+    return s;
+  };
+
+  const nsJ = normSubject(jMapelClean);
+  const nsJd = normSubject(jdMapelClean);
+  if (nsJ === nsJd) return true;
+
   // Cek substring dengan panjang minimal 3 karakter agar tidak collision dengan singkatan pendek
   if (jMapelClean.length >= 3 && jdMapelClean.length >= 3) {
     if (jMapelClean.includes(jdMapelClean) || jdMapelClean.includes(jMapelClean)) return true;
+  }
+  if (nsJ.length >= 3 && nsJd.length >= 3) {
+    if (nsJ.includes(nsJd) || nsJd.includes(nsJ)) return true;
   }
   
   return false;
@@ -1268,19 +1322,20 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let totalTeacherKbmCount = 0;
     if (!isTeacherTu) {
       try {
-        let allJadwalQ = supabase.from('jadwal_pelajaran').select('id, nama_guru, user_id');
+        let allJadwalQ = supabase.from('jadwal_pelajaran').select('*');
         if (sekolahId) allJadwalQ = allJadwalQ.eq('sekolah_id', sekolahId);
-        if (userId) {
-          allJadwalQ = allJadwalQ.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%"`);
-        } else {
-          allJadwalQ = allJadwalQ.ilike('nama_guru', `%${cleanTeacherName}%`);
+        const { data: allJadwalData, error: jErr } = await allJadwalQ;
+        let schedules = (allJadwalData && !jErr) ? allJadwalData : [];
+        if (schedules.length === 0 && sekolahId) {
+          const fbRes = await supabase.from('jadwal_pelajaran').select('*');
+          if (Array.isArray(fbRes.data)) schedules = fbRes.data;
         }
-        const { data: allJadwalData } = await allJadwalQ;
-        if (allJadwalData && allJadwalData.length > 0) {
-          totalTeacherKbmCount = allJadwalData.filter((j: any) =>
+        if (schedules && schedules.length > 0) {
+          totalTeacherKbmCount = schedules.filter((j: any) =>
+            !isInvalidMapel(j.mata_pelajaran || j.mapel) &&
             isTeacherRecordMatch(
               j,
-              { nama_guru: namaGuru, user_id: userId, id: teacherDataGuruId, nip: username },
+              { nama_guru: teacherCanonicalNama || namaGuru, nama: namaGuru, user_id: userId, id: teacherDataGuruId, nip: teacherDataGuruNip || username, username },
               { id: userId, nama: namaGuru, username },
               { allowSingleWordFirstToken: true }
             )
@@ -1754,6 +1809,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       // Handle legacy data: keterangan bisa "-" atau "Jurnal KBM" atau "Jurnal Kegiatan" (termasuk INVAL prefix)
       // mapel bisa "Jurnal Kegiatan" untuk jurnal kegiatan legacy
       state.jurnalKBM = acceptedJurnal.filter((j: any) => {
+        // Exclude delinquency auto-records
+        if (j.status_verifikasi === 'Tidak Masuk Kelas' || (j.keterangan || '').toLowerCase() === 'tidak masuk kelas' || (j.materi || '').toLowerCase() === 'tidak masuk kelas') return false;
         // Jurnal KBM jika keterangan === 'Jurnal KBM' atau memuat 'Jurnal KBM' (termasuk prefix INVAL)
         if (j.keterangan === 'Jurnal KBM' || (j.keterangan && j.keterangan.includes('Jurnal KBM'))) return true;
         if (j.mapel === 'Jurnal Kegiatan') return false;
@@ -1881,7 +1938,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const blockedSchedules = state.jadwalKBM.filter((jk: any) => jk.isBlocked);
 
       const unblockedFulfilled = unblockedSchedules.every(jk => 
-        state.jurnalKBM.some(j => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
+        state.jurnalKBM.some(j => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
       );
       const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 
@@ -1959,7 +2016,7 @@ export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolea
   const blockedSchedules = (state.jadwalKBM || []).filter((jk: any) => jk.isBlocked);
 
   const unblockedFulfilled = unblockedSchedules.every((jk: any) => 
-    (state.jurnalKBM || []).some((j: any) => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
+    (state.jurnalKBM || []).some((j: any) => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
   );
   const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 
