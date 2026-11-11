@@ -1,5 +1,5 @@
 import { supabase, isSchemaCacheOrMissingTableError } from './supabaseClient';
-import { getWitaDateStr, getWitaDayName, extractWitaDateStr, getWitaTimeStr, parseTimeToMinutes } from './wita';
+import { getWitaDateStr, getWitaDayName, extractWitaDateStr, getWitaTimeStr } from './wita';
 import { isInvalidMapel } from './dataIntegrityGuard';
 import type { SistemBlok } from '@/types/database';
 
@@ -1128,9 +1128,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       if (jpm && jpm.value) jamPulangMulai = jpm.value;
       const jpj = pengaturanRows.find((p: any) => p.key === 'jam_pulang_jumat');
       if (jpj && jpj.value) jamPulangJumat = jpj.value;
-      else if (pengaturanRows.some((p: any) => p.jam_pulang_jumat)) {
-        const jRow = pengaturanRows.find((p: any) => p.jam_pulang_jumat);
-        if (jRow?.jam_pulang_jumat) jamPulangJumat = jRow.jam_pulang_jumat;
+      else if (pengaturanRows.some((p: any) => (p as any).jam_pulang_jumat)) {
+        const jRow = pengaturanRows.find((p: any) => (p as any).jam_pulang_jumat);
+        if ((jRow as any)?.jam_pulang_jumat) jamPulangJumat = (jRow as any).jam_pulang_jumat;
       }
       const jpa = pengaturanRows.find((p: any) => p.key === 'jam_pulang_akhir');
       if (jpa && jpa.value) jamPulangAkhir = jpa.value;

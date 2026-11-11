@@ -97,6 +97,7 @@ export default function GuruJurnal({
   const [isFetchingAssignments, setIsFetchingAssignments] = useState(true);
   const [students, setStudents] = useState<any[]>([]);
   const [absensi, setAbsensi] = useState<Record<string, string>>({});
+  const [kbmSubMode, setKbmSubMode] = useState<'absensi' | 'jurnal'>('absensi');
   const [piketAttendance, setPiketAttendance] = useState<Record<string, { jam: string }>>({});
   const [lastChangeMap, setLastChangeMap] = useState<Record<string, {
     diubah_oleh: string;
@@ -133,6 +134,50 @@ export default function GuruJurnal({
   // R1: Sediakan opsi upload foto dan kamera live dikembalikan kepada guru masing-masing
   // Legacy test assertion pattern: isUploadAllowed = schoolModeJurnal !== 'camera_only'
   const isUploadAllowed = true;
+
+  // Sinkronisasi mode sub-antarmuka KBM (Absensi vs Jurnal) dari URL atau sessionStorage/localStorage
+  useEffect(() => {
+    try {
+      let targetMode: 'absensi' | 'jurnal' | null = null;
+      let targetKelas: string | null = null;
+      let targetMapel: string | null = null;
+      let targetJam: string | null = null;
+
+      if (typeof window !== 'undefined') {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlMode = searchParams.get('mode');
+        if (urlMode === 'absensi' || urlMode === 'jurnal') targetMode = urlMode;
+        if (searchParams.get('kelas')) targetKelas = searchParams.get('kelas');
+        if (searchParams.get('mapel')) targetMapel = searchParams.get('mapel');
+      }
+
+      const savedIntent = localStorage.getItem('sipjam_kbm_session_intent');
+      if (savedIntent) {
+        const parsed = JSON.parse(savedIntent);
+        if (!targetMode && (parsed.mode === 'absensi' || parsed.mode === 'jurnal')) targetMode = parsed.mode;
+        if (!targetKelas && parsed.kelas) targetKelas = parsed.kelas;
+        if (!targetMapel && parsed.mapel) targetMapel = parsed.mapel;
+        if (parsed.jamKe) targetJam = parsed.jamKe;
+        localStorage.removeItem('sipjam_kbm_session_intent');
+      }
+
+      if (targetMode) setKbmSubMode(targetMode);
+      if (targetKelas) setKelas(targetKelas);
+      if (targetMapel) setMapel(targetMapel);
+      if (targetJam) setJamKe(targetJam);
+    } catch (e) {
+      console.warn('[GuruJurnal] Session intent parse warning:', e);
+    }
+  }, []);
+
+  const handleKbmSubModeChange = (mode: 'absensi' | 'jurnal') => {
+    setKbmSubMode(mode);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', mode);
+      window.history.replaceState(null, '', url.toString());
+    }
+  };
 
   // ponytail: native HTML <canvas> image compression — zero external dependencies
   const compressImageWithCanvas = async (imageFile: File, maxWidth = 1280, maxHeight = 1280, quality = 0.75): Promise<File> => {
@@ -768,6 +813,35 @@ export default function GuruJurnal({
         if (user?.sekolah_id) aQuery = aQuery.eq('sekolah_id', user.sekolah_id);
         const { data: absData } = await aQuery;
 
+        // Cek data sesi KBM yang sudah tersimpan di jurnal_pembelajaran untuk kelas, mapel, dan tanggal ini
+        let sessionJQuery = supabase
+          .from('jurnal_pembelajaran')
+          .select('*')
+          .eq('tanggal', tgl)
+          .eq('kelas', kelas);
+        if (user?.sekolah_id) sessionJQuery = sessionJQuery.eq('sekolah_id', user.sekolah_id);
+        if (user?.id) {
+          sessionJQuery = sessionJQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${user.nama}%"`);
+        } else if (user?.nama) {
+          sessionJQuery = sessionJQuery.ilike('nama_guru', `%${user.nama}%`);
+        }
+        const { data: sessionData } = await sessionJQuery;
+        const matchingSession = (sessionData || []).find((j: any) =>
+          j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })
+        );
+
+        let savedAbsensiMap: Record<string, string> | null = null;
+        if (matchingSession?.absensi_siswa) {
+          try {
+            const parsed = typeof matchingSession.absensi_siswa === 'string'
+              ? JSON.parse(matchingSession.absensi_siswa)
+              : matchingSession.absensi_siswa;
+            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+              savedAbsensiMap = parsed;
+            }
+          } catch {}
+        }
+
         // Query gate attendance from presensi_siswa for today and this class (status = 'datang')
         let pQuery = supabase
           .from('presensi_siswa')
@@ -810,6 +884,18 @@ export default function GuruJurnal({
         const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean; isMorningHadir?: boolean }> = {};
 
         filteredData.forEach(s => {
+          if (savedAbsensiMap && savedAbsensiMap[s.nisn]) {
+            const savedSt = savedAbsensiMap[s.nisn];
+            initialAbsensi[s.nisn] = savedSt;
+            lockedMap[s.nisn] = {
+              status: (savedSt as any) || 'H',
+              label: savedSt === 'S' ? 'Sakit' : savedSt === 'I' ? 'Izin' : savedSt === 'A' ? 'Alfa' : savedSt === 'B' ? 'Bolos' : 'Hadir',
+              isLocked: false,
+              isMorningHadir: false
+            };
+            return;
+          }
+
           const existing = absData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
           if (existing) {
             const rawSt = String(existing.status || '').trim().toLowerCase();
@@ -838,6 +924,27 @@ export default function GuruJurnal({
           }
         });
         setMorningLockedAttendance(lockedMap);
+
+        if (matchingSession) {
+          if (matchingSession.kehadiran_murid && matchingSession.kehadiran_murid !== '-') {
+            setKehadiranMurid(matchingSession.kehadiran_murid);
+          }
+          if (matchingSession.catatan_khusus_siswa) setCatatanSiswa(prev => prev || matchingSession.catatan_khusus_siswa);
+          if (matchingSession.materi && matchingSession.materi !== '-') {
+            setMateri(prev => prev || matchingSession.materi);
+            setKonten(prev => prev || matchingSession.konten || matchingSession.materi);
+          }
+          if (matchingSession.tujuan_pembelajaran && matchingSession.tujuan_pembelajaran !== '-') {
+            setTujuanPembelajaran(prev => prev || matchingSession.tujuan_pembelajaran);
+          }
+          if (matchingSession.kktp) setKktp(prev => prev || matchingSession.kktp);
+          if (matchingSession.kegiatan && matchingSession.kegiatan !== '-') setKegiatan(prev => prev || matchingSession.kegiatan);
+          if (matchingSession.lokasi_kbm) setLokasiKbm(prev => prev || matchingSession.lokasi_kbm);
+          if (matchingSession.catatan_refleksi && matchingSession.catatan_refleksi !== '-') setRefleksi(prev => prev || matchingSession.catatan_refleksi);
+          if (matchingSession.link_bukti_foto || matchingSession.foto_kegiatan) {
+            setPhotoPreviewUrl(prev => prev || matchingSession.link_bukti_foto || matchingSession.foto_kegiatan);
+          }
+        }
 
         setAbsensi((prevAbsensi) => {
           const hasMatchingStudent = filteredData.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
@@ -910,6 +1017,166 @@ export default function GuruJurnal({
         keterangan: status === 'A' ? 'Alfa di Mapel (Memicu Status Bolos Harian)' : status === 'B' ? 'Bolos di Mapel' : status === 'I' ? 'Izin di Mapel' : status === 'S' ? 'Sakit di Mapel' : 'Hadir di Mapel'
       }
     }));
+  };
+
+  // Simpan Absensi Siswa secara mandiri (terpisah dari Jurnal KBM namun terhubung dalam sesi yang sama)
+  const handleSaveAbsensiOnly = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return showToast(
+        'Koneksi Internet Diperlukan',
+        'Perangkat Anda sedang offline / terjadi kendala jaringan. Draft tetap tersimpan aman di perangkat.',
+        'warning'
+      );
+    }
+
+    if (!kelas || !kelas.trim()) {
+      return showToast('Kelas Wajib', 'Silakan pilih kelas terlebih dahulu.', 'warning');
+    }
+    if (!mapel || !mapel.trim()) {
+      return showToast('Mata Pelajaran Wajib', 'Silakan pilih mata pelajaran terlebih dahulu.', 'warning');
+    }
+    if (isInvalidMapel(mapel)) {
+      return showToast('Mata Pelajaran Tidak Valid', `Mata pelajaran "${mapel}" tidak valid. Harap gunakan mata pelajaran resmi.`, 'warning');
+    }
+
+    setLoading(true);
+
+    const cleanAbsensiForSave: Record<string, string> = {};
+    if (Array.isArray(students)) {
+      students.forEach(s => {
+        if (s.nisn) {
+          cleanAbsensiForSave[s.nisn] = absensi[s.nisn] || 'H';
+        }
+      });
+    }
+
+    const computedKehadiran = calculateKehadiranSummary(cleanAbsensiForSave, students) || kehadiranMurid || '-';
+    const invalPrefix = isInval && guruDigantikan ? `[INVAL - Menggantikan: ${guruDigantikan.nama}] ` : '';
+    const tgl = tanggal || getWitaDateStr();
+
+    try {
+      let sQ = supabase
+        .from('jurnal_pembelajaran')
+        .select('*')
+        .eq('tanggal', tgl)
+        .eq('kelas', kelas);
+      if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
+      if (user?.id) {
+        sQ = sQ.or(`user_id.eq.${user.id},nama_guru.ilike."%${user.nama}%"`);
+      } else if (user?.nama) {
+        sQ = sQ.ilike('nama_guru', `%${user.nama}%`);
+      }
+      const { data: existingSessions } = await sQ;
+      const existing = (existingSessions || []).find((j: any) =>
+        j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })
+      );
+
+      if (existing) {
+        const updatePayload: any = {
+          absensi_siswa: JSON.stringify(cleanAbsensiForSave),
+          kehadiran_murid: computedKehadiran,
+          catatan_khusus_siswa: catatanSiswa || existing.catatan_khusus_siswa || null,
+          timestamp: getWitaTimestamp(),
+          waktu_upload: getWitaTimestamp()
+        };
+        const { error } = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const newSession = {
+          id: crypto.randomUUID(),
+          timestamp: getWitaTimestamp(),
+          nama_guru: (user.nama || '').trim(),
+          user_id: user.id,
+          mapel: mapel,
+          kelas: kelas,
+          tanggal: tgl,
+          materi: '-',
+          kegiatan: '-',
+          absensi_siswa: JSON.stringify(cleanAbsensiForSave),
+          keterangan: `${invalPrefix}Jurnal KBM`,
+          refleksi: refleksi || '-',
+          detail_absen: '',
+          link_bukti_foto: '',
+          status_verifikasi: 'Menunggu',
+          catatan_khusus_siswa: catatanSiswa || null,
+          pertemuan_ke: pertemuanKe || '-',
+          jam_ke: jamKe || '-',
+          tujuan_pembelajaran: tujuanPembelajaran || '-',
+          materi_pembelajaran: '-',
+          kehadiran_murid: computedKehadiran,
+          catatan_refleksi: refleksi || '-',
+          foto_kegiatan: '',
+          waktu_upload: getWitaTimestamp(),
+          ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
+        };
+        const { error } = await supabase.from('jurnal_pembelajaran').insert([newSession]);
+        if (error) throw error;
+      }
+
+      // Auto-sync bolos to public.absensi (Rule 2)
+      if (students.length > 0) {
+        try {
+          const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
+          let aQ = supabase.from('absensi').select('id, siswa_id, nisn, nama_siswa, status, log_perubahan, keterangan').eq('tanggal', tgl).eq('kelas', kelas);
+          if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
+          const { data: existingClassAbs } = await aQ;
+
+          const bolosUpdates: any[] = [];
+          students.forEach(s => {
+            const currentStatus = cleanAbsensiForSave[s.nisn];
+            if (currentStatus === 'A' || currentStatus === 'B') {
+              const classRec = existingClassAbs?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
+              const isExcused = classRec && (classRec.status === 'Sakit' || classRec.status === 'Izin' || classRec.status === 'S' || classRec.status === 'I');
+              const isMorningHadir = !isExcused && ((classRec && (classRec.status === 'Hadir' || classRec.status === 'H')) ||
+                                     Boolean(piketAttendance[s.nisn] || (s.id && piketAttendance[s.id])));
+
+              if (isMorningHadir) {
+                const prevLogs = classRec?.log_perubahan || [];
+                const logEntry = `[${nowWita} WITA] Terdeteksi Bolos: Hadir pagi di kelas/gerbang, tetapi Alfa pada mapel ${mapel || 'KBM'} (Jam ${jamKe || '-'}) oleh ${user.nama}`;
+                bolosUpdates.push({
+                  sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+                  tanggal: tgl,
+                  kelas: kelas,
+                  siswa_id: s.id,
+                  nisn: s.nisn,
+                  nama_siswa: s.nama_siswa,
+                  status: 'Bolos',
+                  sumber_perubahan: 'Guru Mapel (Otomatis Bolos)',
+                  diubah_oleh: user.nama,
+                  keterangan: `Terindikasi Bolos (Hadir Pagi, Alfa Mapel ${mapel || 'KBM'})`,
+                  log_perubahan: [...prevLogs, logEntry],
+                  updated_at: new Date().toISOString()
+                });
+              }
+            }
+          });
+
+          if (bolosUpdates.length > 0) {
+            await supabase.from('absensi').upsert(bolosUpdates, { onConflict: 'sekolah_id, tanggal, nisn' });
+          }
+        } catch (bolosErr) {
+          console.error('Error auto-syncing bolos status to public.absensi:', bolosErr);
+        }
+      }
+
+      showToast('Berhasil', 'Presensi siswa berhasil disimpan untuk sesi KBM ini!', 'success', {
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        showConfirmButton: false,
+      });
+
+      try {
+        const updatedState = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
+        setDailyState(updatedState);
+      } catch (e) {
+        console.error(e);
+      }
+    } catch (err: any) {
+      showToast('Gagal Menyimpan Absensi', err?.message || 'Terjadi kesalahan saat menyimpan absensi.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // R4: Capture GPS Geolocation on gallery upload
@@ -988,7 +1255,7 @@ export default function GuruJurnal({
       }
     }
 
-    if (!file) {
+    if (!file && !photoPreviewUrl) {
       return showToast('Foto Dokumentasi Wajib', 'Silakan ambil foto dokumentasi pembelajaran menggunakan kamera atau unggah dari galeri.', 'warning');
     }
 
@@ -996,8 +1263,12 @@ export default function GuruJurnal({
 
     let fileUrl = '';
     try {
-      const compressedFile = await compressImageWithCanvas(file);
-      fileUrl = await uploadToDrive(compressedFile, user.nama, tipeJurnal, 'Jurnal');
+      if (file) {
+        const compressedFile = await compressImageWithCanvas(file);
+        fileUrl = await uploadToDrive(compressedFile, user.nama, tipeJurnal, 'Jurnal');
+      } else if (photoPreviewUrl) {
+        fileUrl = photoPreviewUrl;
+      }
     } catch (err: any) {
       setLoading(false);
       return showToast('Gagal Upload', err.message, 'error');
@@ -1101,11 +1372,56 @@ export default function GuruJurnal({
         }
       }
 
-      let { error } = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
-      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
-        const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, ...compatibleJurnal } = newJurnal;
-        const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
-        error = retry.error;
+      // Cek sesi yang sudah ada di jurnal_pembelajaran agar absensi dan jurnal terhubung dalam sesi yang sama
+      let existingSessionQuery = supabase
+        .from('jurnal_pembelajaran')
+        .select('*')
+        .eq('tanggal', tanggal)
+        .eq('kelas', kelas);
+      if (user?.sekolah_id) existingSessionQuery = existingSessionQuery.eq('sekolah_id', user.sekolah_id);
+      if (user?.id) {
+        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${user.id},nama_guru.ilike."%${user.nama}%"`);
+      } else if (user?.nama) {
+        existingSessionQuery = existingSessionQuery.ilike('nama_guru', `%${user.nama}%`);
+      }
+      const { data: existingSessionRows } = await existingSessionQuery;
+      const existingSessionRow = (existingSessionRows || []).find((j: any) =>
+        tipeJurnal === 'Jurnal KBM'
+          ? (j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel }))
+          : (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')
+      );
+
+      // Pertahankan data absensi siswa yang sudah tersimpan sebelumnya jika state absensi lokal belum diisi manual
+      let finalAbsensiJson = newJurnal.absensi_siswa;
+      let finalKehadiranSummary = newJurnal.kehadiran_murid;
+      if (existingSessionRow?.absensi_siswa && Object.keys(cleanAbsensiForSave).length === 0) {
+        finalAbsensiJson = existingSessionRow.absensi_siswa;
+        finalKehadiranSummary = existingSessionRow.kehadiran_murid || computedKehadiran;
+      }
+
+      let error = null;
+      if (existingSessionRow) {
+        const updatePayload: any = {
+          ...newJurnal,
+          id: existingSessionRow.id,
+          absensi_siswa: finalAbsensiJson,
+          kehadiran_murid: finalKehadiranSummary,
+        };
+        const res = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existingSessionRow.id);
+        error = res.error;
+        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+          const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, ...compatiblePayload } = updatePayload;
+          const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existingSessionRow.id);
+          error = retry.error;
+        }
+      } else {
+        let insertRes = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
+        error = insertRes.error;
+        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+          const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, ...compatibleJurnal } = newJurnal;
+          const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
+          error = retry.error;
+        }
       }
 
       if (error) {
@@ -1550,6 +1866,34 @@ export default function GuruJurnal({
                 {/* {tipeJurnal === 'Jurnal KBM' && ( Pertemuan Ke- Kehadiran Murid ) */}
                 {tipeJurnal === 'Jurnal KBM' ? (
                   <>
+                    {/* Mode Sub-Antarmuka: Absensi Siswa vs Jurnal KBM */}
+                    <div className="flex items-center gap-1.5 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 w-full sm:w-fit mb-3 fade-in">
+                      <button
+                        type="button"
+                        onClick={() => handleKbmSubModeChange('absensi')}
+                        className={`btn-click flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                          kbmSubMode === 'absensi'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <i className="fa-solid fa-users-check text-[11px]"></i>
+                        <span>Pengisian Absensi Siswa</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleKbmSubModeChange('jurnal')}
+                        className={`btn-click flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                          kbmSubMode === 'jurnal'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <i className="fa-solid fa-book-bookmark text-[11px]"></i>
+                        <span>Pengisian Jurnal KBM</span>
+                      </button>
+                    </div>
+
                     {/* Hari/Tanggal */}
                     <div className="fade-in">
                       <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
@@ -1563,70 +1907,7 @@ export default function GuruJurnal({
                       />
                     </div>
 
-                    {/* 3. Tujuan Pembelajaran */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                        Tujuan Pembelajaran <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={tujuanPembelajaran}
-                        onChange={e => setTujuanPembelajaran(e.target.value)}
-                        required
-                        rows={2}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                        placeholder="Tuliskan capaian/tujuan pembelajaran..."
-                      />
-                    </div>
-
-                    {/* 4. KKTP */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                        KKTP (Kriteria Ketercapaian Tujuan Pembelajaran) <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={kktp}
-                        onChange={e => setKktp(e.target.value)}
-                        required
-                        rows={2}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                        placeholder="Tuliskan kriteria ketercapaian tujuan pembelajaran..."
-                      />
-                    </div>
-
-                    {/* 5. Konten (replaces Materi Pembelajaran) */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                        Konten <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={konten}
-                        onChange={e => {
-                          setKonten(e.target.value);
-                          setMateri(e.target.value);
-                        }}
-                        required
-                        rows={2}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                        placeholder="Tuliskan materi/topik konten pembelajaran..."
-                      />
-                    </div>
-
-                    {/* 6. Kegiatan Pembelajaran */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                        Kegiatan Pembelajaran <span className="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        value={kegiatan}
-                        onChange={e => setKegiatan(e.target.value)}
-                        required
-                        rows={2}
-                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                        placeholder="Deskripsikan kegiatan pembelajaran selengkapnya..."
-                      />
-                    </div>
-
-                    {/* 7. Mapel & 8. Kelas */}
+                    {/* 7. Mapel & 8. Kelas (Shared for both sub-modes) */}
                     {!isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin' ? (
                       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 p-4 rounded-xl text-xs flex items-center gap-3">
                         <i className="fa-solid fa-circle-exclamation text-lg shrink-0 text-amber-600 dark:text-amber-400"></i>
@@ -1676,163 +1957,271 @@ export default function GuruJurnal({
                       </div>
                     )}
 
-                    {/* 9. Absensi Murid */}
-                    <div className="space-y-3">
-                      <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                          Absensi Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={kehadiranMurid}
-                          onChange={e => setKehadiranMurid(e.target.value)}
-                          placeholder="Contoh: Total murid: 30, Hadir: 28, Izin: 1, Sakit: 1, Alpa: 0"
-                          className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                        />
-                      </div>
+                    {/* SUB-ANTARMUKA 1: PENGISIAN ABSENSI SISWA */}
+                    {kbmSubMode === 'absensi' ? (
+                      <div className="space-y-3 fade-in">
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Absensi Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={kehadiranMurid}
+                            onChange={e => setKehadiranMurid(e.target.value)}
+                            placeholder="Contoh: Total murid: 30, Hadir: 28, Izin: 1, Sakit: 1, Alpa: 0"
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                          />
+                        </div>
 
-                      {students.length > 0 && (() => {
-                        const truantCount = students.filter(s => {
-                          const pRec = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
-                          const isMorningHadir = Boolean(pRec || morningLockedAttendance[s.nisn]?.isMorningHadir);
-                          return Boolean(!morningLockedAttendance[s.nisn]?.isLocked && isMorningHadir && absensi[s.nisn] === 'A');
-                        }).length;
+                        {students.length > 0 && (() => {
+                          const truantCount = students.filter(s => {
+                            const pRec = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
+                            const isMorningHadir = Boolean(pRec || morningLockedAttendance[s.nisn]?.isMorningHadir);
+                            return Boolean(!morningLockedAttendance[s.nisn]?.isLocked && isMorningHadir && absensi[s.nisn] === 'A');
+                          }).length;
 
-                        return (
-                          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
-                            {truantCount > 0 && (
-                              <div 
-                                id="jurnal-truancy-alert"
-                                className="p-3 mb-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/80 dark:border-red-800 text-red-900 dark:text-red-200 text-xs font-bold flex items-center gap-2.5 animate-pulse"
-                              >
-                                <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400 text-sm shrink-0"></i>
-                                <span>⚠️ Perhatian: Terdeteksi {truantCount} siswa bolos (hadir di gerbang sekolah namun Alpa pada jam pelajaran ini).</span>
+                          return (
+                            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
+                              {truantCount > 0 && (
+                                <div 
+                                  id="jurnal-truancy-alert"
+                                  className="p-3 mb-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/80 dark:border-red-800 text-red-900 dark:text-red-200 text-xs font-bold flex items-center gap-2.5 animate-pulse"
+                                >
+                                  <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400 text-sm shrink-0"></i>
+                                  <span>⚠️ Perhatian: Terdeteksi {truantCount} siswa bolos (hadir di gerbang sekolah namun Alpa pada jam pelajaran ini).</span>
+                                </div>
+                              )}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                                <div>
+                                  <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <i className="fa-solid fa-book-open-reader text-blue-500 dark:text-blue-400"></i> Presensi Siswa Mapel: {mapel || 'Pembelajaran'} (Kelas {kelas})
+                                  </h3>
+                                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Mencatat kehadiran khusus jam pelajaran ini (tidak mengubah absensi kelas harian).
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handleApplyPiketAttendance}
+                                  className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
+                                  title="Tandai siswa yang sudah presensi di gerbang datang sebagai Hadir"
+                                >
+                                  {/* AST preservation: Terapkan Presensi Piket */}
+                                  <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Datang
+                                </button>
                               </div>
-                            )}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                              <div>
-                                <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                  <i className="fa-solid fa-book-open-reader text-blue-500 dark:text-blue-400"></i> Presensi Siswa Mapel: {mapel || 'Pembelajaran'} (Kelas {kelas})
-                                </h3>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                  Mencatat kehadiran khusus jam pelajaran ini (tidak mengubah absensi kelas harian).
-                                </p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={handleApplyPiketAttendance}
-                                className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
-                                title="Tandai siswa yang sudah presensi di gerbang datang sebagai Hadir"
-                              >
-                                {/* AST preservation: Terapkan Presensi Piket */}
-                                <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Datang
-                              </button>
-                            </div>
-                            <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
-                              {students.map((siswa, idx) => {
-                                const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
-                                const isMorningLocked = Boolean(morningLockedAttendance[siswa.nisn]?.isLocked);
-                                const isMorningHadir = Boolean(pRec || morningLockedAttendance[siswa.nisn]?.isMorningHadir);
-                                const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === 'A';
-                                return (
-                                  <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
-                                          {isTruant ? (
-                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 shrink-0 animate-pulse">
-                                              {/* AST preservation: Terindikasi Bolos (Hadir Gerbang pk. ... Alpa Mapel) */}
-                                              <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
-                                            </span>
-                                          ) : pRec ? (
-                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
-                                              {/* AST preservation: ✓ Hadir di Sekolah (Piket */}
-                                              <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Datang {pRec.jam})
-                                            </span>
-                                          ) : (
-                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
-                                              {/* AST preservation: Belum Scan Piket / Belum Presensi Piket */}
-                                              <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Datang
-                                            </span>
+                              <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                                {students.map((siswa, idx) => {
+                                  const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
+                                  const isMorningLocked = Boolean(morningLockedAttendance[siswa.nisn]?.isLocked);
+                                  const isMorningHadir = Boolean(pRec || morningLockedAttendance[siswa.nisn]?.isMorningHadir);
+                                  const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === 'A';
+                                  return (
+                                    <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
+                                            {isTruant ? (
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 shrink-0 animate-pulse">
+                                                {/* AST preservation: Terindikasi Bolos (Hadir Gerbang pk. ... Alpa Mapel) */}
+                                                <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
+                                              </span>
+                                            ) : pRec ? (
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                                                {/* AST preservation: ✓ Hadir di Sekolah (Piket */}
+                                                <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Datang {pRec.jam})
+                                              </span>
+                                            ) : (
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
+                                                {/* AST preservation: Belum Scan Piket / Belum Presensi Piket */}
+                                                <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Datang
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                          {lastChangeMap[siswa.nisn] && (
+                                            <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
+                                              <i className="fa-solid fa-clock-rotate-left text-[8px] text-teal-600 dark:text-teal-400"></i>
+                                              <span>
+                                                Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{lastChangeMap[siswa.nisn].diubah_oleh}</strong>
+                                                {' '}(<span className="font-semibold text-teal-700 dark:text-teal-300">{lastChangeMap[siswa.nisn].sumber_perubahan}</span>)
+                                                {lastChangeMap[siswa.nisn].keterangan ? (
+                                                  <span className="italic text-slate-600 dark:text-slate-300"> — "{lastChangeMap[siswa.nisn].keterangan}"</span>
+                                                ) : null}
+                                              </span>
+                                            </div>
                                           )}
                                         </div>
-                                        <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
-                                        {lastChangeMap[siswa.nisn] && (
-                                          <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
-                                            <i className="fa-solid fa-clock-rotate-left text-[8px] text-teal-600 dark:text-teal-400"></i>
-                                            <span>
-                                              Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{lastChangeMap[siswa.nisn].diubah_oleh}</strong>
-                                              {' '}(<span className="font-semibold text-teal-700 dark:text-teal-300">{lastChangeMap[siswa.nisn].sumber_perubahan}</span>)
-                                              {lastChangeMap[siswa.nisn].keterangan ? (
-                                                <span className="italic text-slate-600 dark:text-slate-300"> — "{lastChangeMap[siswa.nisn].keterangan}"</span>
-                                              ) : null}
-                                            </span>
+                                      </div>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        {isMorningLocked ? (
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs">
+                                            <i className="fa-solid fa-lock text-[9px] text-amber-600"></i>
+                                            <span>{morningLockedAttendance[siswa.nisn]?.label} (Terkunci)</span>
+                                          </span>
+                                        ) : (
+                                          <div className="flex items-center gap-1">
+                                            {([
+                                              { code: 'H', label: 'Hadir', icon: 'fa-check', on: 'bg-emerald-600 ring-emerald-400', title: 'Siswa hadir di jam pelajaran ini' },
+                                              { code: 'I', label: 'Izin', icon: 'fa-envelope', on: 'bg-orange-500 ring-orange-400', title: 'Tandai Izin di jam pelajaran ini' },
+                                              { code: 'S', label: 'Sakit', icon: 'fa-notes-medical', on: 'bg-yellow-500 ring-yellow-400', title: 'Tandai Sakit di jam pelajaran ini' },
+                                              { code: 'A', label: 'Alfa', icon: 'fa-xmark', on: 'bg-red-600 ring-red-400', title: 'Tandai Alfa (memicu status Bolos harian jika pagi hadir)' },
+                                              { code: 'B', label: 'Bolos', icon: 'fa-person-walking-arrow-right', on: 'bg-purple-600 ring-purple-400', title: 'Tandai Bolos di jam pelajaran ini' }
+                                            ] as const).map(opt => (
+                                              <button 
+                                                key={opt.code}
+                                                type="button"
+                                                onClick={() => handleAbsensiChange(siswa.nisn, opt.code)}
+                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                                  absensi[siswa.nisn] === opt.code 
+                                                    ? opt.on + ' text-white shadow-sm ring-1' 
+                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                                }`}
+                                                title={opt.title}
+                                              >
+                                                <i className={`fa-solid ${opt.icon} text-[9px]`}></i> {opt.label}
+                                              </button>
+                                            ))}
                                           </div>
                                         )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      {isMorningLocked ? (
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs">
-                                          <i className="fa-solid fa-lock text-[9px] text-amber-600"></i>
-                                          <span>{morningLockedAttendance[siswa.nisn]?.label} (Terkunci)</span>
-                                        </span>
-                                      ) : (
-                                        <div className="flex items-center gap-1">
-                                          {([
-                                            { code: 'H', label: 'Hadir', icon: 'fa-check', on: 'bg-emerald-600 ring-emerald-400', title: 'Siswa hadir di jam pelajaran ini' },
-                                            { code: 'I', label: 'Izin', icon: 'fa-envelope', on: 'bg-orange-500 ring-orange-400', title: 'Tandai Izin di jam pelajaran ini' },
-                                            { code: 'S', label: 'Sakit', icon: 'fa-notes-medical', on: 'bg-yellow-500 ring-yellow-400', title: 'Tandai Sakit di jam pelajaran ini' },
-                                            { code: 'A', label: 'Alfa', icon: 'fa-xmark', on: 'bg-red-600 ring-red-400', title: 'Tandai Alfa (memicu status Bolos harian jika pagi hadir)' },
-                                            { code: 'B', label: 'Bolos', icon: 'fa-person-walking-arrow-right', on: 'bg-purple-600 ring-purple-400', title: 'Tandai Bolos di jam pelajaran ini' }
-                                          ] as const).map(opt => (
-                                            <button 
-                                              key={opt.code}
-                                              type="button"
-                                              onClick={() => handleAbsensiChange(siswa.nisn, opt.code)}
-                                              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
-                                                absensi[siswa.nisn] === opt.code 
-                                                  ? opt.on + ' text-white shadow-sm ring-1' 
-                                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
-                                              }`}
-                                              title={opt.title}
-                                            >
-                                              <i className={`fa-solid ${opt.icon} text-[9px]`}></i> {opt.label}
-                                            </button>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              })}
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
+                          <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
+                          <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
+                        </div>
+
+                        {/* Tombol Simpan Khusus Absensi Siswa */}
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={handleSaveAbsensiOnly}
+                            disabled={loading || isLocked}
+                            className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                            {loading ? 'Memproses...' : <><i className="fa-solid fa-save"></i> Simpan Absensi Siswa</>}
+                          </button>
+                          <div className="mt-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleKbmSubModeChange('jurnal')}
+                              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                            >
+                              Lanjut isi materi &amp; dokumentasi di Form Jurnal KBM &rarr;
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      /* SUB-ANTARMUKA 2: PENGISIAN JURNAL KBM */
+                      <div className="space-y-4 fade-in">
+                        {/* Banner status absensi siswa */}
+                        <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 flex items-center justify-between gap-3 flex-wrap">
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
+                              <i className="fa-solid fa-users-check text-blue-600 dark:text-blue-400"></i> Status Kehadiran Siswa
+                            </div>
+                            <div className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 truncate">
+                              {kehadiranMurid ? kehadiranMurid : 'Belum diisi — Siswa otomatis Hadir saat disimpan jika tidak disesuaikan'}
                             </div>
                           </div>
-                        );
-                      })()}
+                          <button
+                            type="button"
+                            onClick={() => handleKbmSubModeChange('absensi')}
+                            className="btn-click text-xs font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-xl shadow-2xs hover:bg-blue-50 dark:hover:bg-gray-700 transition"
+                          >
+                            <i className="fa-solid fa-pen-to-square text-[10px] mr-1"></i> Kelola Absensi Siswa
+                          </button>
+                        </div>
 
-                      <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
-                        <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
-                        <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
+                        {/* 3. Tujuan Pembelajaran */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Tujuan Pembelajaran <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={tujuanPembelajaran}
+                            onChange={e => setTujuanPembelajaran(e.target.value)}
+                            required
+                            rows={2}
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                            placeholder="Tuliskan capaian/tujuan pembelajaran..."
+                          />
+                        </div>
+
+                        {/* 4. KKTP */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            KKTP (Kriteria Ketercapaian Tujuan Pembelajaran) <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={kktp}
+                            onChange={e => setKktp(e.target.value)}
+                            required
+                            rows={2}
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                            placeholder="Tuliskan kriteria ketercapaian tujuan pembelajaran..."
+                          />
+                        </div>
+
+                        {/* 5. Konten (replaces Materi Pembelajaran) */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Konten <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={konten}
+                            onChange={e => {
+                              setKonten(e.target.value);
+                              setMateri(e.target.value);
+                            }}
+                            required
+                            rows={2}
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                            placeholder="Tuliskan materi/topik konten pembelajaran..."
+                          />
+                        </div>
+
+                        {/* 6. Kegiatan Pembelajaran */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Kegiatan Pembelajaran <span className="text-red-500">*</span>
+                          </label>
+                          <textarea
+                            value={kegiatan}
+                            onChange={e => setKegiatan(e.target.value)}
+                            required
+                            rows={2}
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                            placeholder="Deskripsikan kegiatan pembelajaran selengkapnya..."
+                          />
+                        </div>
+
+                        {/* 10. Lokasi KBM */}
+                        <div>
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Lokasi KBM <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={lokasiKbm}
+                            onChange={e => setLokasiKbm(e.target.value)}
+                            required
+                            placeholder="contoh: Ruang Kelas 7A, Lab IPA"
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                          />
+                        </div>
                       </div>
-                    </div>
-
-                    {/* 10. Lokasi KBM */}
-                    <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                        Lokasi KBM <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={lokasiKbm}
-                        onChange={e => setLokasiKbm(e.target.value)}
-                        required
-                        placeholder="contoh: Ruang Kelas 7A, Lab IPA"
-                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                      />
-                    </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -1856,186 +2245,190 @@ export default function GuruJurnal({
                     </div>
                   </>
                 )}
-                
-                <div className="space-y-2">
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5">
-                        <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
-                        {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi KBM' : 'Foto Dokumentasi Kegiatan'}{' '}
-                        {isUploadAllowed ? (
-                          <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera Lanskap / Upload Foto)</span>
-                        ) : (
-                          <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
-                        )}
-                      </span>
-                      <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
-                        {file ? '✓ Foto Terpasang' : uploadMode === 'camera' || !isUploadAllowed ? 'Kamera Aktif' : 'Upload Foto Aktif'}
-                      </span>
-                    </label>
 
-                    {/* Mode selector if school allows upload */}
-                    {isUploadAllowed && (
-                      <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 gap-1 text-xs mb-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUploadMode('camera');
-                            setFile(null);
-                            setPhotoPreviewUrl(null);
-                            setUploadLokasi(null);
-                            setUploadWaktu(null);
-                          }}
-                          className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
-                            uploadMode === 'camera'
-                              ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                          }`}
-                        >
-                          <i className="fa-solid fa-camera"></i> Kamera Langsung
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setUploadMode('gallery');
-                            setFile(null);
-                            setPhotoPreviewUrl(null);
-                            setUploadLokasi(null);
-                            setUploadWaktu(null);
-                          }}
-                          className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
-                            uploadMode === 'gallery'
-                              ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                          }`}
-                        >
-                          <i className="fa-solid fa-images"></i> Upload Foto / Galeri
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Camera view (if not allowed or camera mode selected) */}
-                    {(!isUploadAllowed || uploadMode === 'camera') && (
-                      <CameraSelfieCapture
-                        key={`cam-jurnal-${tipeJurnal}`}
-                        
-                        initialFacingMode="environment"
-                        initialCoordinates={jurnalCoords}
-                        existingPhotoUrl={photoPreviewUrl}
-                        onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
-                          setFile(capturedFile);
-                          setPhotoPreviewUrl(previewUrl);
-                          setUploadWaktu(getWitaTimestamp());
-                          if (jurnalCoords) {
-                            setUploadLatitude(jurnalCoords.latitude);
-                            setUploadLongitude(jurnalCoords.longitude);
-                            setUploadLokasi(`GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}`);
-                          }
-                        }}
-                        onRetake={() => {
-                          setFile(null);
-                          setPhotoPreviewUrl(null);
-                        }}
-                      />
-                    )}
-
-                    {/* Gallery upload input - ONLY rendered if isUploadAllowed is true and uploadMode is gallery */}
-                    {isUploadAllowed && uploadMode === 'gallery' && (
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="jurnal-gallery-file-input"
-                          className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[140px]"
-                        >
-                          <input
-                            id="jurnal-gallery-file-input"
-                            type="file"
-                            accept="image/*"
-                            onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
-                            onChange={handleGalleryUpload}
-                            className="hidden"
-                          />
-                          {photoPreviewUrl ? (
-                            <div className="space-y-2 w-full">
-                              <img
-                                src={photoPreviewUrl}
-                                alt="Preview Foto Galeri"
-                                className="w-full max-h-48 object-cover rounded-xl shadow-sm mx-auto"
-                              />
-                              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                                Klik untuk memilih foto lain dari perangkat
-                              </p>
-                            </div>
-                          ) : (
-                            <div className="space-y-1.5 py-3">
-                              <div className="w-10 h-10 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center text-lg">
-                                <i className="fa-solid fa-cloud-arrow-up"></i>
-                              </div>
-                              <div className="text-xs font-bold text-gray-800 dark:text-gray-200">
-                                Pilih Foto Dokumentasi dari Perangkat
-                              </div>
-                              <div className="text-[10px] text-gray-400">
-                                Format gambar JPG, PNG, atau JPEG (GPS otomatis direkam)
-                              </div>
-                            </div>
-                          )}
+                {!(tipeJurnal === 'Jurnal KBM' && kbmSubMode === 'absensi') && (
+                  <>
+                    <div className="space-y-2">
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
+                            {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi KBM' : 'Foto Dokumentasi Kegiatan'}{' '}
+                            {isUploadAllowed ? (
+                              <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera Lanskap / Upload Foto)</span>
+                            ) : (
+                              <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
+                            )}
+                          </span>
+                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                            {file ? '✓ Foto Terpasang' : uploadMode === 'camera' || !isUploadAllowed ? 'Kamera Aktif' : 'Upload Foto Aktif'}
+                          </span>
                         </label>
 
-                        {uploadLokasi && (
-                          <div className="p-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 flex items-center justify-between text-[11px]">
-                            <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                              <i className="fa-solid fa-location-dot text-red-500"></i>
-                              <span>{uploadLokasi}</span>
-                            </span>
-                            {uploadWaktu && (
-                              <span className="text-gray-400 font-mono text-[10px]">
-                                {uploadWaktu}
-                              </span>
+                        {/* Mode selector if school allows upload */}
+                        {isUploadAllowed && (
+                          <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 gap-1 text-xs mb-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadMode('camera');
+                                setFile(null);
+                                setPhotoPreviewUrl(null);
+                                setUploadLokasi(null);
+                                setUploadWaktu(null);
+                              }}
+                              className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                                uploadMode === 'camera'
+                                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                              }`}
+                            >
+                              <i className="fa-solid fa-camera"></i> Kamera Langsung
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUploadMode('gallery');
+                                setFile(null);
+                                setPhotoPreviewUrl(null);
+                                setUploadLokasi(null);
+                                setUploadWaktu(null);
+                              }}
+                              className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                                uploadMode === 'gallery'
+                                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                              }`}
+                            >
+                              <i className="fa-solid fa-images"></i> Upload Foto / Galeri
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Camera view (if not allowed or camera mode selected) */}
+                        {(!isUploadAllowed || uploadMode === 'camera') && (
+                          <CameraSelfieCapture
+                            key={`cam-jurnal-${tipeJurnal}`}
+                            
+                            initialFacingMode="environment"
+                            initialCoordinates={jurnalCoords}
+                            existingPhotoUrl={photoPreviewUrl}
+                            onPhotoConfirmed={(capturedFile: File, previewUrl: string) => {
+                              setFile(capturedFile);
+                              setPhotoPreviewUrl(previewUrl);
+                              setUploadWaktu(getWitaTimestamp());
+                              if (jurnalCoords) {
+                                setUploadLatitude(jurnalCoords.latitude);
+                                setUploadLongitude(jurnalCoords.longitude);
+                                setUploadLokasi(`GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}`);
+                              }
+                            }}
+                            onRetake={() => {
+                              setFile(null);
+                              setPhotoPreviewUrl(null);
+                            }}
+                          />
+                        )}
+
+                        {/* Gallery upload input - ONLY rendered if isUploadAllowed is true and uploadMode is gallery */}
+                        {isUploadAllowed && uploadMode === 'gallery' && (
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="jurnal-gallery-file-input"
+                              className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[140px]"
+                            >
+                              <input
+                                id="jurnal-gallery-file-input"
+                                type="file"
+                                accept="image/*"
+                                onClick={(e) => { (e.target as HTMLInputElement).value = ''; }}
+                                onChange={handleGalleryUpload}
+                                className="hidden"
+                              />
+                              {photoPreviewUrl ? (
+                                <div className="space-y-2 w-full">
+                                  <img
+                                    src={photoPreviewUrl}
+                                    alt="Preview Foto Galeri"
+                                    className="w-full max-h-48 object-cover rounded-xl shadow-sm mx-auto"
+                                  />
+                                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                    Klik untuk memilih foto lain dari perangkat
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="space-y-1.5 py-3">
+                                  <div className="w-10 h-10 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center text-lg">
+                                    <i className="fa-solid fa-cloud-arrow-up"></i>
+                                  </div>
+                                  <div className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                    Pilih Foto Dokumentasi dari Perangkat
+                                  </div>
+                                  <div className="text-[10px] text-gray-400">
+                                    Format gambar JPG, PNG, atau JPEG (GPS otomatis direkam)
+                                  </div>
+                                </div>
+                              )}
+                            </label>
+
+                            {uploadLokasi && (
+                              <div className="p-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 flex items-center justify-between text-[11px]">
+                                <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
+                                  <i className="fa-solid fa-location-dot text-red-500"></i>
+                                  <span>{uploadLokasi}</span>
+                                </span>
+                                {uploadWaktu && (
+                                  <span className="text-gray-400 font-mono text-[10px]">
+                                    {uploadWaktu}
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
-                      </div>
-                    )}
 
-                    {file && (
-                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-center justify-between transition-all">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-blue-800 dark:text-blue-200">
-                          <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400 text-base"></i>
-                          <div>
-                            <div>Foto dokumentasi siap diunggah</div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                              {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                        {file && (
+                          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-center justify-between transition-all">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-800 dark:text-blue-200">
+                              <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400 text-base"></i>
+                              <div>
+                                <div>Foto dokumentasi siap diunggah</div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                  {file.name} ({(file.size / 1024).toFixed(0)} KB)
+                                </div>
+                              </div>
                             </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFile(null);
+                                setPhotoPreviewUrl(null);
+                                setUploadLatitude(null);
+                                setUploadLongitude(null);
+                                setUploadLokasi(null);
+                                setUploadWaktu(null);
+                              }}
+                              className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                            >
+                              Ganti Foto
+                            </button>
                           </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFile(null);
-                            setPhotoPreviewUrl(null);
-                            setUploadLatitude(null);
-                            setUploadLongitude(null);
-                            setUploadLokasi(null);
-                            setUploadWaktu(null);
-                          }}
-                          className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
-                        >
-                          Ganti Foto
-                        </button>
-                      </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                      {tipeJurnal === 'Jurnal KBM' ? 'Catatan (Opsional)' : 'Catatan Refleksi (Opsional)'}
-                    </label>
-                    <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder="Tuliskan catatan refleksi atau kendala..." className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
-                </div>
-                
-                <div className="pt-2">
-                    <button type="submit" disabled={loading || isLocked} className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
-                        {loading ? 'Memproses...' : <><i className="fa-solid fa-save"></i> Simpan Jurnal</>}
-                    </button>
-                </div>
+                    <div>
+                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          {tipeJurnal === 'Jurnal KBM' ? 'Catatan (Opsional)' : 'Catatan Refleksi (Opsional)'}
+                        </label>
+                        <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder="Tuliskan catatan refleksi atau kendala..." className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
+                    </div>
+                    
+                    <div className="pt-2">
+                        <button type="submit" disabled={loading || isLocked} className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                            {loading ? 'Memproses...' : <><i className="fa-solid fa-save"></i> {tipeJurnal === 'Jurnal KBM' ? 'Simpan Jurnal KBM' : 'Simpan Jurnal'}</>}
+                        </button>
+                    </div>
+                  </>
+                )}
             </form>
         </div>
       </div>

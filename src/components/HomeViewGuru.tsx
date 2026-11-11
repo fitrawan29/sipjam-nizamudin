@@ -593,6 +593,26 @@ export default function HomeViewGuru({
     return null;
   };
 
+  const handleOpenKbmSession = (jk: any, mode: 'absensi' | 'jurnal') => {
+    try {
+      localStorage.setItem('sipjam_kbm_session_intent', JSON.stringify({
+        mode,
+        kelas: jk.kelas,
+        mapel: jk.mata_pelajaran || jk.mapel,
+        jamKe: jk.jam_mulai && jk.jam_selesai ? `${jk.jam_mulai} - ${jk.jam_selesai}` : (jk.jam_mulai || '')
+      }));
+    } catch {}
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('view', 'view-guru-jurnal');
+      url.searchParams.set('mode', mode);
+      url.searchParams.set('kelas', jk.kelas || '');
+      url.searchParams.set('mapel', jk.mata_pelajaran || jk.mapel || '');
+      window.history.pushState(null, '', url.toString());
+    }
+    setView('view-guru-jurnal');
+  };
+
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
@@ -1311,10 +1331,27 @@ export default function HomeViewGuru({
                       );
                     }
 
+                    const matchingJurnal = (dailyState.jurnalKBM || []).find(j => isJurnalMatchJadwal(j, jk));
+                    const isAbsensiFilled = Boolean(
+                      matchingJurnal?.absensi_siswa &&
+                      matchingJurnal.absensi_siswa !== '{}' &&
+                      matchingJurnal.absensi_siswa !== '-' &&
+                      (typeof matchingJurnal.absensi_siswa === 'object'
+                        ? Object.keys(matchingJurnal.absensi_siswa).length > 0
+                        : String(matchingJurnal.absensi_siswa).trim().length > 2)
+                    );
+                    const isJurnalFilled = Boolean(
+                      matchingJurnal &&
+                      (matchingJurnal.materi || matchingJurnal.materi_pembelajaran || matchingJurnal.konten) &&
+                      matchingJurnal.materi !== '-' &&
+                      matchingJurnal.kegiatan &&
+                      matchingJurnal.kegiatan !== '-'
+                    );
+
                     return (
                       <div 
                         key={jk.id || `${jk.kelas}-${jk.mata_pelajaran}-${idx}`}
-                        className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-sm flex flex-col justify-between gap-2 transition hover:border-emerald-300 dark:hover:border-emerald-700"
+                        className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-sm flex flex-col justify-between gap-2.5 transition hover:border-emerald-300 dark:hover:border-emerald-700"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
@@ -1326,19 +1363,35 @@ export default function HomeViewGuru({
                             </h4>
                           </div>
                           
-                          {isFilled ? (
-                            <span className="shrink-0 bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border border-green-200 dark:border-green-800">
-                              <i className="fa-solid fa-circle-check text-[8px]"></i> Sudah Diisi
-                            </span>
-                          ) : (
+                          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
                             <button
                               type="button"
-                              onClick={() => setView('view-guru-jurnal')}
-                              className="btn-click shrink-0 bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-900/80 dark:text-amber-200 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border border-amber-300 dark:border-amber-700 shadow-sm transition"
+                              onClick={() => handleOpenKbmSession(jk, 'absensi')}
+                              className={`btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border shadow-xs transition ${
+                                isAbsensiFilled
+                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                              }`}
+                              title="Pengisian Absensi Siswa mapel terkait"
                             >
-                              <i className="fa-solid fa-pen-to-square text-[8px]"></i> Isi Jurnal
+                              <i className={`fa-solid ${isAbsensiFilled ? 'fa-check' : 'fa-users-check'} text-[8px]`}></i>
+                              <span>{isAbsensiFilled ? 'Absensi ✓' : 'Absensi Siswa'}</span>
                             </button>
-                          )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenKbmSession(jk, 'jurnal')}
+                              className={`btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border shadow-xs transition ${
+                                isJurnalFilled
+                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                  : 'bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-900/80 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                              }`}
+                              title="Pengisian Jurnal KBM mapel terkait"
+                            >
+                              <i className={`fa-solid ${isJurnalFilled ? 'fa-circle-check' : 'fa-pen-to-square'} text-[8px]`}></i>
+                              <span>{isJurnalFilled ? 'Jurnal ✓' : 'Isi Jurnal'}</span>
+                            </button>
+                          </div>
                         </div>
 
                         <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-700/60">
@@ -1360,6 +1413,15 @@ export default function HomeViewGuru({
                       Progres Jurnal: <strong className="text-gray-900 dark:text-white">
                         {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk))).length}
                       </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked).length}</strong> kelas reguler
+                    </span>
+                    <span>
+                      · Absensi: <strong className="text-gray-900 dark:text-white">
+                        {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => {
+                          if (!isJurnalMatchJadwal(j, jk)) return false;
+                          const ab = j.absensi_siswa;
+                          return ab && ab !== '{}' && ab !== '-' && (typeof ab === 'object' ? Object.keys(ab).length > 0 : String(ab).trim().length > 2);
+                        })).length}
+                      </strong> selesai
                     </span>
                     {dailyState.hasBlockedSchedule && (
                       <span className="text-amber-800 dark:text-amber-300 font-semibold">
