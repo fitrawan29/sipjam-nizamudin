@@ -384,6 +384,7 @@ export default function HomeViewAdmin({
         const mContent = (j.materi || j.materi_pembelajaran || j.konten || '').trim();
         const kContent = (j.kegiatan || j.kegiatan_pembelajaran || '').trim();
         if ((!mContent || mContent === '-') && (!kContent || kContent === '-')) return false;
+        if (j.materi === '-' && j.kegiatan === '-') return false;
         return true;
       };
 

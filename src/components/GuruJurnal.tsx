@@ -161,7 +161,10 @@ export default function GuruJurnal({
         localStorage.removeItem('sipjam_kbm_session_intent');
       }
 
-      if (targetMode) setKbmSubMode(targetMode);
+      if (targetMode) {
+        setKbmSubMode(targetMode);
+        setTipeJurnal('Jurnal KBM');
+      }
       if (targetKelas) setKelas(targetKelas);
       if (targetMapel) setMapel(targetMapel);
       if (targetJam) setJamKe(targetJam);
@@ -172,6 +175,7 @@ export default function GuruJurnal({
 
   const handleKbmSubModeChange = (mode: 'absensi' | 'jurnal') => {
     setKbmSubMode(mode);
+    setTipeJurnal('Jurnal KBM');
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
       url.searchParams.set('mode', mode);
@@ -260,22 +264,33 @@ export default function GuruJurnal({
   // Auto-restore draft from localStorage on initial mount
   useEffect(() => {
     try {
+      let hasExplicitIntent = false;
+      if (typeof window !== 'undefined') {
+        const sp = new URLSearchParams(window.location.search);
+        if (sp.get('mode') || sp.get('kelas') || sp.get('mapel')) hasExplicitIntent = true;
+      }
+      if (typeof window !== 'undefined' && localStorage.getItem('sipjam_kbm_session_intent')) {
+        hasExplicitIntent = true;
+      }
+
       const draftKey = getJurnalDraftKey(user?.id, user?.sekolah_id);
       const saved = typeof window !== 'undefined' && window.localStorage
         ? (localStorage.getItem(draftKey) || (draftKey !== 'sipjam_jurnal_autosave' ? localStorage.getItem('sipjam_jurnal_autosave') : null))
         : null;
       const draft = saved ? JSON.parse(saved) : loadJurnalDraft(user?.id, user?.sekolah_id);
       if (draft) {
-        if (draft.tipeJurnal !== undefined) setTipeJurnal(draft.tipeJurnal);
-        if (draft.mapel !== undefined) setMapel(draft.mapel);
-        if (draft.kelas !== undefined) setKelas(draft.kelas);
+        if (!hasExplicitIntent) {
+          if (draft.tipeJurnal !== undefined) setTipeJurnal(draft.tipeJurnal);
+          if (draft.mapel !== undefined) setMapel(draft.mapel);
+          if (draft.kelas !== undefined) setKelas(draft.kelas);
+        }
         if (draft.tanggal !== undefined) setTanggal(draft.tanggal);
         if (draft.materi !== undefined) setMateri(draft.materi);
         if (draft.kegiatan !== undefined) setKegiatan(draft.kegiatan);
         if (draft.catatanSiswa !== undefined) setCatatanSiswa(draft.catatanSiswa);
         if (draft.refleksi !== undefined) setRefleksi(draft.refleksi);
         if (draft.pertemuanKe !== undefined) setPertemuanKe(draft.pertemuanKe);
-        if (draft.jamKe !== undefined) setJamKe(draft.jamKe);
+        if (draft.jamKe !== undefined && !hasExplicitIntent) setJamKe(draft.jamKe);
         if (draft.tujuanPembelajaran !== undefined) setTujuanPembelajaran(draft.tujuanPembelajaran);
         if (draft.kehadiranMurid !== undefined) setKehadiranMurid(draft.kehadiranMurid);
         if (draft.kktp !== undefined) setKktp(draft.kktp);
@@ -675,9 +690,10 @@ export default function GuruJurnal({
     if (isInval || user?.role === 'Admin' || myAssignments.length === 0) return;
     const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
     const dayFiltered = filterGuruMapelByHari(myAssignments, activeHari, mapel);
+    const effectiveAssignments = dayFiltered.length > 0 ? dayFiltered : myAssignments;
     setAssignments(dayFiltered);
     setMapelList(dayFiltered);
-    const assignedKelas = [...new Set(dayFiltered.map((d: any) => d.kelas).filter(Boolean))].sort() as string[];
+    const assignedKelas = [...new Set(effectiveAssignments.map((d: any) => d.kelas).filter(Boolean))].sort() as string[];
     setKelasList(assignedKelas);
 
     if (dayFiltered.length === 1) {
@@ -774,7 +790,7 @@ export default function GuruJurnal({
             setTipeJurnal('Jurnal Kegiatan');
           } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {
             setTipeJurnal('Jurnal KBM');
-          } else {
+          } else if (kbmSubMode !== 'absensi') {
             setTipeJurnal('Jurnal Kegiatan');
           }
         }
@@ -787,7 +803,7 @@ export default function GuruJurnal({
 
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!kelas || tipeJurnal !== 'Jurnal KBM') {
+      if (!kelas || (tipeJurnal !== 'Jurnal KBM' && kbmSubMode !== 'absensi')) {
         setStudents([]);
         setAbsensi({});
         setPiketAttendance({});
@@ -802,9 +818,57 @@ export default function GuruJurnal({
       // if (user?.sekolah_id) jdwlQuery = jdwlQuery.eq('sekolah_id', user.sekolah_id);
       let sQuery = supabase.from('data_siswa').select('*').eq('kelas', kelas).order('nama_siswa', { ascending: true });
       if (user?.sekolah_id) sQuery = sQuery.eq('sekolah_id', user.sekolah_id);
-      const { data } = await sQuery;
+      let { data } = await sQuery;
+
+      // Fallback 1: Jika dengan sekolah_id kosong, coba query kelas tanpa batasan sekolah_id
+      if ((!data || data.length === 0) && user?.sekolah_id) {
+        const { data: noSchData } = await supabase
+          .from('data_siswa')
+          .select('*')
+          .eq('kelas', kelas)
+          .order('nama_siswa', { ascending: true });
+        if (noSchData && noSchData.length > 0) {
+          data = noSchData;
+        }
+      }
+
+      // Fallback 2: Jika masih kosong, coba cocokkan ekuivalensi kelas (angka Romawi vs Arab, spasi, case, awalan 'Kelas')
+      if (!data || data.length === 0) {
+        let allSiswaQ = supabase.from('data_siswa').select('*').order('nama_siswa', { ascending: true });
+        if (user?.sekolah_id) allSiswaQ = allSiswaQ.eq('sekolah_id', user.sekolah_id);
+        let { data: allSiswa } = await allSiswaQ;
+        if ((!allSiswa || allSiswa.length === 0) && user?.sekolah_id) {
+          const { data: globalSiswa } = await supabase.from('data_siswa').select('*').order('nama_siswa', { ascending: true });
+          allSiswa = globalSiswa;
+        }
+
+        if (allSiswa && allSiswa.length > 0) {
+          const romanToNum: Record<string, string> = {
+            xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7'
+          };
+          const normK = (k: string) =>
+            (k || '')
+              .toLowerCase()
+              .replace(/^kelas\s+/i, '')
+              .replace(/[\s\-_.]/g, '')
+              .replace(/^(xii|xi|x|ix|viii|vii)/i, m => romanToNum[m] || m);
+
+          const targetNorm = normK(kelas);
+          const matched = allSiswa.filter(s => {
+            const sNorm = normK(s.kelas);
+            return sNorm === targetNorm || (targetNorm && (sNorm.startsWith(targetNorm) || targetNorm.startsWith(sNorm)));
+          });
+          if (matched.length > 0) {
+            data = matched;
+          }
+        }
+      }
+
       if (data) {
-        const filteredData = filterStudentsBySubject(data, mapel);
+        let filteredData = filterStudentsBySubject(data, mapel);
+        if (filteredData.length === 0 && data.length > 0 && !data.some(s => s.agama || s.status_agama || s.religion)) {
+          filteredData = data;
+        }
         setStudents(filteredData);
 
         // Pre-populate attendance from canonical public.absensi for this class and date
@@ -817,19 +881,22 @@ export default function GuruJurnal({
         const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
         const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
         const normName = normalizeTeacherIdentityName(targetSearchName);
-        const cleanNama = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
+        const cleanNama = (user?.nama || '').split(',')[0].trim();
+        const searchEffectiveName = (isInval && guruDigantikan?.nama)
+          ? (normName.split(' ')[0] || targetSearchName.split(',')[0].trim())
+          : cleanNama;
         let sessionJQuery = supabase
           .from('jurnal_pembelajaran')
           .select('*')
           .eq('tanggal', tgl)
           .eq('kelas', kelas);
         if (user?.sekolah_id) sessionJQuery = sessionJQuery.eq('sekolah_id', user.sekolah_id);
-        if (targetSearchUserId && cleanNama) {
-          sessionJQuery = sessionJQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${cleanNama}%"`);
+        if (targetSearchUserId && searchEffectiveName) {
+          sessionJQuery = sessionJQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
         } else if (targetSearchUserId) {
           sessionJQuery = sessionJQuery.eq('user_id', targetSearchUserId);
-        } else if (cleanNama) {
-          sessionJQuery = sessionJQuery.ilike('nama_guru', `%${cleanNama}%`);
+        } else if (searchEffectiveName) {
+          sessionJQuery = sessionJQuery.ilike('nama_guru', `%${searchEffectiveName}%`);
         }
         const { data: sessionData } = await sessionJQuery;
         const matchingSession = (sessionData || []).find((j: any) =>
@@ -971,7 +1038,7 @@ export default function GuruJurnal({
       }
     };
     fetchStudents();
-  }, [kelas, mapel, tipeJurnal, tanggal, user?.sekolah_id]);
+  }, [kelas, mapel, tipeJurnal, tanggal, user?.sekolah_id, kbmSubMode]);
 
   const handleApplyPiketAttendance = () => {
     if (students.length === 0) return;
@@ -1064,19 +1131,22 @@ export default function GuruJurnal({
       const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
       const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
       const normName = normalizeTeacherIdentityName(targetSearchName);
-      const cleanNama = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
+      const cleanNama = (user?.nama || '').split(',')[0].trim();
+      const searchEffectiveName = (isInval && guruDigantikan?.nama)
+        ? (normName.split(' ')[0] || targetSearchName.split(',')[0].trim())
+        : cleanNama;
       let sQ = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('tanggal', tgl)
         .eq('kelas', kelas);
       if (user?.sekolah_id) sQ = sQ.eq('sekolah_id', user.sekolah_id);
-      if (targetSearchUserId && cleanNama) {
-        sQ = sQ.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${cleanNama}%"`);
+      if (targetSearchUserId && searchEffectiveName) {
+        sQ = sQ.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
       } else if (targetSearchUserId) {
         sQ = sQ.eq('user_id', targetSearchUserId);
-      } else if (cleanNama) {
-        sQ = sQ.ilike('nama_guru', `%${cleanNama}%`);
+      } else if (searchEffectiveName) {
+        sQ = sQ.ilike('nama_guru', `%${searchEffectiveName}%`);
       }
       const { data: existingSessions } = await sQ;
       const existing = (existingSessions || []).find((j: any) =>
@@ -2009,7 +2079,7 @@ export default function GuruJurnal({
                           />
                         </div>
 
-                        {students.length > 0 && (() => {
+                        {students.length > 0 ? (() => {
                           const truantCount = students.filter(s => {
                             const pRec = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
                             const isMorningHadir = Boolean(pRec || morningLockedAttendance[s.nisn]?.isMorningHadir);
@@ -2033,7 +2103,7 @@ export default function GuruJurnal({
                                     <i className="fa-solid fa-book-open-reader text-blue-500 dark:text-blue-400"></i> Presensi Siswa Mapel: {mapel || 'Pembelajaran'} (Kelas {kelas})
                                   </h3>
                                   <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                                    Mencatat kehadiran khusus jam pelajaran ini (tidak mengubah absensi kelas harian).
+                                    Mencatat kehadiran khusus jam pelajaran ini (tidak mengubah absensi kelas harian) — {students.length} siswa kelas {kelas} terdaftar.
                                   </p>
                                 </div>
                                 <button
@@ -2053,7 +2123,7 @@ export default function GuruJurnal({
                                   const isMorningHadir = Boolean(pRec || morningLockedAttendance[siswa.nisn]?.isMorningHadir);
                                   const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === 'A';
                                   return (
-                                    <div key={siswa.nisn} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                    <div key={siswa.nisn || siswa.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
                                       <div className="flex items-center gap-2 flex-1 min-w-0">
                                         <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
                                         <div className="min-w-0 flex-1">
@@ -2076,7 +2146,7 @@ export default function GuruJurnal({
                                               </span>
                                             )}
                                           </div>
-                                          <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn}</div>
+                                          <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn || siswa.id || 'NISN belum terdata'}</div>
                                           {lastChangeMap[siswa.nisn] && (
                                             <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
                                               <i className="fa-solid fa-clock-rotate-left text-[8px] text-teal-600 dark:text-teal-400"></i>
@@ -2129,7 +2199,19 @@ export default function GuruJurnal({
                               </div>
                             </div>
                           );
-                        })()}
+                        })() : (
+                          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-4 rounded-xl text-center fade-in">
+                            <i className="fa-solid fa-users text-gray-400 dark:text-gray-500 text-xl mb-1.5 block"></i>
+                            <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                              {!kelas ? 'Pilih Kelas Terlebih Dahulu' : `Belum Ada Siswa Terdaftar di Kelas ${kelas}`}
+                            </div>
+                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                              {!kelas
+                                ? 'Silakan tentukan kelas pada pilihan di atas untuk menampilkan daftar seluruh siswa.'
+                                : `Pastikan data siswa untuk kelas ${kelas} telah terdaftar pada database sistem.`}
+                            </div>
+                          </div>
+                        )}
 
                         <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
                           <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
