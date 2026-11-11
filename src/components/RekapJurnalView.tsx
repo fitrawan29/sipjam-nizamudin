@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
-import { isJurnalMatchJadwal, isLateArrival, connectGuruMapelWithJadwal } from '@/lib/workflow';
+import { isJurnalMatchJadwal, isLateArrival, connectGuruMapelWithJadwal, normalizeTeacherIdentityName, isTeacherRecordMatch } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl } from '@/lib/imageUrl';
@@ -388,7 +388,17 @@ export default function RekapJurnalView({
       // In personal mode, restrict to the logged-in teacher
       // In classroom mode ("Rekapan Jurnal Per Kelas"), query across ALL teachers for that class
       if (activeMode === 'pribadi' && user?.nama) {
-        query = query.eq('nama_guru', user.nama);
+        const cleanName = normalizeTeacherIdentityName(user.nama);
+        const firstToken = cleanName.split(' ')[0] || cleanName;
+        if (user.id && firstToken) {
+          query = query.or(`user_id.eq.${user.id},nama_guru.ilike."%${firstToken}%",keterangan.ilike."%Menggantikan:%${firstToken}%"`);
+        } else if (user.id) {
+          query = query.eq('user_id', user.id);
+        } else if (firstToken) {
+          query = query.or(`nama_guru.ilike."%${firstToken}%",keterangan.ilike."%Menggantikan:%${firstToken}%"`);
+        } else {
+          query = query.eq('nama_guru', user.nama);
+        }
       }
 
       if (user?.sekolah_id) {
@@ -420,6 +430,11 @@ export default function RekapJurnalView({
 
       const { data } = await query;
       let combined = (data || []) as any[];
+      if (activeMode === 'pribadi' && user?.nama) {
+        combined = combined.filter((j: any) =>
+          isTeacherRecordMatch(j, { nama_guru: user.nama, user_id: user.id }, user, { allowSingleWordFirstToken: true })
+        );
+      }
 
       // R3: Include unfilled KBM for scheduled classes that have not been filled
       try {
@@ -1114,6 +1129,26 @@ export default function RekapJurnalView({
       // Teachers who only attend during KBM must not see empty non-teaching day placeholders
       if (tabMode === 'pribadi' && isHanyaKbmUser) {
         if (j.mapel === 'Jurnal Kegiatan' || j.keterangan === 'Jurnal Kegiatan' || j.keterangan === 'tidak melaksanakan kegiatan apapun') {
+          return false;
+        }
+      }
+
+      // Squelch obsolete "tidak masuk kelas" auto-record if the teacher actually has a real submitted journal for this same date, class, and mapel
+      const isDelinquency = statusLower === 'tidak masuk kelas' || ketLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas';
+      if (isDelinquency) {
+        const hasRealJournalForClass = (jurnalData || []).some((rj: any) => {
+          if (rj.id === j.id) return false;
+          if (rj.tanggal !== j.tanggal) return false;
+          const rjStatus = (rj.status_verifikasi || '').toLowerCase();
+          const rjMat = (rj.materi || rj.materi_pembelajaran || rj.konten || '').trim().toLowerCase();
+          const rjKeg = (rj.kegiatan || rj.kegiatan_pembelajaran || '').trim().toLowerCase();
+          if (rjStatus === 'tidak masuk kelas' || rjMat === 'tidak masuk kelas' || (rjMat === '-' && rjKeg === '-')) return false;
+          if (!rjMat && !rjKeg) return false;
+          const classMatches = rj.kelas && j.kelas && rj.kelas.trim().toLowerCase() === j.kelas.trim().toLowerCase();
+          const mapelMatches = (rj.mapel || rj.mata_pelajaran || '').trim().toLowerCase() === (j.mapel || j.mata_pelajaran || '').trim().toLowerCase();
+          return classMatches && (mapelMatches || !j.mapel || j.mapel === '-');
+        });
+        if (hasRealJournalForClass) {
           return false;
         }
       }

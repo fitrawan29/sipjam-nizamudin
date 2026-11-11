@@ -601,6 +601,15 @@ export function isTeacherJournalMatch(
   if (teacher.sekolah_id && journal.sekolah_id && teacher.sekolah_id !== journal.sekolah_id) {
     return false;
   }
+  // Check INVAL substitution marker (e.g. "[INVAL - Menggantikan: Ibu Winda] Jurnal KBM")
+  // Allows substitute teacher (different user_id) to fulfill class on behalf of original teacher
+  const invalMatch = (journal as any)?.keterangan?.match(/\[INVAL\s*-\s*Menggantikan:\s*([^\]]+)\]/i);
+  if (invalMatch && invalMatch[1]) {
+    const substitutedName = invalMatch[1].trim();
+    if (teacher.nama_guru && isTeacherNameEquivalent(substitutedName, teacher.nama_guru, true)) {
+      return true;
+    }
+  }
   if (teacher.user_id && journal.user_id) {
     return String(teacher.user_id) === String(journal.user_id);
   }

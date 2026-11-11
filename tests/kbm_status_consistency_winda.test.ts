@@ -118,6 +118,34 @@ async function runTests() {
     assert.strictEqual(isTeacherScheduleMatch(teacher, schedule), true, 'isTeacherScheduleMatch harus mengenali Ibu Winda');
   });
 
+  test('1.7: isTeacherJournalMatch mengenali jurnal substitusi INVAL meskipun user_id guru pengganti berbeda', () => {
+    const teacher = { nama_guru: 'Ibu Winda Wulansari', user_id: 'usr-winda-1', sekolah_id: 'sch-1' };
+    const invalJournal = {
+      id: 'jur-inval-99',
+      nama_guru: 'Pak Budi Santoso',
+      user_id: 'usr-budi-substitute',
+      sekolah_id: 'sch-1',
+      keterangan: '[INVAL - Menggantikan: Ibu Winda Wulansari] Jurnal KBM'
+    };
+
+    assert.strictEqual(
+      isTeacherJournalMatch(teacher, invalJournal),
+      true,
+      'isTeacherJournalMatch harus mencocokkan jurnal INVAL dengan guru yang digantikan'
+    );
+  });
+
+  test('1.8: isTeacherScheduleMatch mencocokkan ekuivalensi nama ketika jadwal tanpa user_id', () => {
+    const teacher = { nama_guru: 'Ibu Winda Wulansari', user_id: 'usr-winda-current', sekolah_id: 'sch-1' };
+    const schedule = { nama_guru: 'Winda Wulansari', sekolah_id: 'sch-1' };
+
+    assert.strictEqual(
+      isTeacherScheduleMatch(teacher, schedule),
+      true,
+      'isTeacherScheduleMatch harus mencocokkan ekuivalensi nama ketika jadwal master tanpa user_id'
+    );
+  });
+
   // --- SECTION 2: Simulasi Logika Sinkronisasi Status KBM Admin vs Guru ---
   console.log('\n--- Section 2: Logika Sinkronisasi Status KBM Admin vs Guru ---');
 
@@ -161,7 +189,15 @@ async function runTests() {
     let jurnalStatus = 'Bebas KBM';
     let jurnalColor = 'gray';
 
-    if (filledCount >= targetCount && targetCount > 0) {
+    if (targetCount === 0) {
+      if (realTeacherJournals.length > 0) {
+        jurnalStatus = `${realTeacherJournals.length}/${realTeacherJournals.length} Selesai`;
+        jurnalColor = 'green';
+      } else {
+        jurnalStatus = 'Bebas KBM';
+        jurnalColor = 'gray';
+      }
+    } else if (filledCount >= targetCount && targetCount > 0) {
       jurnalStatus = `${targetCount}/${targetCount} Selesai`;
       jurnalColor = 'green';
     } else if (filledCount > 0) {
@@ -354,6 +390,78 @@ async function runTests() {
     );
   });
 
+  test('2.7: Skenario guru targetCount === 0 yang mengisi jurnal KBM riil berstatus Selesai (bukan Bebas KBM)', () => {
+    const teacher = { nama_guru: 'Ibu Winda Wulansari', user_id: 'usr-winda-1' };
+    const targetClasses: any[] = []; // tidak terjadwal reguler
+    const acceptedTeacherJournals = [
+      {
+        id: 'jur-extra-1',
+        nama_guru: 'Winda Wulansari',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'Jam Tambahan Penguatan Aljabar',
+        kegiatan: 'Bimbingan intensif',
+        status_verifikasi: 'Menunggu'
+      }
+    ];
+
+    const result = calculateAdminJurnalStatus(teacher, targetClasses, acceptedTeacherJournals, 'Hadir [07:15]');
+    assert.strictEqual(result.jurnalStatus, '1/1 Selesai', 'Guru yang mengisi KBM riil meski targetCount=0 harus 1/1 Selesai');
+    assert.strictEqual(result.jurnalColor, 'green');
+  });
+
+  test('2.8: Rekap Jurnal deduplication menyaring auto-record delinquency jika jurnal riil telah disubmit', () => {
+    const journalData = [
+      {
+        id: 'delinquency-1',
+        tanggal: '2026-11-11',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'tidak masuk kelas',
+        kegiatan: 'tidak masuk kelas',
+        status_verifikasi: 'Tidak Masuk Kelas',
+        keterangan: 'Tidak Masuk Kelas'
+      },
+      {
+        id: 'real-1',
+        tanggal: '2026-11-11',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'Persamaan Linear Satu Variabel',
+        kegiatan: 'Diskusi dan Latihan',
+        status_verifikasi: 'Menunggu',
+        keterangan: 'Jurnal KBM'
+      }
+    ];
+
+    // Filter simulating RekapJurnalView.tsx squelch logic
+    const squelched = journalData.filter(j => {
+      const statusLower = (j.status_verifikasi || '').toLowerCase();
+      const ketLower = (j.keterangan || '').toLowerCase();
+      const matLower = (j.materi || '').toLowerCase();
+      const isDelinquency = statusLower === 'tidak masuk kelas' || ketLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas';
+      if (isDelinquency) {
+        const hasRealJournalForClass = journalData.some(rj => {
+          if (rj.id === j.id) return false;
+          if (rj.tanggal !== j.tanggal) return false;
+          const rjStatus = (rj.status_verifikasi || '').toLowerCase();
+          const rjMat = (rj.materi || '').trim().toLowerCase();
+          const rjKeg = (rj.kegiatan || '').trim().toLowerCase();
+          if (rjStatus === 'tidak masuk kelas' || rjMat === 'tidak masuk kelas' || (rjMat === '-' && rjKeg === '-')) return false;
+          if (!rjMat && !rjKeg) return false;
+          const classMatches = rj.kelas && j.kelas && rj.kelas.trim().toLowerCase() === j.kelas.trim().toLowerCase();
+          const mapelMatches = (rj.mapel || '').trim().toLowerCase() === (j.mapel || '').trim().toLowerCase();
+          return classMatches && (mapelMatches || !j.mapel || j.mapel === '-');
+        });
+        if (hasRealJournalForClass) return false;
+      }
+      return true;
+    });
+
+    assert.strictEqual(squelched.length, 1, 'Harus tersisa 1 entri (hanya jurnal riil)');
+    assert.strictEqual(squelched[0].id, 'real-1', 'Entri yang tersisa harus jurnal riil');
+  });
+
   // --- SECTION 3: Verifikasi Kode Sumber Statis ---
   console.log('\n--- Section 3: Verifikasi Integritas Kode Sumber ---');
 
@@ -362,6 +470,8 @@ async function runTests() {
   const workflowSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'workflow.ts'), 'utf8');
   const attendanceSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'attendanceAlpa.ts'), 'utf8');
   const guruPresensiSrc = fs.readFileSync(path.join(root, 'src', 'components', 'GuruPresensi.tsx'), 'utf8');
+  const rekapJurnalSrc = fs.readFileSync(path.join(root, 'src', 'components', 'RekapJurnalView.tsx'), 'utf8');
+  const guruJurnalSrc = fs.readFileSync(path.join(root, 'src', 'components', 'GuruJurnal.tsx'), 'utf8');
 
   test('3.1: HomeViewAdmin.tsx mengecek filledCount >= targetCount sebelum hasTidakMasukKelas dalam penentuan status', () => {
     const posFilled = homeAdminSrc.indexOf('else if (filledCount >= targetCount');
@@ -396,6 +506,34 @@ async function runTests() {
     assert.ok(
       workflowSrc.includes('invalMatch') && workflowSrc.includes('Menggantikan'),
       'isTeacherRecordMatch harus mengenali jurnal substitusi INVAL'
+    );
+  });
+
+  test('3.6: attendanceAlpa.ts isTeacherJournalMatch memuat integrasi substitusi INVAL', () => {
+    assert.ok(
+      attendanceSrc.includes('invalMatch') && attendanceSrc.includes('Menggantikan'),
+      'isTeacherJournalMatch harus mengenali jurnal substitusi INVAL'
+    );
+  });
+
+  test('3.7: workflow.ts findGuruDailyState memuat query fallback substitusi INVAL', () => {
+    assert.ok(
+      workflowSrc.includes('Menggantikan:%${teacherFirstToken}%') || workflowSrc.includes('Menggantikan:%${needle}%'),
+      'findGuruDailyState harus menyertakan query keterangan INVAL'
+    );
+  });
+
+  test('3.8: RekapJurnalView.tsx squelches obsolete auto-record tidak masuk kelas when real journal exists', () => {
+    assert.ok(
+      rekapJurnalSrc.includes('hasRealJournalForClass') && rekapJurnalSrc.includes('isDelinquency'),
+      'RekapJurnalView harus menyaring auto-record delinquency jika jurnal riil tersedia'
+    );
+  });
+
+  test('3.9: GuruJurnal.tsx uses normalizeTeacherIdentityName for session resolution', () => {
+    assert.ok(
+      guruJurnalSrc.includes('normalizeTeacherIdentityName') && guruJurnalSrc.includes('normName'),
+      'GuruJurnal.tsx harus menormalisasi identitas sapaan guru untuk resolusi sesi'
     );
   });
 

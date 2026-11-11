@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -814,7 +814,8 @@ export default function GuruJurnal({
         const { data: absData } = await aQuery;
 
         // Cek data sesi KBM yang sudah tersimpan di jurnal_pembelajaran untuk kelas, mapel, dan tanggal ini
-        const cleanNama = (user?.nama || '').split(',')[0].trim();
+        const normName = normalizeTeacherIdentityName(user?.nama || '');
+        const cleanNama = normName.split(' ')[0] || (user?.nama || '').split(',')[0].trim();
         let sessionJQuery = supabase
           .from('jurnal_pembelajaran')
           .select('*')
@@ -1058,7 +1059,8 @@ export default function GuruJurnal({
     const tgl = tanggal || getWitaDateStr();
 
     try {
-      const cleanNama = (user?.nama || '').split(',')[0].trim();
+      const normName = normalizeTeacherIdentityName(user?.nama || '');
+      const cleanNama = normName.split(' ')[0] || (user?.nama || '').split(',')[0].trim();
       let sQ = supabase
         .from('jurnal_pembelajaran')
         .select('*')
@@ -1396,7 +1398,8 @@ export default function GuruJurnal({
 
       // Cek sesi yang sudah ada di jurnal_pembelajaran agar absensi dan jurnal terhubung dalam sesi yang sama
       const tgl = tanggal || getWitaDateStr();
-      const cleanNama = (user?.nama || '').split(',')[0].trim();
+      const normName = normalizeTeacherIdentityName(user?.nama || '');
+      const cleanNama = normName.split(' ')[0] || (user?.nama || '').split(',')[0].trim();
       let existingSessionQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')

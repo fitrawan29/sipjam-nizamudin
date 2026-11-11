@@ -1719,8 +1719,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       jurnalQuery = jurnalQuery.eq('sekolah_id', sekolahId);
     }
     
-    if (userId) {
+    if (userId && teacherFirstToken) {
+      jurnalQuery = jurnalQuery.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%",keterangan.ilike."%Menggantikan:%${teacherFirstToken}%"`);
+    } else if (userId) {
       jurnalQuery = jurnalQuery.or(`user_id.eq.${userId},nama_guru.ilike."%${cleanTeacherName}%"`);
+    } else if (teacherFirstToken) {
+      jurnalQuery = jurnalQuery.or(`nama_guru.ilike."%${cleanTeacherName}%",keterangan.ilike."%Menggantikan:%${teacherFirstToken}%"`);
     } else {
       jurnalQuery = jurnalQuery.ilike('nama_guru', `%${cleanTeacherName}%`);
     }
@@ -1731,7 +1735,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const needle = teacherFirstToken.length >= 2 ? teacherFirstToken : cleanTeacherName;
       let fbJurnalQuery = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
       if (sekolahId) fbJurnalQuery = fbJurnalQuery.eq('sekolah_id', sekolahId);
-      fbJurnalQuery = fbJurnalQuery.ilike('nama_guru', `%${needle}%`);
+      fbJurnalQuery = fbJurnalQuery.or(`nama_guru.ilike."%${needle}%",keterangan.ilike."%Menggantikan:%${needle}%"`);
       const fbRes = await fbJurnalQuery;
       if (Array.isArray(fbRes.data)) {
         jurnal = fbRes.data.filter((j: any) =>

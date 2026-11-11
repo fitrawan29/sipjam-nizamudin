@@ -640,6 +640,9 @@ export default function HomeViewAdmin({
           } else if (hasJurnalKegiatan) {
             jurnalStatus = 'Jurnal Kegiatan Selesai';
             jurnalColor = 'green';
+          } else if (realTeacherJournals.length > 0) {
+            jurnalStatus = `${realTeacherJournals.length}/${realTeacherJournals.length} Selesai`;
+            jurnalColor = 'green';
           } else {
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
