@@ -30,7 +30,7 @@ export function normalizeTeacherIdentityName(name?: string | null): string {
     .trim()
     .toLowerCase()
     .replace(/,.*$/, '')
-    .replace(/\b(ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|prof|dr|drs|dra|ir|hj|kh|s\.?\s*pd\.?\s*k?|s\.?\s*pd\.?\s*i?|m\.?\s*pd\.?\s*k?|m\.?\s*pd\.?|s\.?\s*kom\.?|s\.?\s*si\.?|s\.?\s*ag\.?|s\.?\s*th\.?|m\.?\s*th\.?|s\.?\s*pak\.?|s\.?\s*sos\.?|s\.?\s*km\.?|s\.?\s*sn\.?|s\.?\s*or\.?|s\.?\s*tr\.?|s\.?\s*ip\.?|s\.\s*h\.?|s\.\s*p\.?|s\.?\s*e\.?|s\.?\s*t\.?|s\.?\s*psi\.?|s\.?\s*kep\.?|m\.?\s*si\.?|m\.?\s*kom\.?|m\.\s*m\.?|m\.\s*a\.?|a\.?\s*md\.?|gr)\b/gi, '')
+    .replace(/\b(ibu|bu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|haji|h|hj|hjh|kh|kyai|kiai|prof|dr|drs|dra|ir|s\.?\s*pd\.?\s*k?|s\.?\s*pd\.?\s*i?|m\.?\s*pd\.?\s*k?|m\.?\s*pd\.?|s\.?\s*kom\.?|s\.?\s*si\.?|s\.?\s*ag\.?|s\.?\s*th\.?|m\.?\s*th\.?|s\.?\s*pak\.?|s\.?\s*sos\.?|s\.?\s*km\.?|s\.?\s*sn\.?|s\.?\s*or\.?|s\.?\s*tr\.?|s\.?\s*ip\.?|s\.\s*h\.?|s\.\s*p\.?|s\.?\s*e\.?|s\.?\s*t\.?|s\.?\s*psi\.?|s\.?\s*kep\.?|m\.?\s*si\.?|m\.?\s*kom\.?|m\.\s*m\.?|m\.\s*a\.?|a\.?\s*md\.?|gr)\b/gi, '')
     .replace(/[^a-z0-9\s]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -199,6 +199,17 @@ export function isTeacherRecordMatch(
     const cleanAlias = normalizeTeacherIdentityName(alias);
     if (cleanAlias && recIdents.includes(cleanAlias)) {
       return true;
+    }
+  }
+
+  // 3b. INVAL substitution check (e.g. "[INVAL - Menggantikan: Ibu Winda] Jurnal KBM")
+  const invalMatch = (record as any)?.keterangan?.match(/\[INVAL\s*-\s*Menggantikan:\s*([^\]]+)\]/i);
+  if (invalMatch && invalMatch[1]) {
+    const substitutedName = invalMatch[1].trim();
+    for (const alias of candidateNames) {
+      if (isTeacherNameEquivalent(substitutedName, alias, allowSingle)) {
+        return true;
+      }
     }
   }
 
@@ -555,6 +566,11 @@ export async function findJadwalForGuru(hari: string, namaGuru: string, username
       }
     }
 
+    // 4. Honorific / identity equivalence fallback (e.g. "Ibu Winda Wulansari" <=> "Winda Wulansari")
+    if (isTeacherNameEquivalent(namaGuru, jNama, true)) {
+      return true;
+    }
+
     return false;
   });
 
@@ -577,7 +593,7 @@ export function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
   if (!daftarGuru || !namaGuru) return false;
   const namaLower = namaGuru.toLowerCase().trim();
   const daftarArr = daftarGuru.split(',').map(n => n.trim().toLowerCase());
-  return daftarArr.some(n => n === namaLower || namaLower.includes(n) || n.includes(namaLower));
+  return daftarArr.some(n => n === namaLower || namaLower.includes(n) || n.includes(namaLower) || isTeacherNameEquivalent(n, namaGuru, true));
 }
 
 export function isLateArrival(p: any): boolean {
@@ -768,6 +784,9 @@ export function connectGuruMapelWithJadwal(
       if (firstName === jNorm || (!jNorm.includes(' ') && firstName.startsWith(jNorm)) || (!namaNorm.includes(' ') && jNorm.startsWith(firstName + ' '))) {
         return true;
       }
+    }
+    if (isTeacherNameEquivalent(guruName, jNama, true)) {
+      return true;
     }
     return false;
   };

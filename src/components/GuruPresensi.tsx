@@ -842,7 +842,7 @@ export default function GuruPresensi({
           .from('presensi_guru')
           .update({ link_bukti: 'gagal_upload' })
           .eq('id', presensiId);
-        showToast('Sinkronisasi Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun berkas bukti gagal diunggah ke Google Drive.', 'warning');
+        showToast('Upload Foto Tertunda', 'Data presensi telah tersimpan di cloud Supabase, namun berkas bukti gagal diunggah ke Google Drive.', 'warning');
       } finally {
         setUploadProgress({ active: false, percent: 0, status: '' });
       }

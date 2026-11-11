@@ -47,6 +47,10 @@ async function runTests() {
     assert.strictEqual(normalizeTeacherIdentityName('Bapak Ahmad Dahlan'), 'ahmad dahlan');
     assert.strictEqual(normalizeTeacherIdentityName('Ustadz Fauzi'), 'fauzi');
     assert.strictEqual(normalizeTeacherIdentityName('Guru Winda Wulansari'), 'winda wulansari');
+    assert.strictEqual(normalizeTeacherIdentityName('Bu Winda Wulansari'), 'winda wulansari', '"Bu" harus dibersihkan');
+    assert.strictEqual(normalizeTeacherIdentityName('H. Ahmad Dahlan'), 'ahmad dahlan', '"H." harus dibersihkan');
+    assert.strictEqual(normalizeTeacherIdentityName('Haji Ahmad Dahlan'), 'ahmad dahlan', '"Haji" harus dibersihkan');
+    assert.strictEqual(normalizeTeacherIdentityName('Ustadzah Fatimah'), 'fatimah', '"Ustadzah" harus dibersihkan');
   });
 
   test('1.3: isTeacherNameEquivalent mencocokkan "Ibu Winda Wulansari" dengan "Winda Wulansari"', () => {
@@ -59,6 +63,16 @@ async function runTests() {
       isTeacherNameEquivalent('Winda Wulansari', 'Ibu Winda Wulansari'),
       true,
       'Pencocokan ekuivalensi harus simetris dua arah'
+    );
+    assert.strictEqual(
+      isTeacherNameEquivalent('Bu Winda Wulansari', 'Winda Wulansari'),
+      true,
+      '"Bu Winda Wulansari" harus ekuivalen dengan "Winda Wulansari"'
+    );
+    assert.strictEqual(
+      isTeacherNameEquivalent('H. Ahmad Dahlan', 'Ahmad Dahlan'),
+      true,
+      '"H. Ahmad Dahlan" harus ekuivalen dengan "Ahmad Dahlan"'
     );
   });
 
@@ -278,6 +292,68 @@ async function runTests() {
     assert.strictEqual(result.jurnalColor, 'rose');
   });
 
+  test('2.5: Guru 3 jadwal KBM yang mengisi 2 kelas dan kelas ke-3 tidak masuk berstatus "2/3 Belum Lengkap" (bukan Tidak Masuk Kelas)', () => {
+    const teacher = { nama_guru: 'Ibu Winda Wulansari', user_id: 'usr-winda-1' };
+    const targetClasses = [
+      { id: 'sch-1', kelas: 'VII A', mata_pelajaran: 'Matematika' },
+      { id: 'sch-2', kelas: 'VII B', mata_pelajaran: 'Matematika' },
+      { id: 'sch-3', kelas: 'VII C', mata_pelajaran: 'Matematika' }
+    ];
+    const acceptedTeacherJournals = [
+      {
+        id: 'jur-1',
+        nama_guru: 'Winda Wulansari',
+        kelas: 'VII A',
+        mapel: 'Matematika',
+        materi: 'Aljabar 1',
+        kegiatan: 'Latihan 1',
+        status_verifikasi: 'Menunggu'
+      },
+      {
+        id: 'jur-2',
+        nama_guru: 'Winda Wulansari',
+        kelas: 'VII B',
+        mapel: 'Matematika',
+        materi: 'Aljabar 2',
+        kegiatan: 'Latihan 2',
+        status_verifikasi: 'Menunggu'
+      },
+      {
+        id: 'jur-3-tmk',
+        nama_guru: 'Ibu Winda Wulansari',
+        kelas: 'VII C',
+        mapel: 'Matematika',
+        materi: 'tidak masuk kelas',
+        kegiatan: 'tidak masuk kelas',
+        status_verifikasi: 'Tidak Masuk Kelas'
+      }
+    ];
+
+    const result = calculateAdminJurnalStatus(teacher, targetClasses, acceptedTeacherJournals, 'Hadir [07:15]');
+    assert.strictEqual(result.jurnalStatus, '2/3 Belum Lengkap', 'Guru 2 dari 3 kelas harus 2/3 Belum Lengkap');
+    assert.strictEqual(result.jurnalColor, 'amber');
+  });
+
+  test('2.6: Guru 3 jadwal KBM yang kelas ke-3 diisi oleh Guru Pengganti (INVAL) dihitung 3/3 Selesai', () => {
+    const teacherProfile = { nama_guru: 'Ibu Winda Wulansari', user_id: 'usr-winda-1' };
+    const invalJournal = {
+      id: 'jur-inval-3',
+      nama_guru: 'Pak Guru Inval',
+      kelas: 'VII C',
+      mapel: 'Matematika',
+      materi: 'Materi Pengganti',
+      kegiatan: 'Kegiatan Pengganti',
+      keterangan: '[INVAL - Menggantikan: Ibu Winda Wulansari] Jurnal KBM',
+      status_verifikasi: 'Menunggu'
+    };
+
+    assert.strictEqual(
+      isTeacherRecordMatch(invalJournal, teacherProfile),
+      true,
+      'isTeacherRecordMatch harus mengaitkan jurnal INVAL dengan guru yang digantikan'
+    );
+  });
+
   // --- SECTION 3: Verifikasi Kode Sumber Statis ---
   console.log('\n--- Section 3: Verifikasi Integritas Kode Sumber ---');
 
@@ -295,17 +371,17 @@ async function runTests() {
     assert.ok(posFilled < posTmk, 'filledCount >= targetCount harus dievaluasi sebelum hasTidakMasukKelas');
   });
 
-  test('3.2: workflow.ts normalizeTeacherIdentityName memuat honorifics (ibu, bapak, dll)', () => {
+  test('3.2: workflow.ts normalizeTeacherIdentityName memuat honorifics (ibu, bu, bapak, haji, dll)', () => {
     assert.ok(
-      workflowSrc.includes('ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru'),
-      'normalizeTeacherIdentityName harus memuat daftar honorific Indonesia'
+      workflowSrc.includes('ibu|bu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|haji|h|hj|hjh|kh|kyai|kiai'),
+      'normalizeTeacherIdentityName harus memuat daftar honorific Indonesia lengkap'
     );
   });
 
-  test('3.3: attendanceAlpa.ts cleanTeacherNameForMatch memuat honorifics (ibu, bapak, dll)', () => {
+  test('3.3: attendanceAlpa.ts cleanTeacherNameForMatch memuat honorifics (ibu, bu, bapak, haji, dll)', () => {
     assert.ok(
-      attendanceSrc.includes('ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru'),
-      'cleanTeacherNameForMatch harus memuat daftar honorific Indonesia'
+      attendanceSrc.includes('ibu|bu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|haji|h'),
+      'cleanTeacherNameForMatch harus memuat daftar honorific Indonesia lengkap'
     );
   });
 
@@ -313,6 +389,13 @@ async function runTests() {
     assert.ok(
       guruPresensiSrc.includes("getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id).then(latestState => {"),
       'GuruPresensi.tsx harus memuat latestState sebelum auto-record unfilled duties'
+    );
+  });
+
+  test('3.5: workflow.ts memuat integrasi INVAL substitution dalam isTeacherRecordMatch', () => {
+    assert.ok(
+      workflowSrc.includes('invalMatch') && workflowSrc.includes('Menggantikan'),
+      'isTeacherRecordMatch harus mengenali jurnal substitusi INVAL'
     );
   });
 

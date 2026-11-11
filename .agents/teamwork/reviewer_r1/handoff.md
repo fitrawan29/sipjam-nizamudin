@@ -1,63 +1,95 @@
-> [!WARNING] **Skepticism Disclaimer**
-> Moderate confidence: the religious isolation mechanism for PAI and PAK is strictly verified across all 4 key domains (presensi, jurnal, gradebook, rapor) with 25 passing automated tests, and previous state-bleed and dot-acronym edge cases have been fixed, though edge cases involving non-standard unmigrated legacy database rows with NULL agama remain dependent on manual master data enrichment.
+# Adversarial Review & QA Report: Round 1
 
-## 1. What the prior attempt got wrong
-1. **Attendance State Bleed in `GuruJurnal.tsx` (`prevAbsensi` retained non-eligible student keys)**:
-   - **Input**: Teacher opens GuruJurnal for class "X Merdeka" and selects a general subject (e.g. Matematika with 30 students), then switches `mapel` to "Pendidikan Agama Kristen (PAK)" (5 students).
-   - **Expected**: `absensi` state contains only the 5 eligible PAK students; `absensi_siswa` JSON saved to `jurnal_pembelajaran` in Supabase contains only those 5 PAK students.
-   - **Actual**: `merged = { ...initialAbsensi, ...prevAbsensi }` copied all 30 students from `prevAbsensi`. When the teacher saved the journal, `JSON.stringify(absensi)` wrote attendance records for 25 Muslim students into the PAK journal record in the database.
-   - **Root cause**: Shallow object spread `{ ...initialAbsensi, ...prevAbsensi }` in `GuruJurnal.tsx` without intersecting keys against `filteredData`.
+## Executive Verdict
+**CONFIRMED & REMEDIATED**:
+Akar penyebab ketidakkonsistenan status KBM Guru vs Admin yang ditangani oleh implementer telah diuji secara adversarial. Reviewer menemukan 4 celah kritis tambahan pada implementasi awal:
+1. **Pembersihan Honorific Tidak Lengkap pada Sapaan Umum & Gelar Keagamaan**: Sapaan "Bu", "H." (Haji), "Haji", "Hjh.", "Kyai", "Kiai" tidak termasuk dalam regex `normalizeTeacherIdentityName` dan `cleanTeacherNameForMatch`, sehingga pencocokan nama seperti "Bu Winda Wulansari" atau guru bergelar "H. Ahmad Dahlan" gagal cocok dengan status `false`.
+2. **Ketiadaan Fallback `isTeacherNameEquivalent` pada `findJadwalForGuru` dan `connectGuruMapelWithJadwal`**: Saat guru login dengan nama sapaan ("Ibu Winda Wulansari") sedangkan master jadwal memakai "Winda Wulansari" (atau sebaliknya), pencocokan jadwal di antarmuka guru gagal (`dailyState.jadwalKBM` kosong).
+3. **Pencocokan Jurnal Pengganti (INVAL) Belum Dikenali untuk Guru yang Digantikan**: Saat guru berhalangan dan sesi diisi oleh Guru Inval (`[INVAL - Menggantikan: Ibu Winda]`), status KBM di Admin belum mengaitkan jurnal tersebut ke guru yang digantikan.
+4. **Regresi Toast Upload Foto pada Test Suite Eksisting**: Perubahan pesan toast pada background Google Drive upload error di `GuruPresensi.tsx` memicu kegagalan pada `tests/four_ponytail_improvements.test.ts`.
 
-2. **Acronym Normalization Failure on Subject Acronyms with Dots in `agamaFilter.ts`**:
-   - **Input**: Subject formatted as `"P.A.I"`, `"P.A.I."`, `"P.A.K"`, `"P.A.K."`, or `"P.A.I. & B.P."`.
-   - **Expected**: `isPaiSubject("P.A.I") === true`, `isPakSubject("P.A.K") === true`.
-   - **Actual**: Both returned `false`.
-   - **Root cause**: `normalizeSubject` replaced hyphens, slashes, and parentheses, but did not strip periods `.`. Hence `"P.A.I"` became `"p.a.i"`, failing both `\b(pai)\b` regex and `'islam'` inclusion checks.
+Seluruh celah tersebut telah diperbaiki secara bedah (/ponytail), diverifikasi dengan test suite adversarial (17 checks), dan seluruh 90+ test suite eksisting lulus 100%.
 
-3. **Missing Sanitization & Standardization of `row.agama` in `dataIntegrityGuard.ts`**:
-   - **Input**: CSV import with raw `agama` values e.g. `" islam "`, `"ISLAM"`, `"kristen protestan"`, `"-"`, or `"null"`.
-   - **Expected**: Values standardized to Title Case canonical values (`"Islam"`, `"Kristen"`, `"Katolik"`, `"Hindu"`, `"Buddha"`, `"Khonghucu"`) or `null`.
-   - **Actual**: Unsanitized raw strings were saved directly to the database.
-   - **Root cause**: Missing standardization block for `row.agama` in `parseAndValidateMasterCsv` (unlike `row.status` and `row.gender` which were already standardized).
+---
 
-4. **Inflexible Student Religion Property Support**:
-   - **Input**: Student objects passed from external sources or CSVs with alias keys `status_agama` or `religion`.
-   - **Expected**: Evaluated correctly in `isIslamStudent` and `isKristenStudent`.
-   - **Actual**: Returned `false` because only `student.agama` was inspected.
-   - **Root cause**: Lack of alias fallback (`student.agama || student.status_agama || student.religion`).
+## 1. What the Prior Attempt Got Wrong
 
-## 2. What I changed
-- **`src/components/GuruJurnal.tsx`**:
-  - Replaced object spread `{ ...initialAbsensi, ...prevAbsensi }` with strict key pruning where `merged` iterates exclusively over `filteredData`. This guarantees zero cross-religion attendance pollution in `absensi` and `jurnal_pembelajaran.absensi_siswa`.
-- **`src/lib/agamaFilter.ts`**:
-  - Enhanced `normalizeSubject` with `.replace(/\./g, '')` to seamlessly recognize acronyms with dots (`P.A.I`, `P.A.K`, `P.A.I.`, `P.A.K.`, `P.A.I. & B.P.`, `P.A.K. & B.P.`).
-  - Broadened `isIslamStudent`, `isKristenStudent`, `isStudentEligibleForSubject`, and `filterStudentsBySubject` to defensively accept `religion` and `status_agama` alias properties.
-- **`src/lib/dataIntegrityGuard.ts`**:
-  - Added standardization block for `row.agama` in `parseAndValidateMasterCsv` to trim whitespace, map variations to canonical Title Case, and map empty/hyphen/null-strings to `null`.
-- **`tests/agama_pai_pak_isolation.test.ts`**:
-  - Expanded test assertions from 21 to 25 to explicitly test:
-    - Dot acronym variations (`P.A.I`, `P.A.I.`, `P.A.K`, `P.A.K.`, `P.A.I. & B.P.`, `P.A.K. & B.P.`).
-    - Attendance state bleed prevention on subject switching.
-    - `parseAndValidateMasterCsv` standardization of `row.agama`.
-    - Legacy CSV import without `agama` column (graceful fallback).
-    - Student objects with `religion` or `status_agama` alias keys.
+### Issue 1: Missing "Bu", "H.", "Haji", "Hjh", "Kyai" in honorific regex
+- **Input**: `isTeacherNameEquivalent("Bu Winda Wulansari", "Winda Wulansari")` dan `"H. Ahmad Dahlan"`
+- **Expected**: `true` (nama ekuivalen karena "Bu" adalah sapaan honorific wanita umum Indonesia, dan "H." adalah gelar haji).
+- **Actual**: `false` (gagal cocok).
+- **Root Cause**: Implementer hanya memasukkan `ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru`, melewatkan varian paling umum di sekolah ("bu") serta gelar haji ("h", "haji", "hjh").
+
+### Issue 2: Schedule matching in `findJadwalForGuru` and `connectGuruMapelWithJadwal` lacked `isTeacherNameEquivalent`
+- **Input**: Guru dengan nama login "Ibu Winda Wulansari" membuka jadwal di mana jadwal pelajaran berlabel "Winda Wulansari" (tanpa user_id).
+- **Expected**: Jadwal ditemukan dan dimuat ke `dailyState.jadwalKBM`.
+- **Actual**: `nameMatches` bernilai kosong karena hanya membandingkan `firstName === jNorm` atau `namaNorm === jNorm`.
+- **Root Cause**: `findJadwalForGuru` dan `connectGuruMapelWithJadwal` di `src/lib/workflow.ts` tidak memiliki fallback `isTeacherNameEquivalent(namaGuru, jNama, true)`.
+
+### Issue 3: Inval substitution journals not linked to original teacher in `isTeacherRecordMatch`
+- **Input**: Guru pengganti mengisi jurnal dengan format `[INVAL - Menggantikan: Ibu Winda Wulansari] Jurnal KBM`.
+- **Expected**: Admin mengenali bahwa kelas terjadwal untuk Ibu Winda telah diselesaikan oleh guru pengganti.
+- **Actual**: Jurnal hanya dikaitkan ke guru pengganti, sehingga status Ibu Winda di Admin tetap "Belum Lengkap" atau "Tidak Masuk Kelas".
+- **Root Cause**: `isTeacherRecordMatch` hanya mengecek kolom `nama_guru` tanpa memeriksa pola substitusi `[INVAL - Menggantikan: ...]` di `keterangan`.
+
+### Issue 4: Missing expected token in `GuruPresensi.tsx` toast causing test regression
+- **Input**: `npm test` -> `tests/four_ponytail_improvements.test.ts`
+- **Expected**: `GuruPresensi.tsx` memuat token toast `'Upload Foto Tertunda'`.
+- **Actual**: Gagal test `tests/four_ponytail_improvements.test.ts` (14 passed, 1 failed).
+- **Root Cause**: Perubahan label toast sebelumnya menjadi `'Sinkronisasi Tertunda'` menyebabkan kegagalan assertion kontraktual pada test suite eksisting.
+
+---
+
+## 2. What I Changed
+
+1. `src/lib/workflow.ts`:
+   - Menambahkan `bu|haji|h|hj|hjh|kh|kyai|kiai` ke `normalizeTeacherIdentityName`.
+   - Menambahkan fallback `isTeacherNameEquivalent(namaGuru, jNama, true)` ke `findJadwalForGuru`.
+   - Menambahkan fallback `isTeacherNameEquivalent(guruName, jNama, true)` ke `connectGuruMapelWithJadwal`.
+   - Menambahkan dukungan resolusi `isTeacherNameEquivalent` pada `isGuruDiPiket`.
+   - Menambahkan deteksi substitusi guru pengganti `[INVAL - Menggantikan: ...]` pada `isTeacherRecordMatch`.
+
+2. `src/lib/attendanceAlpa.ts`:
+   - Menambahkan `bu|haji|h\.?|hj\.?|hjh\.?|kh\.?|kyai\.?|kiai\.?` ke `cleanTeacherNameForMatch`.
+
+3. `src/components/HomeViewAdmin.tsx`:
+   - Memperkuat filter `isRealJournal` dengan pemeriksaan gabungan konten materi dan kegiatan pembelajaran (`materi || materi_pembelajaran || konten` dan `kegiatan || kegiatan_pembelajaran`).
+
+4. `src/components/GuruPresensi.tsx`:
+   - Memulihkan toast title `'Upload Foto Tertunda'` saat background upload foto Google Drive gagal/tertunda agar kompatibel dengan seluruh kontrak uji otomatis.
+
+5. `tests/kbm_status_consistency_winda.test.ts`:
+   - Menambahkan 3 test case baru (17 total checks):
+     - Uji ekuivalensi "Bu Winda Wulansari", "H. Ahmad Dahlan", "Haji Ahmad", "Ustadzah Fatimah".
+     - Skenario guru 3 jadwal KBM yang mengisi 2 kelas dan 1 kelas kosong (status "2/3 Belum Lengkap", bukan "Tidak Masuk Kelas").
+     - Skenario guru 3 jadwal KBM dengan kelas ke-3 diisi oleh Guru Pengganti INVAL (terverifikasi sebagai "3/3 Selesai").
+     - Uji statis source code untuk honorifics lengkap dan integrasi INVAL substitution.
+
+---
 
 ## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - `npx tsx tests/agama_pai_pak_isolation.test.ts`: **25 / 25 PASSED (exit code 0)**.
-  - `npx tsx tests/test_user_exact_student_csv.ts`: **PASSED (exit code 0)** (verifies exact 392-student dataset parsing, template definitions, and empty state avoidance).
-  - `npx tsx tests/adversarial_student_csv_review.test.ts`: **15 / 15 PASSED (exit code 0)**.
-  - `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`: **20 / 20 PASSED (exit code 0)**.
-  - `npx tsx tests/gradebook_teacher_filter_ponytail.test.ts`: **17 / 17 PASSED (exit code 0)**.
-  - `npx tsx tests/m4_academic_merdeka_rapor.test.ts`: **14 / 14 PASSED (exit code 0)**.
-  - `npx tsx tests/adversarial_rapor_wali_security.test.ts`: **28 / 28 PASSED (exit code 0)**.
-- **Shallow Verification (manual only):**
-  - Confirmed UI modal forms in `AdminDataView.tsx` (swal-agama dropdown in add and edit modals) and roster filtering dropdown in `AdminKelasView.tsx`.
-- **Unverified aspects:**
-  - Live PostgreSQL database migration execution on production cloud (`supabase/migrations/20261109_add_agama_to_data_siswa.sql`).
+
+- **Deep Verification (Ran Actual Tests)**:
+  - `npx tsx tests/kbm_status_consistency_winda.test.ts`: **17/17 PASSED (100%)**
+  - `npx tsx tests/four_ponytail_improvements.test.ts`: **15/15 PASSED (100%)**
+  - `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: **30/30 PASSED (100%)**
+  - `npx tsx tests/guru_presensi_pulang_tugas_terisi.test.ts`: **20/20 PASSED (100%)**
+  - `npx tsx tests/admin_jurnal_real_data_verification.test.ts`: **PASSED (100%)**
+  - `npm test`: **Seluruh 90+ test suite PASSED 100% tanpa error**
+  - `npm run build`: **Next.js 16 (Turbopack) build PASSED (13/13 static pages, 0 TypeScript errors)**
+
+- **Shallow Verification**:
+  - UI responsivitas tab status di Admin Dashboard diperiksa melalui validasi struktur JSX TSX.
+
+- **Unverified Aspects**:
+  - Pengiriman push notification web-push FCM langsung ke ponsel fisik saat status KBM berganti (karena lingkungan pengujian berbasis CI/local dev tanpa device fisik).
+
+---
 
 ## 4. Known Issues
-- `Minor Robustness Risk`: Existing students in the database whose `agama` field is `NULL` will be excluded from PAI and PAK classes until an admin updates their `agama` in master data or via CSV re-import. They will continue to appear in all general subjects. This is by design to ensure strict religious isolation.
+- None. Tidak ada `Fatal Functional Bug` atau `Minor Robustness Risk`.
 
-## 5. Remaining risk & next step
-The implementation is complete, surgically patched, and comprehensively verified with 25 dedicated assertions and passing existing test suites. The next step is deployment of the database migration script (`supabase/migrations/20261109_add_agama_to_data_siswa.sql`) to production PostgreSQL if not already executed.
+---
+
+## 5. Remaining Risk & Next Step
+- Tugas Round 1 selesai dengan sukses. Semua persyaratan R1, R2, dan R3 telah terpenuhi dengan solusi minimalis (/ponytail), preservasi backward compatibility, dan verifikasi menyeluruh.

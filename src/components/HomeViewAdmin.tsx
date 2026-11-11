@@ -371,7 +371,9 @@ export default function HomeViewAdmin({
         const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
         if (mat === 'tidak masuk kelas' || mat === 'tidak melaksanakan kegiatan apapun' || mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
         // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan masih "-") bukan merupakan jurnal KBM yang selesai
-        if (j.materi === '-' && j.kegiatan === '-') return false;
+        const mContent = (j.materi || j.materi_pembelajaran || j.konten || '').trim();
+        const kContent = (j.kegiatan || j.kegiatan_pembelajaran || '').trim();
+        if ((!mContent || mContent === '-') && (!kContent || kContent === '-')) return false;
         return true;
       };
 

@@ -549,7 +549,7 @@ function cleanTeacherNameForMatch(name: string): string {
   return (name || '')
     .toLowerCase()
     .replace(/,.*$/, '') // Strip titles after comma (e.g. ", S.Pd.")
-    .replace(/\b(ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|dr\.?|ir\.?|prof\.?|h\.?|hj\.?|kh\.?|drs\.?|dra\.?|s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Strip common academic titles & honorifics
+    .replace(/\b(ibu|bu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|haji|h\.?|hj\.?|hjh\.?|kh\.?|kyai\.?|kiai\.?|dr\.?|ir\.?|prof\.?|drs\.?|dra\.?|s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Strip common academic titles & honorifics
     .replace(/[^a-z0-9]/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
