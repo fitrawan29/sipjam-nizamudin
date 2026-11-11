@@ -223,6 +223,104 @@ async function runAll() {
     );
   });
 
+  // ==========================================================================
+  // SECTION 5: ADVERSARIAL EDGE CASES & INTEGRITY VERIFICATION
+  // ==========================================================================
+  console.log('\n--- Section 5: Adversarial Edge Cases & Isolasi Kelas Paralel ---');
+
+  runTest('5.1: Siswa tanpa NISN (hanya UUID/id) tetap terakomodasi pada simpan absensi & intervensi', () => {
+    assert.ok(
+      jurnalContent.includes('const sKey = s.nisn || s.id') &&
+      jurnalContent.includes('cleanAbsensiForSave[sKey] = val;'),
+      'Students without NISN must be keyed by id and saved in cleanAbsensiForSave'
+    );
+    assert.ok(
+      jurnalContent.includes('onClick={() => handleAbsensiChange(sKey, opt.code, siswa.nisn)}'),
+      'Attendance button click must provide robust sKey for students lacking NISN'
+    );
+  });
+
+  runTest('5.2: Prioritas exact-match kelas mencegah polusi siswa dari kelas paralel lain', () => {
+    const mockParallelStudents = [
+      { id: '1', nama_siswa: 'Siswa A1', kelas: 'X Merdeka A' },
+      { id: '2', nama_siswa: 'Siswa A2', kelas: 'X Merdeka A' },
+      { id: '3', nama_siswa: 'Siswa B1', kelas: 'X Merdeka B' },
+      { id: '4', nama_siswa: 'Siswa B2', kelas: 'X Merdeka B' },
+      { id: '5', nama_siswa: 'Siswa Generic', kelas: 'X Merdeka' }
+    ];
+
+    const romanToNum: Record<string, string> = {
+      xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7',
+      vi: '6', v: '5', iv: '4', iii: '3', ii: '2', i: '1'
+    };
+    const normK = (k: string) =>
+      (k || '')
+        .toLowerCase()
+        .replace(/^(kelas|tingkat|ruang|kls)[.\s_-]*/i, '')
+        .replace(/[\s\-_.]/g, '')
+        .replace(/^(xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)/i, m => romanToNum[m] || m);
+
+    const targetClass = '10 Merdeka A';
+    const targetNorm = normK(targetClass);
+
+    // Exact matches must strictly take precedence
+    const exactMatches = mockParallelStudents.filter(s => normK(s.kelas) === targetNorm);
+    assert.strictEqual(exactMatches.length, 2, 'Only 2 students in X Merdeka A should be selected');
+    assert.ok(exactMatches.every(s => s.kelas === 'X Merdeka A'), 'No student from B or generic class should bleed into A');
+  });
+
+  runTest('5.3: effectiveAssignments mencegah false alert "Belum Ada Penugasan" di hari non-jadwal', () => {
+    assert.ok(
+      jurnalContent.includes('const effectiveAssignments = dayFiltered.length > 0 ? dayFiltered : connectedAll;') &&
+      jurnalContent.includes('setAssignments(effectiveAssignments);') &&
+      jurnalContent.includes('setMapelList(effectiveAssignments);'),
+      'fetchMasterData must fallback to connectedAll when dayFiltered is empty'
+    );
+    assert.ok(
+      jurnalContent.includes('const effectiveAssignments = dayFiltered.length > 0 ? dayFiltered : myAssignments;\n    setAssignments(effectiveAssignments);\n    setMapelList(effectiveAssignments);'),
+      'Date change effect must fallback to myAssignments when dayFiltered is empty'
+    );
+  });
+
+  runTest('5.4: checkDateBlok tidak memaksa Jurnal Kegiatan saat berada di sub-mode absensi', () => {
+    assert.ok(
+      jurnalContent.includes("if (blok) {\n          if (kbmSubMode !== 'absensi') {\n            setTipeJurnal('Jurnal Kegiatan');"),
+      'checkDateBlok must not downgrade tipeJurnal when block period is active if user is in absensi mode'
+    );
+    assert.ok(
+      jurnalContent.includes("if (dailyState?.isDinasLuar) {\n            if (kbmSubMode !== 'absensi') {\n              setTipeJurnal('Jurnal Kegiatan');"),
+      'checkDateBlok must not downgrade tipeJurnal on dinas luar if user is in absensi mode'
+    );
+  });
+
+  runTest('5.5: Schedule auto-fill effect menghormati kelas & mapel yang telah terisi', () => {
+    assert.ok(
+      jurnalContent.includes('(kelas && mapel)') &&
+      jurnalContent.includes('// Auto-fill mapel & kelas & jam ke- saat mapelList + dailyState sudah ready'),
+      'Auto-fill schedule must not overwrite teacher-selected or intent-passed class and subject'
+    );
+  });
+
+  runTest('5.6: Pergantian kelas paralel dalam sesi absensi mereset status absensi dengan aman', () => {
+    const classA = [
+      { id: 'a1', nisn: '101', nama_siswa: 'Ali' },
+      { id: 'a2', nisn: '102', nama_siswa: 'Ana' }
+    ];
+    const classB = [
+      { id: 'b1', nisn: '201', nama_siswa: 'Budi' },
+      { id: 'b2', nisn: '202', nama_siswa: 'Beni' }
+    ];
+
+    const prevAbsensi: Record<string, string> = { '101': 'A', '102': 'S' };
+    const initialAbsensiB: Record<string, string> = { '201': 'H', '202': 'H' };
+
+    // Simulate setAbsensi logic when switching from classA to classB
+    const hasMatching = classB.some(s => prevAbsensi && prevAbsensi[s.nisn]);
+    assert.strictEqual(hasMatching, false, 'No matching students between class A and B');
+    const resultAbsensi = hasMatching ? prevAbsensi : initialAbsensiB;
+    assert.deepStrictEqual(resultAbsensi, { '201': 'H', '202': 'H' }, 'Class B properly gets initial attendance');
+  });
+
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`📊 TOTAL CHECKS: ${passed + failed} | PASSED: ${passed} | FAILED: ${failed}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

@@ -374,12 +374,15 @@ export default function GuruJurnal({
   };
 
 
+  const [isFetchingStudents, setIsFetchingStudents] = useState(false);
+
   const calculateKehadiranSummary = (abs: Record<string, string>, stList: any[]): string => {
     const total = stList?.length || 0;
     const counts = { H: 0, I: 0, S: 0, A: 0 };
     if (stList && stList.length > 0) {
-      stList.forEach(s => {
-        const status = (abs[s.nisn] || 'H').toUpperCase();
+      stList.forEach((s, idx) => {
+        const sKey = s?.nisn || s?.id || `student-${idx}`;
+        const status = ((s.nisn && abs[s.nisn]) || abs[sKey] || 'H').toUpperCase();
         if (status === 'H') counts.H++;
         else if (status === 'I') counts.I++;
         else if (status === 'S') counts.S++;
@@ -522,15 +525,16 @@ export default function GuruJurnal({
 
           const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
           const dayFiltered = filterGuruMapelByHari(connectedAll, activeHari, mapel);
+          const effectiveAssignments = dayFiltered.length > 0 ? dayFiltered : connectedAll;
 
-          setAssignments(dayFiltered);
-          setMapelList(dayFiltered);
+          setAssignments(effectiveAssignments);
+          setMapelList(effectiveAssignments);
 
-          const assignedKelas = [...new Set(dayFiltered.map(d => d.kelas).filter(Boolean))].sort();
+          const assignedKelas = [...new Set(effectiveAssignments.map(d => d.kelas).filter(Boolean))].sort();
           setKelasList(assignedKelas as string[]);
 
           // Auto-select if teacher only teaches 1 subject on active day
-          if (dayFiltered.length === 1) {
+          if (dayFiltered.length === 1 && !kelas) {
             setMapel(prev => prev || dayFiltered[0].nama_mata_pelajaran);
             setKelas(prev => prev || dayFiltered[0].kelas);
           }
@@ -691,12 +695,12 @@ export default function GuruJurnal({
     const activeHari = getWitaDayName(tanggal ? new Date(tanggal + 'T00:00:00+08:00') : new Date());
     const dayFiltered = filterGuruMapelByHari(myAssignments, activeHari, mapel);
     const effectiveAssignments = dayFiltered.length > 0 ? dayFiltered : myAssignments;
-    setAssignments(dayFiltered);
-    setMapelList(dayFiltered);
+    setAssignments(effectiveAssignments);
+    setMapelList(effectiveAssignments);
     const assignedKelas = [...new Set(effectiveAssignments.map((d: any) => d.kelas).filter(Boolean))].sort() as string[];
     setKelasList(assignedKelas);
 
-    if (dayFiltered.length === 1) {
+    if (dayFiltered.length === 1 && !kelas) {
       const onlyMapel = dayFiltered[0].nama_mata_pelajaran || dayFiltered[0].nama_mapel;
       if (!mapel || !dayFiltered.some((m: any) => (m.nama_mata_pelajaran || m.nama_mapel) === mapel)) {
         setMapel(onlyMapel);
@@ -713,7 +717,8 @@ export default function GuruJurnal({
       isInval ||
       isFetchingAssignments ||
       mapelList.length === 0 ||
-      !dailyState?.jadwalKBM
+      !dailyState?.jadwalKBM ||
+      (kelas && mapel)
     ) return;
 
     const jadwalHariIni = dailyState.jadwalKBM.filter((jk: any) => !jk.isBlocked);
@@ -778,7 +783,9 @@ export default function GuruJurnal({
         const blok = await getActiveSistemBlok(tanggal, user?.sekolah_id);
         setDateBlok(blok);
         if (blok) {
-          setTipeJurnal('Jurnal Kegiatan');
+          if (kbmSubMode !== 'absensi') {
+            setTipeJurnal('Jurnal Kegiatan');
+          }
           if (!materi || materi === dateBlok?.nama_kegiatan || materi === dailyState?.blokInfo?.nama_kegiatan) {
             setMateri(blok.nama_kegiatan);
           }
@@ -787,7 +794,9 @@ export default function GuruJurnal({
             setMateri('');
           }
           if (dailyState?.isDinasLuar) {
-            setTipeJurnal('Jurnal Kegiatan');
+            if (kbmSubMode !== 'absensi') {
+              setTipeJurnal('Jurnal Kegiatan');
+            }
           } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {
             setTipeJurnal('Jurnal KBM');
           } else if (kbmSubMode !== 'absensi') {
@@ -799,7 +808,7 @@ export default function GuruJurnal({
       }
     };
     checkDateBlok();
-  }, [tanggal, dailyState?.isBlok, dailyState?.isDinasLuar, user?.sekolah_id]);
+  }, [tanggal, dailyState?.isBlok, dailyState?.isDinasLuar, user?.sekolah_id, kbmSubMode]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -812,6 +821,8 @@ export default function GuruJurnal({
         setKehadiranMurid('');
         return;
       }
+      setIsFetchingStudents(true);
+      try {
       // AST preservation compatibility for tests/m4_wali_kelas_guru_sync.test.ts:
       // if (user?.sekolah_id) mapelQuery = mapelQuery.eq('sekolah_id', user.sekolah_id);
       // if (user?.sekolah_id) siswaQuery = siswaQuery.eq('sekolah_id', user.sekolah_id);
@@ -844,197 +855,227 @@ export default function GuruJurnal({
 
         if (allSiswa && allSiswa.length > 0) {
           const romanToNum: Record<string, string> = {
-            xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7'
+            xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7',
+            vi: '6', v: '5', iv: '4', iii: '3', ii: '2', i: '1'
           };
           const normK = (k: string) =>
             (k || '')
               .toLowerCase()
-              .replace(/^kelas\s+/i, '')
+              .replace(/^(kelas|tingkat|ruang|kls)[.\s_-]*/i, '')
               .replace(/[\s\-_.]/g, '')
-              .replace(/^(xii|xi|x|ix|viii|vii)/i, m => romanToNum[m] || m);
+              .replace(/^(xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)/i, m => romanToNum[m] || m);
 
           const targetNorm = normK(kelas);
-          const matched = allSiswa.filter(s => {
+          // Prioritas 1: Pencocokan ekuivalensi kelas persis (menghindari kontaminasi kelas paralel)
+          const exactMatches = allSiswa.filter(s => {
             const sNorm = normK(s.kelas);
-            return sNorm === targetNorm || (targetNorm && (sNorm.startsWith(targetNorm) || targetNorm.startsWith(sNorm)));
+            return sNorm === targetNorm;
           });
-          if (matched.length > 0) {
-            data = matched;
+
+          if (exactMatches.length > 0) {
+            data = exactMatches;
+          } else {
+            // Prioritas 2: Resolusi kelas kanonik dari suffix mapel (e.g. Tutuyan: 'B. Indonesia - X A')
+            const availableClasses = [...new Set(allSiswa.map(s => s.kelas).filter(Boolean))] as string[];
+            const canonical = resolveCanonicalClass(kelas, mapel, availableClasses);
+            const canonicalNorm = canonical ? normK(canonical) : '';
+            const canonicalMatches = canonicalNorm ? allSiswa.filter(s => normK(s.kelas) === canonicalNorm) : [];
+            if (canonicalMatches.length > 0) {
+              data = canonicalMatches;
+            } else {
+              // Prioritas 3: Fallback kecocokan prefix
+              const matched = allSiswa.filter(s => {
+                const sNorm = normK(s.kelas);
+                return sNorm === targetNorm || (targetNorm && (sNorm.startsWith(targetNorm) || targetNorm.startsWith(sNorm)));
+              });
+              if (matched.length > 0) {
+                data = matched;
+              }
+            }
           }
         }
       }
 
-      if (data) {
-        let filteredData = filterStudentsBySubject(data, mapel);
-        if (filteredData.length === 0 && data.length > 0 && !data.some(s => s.agama || s.status_agama || s.religion)) {
-          filteredData = data;
-        }
-        setStudents(filteredData);
+        if (data) {
+          let filteredData = filterStudentsBySubject(data, mapel);
+          if (filteredData.length === 0 && data.length > 0 && (!data.some(s => s.agama || s.status_agama || s.religion) || kbmSubMode === 'absensi')) {
+            filteredData = data;
+          }
+          setStudents(filteredData);
 
-        // Pre-populate attendance from canonical public.absensi for this class and date
-        const tgl = tanggal || getWitaDateStr();
-        let aQuery = supabase.from('absensi').select('*').eq('tanggal', tgl).eq('kelas', kelas);
-        if (user?.sekolah_id) aQuery = aQuery.eq('sekolah_id', user.sekolah_id);
-        const { data: absData } = await aQuery;
+          // Pre-populate attendance from canonical public.absensi for this class and date
+          const tgl = tanggal || getWitaDateStr();
+          let aQuery = supabase.from('absensi').select('*').eq('tanggal', tgl).eq('kelas', kelas);
+          if (user?.sekolah_id) aQuery = aQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: absData } = await aQuery;
 
-        // Cek data sesi KBM yang sudah tersimpan di jurnal_pembelajaran untuk kelas, mapel, dan tanggal ini
-        const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
-        const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
-        const normName = normalizeTeacherIdentityName(targetSearchName);
-        const cleanNama = (user?.nama || '').split(',')[0].trim();
-        const searchEffectiveName = (isInval && guruDigantikan?.nama)
-          ? (normName.split(' ')[0] || targetSearchName.split(',')[0].trim())
-          : cleanNama;
-        let sessionJQuery = supabase
-          .from('jurnal_pembelajaran')
-          .select('*')
-          .eq('tanggal', tgl)
-          .eq('kelas', kelas);
-        if (user?.sekolah_id) sessionJQuery = sessionJQuery.eq('sekolah_id', user.sekolah_id);
-        if (targetSearchUserId && searchEffectiveName) {
-          sessionJQuery = sessionJQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
-        } else if (targetSearchUserId) {
-          sessionJQuery = sessionJQuery.eq('user_id', targetSearchUserId);
-        } else if (searchEffectiveName) {
-          sessionJQuery = sessionJQuery.ilike('nama_guru', `%${searchEffectiveName}%`);
-        }
-        const { data: sessionData } = await sessionJQuery;
-        const matchingSession = (sessionData || []).find((j: any) =>
-          j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })
-        );
+          // Cek data sesi KBM yang sudah tersimpan di jurnal_pembelajaran untuk kelas, mapel, dan tanggal ini
+          const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
+          const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
+          const normName = normalizeTeacherIdentityName(targetSearchName);
+          const cleanNama = (user?.nama || '').split(',')[0].trim();
+          const searchEffectiveName = (isInval && guruDigantikan?.nama)
+            ? (normName.split(' ')[0] || targetSearchName.split(',')[0].trim())
+            : cleanNama;
+          let sessionJQuery = supabase
+            .from('jurnal_pembelajaran')
+            .select('*')
+            .eq('tanggal', tgl)
+            .eq('kelas', kelas);
+          if (user?.sekolah_id) sessionJQuery = sessionJQuery.eq('sekolah_id', user.sekolah_id);
+          if (targetSearchUserId && searchEffectiveName) {
+            sessionJQuery = sessionJQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
+          } else if (targetSearchUserId) {
+            sessionJQuery = sessionJQuery.eq('user_id', targetSearchUserId);
+          } else if (searchEffectiveName) {
+            sessionJQuery = sessionJQuery.ilike('nama_guru', `%${searchEffectiveName}%`);
+          }
+          const { data: sessionData } = await sessionJQuery;
+          const matchingSession = (sessionData || []).find((j: any) =>
+            j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })
+          );
 
-        let savedAbsensiMap: Record<string, string> | null = null;
-        if (matchingSession?.absensi_siswa) {
-          try {
-            const parsed = typeof matchingSession.absensi_siswa === 'string'
-              ? JSON.parse(matchingSession.absensi_siswa)
-              : matchingSession.absensi_siswa;
-            if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-              savedAbsensiMap = parsed;
-            }
-          } catch {}
-        }
-
-        // Query gate attendance from presensi_siswa for today and this class (status = 'datang')
-        let pQuery = supabase
-          .from('presensi_siswa')
-          .select('siswa_id, nisn, nama_siswa, jam, status')
-          .eq('kelas', kelas)
-          .eq('tanggal', tgl)
-          .eq('status', 'datang');
-        if (user?.sekolah_id) pQuery = pQuery.eq('sekolah_id', user.sekolah_id);
-        const { data: pData } = await pQuery;
-
-        const pMap: Record<string, { jam: string }> = {};
-        if (pData) {
-          pData.forEach((p: any) => {
-            const jamStr = formatPresensiTime(p.jam) || '';
-            if (p.nisn) pMap[p.nisn] = { jam: jamStr };
-            if (p.siswa_id) pMap[p.siswa_id] = { jam: jamStr };
-          });
-        }
-        setPiketAttendance(pMap);
-
-        // Ekstrak metadata perubahan terakhir presensi siswa (Wali Kelas / Piket / Guru)
-        const changeMap: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
-        if (absData) {
-          absData.forEach((a: any) => {
-            if (a.nisn && (a.diubah_oleh || a.sumber_perubahan)) {
-              changeMap[a.nisn] = {
-                diubah_oleh: a.diubah_oleh || (a.sumber_perubahan === 'Wali Kelas' ? 'Wali Kelas' : 'Guru Piket'),
-                sumber_perubahan: a.sumber_perubahan || 'Sistem',
-                keterangan: a.keterangan || null
-              };
-            }
-          });
-        }
-        setLastChangeMap(changeMap);
-
-        // Sinkronisasi Referensi Pagi:
-        // - Jika pagi diisi Sakit/Izin: status di mapel otomatis terkunci sesuai status tersebut; selain itu (Alfa/Bolos/Hadir) masih dapat disesuaikan
-        // - Jika pagi diisi Hadir: status default awal di mapel adalah Hadir
-        const initialAbsensi: Record<string, string> = {};
-        const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean; isMorningHadir?: boolean }> = {};
-
-        filteredData.forEach(s => {
-          if (savedAbsensiMap && savedAbsensiMap[s.nisn]) {
-            const savedSt = savedAbsensiMap[s.nisn];
-            initialAbsensi[s.nisn] = savedSt;
-            lockedMap[s.nisn] = {
-              status: (savedSt as any) || 'H',
-              label: savedSt === 'S' ? 'Sakit' : savedSt === 'I' ? 'Izin' : savedSt === 'A' ? 'Alfa' : savedSt === 'B' ? 'Bolos' : 'Hadir',
-              isLocked: false,
-              isMorningHadir: false
-            };
-            return;
+          let savedAbsensiMap: Record<string, string> | null = null;
+          if (matchingSession?.absensi_siswa) {
+            try {
+              const parsed = typeof matchingSession.absensi_siswa === 'string'
+                ? JSON.parse(matchingSession.absensi_siswa)
+                : matchingSession.absensi_siswa;
+              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+                savedAbsensiMap = parsed;
+              }
+            } catch {}
           }
 
-          const existing = absData?.find(a => (a.siswa_id && s.id && a.siswa_id === s.id) || (a.nisn && a.nisn === s.nisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
-          if (existing) {
-            const rawSt = String(existing.status || '').trim().toLowerCase();
-            if (rawSt === 'sakit' || rawSt === 's') {
-              initialAbsensi[s.nisn] = 'S';
-              lockedMap[s.nisn] = { status: 'S', label: 'Sakit', isLocked: true, isMorningHadir: false };
-            } else if (rawSt === 'izin' || rawSt === 'i') {
-              initialAbsensi[s.nisn] = 'I';
-              lockedMap[s.nisn] = { status: 'I', label: 'Izin', isLocked: true, isMorningHadir: false };
-            } else if (rawSt === 'alpa' || rawSt === 'a' || rawSt === 'alfa') {
-              initialAbsensi[s.nisn] = 'A';
-              lockedMap[s.nisn] = { status: 'A', label: 'Alfa', isLocked: false, isMorningHadir: false };
-            } else if (rawSt === 'bolos' || rawSt === 'b') {
-              initialAbsensi[s.nisn] = 'B';
-              lockedMap[s.nisn] = { status: 'A', label: 'Bolos', isLocked: false, isMorningHadir: false };
-            } else if (rawSt === 'hadir' || rawSt === 'h') {
-              initialAbsensi[s.nisn] = 'H';
-              lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: true };
-            } else {
-              initialAbsensi[s.nisn] = 'H';
-              lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: false };
-            }
-          } else {
-            initialAbsensi[s.nisn] = 'H';
-            lockedMap[s.nisn] = { status: 'H', label: 'Hadir', isLocked: false, isMorningHadir: false };
-          }
-        });
-        setMorningLockedAttendance(lockedMap);
+          // Query gate attendance from presensi_siswa for today and this class (status = 'datang')
+          let pQuery = supabase
+            .from('presensi_siswa')
+            .select('siswa_id, nisn, nama_siswa, jam, status')
+            .eq('kelas', kelas)
+            .eq('tanggal', tgl)
+            .eq('status', 'datang');
+          if (user?.sekolah_id) pQuery = pQuery.eq('sekolah_id', user.sekolah_id);
+          const { data: pData } = await pQuery;
 
-        if (matchingSession) {
-          if (matchingSession.kehadiran_murid && matchingSession.kehadiran_murid !== '-') {
-            setKehadiranMurid(matchingSession.kehadiran_murid);
+          const pMap: Record<string, { jam: string }> = {};
+          if (pData) {
+            pData.forEach((p: any) => {
+              const jamStr = formatPresensiTime(p.jam) || '';
+              if (p.nisn) pMap[p.nisn] = { jam: jamStr };
+              if (p.siswa_id) pMap[p.siswa_id] = { jam: jamStr };
+            });
           }
-          if (matchingSession.catatan_khusus_siswa) setCatatanSiswa(prev => prev || matchingSession.catatan_khusus_siswa);
-          if (matchingSession.materi && matchingSession.materi !== '-') {
-            setMateri(prev => prev || matchingSession.materi);
-            setKonten(prev => prev || matchingSession.konten || matchingSession.materi);
-          }
-          if (matchingSession.tujuan_pembelajaran && matchingSession.tujuan_pembelajaran !== '-') {
-            setTujuanPembelajaran(prev => prev || matchingSession.tujuan_pembelajaran);
-          }
-          if (matchingSession.kktp) setKktp(prev => prev || matchingSession.kktp);
-          if (matchingSession.kegiatan && matchingSession.kegiatan !== '-') setKegiatan(prev => prev || matchingSession.kegiatan);
-          if (matchingSession.lokasi_kbm) setLokasiKbm(prev => prev || matchingSession.lokasi_kbm);
-          if (matchingSession.catatan_refleksi && matchingSession.catatan_refleksi !== '-') setRefleksi(prev => prev || matchingSession.catatan_refleksi);
-          if (matchingSession.link_bukti_foto || matchingSession.foto_kegiatan) {
-            setPhotoPreviewUrl(prev => prev || matchingSession.link_bukti_foto || matchingSession.foto_kegiatan);
-          }
-        }
+          setPiketAttendance(pMap);
 
-        setAbsensi((prevAbsensi) => {
-          const hasMatchingStudent = filteredData.some(s => s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
-          if (hasMatchingStudent) {
-            // Strictly retain attendance status only for students in filteredData to prevent non-eligible student bleed
-            const merged: Record<string, string> = {};
-            filteredData.forEach(s => {
-              if (s.nisn) {
-                merged[s.nisn] = (prevAbsensi && prevAbsensi[s.nisn]) || initialAbsensi[s.nisn] || 'H';
+          // Ekstrak metadata perubahan terakhir presensi siswa (Wali Kelas / Piket / Guru)
+          const changeMap: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
+          if (absData) {
+            absData.forEach((a: any) => {
+              const recKey = a.nisn || a.siswa_id;
+              if (recKey && (a.diubah_oleh || a.sumber_perubahan)) {
+                changeMap[recKey] = {
+                  diubah_oleh: a.diubah_oleh || (a.sumber_perubahan === 'Wali Kelas' ? 'Wali Kelas' : 'Guru Piket'),
+                  sumber_perubahan: a.sumber_perubahan || 'Sistem',
+                  keterangan: a.keterangan || null
+                };
               }
             });
-            setKehadiranMurid(calculateKehadiranSummary(merged, filteredData));
-            return merged;
           }
-          setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, filteredData));
-          return initialAbsensi;
-        });
+          setLastChangeMap(changeMap);
+
+          // Sinkronisasi Referensi Pagi:
+          // - Jika pagi diisi Sakit/Izin: status di mapel otomatis terkunci sesuai status tersebut; selain itu (Alfa/Bolos/Hadir) masih dapat disesuaikan
+          // - Jika pagi diisi Hadir: status default awal di mapel adalah Hadir
+          const initialAbsensi: Record<string, string> = {};
+          const lockedMap: Record<string, { status: 'H' | 'S' | 'I' | 'A'; label: string; isLocked: boolean; isMorningHadir?: boolean }> = {};
+
+          filteredData.forEach((s, idx) => {
+            const sKey = s.nisn || s.id || `student-${idx}`;
+            const sNisn = s.nisn;
+            const sId = s.id;
+            const savedSt = savedAbsensiMap && (savedAbsensiMap[sKey] || (sNisn && savedAbsensiMap[sNisn]) || (sId && savedAbsensiMap[sId]));
+            if (savedSt) {
+              initialAbsensi[sKey] = savedSt;
+              if (sNisn) initialAbsensi[sNisn] = savedSt;
+              lockedMap[sKey] = {
+                status: (savedSt as any) || 'H',
+                label: savedSt === 'S' ? 'Sakit' : savedSt === 'I' ? 'Izin' : savedSt === 'A' ? 'Alfa' : savedSt === 'B' ? 'Bolos' : 'Hadir',
+                isLocked: false,
+                isMorningHadir: false
+              };
+              if (sNisn) lockedMap[sNisn] = lockedMap[sKey];
+              return;
+            }
+
+            const existing = absData?.find(a => (a.siswa_id && sId && a.siswa_id === sId) || (a.nisn && sNisn && a.nisn === sNisn) || (a.nama_siswa && s.nama_siswa && a.nama_siswa.trim().toLowerCase() === s.nama_siswa.trim().toLowerCase()));
+            let st = 'H';
+            let lbl = 'Hadir';
+            let isLck = false;
+            let isMorn = false;
+
+            if (existing) {
+              const rawSt = String(existing.status || '').trim().toLowerCase();
+              if (rawSt === 'sakit' || rawSt === 's') { st = 'S'; lbl = 'Sakit'; isLck = true; }
+              else if (rawSt === 'izin' || rawSt === 'i') { st = 'I'; lbl = 'Izin'; isLck = true; }
+              else if (rawSt === 'alpa' || rawSt === 'a' || rawSt === 'alfa') { st = 'A'; lbl = 'Alfa'; }
+              else if (rawSt === 'bolos' || rawSt === 'b') { st = 'A'; lbl = 'Bolos'; }
+              else if (rawSt === 'hadir' || rawSt === 'h') { st = 'H'; lbl = 'Hadir'; isMorn = true; }
+            }
+            initialAbsensi[sKey] = st;
+            if (sNisn) initialAbsensi[sNisn] = st;
+            lockedMap[sKey] = { status: st as any, label: lbl, isLocked: isLck, isMorningHadir: isMorn };
+            if (sNisn) lockedMap[sNisn] = lockedMap[sKey];
+          });
+          setMorningLockedAttendance(lockedMap);
+
+          if (matchingSession) {
+            if (matchingSession.kehadiran_murid && matchingSession.kehadiran_murid !== '-') {
+              setKehadiranMurid(matchingSession.kehadiran_murid);
+            }
+            if (matchingSession.catatan_khusus_siswa) setCatatanSiswa(prev => prev || matchingSession.catatan_khusus_siswa);
+            if (matchingSession.materi && matchingSession.materi !== '-') {
+              setMateri(prev => prev || matchingSession.materi);
+              setKonten(prev => prev || matchingSession.konten || matchingSession.materi);
+            }
+            if (matchingSession.tujuan_pembelajaran && matchingSession.tujuan_pembelajaran !== '-') {
+              setTujuanPembelajaran(prev => prev || matchingSession.tujuan_pembelajaran);
+            }
+            if (matchingSession.kktp) setKktp(prev => prev || matchingSession.kktp);
+            if (matchingSession.kegiatan && matchingSession.kegiatan !== '-') setKegiatan(prev => prev || matchingSession.kegiatan);
+            if (matchingSession.lokasi_kbm) setLokasiKbm(prev => prev || matchingSession.lokasi_kbm);
+            if (matchingSession.catatan_refleksi && matchingSession.catatan_refleksi !== '-') setRefleksi(prev => prev || matchingSession.catatan_refleksi);
+            if (matchingSession.link_bukti_foto || matchingSession.foto_kegiatan) {
+              setPhotoPreviewUrl(prev => prev || matchingSession.link_bukti_foto || matchingSession.foto_kegiatan);
+            }
+          }
+
+          setAbsensi((prevAbsensi) => {
+            const hasMatchingStudent = filteredData.some((s, idx) => {
+              const k = s.nisn || s.id || `student-${idx}`;
+              return (k && prevAbsensi && prevAbsensi[k]) || (s.nisn && prevAbsensi && prevAbsensi[s.nisn]);
+            });
+            if (hasMatchingStudent) {
+              // Strictly retain attendance status only for students in filteredData to prevent non-eligible student bleed
+              const merged: Record<string, string> = {};
+              filteredData.forEach((s, idx) => {
+                const k = s.nisn || s.id || `student-${idx}`;
+                const val = (prevAbsensi && prevAbsensi[k]) || (s.nisn && prevAbsensi && prevAbsensi[s.nisn]) || initialAbsensi[k] || 'H';
+                merged[k] = val;
+                if (s.nisn) {
+                  merged[s.nisn] = val;
+                }
+              });
+              setKehadiranMurid(calculateKehadiranSummary(merged, filteredData));
+              return merged;
+            }
+            setKehadiranMurid(calculateKehadiranSummary(initialAbsensi, filteredData));
+            return initialAbsensi;
+          });
+        }
+        setIsFetchingStudents(false);
+      } catch (err) {
+        console.warn('Error fetching students:', err);
+        setIsFetchingStudents(false);
       }
     };
     fetchStudents();
@@ -1043,25 +1084,31 @@ export default function GuruJurnal({
   const handleApplyPiketAttendance = () => {
     if (students.length === 0) return;
     const newAbsensi: Record<string, string> = {};
-    students.forEach(s => {
+    students.forEach((s, idx) => {
+      const sKey = s.nisn || s.id || `student-${idx}`;
+      newAbsensi[sKey] = absensi[sKey] || (s.nisn && absensi[s.nisn]) || 'H';
       if (s.nisn) {
-        newAbsensi[s.nisn] = absensi[s.nisn] || 'H';
+        newAbsensi[s.nisn] = absensi[s.nisn] || absensi[sKey] || 'H';
       }
     });
     let syncedCount = 0;
     const updatedLastChanges: Record<string, { diubah_oleh: string; sumber_perubahan: string; keterangan?: string | null }> = {};
-    students.forEach(s => {
-      if (morningLockedAttendance[s.nisn]?.isLocked) return;
+    students.forEach((s, idx) => {
+      const sKey = s.nisn || s.id || `student-${idx}`;
+      if (morningLockedAttendance[sKey]?.isLocked || (s.nisn && morningLockedAttendance[s.nisn]?.isLocked)) return;
       const isPresentAtGate = (s.nisn && piketAttendance[s.nisn]) || (s.id && piketAttendance[s.id]);
       if (isPresentAtGate) {
-        newAbsensi[s.nisn] = 'H';
+        newAbsensi[sKey] = 'H';
+        if (s.nisn) newAbsensi[s.nisn] = 'H';
         syncedCount++;
-        const jamGate = piketAttendance[s.nisn]?.jam || (s.id ? piketAttendance[s.id]?.jam : '');
-        updatedLastChanges[s.nisn] = {
+        const jamGate = (s.nisn && piketAttendance[s.nisn]?.jam) || (s.id ? piketAttendance[s.id]?.jam : '');
+        const changePayload = {
           diubah_oleh: 'Presensi Datang',
           sumber_perubahan: 'Piket',
           keterangan: jamGate ? `Hadir di Gerbang pk. ${jamGate}` : 'Presensi Gerbang'
         };
+        updatedLastChanges[sKey] = changePayload;
+        if (s.nisn) updatedLastChanges[s.nisn] = changePayload;
       }
     });
     setAbsensi(newAbsensi);
@@ -1070,20 +1117,22 @@ export default function GuruJurnal({
     showToast(`Presensi datang berhasil diterapkan: ${syncedCount} siswa ditandai Hadir.`, 'success');
   };
 
-  const handleAbsensiChange = async (nisn: string, status: string) => {
+  const handleAbsensiChange = async (sKey: string, status: string, altKey?: string) => {
     // Hak Intervensi Guru Mapel: Guru mapel hanya berhak mengubah siswa yang awalnya Hadir menjadi Alfa
-    if (morningLockedAttendance[nisn]?.isLocked) {
-      showToast('Presensi Terkunci', `Status ${morningLockedAttendance[nisn].label} ditentukan dari Presensi Kelas (Pagi) dan terkunci bagi Guru Mapel.`, 'info');
+    if (morningLockedAttendance[sKey]?.isLocked || (altKey && morningLockedAttendance[altKey]?.isLocked)) {
+      showToast('Presensi Terkunci', `Status ${morningLockedAttendance[sKey]?.label || morningLockedAttendance[altKey!]?.label} ditentukan dari Presensi Kelas (Pagi) dan terkunci bagi Guru Mapel.`, 'info');
       return;
     }
     if (!['H', 'I', 'S', 'A', 'B'].includes(status)) return;
 
-    const newAbsensi = { ...absensi, [nisn]: status };
+    const newAbsensi = { ...absensi, [sKey]: status };
+    if (altKey) newAbsensi[altKey] = status;
     setAbsensi(newAbsensi);
     setKehadiranMurid(calculateKehadiranSummary(newAbsensi, students));
+    const recordKey = altKey || sKey;
     setLastChangeMap(prev => ({
       ...prev,
-      [nisn]: {
+      [recordKey]: {
         diubah_oleh: user?.nama || 'Guru Mapel',
         sumber_perubahan: 'Guru Mapel',
         // AST preservation: Terindikasi Bolos: Hadir di Gerbang Piket tetapi ditandai Alpa oleh Guru Mapel keterangan: noteKeterangan
@@ -1116,9 +1165,14 @@ export default function GuruJurnal({
 
     const cleanAbsensiForSave: Record<string, string> = {};
     if (Array.isArray(students)) {
-      students.forEach(s => {
+      students.forEach((s, idx) => {
+        const sKey = s.nisn || s.id || `student-${idx}`;
+        const val = (s.nisn && absensi[s.nisn]) || absensi[sKey] || 'H';
         if (s.nisn) {
           cleanAbsensiForSave[s.nisn] = absensi[s.nisn] || 'H';
+        }
+        if (sKey) {
+          cleanAbsensiForSave[sKey] = val;
         }
       });
     }
@@ -1374,9 +1428,14 @@ export default function GuruJurnal({
 
     const cleanAbsensiForSave: Record<string, string> = {};
     if (tipeJurnal === 'Jurnal KBM' && Array.isArray(students)) {
-      students.forEach(s => {
+      students.forEach((s, idx) => {
+        const sKey = s.nisn || s.id || `student-${idx}`;
+        const val = (s.nisn && absensi[s.nisn]) || absensi[sKey] || 'H';
         if (s.nisn) {
           cleanAbsensiForSave[s.nisn] = absensi[s.nisn] || 'H';
+        }
+        if (sKey) {
+          cleanAbsensiForSave[sKey] = val;
         }
       });
     }
@@ -1711,19 +1770,22 @@ export default function GuruJurnal({
 
   const handleMapelChange = (val: string) => {
     setMapel(val);
+    const activeAssignments = assignments.length > 0 ? assignments : myAssignments;
     // Cascading auto-sync: automatically set corresponding class
     // Jika kelas saat ini sudah mengampu mapel yang dipilih (misal pada kelas paralel), pertahankan kelas aktif!
     const currentKelasMatches = assignments.some(
       a => (a.nama_mapel === val || a.nama_mata_pelajaran === val) && a.kelas === kelas
+    ) || activeAssignments.some(
+      a => (a.nama_mapel === val || a.nama_mata_pelajaran === val) && a.kelas === kelas
     );
     if (!currentKelasMatches) {
-      const matched = assignments.find(
+      const matched = activeAssignments.find(
         a => (a.nama_mapel === val || a.nama_mata_pelajaran === val)
       );
       if (matched && matched.kelas) {
         setKelas(matched.kelas);
       } else {
-        const canonical = resolveCanonicalClass('', val, kelasList);
+        const canonical = resolveCanonicalClass(kelas, val, kelasList);
         if (canonical && kelasList.includes(canonical)) {
           setKelas(canonical);
         } else {
@@ -1738,8 +1800,9 @@ export default function GuruJurnal({
 
   const handleKelasChange = (val: string) => {
     setKelas(val);
+    const activeAssignments = assignments.length > 0 ? assignments : myAssignments;
     // If current mapel doesn't belong to the newly selected class, reset or auto-select
-    const mapelsInClass = assignments.filter(a => a.kelas === val);
+    const mapelsInClass = activeAssignments.filter(a => a.kelas === val);
     const currentMatches = mapelsInClass.some(
       a => (a.nama_mapel === mapel || a.nama_mata_pelajaran === mapel)
     );
@@ -2118,10 +2181,13 @@ export default function GuruJurnal({
                               </div>
                               <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
                                 {students.map((siswa, idx) => {
+                                  const sKey = siswa.nisn || siswa.id || `student-${idx}`;
                                   const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
-                                  const isMorningLocked = Boolean(morningLockedAttendance[siswa.nisn]?.isLocked);
-                                  const isMorningHadir = Boolean(pRec || morningLockedAttendance[siswa.nisn]?.isMorningHadir);
+                                  const isMorningLocked = Boolean(morningLockedAttendance[sKey]?.isLocked || (siswa.nisn && morningLockedAttendance[siswa.nisn]?.isLocked));
+                                  const isMorningHadir = Boolean(pRec || morningLockedAttendance[sKey]?.isMorningHadir || (siswa.nisn && morningLockedAttendance[siswa.nisn]?.isMorningHadir));
+                                  const currentSt = (siswa.nisn && absensi[siswa.nisn]) || absensi[sKey] || 'H';
                                   const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === 'A';
+                                  const changeRec = (siswa.nisn && lastChangeMap[siswa.nisn]) || (siswa.id && lastChangeMap[siswa.id]) || lastChangeMap[sKey];
                                   return (
                                     <div key={siswa.nisn || siswa.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
                                       <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -2147,14 +2213,14 @@ export default function GuruJurnal({
                                             )}
                                           </div>
                                           <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn || siswa.id || 'NISN belum terdata'}</div>
-                                          {lastChangeMap[siswa.nisn] && (
+                                          {changeRec && (
                                             <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
                                               <i className="fa-solid fa-clock-rotate-left text-[8px] text-teal-600 dark:text-teal-400"></i>
                                               <span>
-                                                Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{lastChangeMap[siswa.nisn].diubah_oleh}</strong>
-                                                {' '}(<span className="font-semibold text-teal-700 dark:text-teal-300">{lastChangeMap[siswa.nisn].sumber_perubahan}</span>)
-                                                {lastChangeMap[siswa.nisn].keterangan ? (
-                                                  <span className="italic text-slate-600 dark:text-slate-300"> — "{lastChangeMap[siswa.nisn].keterangan}"</span>
+                                                Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{changeRec.diubah_oleh}</strong>
+                                                {' '}(<span className="font-semibold text-teal-700 dark:text-teal-300">{changeRec.sumber_perubahan}</span>)
+                                                {changeRec.keterangan ? (
+                                                  <span className="italic text-slate-600 dark:text-slate-300"> — "{changeRec.keterangan}"</span>
                                                 ) : null}
                                               </span>
                                             </div>
@@ -2165,7 +2231,7 @@ export default function GuruJurnal({
                                         {isMorningLocked ? (
                                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs">
                                             <i className="fa-solid fa-lock text-[9px] text-amber-600"></i>
-                                            <span>{morningLockedAttendance[siswa.nisn]?.label} (Terkunci)</span>
+                                            <span>{(morningLockedAttendance[sKey] || morningLockedAttendance[siswa.nisn])?.label} (Terkunci)</span>
                                           </span>
                                         ) : (
                                           <div className="flex items-center gap-1">
@@ -2179,9 +2245,9 @@ export default function GuruJurnal({
                                               <button 
                                                 key={opt.code}
                                                 type="button"
-                                                onClick={() => handleAbsensiChange(siswa.nisn, opt.code)}
+                                                onClick={() => handleAbsensiChange(sKey, opt.code, siswa.nisn)}
                                                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
-                                                  absensi[siswa.nisn] === opt.code 
+                                                  currentSt === opt.code 
                                                     ? opt.on + ' text-white shadow-sm ring-1' 
                                                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                                                 }`}
@@ -2199,7 +2265,14 @@ export default function GuruJurnal({
                               </div>
                             </div>
                           );
-                        })() : (
+                        })() : isFetchingStudents ? (
+                          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-6 rounded-xl text-center fade-in">
+                            <i className="fa-solid fa-spinner fa-spin text-blue-500 text-xl mb-2 block"></i>
+                            <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                              Memuat Seluruh Siswa Kelas {kelas}...
+                            </div>
+                          </div>
+                        ) : (
                           <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-4 rounded-xl text-center fade-in">
                             <i className="fa-solid fa-users text-gray-400 dark:text-gray-500 text-xl mb-1.5 block"></i>
                             <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
