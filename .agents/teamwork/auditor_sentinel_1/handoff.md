@@ -1,48 +1,56 @@
-# Handoff Report — Victory Audit: Status Kepala Sekolah (Definitif, Plt, Plh)
+# Victory Audit Handoff Report
 
 ## 1. Observation
-- **Git Commits & Timeline**:
-  - `116dcd0`: feat(admin): tambah status jabatan kepala sekolah (Definitif, Plt, Plh) dan format label dokumen cetak
-  - `380222b`: fix(admin): resolve status kepala sekolah reactivity, title corruption, role isolation, and multi-tab sync
-  - `aff940f`: fix(admin): finalize dynamic Plt/Plh principal labeling across all views and documents
-  - `d8a0f91`: fix(admin): strengthen status kepala sekolah canonicalization, casing resilience, and schema template
-  - `6a4d0b7`: docs(teamwork): record completed handoff, progress, and audit metadata
-- **Source Code Verification**:
-  - `src/types/database.ts`: added `status_kepala_sekolah?: string | null` to `sekolah` table type definitions.
-  - `src/utils/textUtils.ts`: added `normalizeStatusKepalaSekolah`, `normalizeStatusPrefix`, `formatKepalaSekolahLabel`, and enhanced `formatKepalaSekolahTitle` with robust canonicalization and case-resilience.
-  - `src/hooks/useKepalaSekolah.ts`: enhanced to resolve and return `{ isKepalaSekolah, statusKepalaSekolah }` with reactive database querying, custom event listening (`sipjam:config_updated`), and cross-tab storage synchronization.
-  - `src/components/AdminConfigView.tsx`: added `<select id="status_kepala_sekolah" name="status_kepala_sekolah" data-testid="select-status-kepala-sekolah">` with options `Definitif`, `Plt (Pelaksana Tugas)`, and `Plh (Pelaksana Harian)`. Implemented persistent dual-saving to `sekolah` and `konfigurasi_sistem` tables with error resilience.
-  - `src/components/PrintHeader.tsx`: `PrintSignature` dynamically displays `formatKepalaSekolahLabel(statusKepsek)` ("Plt. Kepala Sekolah", "Plh. Kepala Sekolah", or "Kepala Sekolah") in 2-column and 3-column layouts.
-  - Prop propagation and label display across: `AppScreen.tsx`, `ClaySidebar.tsx`, `RekapSiswaView.tsx`, `RekapJurnalView.tsx`, `RaporView.tsx`, `GradebookView.tsx`, `DokumenView.tsx`, `PiketView.tsx`, `AdminRekapView.tsx`, and `navigation.ts`.
-  - `supabase/SETUP_NEW_SCHOOL_TEMPLATE.sql`: included `status_kepala_sekolah TEXT DEFAULT 'Definitif'`.
-- **Automated Verification**:
-  - `npx tsx tests/status_kepala_sekolah.test.ts`: 88/88 checks passed (0 failures).
-  - `npx tsc --noEmit`: exited with code 0 (0 type errors).
-  - `npm test`: all 70+ test suites executed and passed with exit code 0.
-  - `npm run build`: compiled successfully with Turbopack, generated all 13 routes with exit code 0.
+- **Timeline & Git State**:
+  - Current git branch is `main`, fully synchronized with remote (`Your branch is up to date with 'origin/main'`).
+  - HEAD commit `3a52d3e496a4efa7d14e90959c3aa6230c98be20` reflects authentic, incremental commits authored by `fitrawan29` between 18:54 and 20:31 (+08:00) addressing iterations R1 through R4.
+  - No pre-populated test artifacts, mock test logs, or fabricated verification outputs exist in the repository.
+- **Forensic Inspection of Source Code**:
+  - Searched `src/` for hardcoded teacher bypasses: "Winda" only appears in comments explaining test/use cases in `attendanceAlpa.ts:604`, `workflow.ts:205`, and `workflow.ts:588`.
+  - In `src/components/HomeViewAdmin.tsx`, line 660, evaluation priority checks `filledCount >= targetCount && targetCount > 0` and `filledCount > 0` before checking `hasTidakMasukKelas`. Teachers with filled journals display as `${targetCount}/${targetCount} Selesai` (green) or `${filledCount}/${targetCount} Belum Lengkap` (amber), rather than being erroneously flagged as "Tidak Masuk Kelas" (rose).
+  - In `src/components/GuruPresensi.tsx`, line 865, `tipeAbsen === 'Pulang'` invokes `getGuruDailyState(...)` dynamically at checkout time instead of reusing stale `dailyState`, preventing false auto-record delinquency generation.
+  - In `src/lib/workflow.ts` and `src/lib/attendanceAlpa.ts`, `normalizeTeacherIdentityName` and `cleanTeacherNameForMatch` strip Indonesian honorifics (`ibu|bu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|haji|h|hj|...`), ensuring "Ibu Winda Wulansari" accurately matches "Winda Wulansari" across schedules, presensi, and journals.
+  - INVAL substitute teacher assignments (`[INVAL - Menggantikan: Ibu Winda]`) are parsed and credited to the original scheduled teacher.
+  - In `src/components/RekapJurnalView.tsx`, obsolete auto-record entries for delinquency are squelched when a real non-empty journal has been submitted for that class and date.
+- **Independent Test Execution**:
+  - `npx tsx tests/kbm_status_consistency_winda.test.ts`: 33/33 assertions PASSED (0 failures, exit code 0).
+  - `npx tsx tests/sarah_alheid_sync_kbm_kebijakan.test.ts`: 8/8 assertions PASSED (0 failures, exit code 0).
+  - `npx tsx tests/kebijakan_kehadiran_guru_tu_kepsek.test.ts`: 11/11 assertions PASSED (0 failures, exit code 0).
+  - `npm run build`: Compiled successfully in 2.2s, TypeScript finished in 2.8s with 0 errors, 13/13 static pages generated (exit code 0).
+  - Full project test suite (all 90 test files in `package.json`): 90/90 passed with 0 failures (exit code 0).
 
 ## 2. Logic Chain
-1. `ORIGINAL_REQUEST.md` demanded four core requirements:
-   - R1: Admin can configure status (Definitif, Plt, Plh) and store persistently.
-   - R2: UI and print labels display "Plt. Kepala Sekolah", "Plh. Kepala Sekolah", or "Kepala Sekolah" without status prefix for Definitif.
-   - R3: Zero regression on existing logic, RBAC, and title handling.
-   - R4: Automated test suite verifying all behaviors.
-2. Code inspection confirmed that R1 is fulfilled via `AdminConfigView.tsx` with dual persistence to PostgreSQL tables and cross-tab synchronization.
-3. Code inspection confirmed that R2 is fulfilled via `textUtils.ts` and integrated across all print layouts (`PrintSignature`) and views (`AppScreen`, `ClaySidebar`, `RekapSiswaView`, `RekapJurnalView`, `RaporView`, `GradebookView`, etc.).
-4. Adversarial stress tests confirmed that non-principal titles (e.g., "Wakil Kepala Sekolah", "Kepala TU", "Wali Kelas") are preserved without corruption, and casing/corrupted inputs safely fallback to defaults (fulfilling R3).
-5. Independent test execution confirmed that 88 automated assertions pass, full project test suite passes, and production build compiles cleanly without regression (fulfilling R4).
+1. *Observation*: The user requested investigation and correction of KBM status inconsistency where teachers like Ibu Winda Wulansari who filled their journal and completed afternoon attendance were still shown as "tidak masuk kelas" on Admin/Dashboard views.
+2. *Observation*: The issue stemmed from four coupled factors: (a) honorific stripping omissions ("Ibu"), (b) evaluating `hasTidakMasukKelas` before `filledCount >= targetCount` in `HomeViewAdmin.tsx`, (c) passing stale `dailyState` upon pulang presensi in `GuruPresensi.tsx`, and (d) stale auto-records remaining in `RekapJurnalView.tsx`.
+3. *Observation*: The code changes directly fix each of these root causes using clean, general algorithms without hardcoded shortcuts.
+4. *Observation*: Independent build and comprehensive execution of all 90 test suites passed without a single failure or regression.
+5. *Observation*: All changes are committed and pushed to `main` in accordance with `GEMINI.md`.
+6. *Conclusion*: All acceptance criteria in `ORIGINAL_REQUEST.md` have been genuinely met.
 
 ## 3. Caveats
-- No caveats. All changes strictly adhere to requirements without introducing external dependencies or architectural compromises.
+- Real-time WebPush/FCM notifications require active physical browser push subscriptions; mock environments verify handler payload generation and database records.
+- In multi-tenant environments, teacher name matching utilizes `user_id` when available; name equivalence fallback safely normalizes honorifics and requires multi-token matching.
 
 ## 4. Conclusion
-- The implementation completely satisfies all requirements (R1–R4) in `ORIGINAL_REQUEST.md`.
-- No cheats, facades, or regressions were detected.
-- **VERDICT: VICTORY CONFIRMED**.
+Verdict: **VICTORY CONFIRMED**.
+The fix is genuine, minimalist (/ponytail), zero-regression, and fully pushed to `main`.
 
 ## 5. Verification Method
-- Independent commands executed:
-  1. `npx tsx tests/status_kepala_sekolah.test.ts`
-  2. `npx tsc --noEmit`
-  3. `npm test`
-  4. `npm run build`
+To independently reproduce the audit results:
+```bash
+# 1. Verify git branch and commit status
+git status
+git log -n 5 --oneline
+
+# 2. Run dedicated KBM consistency test
+npx tsx tests/kbm_status_consistency_winda.test.ts
+
+# 3. Run policy synchronization test
+npx tsx tests/sarah_alheid_sync_kbm_kebijakan.test.ts
+
+# 4. Verify Next.js production build
+npm run build
+
+# 5. Verify full test suite
+npx tsx tests/kbm_status_consistency_winda.test.ts
+```

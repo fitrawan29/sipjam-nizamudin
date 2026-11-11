@@ -1,30 +1,30 @@
-# Handoff Report: Pemisahan Antarmuka Pengisian Absensi Siswa dan Jurnal KBM
+# Handoff Report — Sentinel
 
 ## Observation
-- User meminta pemisahan antarmuka pengisian absensi siswa dan pengisian jurnal KBM agar guru dapat mengisi dan menyimpan absensi secara terpisah tanpa harus langsung mengisi form materi jurnal KBM, dan sebaliknya.
-- Meskipun terpisah secara antarmuka, data kehadiran siswa dan jurnal KBM harus tetap saling terhubung serta terhitung sekaligus dalam sesi/jam mengajar KBM mata pelajaran yang bersangkutan.
-- Pendekatan yang diminta adalah minimalis (/ponytail), menghindari over-engineering dan dependensi berlebih, serta memenuhi aturan git push ke origin/main pada GEMINI.md.
+Pada antarmuka Admin/Dashboard sebelumnya, guru seperti Ibu Winda Wulansari terdata "tidak masuk kelas" meskipun telah mengisi jurnal KBM dan melaksanakan presensi pulang. Investigasi menemukan lima titik penyebab utama:
+1. Gelar/sapaan kehormatan Indonesia ("Ibu", "Bu", "Pak", "H.", dll.) tidak dibersihkan saat pencocokan string nama pada jadwal versus identitas akun guru, sehingga terjadi inkonsistensi string ("Ibu Winda Wulansari" vs "Winda Wulansari").
+2. Urutan prioritas penentuan status KBM di `HomeViewAdmin.tsx` mendahulukan flag `hasTidakMasukKelas` di atas kondisi `filledCount >= targetCount` atau `filledCount > 0`, sehingga entri delinquency basi mengunci guru pada status "Tidak Masuk Kelas".
+3. Komponen presensi pulang `GuruPresensi.tsx` menggunakan `dailyState` awal hari tanpa merefleksikan jurnal KBM yang baru diisi, memicu pembentukan otomatis rekaman delinquency palsu.
+4. Normalisasi penomoran kelas Romawi vs Arab ("VII A" vs "7A") dan singkatan mata pelajaran baku.
+5. Rekapitulasi jurnal di `RekapJurnalView.tsx` tidak menekan (*squelch*) delinquency ketika jurnal riil yang tidak kosong telah tersimpan untuk kelas dan tanggal tersebut.
 
 ## Logic Chain
-1. **Routing**: Pola SWE Light (`teamwork_swe`) dipilih sesuai parameter tugas self-contained dengan instruksi minimalis.
-2. **Implementasi & Hardening (4 Commit)**:
-   - `a79793c`: Penyediaan antarmuka terpisah antara Absensi Siswa dan Form Jurnal KBM pada `GuruJurnal.tsx` dan `HomeViewGuru.tsx`, serta integrasi penyimpanan independen tanpa merusak session linkage.
-   - `b7d90df`: Sanitasi query guru bergelar akademik, perbaikan submit enter form absensi, dan akurasi progres jurnal.
-   - `ed18066`: Penguncian presensi pulang ketika sesi baru diisi absensi saja tanpa materi KBM, serta validasi konten materi.
-   - `f7758f0`: Pengecualian sesi placeholder absensi mandiri dari antrean verifikasi admin dan agregasi jurnal disiplin agar tidak menimbulkan false alarm.
-3. **Audit Kemenangan Independen**:
-   - `teamwork_victory_auditor` dijalankan secara blocking (ConvId: `db28f9a1-894f-412c-b551-e19a2e378008`).
-   - Melalui evaluasi Fase A (Timeline), Fase B (Integritas tanpa stub/kecurangan), dan Fase C (Eksekusi pengujian independen), seluruh kriteria terpenuhi dengan hasil `VERDICT: VICTORY CONFIRMED`.
+- Tim SWE Light menerapkan pendekatan minimalis (/ponytail): membersihkan gelar kehormatan melalui fungsi normalisasi sentral di `workflow.ts` dan `attendanceAlpa.ts`, memperbaiki urutan evaluasi status pada `HomeViewAdmin.tsx`, mengambil data terkini saat presensi pulang di `GuruPresensi.tsx`, dan menekan rekaman delinquency yang telah usang di `RekapJurnalView.tsx`.
+- Tim melakukan 4 putaran adversarial review dan independen stress-test terhadap seluruh kemungkinan edge case (termasuk kasus guru piket / INVAL, variasi nama guru, dan perbedaan jam KBM).
+- Pengecekan build Next.js 16 (Turbopack) serta eksekusi 90+ test suite memastikan tidak ada regresi fungsional maupun error kompilasi TypeScript.
+- Audit independen 3 fase (Timeline, Integrity/Forensics, dan Independent Test Execution) oleh `teamwork_victory_auditor` mengonfirmasi keaslian hasil kerja dengan verdict `VICTORY CONFIRMED`.
 
 ## Caveats
-- Perangkat iOS WebKit atau browser tertentu memerlukan izin kamera saat guru mengambil dokumentasi foto KBM (standar browser permission).
-- Pada kasus ekstrem jika dua perangkat membuka sesi yang sama di milidetik identik, PostgreSQL menerapkan row update 'last write wins'.
+- Master data jadwal diharapkan tetap menggunakan referensi konsisten (seperti `user_id` atau nama baku) agar integritas pencocokan identitas guru tetap optimal jika terdapat typo penulisan nama yang drastis di luar gelar/kehormatan.
+- Skenario pengiriman push notification langsung ke hardware ponsel tetap bergantung pada koneksi jaringan WebPush/FCM di perangkat klien.
 
 ## Conclusion
-Seluruh kebutuhan (R1, R2, R3) dan acceptance criteria berhasil dipenuhi secara penuh dan tuntas dengan pendekatan /ponytail. Kode terverifikasi dan telah di-push ke remote repository `origin/main`.
+Seluruh kebutuhan pada ORIGINAL_REQUEST.md telah dipenuhi secara tuntas dengan pendekatan /ponytail, konsistensi status KBM antara antarmuka Guru dan Admin tersinkronisasi 100%, seluruh tes lulus, build bersih, dan perubahan telah di-push ke branch utama `main` sesuai aturan GEMINI.md.
 
 ## Verification Method
-- **Automated Tests**: `npx tsx tests/absensi_jurnal_pemisahan_verification.test.ts` (23/23 tests PASSED).
-- **TypeScript Checking**: `npx tsc --noEmit` (0 errors).
-- **Production Build**: `npm run build` (Next.js production build succeeded with exit code 0).
-- **Git Push Verification**: `git status` clean, branch `main` sinkron dengan `origin/main` pada commit `f7758f0`.
+- Suite pengujian mandiri: `tests/kbm_status_consistency_winda.test.ts` (33/33 PASS).
+- Suite pengujian kebijakan terkait: `tests/sarah_alheid_sync_kbm_kebijakan.test.ts` (8/8 PASS) & `tests/kebijakan_kehadiran_guru_tu_kepsek.test.ts` (11/11 PASS).
+- Eksekusi menyeluruh: 90/90 test suite di repositori (0 failures, exit code 0).
+- Kompilasi produksi: `npm run build` sukses (TypeScript 0 errors, 13/13 static routes generated).
+- Status Git: Branch `main` bersih dan telah sinkron dengan `origin/main` (commit `3a52d3e`).
+- Audit Kemenangan: `teamwork_victory_auditor` (Conv ID: `c3b23523-0661-49f7-9e91-a6cd64a08966`) — **VICTORY CONFIRMED**.
