@@ -8,7 +8,7 @@ import {
   getWitaDayName,
   extractWitaDateStr
 } from '@/lib/wita';
-import { isGuruDiPiket, isJurnalMatchJadwal, isLateArrival, isBkAccount } from '@/lib/workflow';
+import { isGuruDiPiket, isJurnalMatchJadwal, isLateArrival, isBkAccount, isTeacherNameEquivalent } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface AutoAlpaResult {
@@ -549,7 +549,7 @@ function cleanTeacherNameForMatch(name: string): string {
   return (name || '')
     .toLowerCase()
     .replace(/,.*$/, '') // Strip titles after comma (e.g. ", S.Pd.")
-    .replace(/\b(dr\.?|ir\.?|prof\.?|h\.?|hj\.?|drs\.?|dra\.?|s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Strip common academic titles
+    .replace(/\b(ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|dr\.?|ir\.?|prof\.?|h\.?|hj\.?|kh\.?|drs\.?|dra\.?|s\.?pd\.?i?|m\.?pd\.?|s\.?kom\.?|s\.?si\.?|s\.?ag\.?|s\.?e\.?|s\.?t\.?|gr\.?)\b/gi, '') // Strip common academic titles & honorifics
     .replace(/[^a-z0-9]/g, ' ')
     .trim()
     .replace(/\s+/g, ' ');
@@ -588,7 +588,7 @@ export function isTeacherScheduleMatch(
   if (teacher.user_id && schedule.user_id) {
     return String(teacher.user_id) === String(schedule.user_id);
   }
-  return matchTeacherTokens(teacher.nama_guru, schedule.nama_guru);
+  return matchTeacherTokens(teacher.nama_guru, schedule.nama_guru) || isTeacherNameEquivalent(teacher.nama_guru, schedule.nama_guru, true);
 }
 
 /**
@@ -604,7 +604,7 @@ export function isTeacherJournalMatch(
   if (teacher.user_id && journal.user_id) {
     return String(teacher.user_id) === String(journal.user_id);
   }
-  return matchTeacherTokens(teacher.nama_guru, journal.nama_guru);
+  return matchTeacherTokens(teacher.nama_guru, journal.nama_guru) || isTeacherNameEquivalent(teacher.nama_guru, journal.nama_guru, true);
 }
 
 function isFullDayLeaveRecord(rec: any): boolean {

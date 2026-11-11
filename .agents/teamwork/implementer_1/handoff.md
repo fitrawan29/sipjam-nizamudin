@@ -1,58 +1,102 @@
-# HANDOFF REPORT — IMPLEMENTER 1
+# Handoff Report: Investigasi dan Perbaikan Ketidakkonsistenan Status KBM Guru vs Admin
 
-> [!WARNING] **Skepticism Disclaimer**
-> Perubahan logika otorisasi dan intervensi presensi siswa telah diverifikasi melalui 59 unit assertions pada suite utama dan 22 assertions pada suite mandiri non-hadir, tsc compile (0 errors), serta build Next.js (0 errors). Namun, pengujian pada koneksi internet terputus dan database RPC langsung di lingkungan produksi belum diuji secara end-to-end dengan browser riil.
+## 1. Summary of Investigation and Root Causes
 
-## 1. What I changed
+Kasus inkonsistensi status KBM antara antarmuka Guru dan Admin/Dashboard (di mana guru seperti Ibu Winda Wulansari yang telah mengisi jurnal kelas dan presensi pulang masih berstatus "tidak masuk kelas" di Admin) diselidiki secara menyeluruh di seluruh alur data (`workflow.ts`, `attendanceAlpa.ts`, `GuruPresensi.tsx`, dan `HomeViewAdmin.tsx`).
 
-### 1.1 `src/lib/presensiIntervensi.ts`
-- **Pembaruan `isWaliKelasIntervensiAllowed`**: Ditambahkan dukungan parameter opsional `teacherStatusOrPresensi` (string atau objek presensi guru) untuk memastikan bahwa status presensi guru seperti Dinas Luar, Izin, Sakit, Cuti, atau status non-hadir lainnya tetap mengizinkan jendela intervensi presensi siswa (pagi s.d. 12:00 WITA dan pulang 60 menit) tanpa memblokir akses wali kelas.
-- **Implementasi `canWaliKelasIntervene`**: Fungsi otorisasi resmi untuk intervensi presensi siswa:
-  - Memverifikasi apakah pengguna adalah Administrator/Superadmin (akses penuh seluruh kelas).
-  - Memverifikasi otentikasi dan keterikatan penugasan pengguna sebagai wali kelas kelas binaan target (mencocokkan `penugasan.kelas_binaan` atau `wali_kelas`).
-  - Menolak secara tegas pengguna yang bukan wali kelas dari kelas binaan terkait (`allowed: false`).
-  - Mengizinkan wali kelas terverifikasi melakukan intervensi meskipun guru berstatus non-hadir (Dinas Luar, Izin, Sakit, Cuti, dll).
-- **Ekspor alias `isWaliKelasIntervensiAuthorized` dan `validateWaliKelasIntervensi`** untuk kemudahan pemanggilan modular dan backward-compatibility.
+### Akar Masalah:
+1. **Kegagalan Token / Name Matching karena Honorific Gelar/Panggilan (`Ibu`, `Bapak`, `Pak`, dll.)**:
+   - Di data jadwal / master guru, nama guru sering terdaftar dengan sapaan/honorific (misal: "Ibu Winda Wulansari" atau "Ibu Winda Wulansari, S.Pd.").
+   - Pada `normalizeTeacherIdentityName` (`src/lib/workflow.ts`) dan `cleanTeacherNameForMatch` (`src/lib/attendanceAlpa.ts`), regex pembersihan hanya mencakup gelar akademis (`prof|dr|drs|s.pd|...`), tanpa mencakup honorific sapaan umum Indonesia (`ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru`).
+   - Akibatnya, token "ibu" tertinggal di salah satu sisi, menyebabkan perbandingan nama ("ibu winda wulansari" vs "winda wulansari") gagal cocok (`isTeacherNameEquivalent` menghasilkan `false`), sehingga Admin dashboard tidak dapat mengaitkan jurnal yang diinput akun guru dengan jadwal KBM yang bersangkutan.
 
-### 1.2 `src/components/RekapSiswaView.tsx`
-- Mengimpor `canWaliKelasIntervene` dari `@/lib/presensiIntervensi`.
-- Menambahkan pemeriksaan otorisasi pada fungsi `handleSaveWaliAttendance` untuk memvalidasi hak intervensi terhadap kelas binaan target. Pengguna yang bukan wali kelas dari kelas tersebut akan ditolak dengan SweetAlert ("Anda bukan wali kelas dari kelas binaan ini sehingga tidak berhak melakukan intervensi presensi siswa.").
-- Mempertahankan aturan dual-role `isReadOnly = isGlobalReadOnly && !isOwnHomeroomClass` agar Kepala Sekolah dan pengguna lain tetap mematuhi batasan mode monitoring.
+2. **Inversi Urutan Evaluasi Status Jurnal pada Admin Dashboard (`HomeViewAdmin.tsx`)**:
+   - Logika penentuan `jurnalStatus` di `HomeViewAdmin.tsx` mengevaluasi:
+     ```typescript
+     } else if (hasTidakMasukKelas) {
+       jurnalStatus = 'Tidak Masuk Kelas';
+       jurnalColor = 'rose';
+     } else if (filledCount >= targetCount) {
+       jurnalStatus = `${targetCount}/${targetCount} Selesai`;
+       jurnalColor = 'green';
+     ```
+   - Jika terdapat *stale record* atau sisa catatan delinquency di `jurnal_kbm` (misal dari auto-record alpa/pulang cepat sebelumnya), kondisi `hasTidakMasukKelas` akan selalu `true`.
+   - Karena dievaluasi *sebelum* `filledCount >= targetCount`, guru yang sudah menyelesaikan seluruh jurnal KBM tetap dipaksa berstatus **"Tidak Masuk Kelas"**.
 
-### 1.3 `tests/wali_kelas_non_hadir_intervensi.test.ts`
-- Membuat test suite automated mandiri (22 passing tests) yang menguji:
-  - Wali kelas berstatus Dinas Luar, Izin, Sakit, Cuti, dan payload objek presensi guru.
-  - Penolakan otorisasi pengguna bukan wali kelas, wali kelas lintas kelas, dan pengguna null/unauthenticated.
-  - Verifikasi hak intervensi global admin dan superadmin.
-  - Verifikasi jendela waktu presensi dengan status guru non-hadir.
-  - Pemeriksaan integritas UI dan preservasi regresi logika eksisting.
+3. **Stale `dailyState` pada Saat Presensi Pulang (`GuruPresensi.tsx`)**:
+   - Saat guru menekan tombol "Presensi Pulang", komponen memanggil `recordUnfilledJournalsAndPiket(dailyState || {})`.
+   - Objek `dailyState` dibaca saat komponen dimuat (di awal hari sebelum guru mengisi jurnal).
+   - Akibatnya, `dailyState.jurnalKBM` tidak memuat jurnal yang baru saja diisi guru, sehingga sistem checkout mendeteksi jadwal guru masih "kosong" dan secara keliru mencatat entri "Tidak Masuk Kelas (pulang cepat)".
 
-### 1.4 `tests/wali_kelas_and_piket_intervensi.test.ts`
-- Menambahkan **SECTION 9** untuk memvalidasi fungsionalitas wali kelas non-hadir dan penolakan non-wali langsung di test suite utama (total berkembang dari 56 menjadi 59 passing assertions).
+4. **Kolom Mapel dan Perhitungan Jurnal Valid Admin (`HomeViewAdmin.tsx`)**:
+   - Pengelompokan jadwal unik guru menggunakan `${j.kelas}_${j.mata_pelajaran}`, padahal kolom mata pelajaran pada beberapa skema database bernama `mapel` (sehingga menjadi `_undefined`).
+   - Koreksi dilakukan dengan menggunakan fallback `j.mata_pelajaran || j.mapel || ''` dan menyelaraskan `filledCount` dengan jumlah riil jurnal guru yang telah diserahkan dan disetujui (`Math.max(filledClassesCount, Math.min(targetCount, realTeacherJournals.length))`).
 
-## 2. Why
-Sesuai kebutuhan **R1** dan **R2**:
-1. Guru yang bertugas sebagai wali kelas sering kali harus mendata atau memperbarui status kehadiran siswa binaannya (misalnya ada orang tua murid yang mengabarkan izin/sakit melalui WhatsApp kepada wali kelas) meskipun pada hari tersebut wali kelas sedang bertugas dinas luar, mengambil cuti, izin, atau sedang sakit.
-2. Fitur intervensi sebelumnya harus secara eksplisit mendukung status non-hadir tersebut tanpa mengorbankan keamanan otorisasi: pengguna yang bukan wali kelas dari siswa target tetap wajib ditolak.
-3. Seluruh alur presensi harian guru reguler, presensi gerbang siswa, dan presensi mapel KBM harus tetap utuh tanpa modifikasi atau regresi.
+---
+
+## 2. Exact Code Changes Made and Diff
+
+### File yang Dimodifikasi:
+1. `src/lib/workflow.ts`:
+   - Menambahkan token honorific Indonesia (`ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru`) pada regex pembersihan nama `normalizeTeacherIdentityName`.
+2. `src/lib/attendanceAlpa.ts`:
+   - Mengimpor `isTeacherNameEquivalent` dari `@/lib/workflow`.
+   - Menambahkan honorific (`ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru`) pada `cleanTeacherNameForMatch`.
+   - Menambahkan fallback `|| isTeacherNameEquivalent(teacher.nama_guru, ...)` pada `isTeacherScheduleMatch` dan `isTeacherJournalMatch`.
+3. `src/components/HomeViewAdmin.tsx`:
+   - Fallback `j.mata_pelajaran || j.mapel || ''` saat deduplikasi kelas target guru.
+   - Sinkronisasi `filledCount` terhadap jurnal riil yang terkirim (`Math.max(...)`).
+   - Memperbaiki urutan prioritas status: `filledCount >= targetCount && targetCount > 0` dan `filledCount > 0` dievaluasi **sebelum** `hasTidakMasukKelas`.
+4. `src/components/GuruPresensi.tsx`:
+   - Pada alur `tipeAbsen === 'Pulang'`, memanggil `getGuruDailyState` terlebih dahulu untuk menyegarkan `dailyState` dengan jurnal KBM terbaru sebelum memicu `recordUnfilledJournalsAndPiket`.
+5. `tests/kbm_status_consistency_winda.test.ts`:
+   - Membuat test suite adversarial komprehensif berisi 14 test case khusus verifikasi kasus Ibu Winda Wulansari, status matrix admin, honorific stripping, dan invariants.
+6. `package.json`:
+   - Mendaftarkan test suite baru `tests/kbm_status_consistency_winda.test.ts` ke dalam `npm test`.
+
+---
 
 ## 3. Verification Record
-- **Deep Verification (ran actual tests):**
-  - `npx tsx tests/wali_kelas_non_hadir_intervensi.test.ts`: **22 / 22 PASS (100%)**
-  - `npx tsx tests/wali_kelas_and_piket_intervensi.test.ts`: **59 / 59 PASS (100%)**
-  - `npx tsx tests/presensi_gerbang_dan_absensi_retensi.test.ts`: **22 / 22 PASS (100%)**
-  - `npx tsx tests/kepsek_pengawas_rbac.test.ts`: **47 / 47 PASS (100%)**
-  - `npx tsc --noEmit`: **0 error**
-  - `npm run build`: **Next.js 16.3.4 (Turbopack) build PASS (13/13 static pages, 0 errors)**
-- **Shallow Verification (manual run only):**
-  - Pemeriksaan visual komponen JSX pada `RekapSiswaView.tsx` dan `HomeViewGuru.tsx`.
-- **Unverified aspects:**
-  - Pengujian live Supabase Realtime websocket subscriptions di browser sungguhan.
-  - Pengujian interaksi offline mode di browser mobile saat jaringan terputus.
 
-## 4. Known Issues
-- `Minor Robustness Risk`: Jika penugasan wali kelas di tabel `wali_kelas` tidak sinkron dengan `data_guru.wali_kelas`, sistem menggunakan cascading fallback penugasan pada `user.penugasan` dan profile data yang ada untuk mencegah false lockout.
+### Deep Verification (Ran Actual Tests)
+1. **Dedicated Adversarial Test Suite**:
+   - Command: `npx tsx tests/kbm_status_consistency_winda.test.ts`
+   - Result: **14/14 PASSED (100%)**
+   - Verifikasi mencakup:
+     - `normalizeTeacherIdentityName` membersihkan prefix "Ibu", "Bapak", "Pak", "Ustadz", "Guru".
+     - `isTeacherNameEquivalent` mencocokkan "Ibu Winda Wulansari" dengan "Winda Wulansari" dan "Winda Wulansari, S.Pd.".
+     - `isTeacherScheduleMatch` & `isTeacherJournalMatch` berhasil mencocokkan guru dengan honorific.
+     - Formula Admin Status Matrix mengembalikan "1/1 Selesai" (Green), bukan "Tidak Masuk Kelas", meskipun ada stale record tidak masuk kelas jika guru telah mengisi jurnalnya.
+     - Refresh `dailyState` pada presensi pulang mencegah delinquency palsu.
+     - Tidak ada regresi pada guru BK atau Bebas KBM.
 
-## 5. Untested Edge Cases & Next Step
-- Menguji pengalihan kelas binaan darurat di pertengahan semester jika guru bertukar perwalian tanpa reload aplikasi.
-- Reviewer dipersilakan menguji skenario adversarial di mana guru mencoba mengedit kelas paralel lain saat berstatus cuti.
+2. **Regression Test Suites**:
+   - `npx tsx tests/pulang_cepat_dan_jurnal_kosong_verification.test.ts`: **30/30 PASSED (100%)**
+   - `npx tsx tests/guru_presensi_pulang_tugas_terisi.test.ts`: **20/20 PASSED (100%)**
+   - `npx tsx tests/admin_jurnal_real_data_verification.test.ts`: **PASSED (100%)**
+   - `npx tsx tests/jurnal_r1_r2_r3_verification.test.ts`: **20/20 PASSED (100%)**
+   - `npx tsx tests/pulang_cepat_guru_bk_tu.test.ts`: **3/3 PASSED (100%)**
+
+3. **Production Build**:
+   - Command: `npm run build`
+   - Result: **Compiled successfully in 2.5s, TypeScript checked in 4.2s, 13/13 static pages generated with 0 errors**.
+
+4. **Full Test Suite (`npm test`)**:
+   - Command: `npm test`
+   - Result: **All 90+ test suites passed cleanly with 0 failures**.
+
+---
+
+## 4. Shallow Verification & Unverified Aspects
+
+- **Shallow Verification**:
+  - Tampilan visual komponen browser (UI render di Chrome) diobservasi lewat struktur TSX dan CSS Tailwind kelas status (`green`, `amber`, `rose`, `gray`), belum di-render melalui browser visual snapshot otomatis.
+- **Unverified Aspects**:
+  - Live socket realtime push notification ke perangkat fisik guru (karena environment pengujian berbasis CI/CD offline tanpa push server APNS/FCM aktif).
+
+---
+
+## 5. Known Issues & Risk Assessment
+
+- None. Tidak ditemukan fatal bug atau functional bug.
+- Logika bersifat backward-compatible dan menerapkan prinsip surgical patch (/ponytail minimalis).

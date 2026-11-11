@@ -67,10 +67,31 @@ export default function AdminConfigView({
   const [exemptTeacherIds, setExemptTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState('');
   const [attendanceFilterTab, setAttendanceFilterTab] = useState<'all' | 'setiap_hari' | 'hanya_kbm'>('all');
+  const [roleFilterTab, setRoleFilterTab] = useState<'all' | 'guru' | 'tu' | 'kepsek'>('all');
 
   const isTuStaff = (t: any): boolean => {
     const mp = (t?.mata_pelajaran || '').toLowerCase();
-    return mp.includes('tata usaha') || mp.includes('tu (administrasi)') || mp === 'tu';
+    const role = (t?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+    return mp.includes('tata usaha') || mp.includes('tu (administrasi)') || mp === 'tu' || role === 'tatausaha';
+  };
+
+  const isKepsekStaff = (t: any): boolean => {
+    if (!t) return false;
+    if (config.kepala_sekolah_id && t.id === config.kepala_sekolah_id) return true;
+    if (t.is_kepala_sekolah === true || t.is_kepala_sekolah === 'true') return true;
+    if (config.ttd_kepsek_nip && t.nip && t.nip !== '-' && t.nip === config.ttd_kepsek_nip) return true;
+    if (config.ttd_kepsek_nama && t.nama_guru && (
+      t.nama_guru.toLowerCase().trim() === config.ttd_kepsek_nama.toLowerCase().trim() ||
+      config.ttd_kepsek_nama.toLowerCase().includes(t.nama_guru.toLowerCase().trim())
+    )) return true;
+    return false;
+  };
+
+  const isBkStaff = (t: any): boolean => {
+    if (!t) return false;
+    const mp = (t?.mata_pelajaran || '').toLowerCase();
+    const role = (t?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+    return mp.includes('bk') || mp.includes('bimbingan') || role === 'bk' || role === 'gurubk';
   };
 
   const getTeacherKbmCount = (t: any, schedules: any[] = jadwalList): number => {
@@ -190,6 +211,42 @@ export default function AdminConfigView({
           }
           const { data: teachers } = await guruQuery;
 
+          // Also fetch users with role 'tata_usaha' or 'Tata Usaha' to ensure any TU staff account is included
+          let allPersonnel: any[] = teachers ? [...teachers] : [];
+          try {
+            let tuUserQuery = supabase.from('users').select('id, username, nama, role, sekolah_id');
+            if (user?.sekolah_id) {
+              tuUserQuery = tuUserQuery.eq('sekolah_id', user.sekolah_id);
+            }
+            const { data: tuUsers } = await tuUserQuery;
+            if (tuUsers && tuUsers.length > 0) {
+              const tuFiltered = tuUsers.filter((u: any) => {
+                const r = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+                return r === 'tatausaha';
+              });
+              for (const tu of tuFiltered) {
+                const exists = allPersonnel.some(p =>
+                  (p.user_id && p.user_id === tu.id) ||
+                  (p.id && p.id === tu.id) ||
+                  (p.nip && tu.username && p.nip.trim() === tu.username.trim()) ||
+                  (p.nama_guru && tu.nama && p.nama_guru.trim().toLowerCase() === tu.nama.trim().toLowerCase())
+                );
+                if (!exists) {
+                  allPersonnel.push({
+                    id: tu.id,
+                    user_id: tu.id,
+                    nama_guru: tu.nama || 'Staf Tata Usaha',
+                    nip: tu.username || '-',
+                    mata_pelajaran: 'Tata Usaha (Administrasi)',
+                    role: 'tata_usaha',
+                    wajib_hadir_hanya_mengajar: false,
+                    sekolah_id: tu.sekolah_id || user?.sekolah_id
+                  });
+                }
+              }
+            }
+          } catch (_) {}
+
           // Fetch teaching schedules to accurately identify teachers with KBM vs without KBM
           let jadwalQuery = supabase.from('jadwal_pelajaran').select('id, nama_guru, user_id, mata_pelajaran, mapel');
           if (user?.sekolah_id) {
@@ -199,12 +256,12 @@ export default function AdminConfigView({
           const allSchoolJadwal = rawJadwal || [];
           setJadwalList(allSchoolJadwal);
 
-          if (teachers && teachers.length > 0) {
-            setGuruList(teachers);
+          if (allPersonnel && allPersonnel.length > 0) {
+            setGuruList(allPersonnel);
 
             // Auto-match kepala_sekolah_id if not explicitly set
             if (!newConfig.kepala_sekolah_id && (newConfig.ttd_kepsek_nama || newConfig.ttd_kepsek_nip)) {
-              const matched = teachers.find(t => 
+              const matched = allPersonnel.find(t => 
                 (newConfig.ttd_kepsek_nip && t.nip && t.nip === newConfig.ttd_kepsek_nip) ||
                 (newConfig.ttd_kepsek_nama && t.nama_guru && (
                   t.nama_guru.toLowerCase().trim() === newConfig.ttd_kepsek_nama.toLowerCase().trim() ||
@@ -218,14 +275,13 @@ export default function AdminConfigView({
 
             const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
             const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
-            // Only teachers with actual KBM hours who are NOT TU staff can be exempt
-            const dbExempt = teachers
-              .filter(t => !isTuStaff(t) && getTeacherKbmCount(t, allSchoolJadwal) > 0 && isValTrue(t.wajib_hadir_hanya_mengajar))
+            // All personnel with explicit wajib_hadir_hanya_mengajar = true
+            const dbExempt = allPersonnel
+              .filter(t => isValTrue(t.wajib_hadir_hanya_mengajar))
               .map(t => t.id);
             const validLegacyGhm = ghmList.filter(idOrName => {
-              const matched = teachers.find(t => t.id === idOrName || t.nama_guru === idOrName);
+              const matched = allPersonnel.find(t => t.id === idOrName || t.nama_guru === idOrName || (t.nip && t.nip === idOrName));
               if (!matched) return true;
-              if (isTuStaff(matched) || getTeacherKbmCount(matched, allSchoolJadwal) === 0) return false;
               return !isValFalse(matched.wajib_hadir_hanya_mengajar);
             });
             setExemptTeacherIds(Array.from(new Set([...validLegacyGhm, ...dbExempt])));
@@ -377,7 +433,7 @@ export default function AdminConfigView({
 
     const exemptIds = guruList.length > 0
       ? guruList
-          .filter(t => validExemptIdSet.has(t.id) && (exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru))))
+          .filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru)) || (t.nip && t.nip !== '-' && exemptTeacherIds.includes(t.nip)))
           .map(t => t.id)
           .filter(Boolean)
       : [];

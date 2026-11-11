@@ -30,7 +30,7 @@ export function normalizeTeacherIdentityName(name?: string | null): string {
     .trim()
     .toLowerCase()
     .replace(/,.*$/, '')
-    .replace(/\b(prof|dr|drs|dra|ir|hj|kh|s\.?\s*pd\.?\s*k?|s\.?\s*pd\.?\s*i?|m\.?\s*pd\.?\s*k?|m\.?\s*pd\.?|s\.?\s*kom\.?|s\.?\s*si\.?|s\.?\s*ag\.?|s\.?\s*th\.?|m\.?\s*th\.?|s\.?\s*pak\.?|s\.?\s*sos\.?|s\.?\s*km\.?|s\.?\s*sn\.?|s\.?\s*or\.?|s\.?\s*tr\.?|s\.?\s*ip\.?|s\.\s*h\.?|s\.\s*p\.?|s\.?\s*e\.?|s\.?\s*t\.?|s\.?\s*psi\.?|s\.?\s*kep\.?|m\.?\s*si\.?|m\.?\s*kom\.?|m\.\s*m\.?|m\.\s*a\.?|a\.?\s*md\.?|gr)\b/gi, '')
+    .replace(/\b(ibu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|prof|dr|drs|dra|ir|hj|kh|s\.?\s*pd\.?\s*k?|s\.?\s*pd\.?\s*i?|m\.?\s*pd\.?\s*k?|m\.?\s*pd\.?|s\.?\s*kom\.?|s\.?\s*si\.?|s\.?\s*ag\.?|s\.?\s*th\.?|m\.?\s*th\.?|s\.?\s*pak\.?|s\.?\s*sos\.?|s\.?\s*km\.?|s\.?\s*sn\.?|s\.?\s*or\.?|s\.?\s*tr\.?|s\.?\s*ip\.?|s\.\s*h\.?|s\.\s*p\.?|s\.?\s*e\.?|s\.?\s*t\.?|s\.?\s*psi\.?|s\.?\s*kep\.?|m\.?\s*si\.?|m\.?\s*kom\.?|m\.\s*m\.?|m\.\s*a\.?|a\.?\s*md\.?|gr)\b/gi, '')
     .replace(/[^a-z0-9\s]/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();

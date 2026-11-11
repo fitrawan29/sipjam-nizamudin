@@ -866,11 +866,19 @@ export default function GuruPresensi({
 
     // R3: Record unfilled journals and piket automatically upon presensi pulang
     if (tipeAbsen === 'Pulang') {
-      recordUnfilledJournalsAndPiket(
-        { nama_guru: (user.nama || '').trim(), user_id: user.id, sekolah_id: user.sekolah_id },
-        getWitaDateStr(),
-        dailyState || {}
-      ).catch(e => console.warn('[GuruPresensi] Auto-record unfilled journals/piket warning:', e));
+      getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id).then(latestState => {
+        recordUnfilledJournalsAndPiket(
+          { nama_guru: (user.nama || '').trim(), user_id: user.id, sekolah_id: user.sekolah_id },
+          getWitaDateStr(),
+          latestState || dailyState || {}
+        ).catch(e => console.warn('[GuruPresensi] Auto-record unfilled journals/piket warning:', e));
+      }).catch(() => {
+        recordUnfilledJournalsAndPiket(
+          { nama_guru: (user.nama || '').trim(), user_id: user.id, sekolah_id: user.sekolah_id },
+          getWitaDateStr(),
+          dailyState || {}
+        ).catch(e => console.warn('[GuruPresensi] Auto-record unfilled journals/piket warning:', e));
+      });
     }
 
     // R2: Auto-fill KBM journal on teacher absence (Sakit, Izin, Dinas Luar)

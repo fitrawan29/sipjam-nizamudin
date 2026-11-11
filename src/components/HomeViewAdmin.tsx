@@ -389,7 +389,7 @@ export default function HomeViewAdmin({
         // Dedup to find real target count
         const uniqueTargetsMap = new Map();
         targetClasses.forEach((j: any) => {
-          uniqueTargetsMap.set(`${j.kelas}_${j.mata_pelajaran}`, j);
+          uniqueTargetsMap.set(`${j.kelas}_${j.mata_pelajaran || j.mapel || ''}`, j);
         });
         targetClasses = Array.from(uniqueTargetsMap.values());
         const targetCount = targetClasses.length;
@@ -559,9 +559,18 @@ export default function HomeViewAdmin({
           (j.keterangan || '').toLowerCase() === 'tidak melaksanakan kegiatan apapun'
         );
 
-        const filledCount = targetClasses.filter((jk: any) => 
+        const realTeacherJournals = acceptedTeacherJournals.filter((j: any) => 
+          isRealJournal(j) && j.status_verifikasi !== 'Tidak Masuk Kelas'
+        );
+
+        const filledClassesCount = targetClasses.filter((jk: any) => 
           acceptedTeacherJournals.some((j: any) => j.status_verifikasi !== 'Tidak Masuk Kelas' && isRealJournal(j) && isJurnalMatchJadwal(j, jk))
         ).length;
+
+        // Effective filled count harmonizes schedule matching with actual real journals submitted
+        const filledCount = targetCount > 0
+          ? Math.max(filledClassesCount, Math.min(targetCount, realTeacherJournals.length))
+          : realTeacherJournals.length;
 
         const isDinasLuar = presensiDatangStatus === 'Dinas Luar';
         const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
@@ -574,7 +583,7 @@ export default function HomeViewAdmin({
         let jurnalStatus = 'Bebas KBM';
         let jurnalColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = 'gray';
 
-        if (isIzinSakit) {
+        if (isIzinSakit) { // } else if (isIzinSakit) {
           jurnalStatus = presensiDatangStatus;
           jurnalColor = presensiDatangStatus === 'Sakit' ? 'rose' : 'blue';
         } else if (hasJurnalBk) {
@@ -633,15 +642,15 @@ export default function HomeViewAdmin({
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
           }
-        } else if (hasTidakMasukKelas) {
-          jurnalStatus = 'Tidak Masuk Kelas';
-          jurnalColor = 'rose';
-        } else if (filledCount >= targetCount) {
+        } else if (filledCount >= targetCount && targetCount > 0) {
           jurnalStatus = `${targetCount}/${targetCount} Selesai`;
           jurnalColor = 'green';
         } else if (filledCount > 0) {
           jurnalStatus = `${filledCount}/${targetCount} Belum Lengkap`;
           jurnalColor = 'amber';
+        } else if (hasTidakMasukKelas) {
+          jurnalStatus = 'Tidak Masuk Kelas';
+          jurnalColor = 'rose';
         } else if (hasRejectedJournal) {
           jurnalStatus = 'Ditolak (Perlu Revisi)';
           jurnalColor = 'rose';
