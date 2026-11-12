@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { getGuruDailyState, isJurnalMatchJadwal, GuruDailyState } from '../lib/workflow';
+import { getGuruDailyState, isJurnalMatchJadwal, GuruDailyState, hasJournalContent } from '../lib/workflow';
 import { getWitaTimeStr, getWitaDayName } from '../lib/wita';
 
 export const REMINDER_INTERVAL_MS = 300_000; // 5 minutes in milliseconds
@@ -289,7 +289,7 @@ export function evaluateReminderConditions(
     } else if (hasClassesToday) {
       // Regular teaching day: verify if all scheduled classes have matching journals
       const missingSchedules = dailyState.jadwalKBM.filter(
-        jk => !(dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
+        jk => !(dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && (!(j.materi === '-' && j.kegiatan === '-') || hasJournalContent(j)))
       );
       if (missingSchedules.length > 0) {
         const total = dailyState.jadwalKBM.length;

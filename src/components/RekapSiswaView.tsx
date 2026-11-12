@@ -6,6 +6,7 @@ import Swal from 'sweetalert2';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import { isWaliKelasIntervensiAllowed, fetchJadwalIntervensiWali, JadwalIntervensiWali, findLastKbmJournal, resolveDailyStudentAttendance, canWaliKelasIntervene, toCanonicalClass, isMatchingWaliGuru } from '@/lib/presensiIntervensi';
+import { parseLegacyOrModernAttendance } from '@/lib/workflow';
 import { getWitaDateStr, formatPresensiTime } from '@/lib/wita';
 import { triggerParentWhatsApp } from '@/utils/whatsappUtils';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -315,18 +316,16 @@ export default function RekapSiswaView({
             const isResolvedBolos = resolvedDaily.status === 'Bolos';
 
             let lastMapelStatus: string | null = null;
-            if (studentLastJurnal?.absensi_siswa) {
-              try {
-                const parsed = typeof studentLastJurnal.absensi_siswa === 'string'
-                  ? JSON.parse(studentLastJurnal.absensi_siswa)
-                  : studentLastJurnal.absensi_siswa;
-                lastMapelStatus = parsed[siswa.nisn] || (siswa.nama_siswa && parsed[siswa.nama_siswa]) || (siswa.id && parsed[siswa.id]) || null;
-                if (!lastMapelStatus && siswa.nama_siswa) {
-                  const lower = siswa.nama_siswa.trim().toLowerCase();
-                  const foundKey = Object.keys(parsed).find(k => k.trim().toLowerCase() === lower);
-                  if (foundKey) lastMapelStatus = parsed[foundKey];
-                }
-              } catch {}
+            if (studentLastJurnal) {
+              const parsed = parseLegacyOrModernAttendance(
+                studentLastJurnal.absensi_siswa,
+                studentLastJurnal.detail_absen,
+                studentLastJurnal.kehadiran_murid
+              );
+              lastMapelStatus = (siswa.nisn && parsed[siswa.nisn]) || 
+                                (siswa.nama_siswa && (parsed[siswa.nama_siswa] || parsed[siswa.nama_siswa.trim().toLowerCase()])) || 
+                                (siswa.id && parsed[siswa.id]) || 
+                                null;
             }
 
             const isExcused = classLog?.status === 'Sakit' || classLog?.status === 'Izin' || classLog?.status === 'S' || classLog?.status === 'I';
@@ -748,19 +747,6 @@ export default function RekapSiswaView({
 
         // Parse multi-format student attendance from journals
         jurnal?.forEach(j => {
-          let absensiJson: Record<string, string> | null = null;
-          if (j.absensi_siswa) {
-            if (typeof j.absensi_siswa === 'object' && j.absensi_siswa !== null) {
-              absensiJson = j.absensi_siswa;
-            } else if (typeof j.absensi_siswa === 'string' && j.absensi_siswa.trim().startsWith('{')) {
-              try {
-                absensiJson = JSON.parse(j.absensi_siswa);
-              } catch (_) {
-                absensiJson = null;
-              }
-            }
-          }
-
           const combinedText = `${j.kehadiran_murid || ''} ${typeof j.absensi_siswa === 'string' ? j.absensi_siswa : ''} ${j.detail_absen || ''}`.toLowerCase();
           const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
 
@@ -772,26 +758,29 @@ export default function RekapSiswaView({
             return;
           }
 
-          // Check if JSON has explicit entries
-          if (absensiJson && Object.keys(absensiJson).length > 0) {
-            const jsonValues = Object.values(absensiJson).map(v => String(v).trim().toUpperCase());
-            const hasExplicitHadir = jsonValues.some(v => v === 'H' || v === 'HADIR');
+          const parsedMap = parseLegacyOrModernAttendance(j.absensi_siswa, j.detail_absen, j.kehadiran_murid);
+
+          // Check if parsed map has explicit entries
+          if (parsedMap && Object.keys(parsedMap).length > 0) {
+            const hasExplicitHadir = Object.values(parsedMap).some(v => v === 'H');
 
             filteredSiswa.forEach(s => {
               const target = rekapMap[s.nama_siswa];
               if (!target) return;
-              const val = s.nisn && absensiJson![s.nisn] !== undefined 
-                ? absensiJson![s.nisn] 
-                : absensiJson![s.nama_siswa];
+              const val = (s.nisn && parsedMap[s.nisn] !== undefined)
+                ? parsedMap[s.nisn]
+                : ((s.nama_siswa && (parsedMap[s.nama_siswa] !== undefined || parsedMap[s.nama_siswa.trim().toLowerCase()] !== undefined))
+                  ? (parsedMap[s.nama_siswa] || parsedMap[s.nama_siswa.trim().toLowerCase()])
+                  : (s.id ? parsedMap[s.id] : undefined));
 
               if (val !== undefined) {
                 const code = String(val).trim().toUpperCase();
-                if (code === 'H' || code === 'HADIR') target.hadir++;
-                else if (code === 'S' || code === 'SAKIT') target.sakit++;
-                else if (code === 'I' || code === 'IZIN') target.izin++;
-                else if (code === 'A' || code === 'ALPA' || code === 'B' || code === 'BOLOS') target.alpa++;
+                if (code === 'H') target.hadir++;
+                else if (code === 'S') target.sakit++;
+                else if (code === 'I') target.izin++;
+                else if (code === 'A' || code === 'B') target.alpa++;
               } else if (!hasExplicitHadir) {
-                // If JSON only listed absentees, unlisted students were present
+                // If journal only listed absentees, unlisted students were present
                 target.hadir++;
               }
             });

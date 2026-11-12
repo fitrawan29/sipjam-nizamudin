@@ -115,9 +115,10 @@ export default function HistoryView({
              (item.detail_izin || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.catatan_admin || '').toLowerCase().includes(search.toLowerCase());
     } else {
+      const matFull = `${item.materi || ''} ${item.materi_pembelajaran || ''} ${item.konten || ''} ${item.kegiatan || ''} ${item.kegiatan_pembelajaran || ''}`.toLowerCase();
       return (item.mapel || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.kelas || '').toLowerCase().includes(search.toLowerCase()) ||
-             (item.materi || '').toLowerCase().includes(search.toLowerCase()) ||
+             matFull.includes(search.toLowerCase()) ||
              (item.keterangan || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.status_verifikasi || '').toLowerCase().includes(search.toLowerCase()) ||
              (item.catatan_admin || '').toLowerCase().includes(search.toLowerCase());
@@ -313,7 +314,26 @@ export default function HistoryView({
                             ) : (
                               <p><span className="font-semibold text-gray-900 dark:text-white">Kelas:</span> {item.kelas}</p>
                             )}
-                            <p className="truncate"><span className="font-semibold text-gray-900 dark:text-white">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
+                            {(() => {
+                              const resolvedHistMateri = ((item.materi && item.materi !== '-') 
+                                ? item.materi 
+                                : ((item.materi_pembelajaran && item.materi_pembelajaran !== '-') 
+                                  ? item.materi_pembelajaran 
+                                  : ((item.konten && item.konten !== '-') 
+                                    ? item.konten 
+                                    : ((item.kegiatan && item.kegiatan !== '-') 
+                                      ? item.kegiatan 
+                                      : ((item.kegiatan_pembelajaran && item.kegiatan_pembelajaran !== '-') 
+                                        ? item.kegiatan_pembelajaran 
+                                        : '-')))));
+                              return (
+                                <p className="truncate">
+                                  <span className="font-semibold text-gray-900 dark:text-white">
+                                    {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan:' : 'Materi:'}
+                                  </span> {resolvedHistMateri}
+                                </p>
+                              );
+                            })()}
                           </div>
                           {item.catatan_admin && (
                             <div className="mt-1 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[9px] border border-gray-100 dark:border-gray-700">
@@ -324,24 +344,30 @@ export default function HistoryView({
                         </div>
 
                         {/* Jurnal Attachment Link ("Lihat Bukti") */}
-                        {item.link_bukti_foto && item.link_bukti_foto !== '-' && (
-                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-                            <img 
-                              src={transformGoogleDriveUrl(item.link_bukti_foto)} 
-                              alt="Bukti Foto" 
-                              className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
-                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            />
-                            <a 
-                              href={item.link_bukti_foto} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
-                            >
-                              <i className="fa-solid fa-image text-[9px]"></i> Lihat Bukti Foto
-                            </a>
-                          </div>
-                        )}
+                        {(() => {
+                          const histPhoto = (item.link_bukti_foto && item.link_bukti_foto !== '-') 
+                            ? item.link_bukti_foto 
+                            : ((item.foto_kegiatan && item.foto_kegiatan !== '-') ? item.foto_kegiatan : null);
+                          if (!histPhoto) return null;
+                          return (
+                            <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
+                              <img 
+                                src={transformGoogleDriveUrl(histPhoto)} 
+                                alt="Bukti Foto" 
+                                className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                              />
+                              <a 
+                                href={histPhoto} 
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
+                              >
+                                <i className="fa-solid fa-image text-[9px]"></i> Lihat Bukti Foto
+                              </a>
+                            </div>
+                          );
+                        })()}
                       </>
                     )}
                   </div>

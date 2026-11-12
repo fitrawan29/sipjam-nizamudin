@@ -12,6 +12,7 @@ import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RaporView from './RaporView';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { filterStudentsBySubject } from '@/lib/agamaFilter';
+import { parseLegacyOrModernAttendance } from '@/lib/workflow';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -754,23 +755,22 @@ export default function GradebookView({
 
           jData.forEach(j => {
             if (!j.absensi_siswa) return;
-            try {
-              const parsed = typeof j.absensi_siswa === 'string' ? JSON.parse(j.absensi_siswa) : j.absensi_siswa;
-              if (parsed && typeof parsed === 'object') {
-                validSessions++;
-                Object.entries(parsed).forEach(([nisn, status]) => {
-                  const pts = getStatusPointValue(String(status));
-                  studentEarnedPoints[nisn] = (studentEarnedPoints[nisn] || 0) + pts;
-                });
-              }
-            } catch {
-              // ignore json parse error
+            const parsedMap = parseLegacyOrModernAttendance(j.absensi_siswa);
+            if (parsedMap && Object.keys(parsedMap).length > 0) {
+              validSessions++;
+              Object.entries(parsedMap).forEach(([key, status]) => {
+                const pts = getStatusPointValue(String(status));
+                studentEarnedPoints[key] = (studentEarnedPoints[key] || 0) + pts;
+              });
             }
           });
 
           if (validSessions > 0) {
             students.forEach(s => {
-              const earned = studentEarnedPoints[s.nisn] || 0;
+              const earned = studentEarnedPoints[s.nisn] ?? 
+                             (s.nama_siswa ? (studentEarnedPoints[s.nama_siswa] ?? studentEarnedPoints[s.nama_siswa.trim().toLowerCase()]) : undefined) ?? 
+                             (s.id ? studentEarnedPoints[s.id] : 0) ?? 
+                             0;
               const rate = (earned / (validSessions * 100)) * 100;
               rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
             });

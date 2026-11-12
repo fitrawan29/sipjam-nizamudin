@@ -16,7 +16,8 @@ import {
   isBkAccount,
   normalizeTeacherIdentityName,
   resolveLinkedUserForTeacher,
-  isTeacherRecordMatch
+  isTeacherRecordMatch,
+  hasJournalContent
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
@@ -381,10 +382,10 @@ export default function HomeViewAdmin({
         const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
         if (mat === 'tidak masuk kelas' || mat === 'tidak melaksanakan kegiatan apapun' || mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
         // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan masih "-") bukan merupakan jurnal KBM yang selesai
-        const mContent = (j.materi || j.materi_pembelajaran || j.konten || '').trim();
-        const kContent = (j.kegiatan || j.kegiatan_pembelajaran || '').trim();
-        if ((!mContent || mContent === '-') && (!kContent || kContent === '-')) return false;
-        if (j.materi === '-' && j.kegiatan === '-') return false;
+        if (!hasJournalContent(j)) {
+          if (j.materi === '-' && j.kegiatan === '-') return false;
+          return false;
+        }
         return true;
       };
 

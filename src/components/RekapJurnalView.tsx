@@ -869,7 +869,10 @@ export default function RekapJurnalView({
     setEditAbsensiCounts(parsedCounts);
 
     setEditFile(null);
-    setEditPhotoPreview(jurnal.foto_kegiatan || jurnal.link_bukti_foto || '');
+    const existingPhoto = (jurnal.foto_kegiatan && jurnal.foto_kegiatan !== '-') 
+      ? jurnal.foto_kegiatan 
+      : ((jurnal.link_bukti_foto && jurnal.link_bukti_foto !== '-') ? jurnal.link_bukti_foto : '');
+    setEditPhotoPreview(existingPhoto);
     setIsEditModalOpen(true);
   };
 
@@ -974,7 +977,9 @@ export default function RekapJurnalView({
 
     setIsSavingEdit(true);
     try {
-      let finalPhotoUrl = editingJurnal.foto_kegiatan || editingJurnal.link_bukti_foto || '-';
+      let finalPhotoUrl = (editingJurnal.foto_kegiatan && editingJurnal.foto_kegiatan !== '-')
+        ? editingJurnal.foto_kegiatan
+        : ((editingJurnal.link_bukti_foto && editingJurnal.link_bukti_foto !== '-') ? editingJurnal.link_bukti_foto : '-');
       if (editFile) {
         try {
           const driveUrl = await uploadToDrive(editFile, user?.nama || 'Guru', 'Jurnal KBM', 'Jurnal');
@@ -1917,7 +1922,7 @@ export default function RekapJurnalView({
                         const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                         const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
                         const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
-                        const col6 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? (isRowHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isRowHanyaKbm ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (j.materi_pembelajaran || j.materi || '-');
+                        const col6 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? (isRowHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isRowHanyaKbm ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : ((j.konten && j.konten !== '-') ? j.konten : '-')));
                         const col7 = j.foto_kegiatan || j.link_bukti_foto || '-';
                         const col8 = isRowHanyaKbm
                           ? (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'Hadir KBM')
@@ -2128,13 +2133,19 @@ export default function RekapJurnalView({
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                   <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Materi / Konten</span>
                   <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
-                    {selectedJurnal.konten || selectedJurnal.materi_pembelajaran || selectedJurnal.materi || '-'}
+                    {(selectedJurnal.konten && selectedJurnal.konten !== '-') ? selectedJurnal.konten : ((selectedJurnal.materi_pembelajaran && selectedJurnal.materi_pembelajaran !== '-') ? selectedJurnal.materi_pembelajaran : (selectedJurnal.materi && selectedJurnal.materi !== '-' ? selectedJurnal.materi : '-'))}
                   </p>
                 </div>
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                   <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Kegiatan Pembelajaran</span>
                   <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
-                    {selectedJurnal.kegiatan_pembelajaran || selectedJurnal.kegiatan || '-'}
+                    {(selectedJurnal.kegiatan_pembelajaran && selectedJurnal.kegiatan_pembelajaran !== '-') ? selectedJurnal.kegiatan_pembelajaran : (selectedJurnal.kegiatan && selectedJurnal.kegiatan !== '-' ? selectedJurnal.kegiatan : '-')}
+                  </p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Absensi Siswa</span>
+                  <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
+                    {formatAbsensi(selectedJurnal.absensi_siswa, selectedJurnal.detail_absen, selectedJurnal.kehadiran_murid)}
                   </p>
                 </div>
                 {(selectedJurnal.catatan_refleksi || selectedJurnal.refleksi) && (

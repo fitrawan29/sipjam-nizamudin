@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getWitaTimeStr, getWitaDayName, formatPresensiTime } from '@/lib/wita';
 import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
+import { parseLegacyOrModernAttendance } from '@/lib/workflow';
 
 export type IntervensiPhase = 'pagi' | 'kbm' | 'pulang' | 'malam_tutup';
 
@@ -640,16 +641,11 @@ export function resolveDailyStudentAttendance(
   // 1. Extract status from last KBM journal if available
   let lastKbmStatus: 'Hadir' | 'Sakit' | 'Izin' | 'Alpa' | 'Bolos' | '' = '';
   if (activeJournal) {
-    let absensiJson: Record<string, any> | null = null;
-    if (activeJournal.absensi_siswa) {
-      if (typeof activeJournal.absensi_siswa === 'object') {
-        absensiJson = activeJournal.absensi_siswa;
-      } else if (typeof activeJournal.absensi_siswa === 'string' && activeJournal.absensi_siswa.trim().startsWith('{')) {
-        try {
-          absensiJson = JSON.parse(activeJournal.absensi_siswa);
-        } catch (_) {}
-      }
-    }
+    const absensiJson = parseLegacyOrModernAttendance(
+      activeJournal.absensi_siswa,
+      activeJournal.detail_absen,
+      activeJournal.kehadiran_murid
+    );
 
     const combinedText = `${activeJournal.kehadiran_murid || ''} ${typeof activeJournal.absensi_siswa === 'string' ? activeJournal.absensi_siswa : ''} ${activeJournal.detail_absen || ''}`.toLowerCase();
     const isSemuaHadir = /semua\s*hadir|hadir\s*semua|semua\s*siswa\s*hadir/i.test(combinedText);
@@ -657,8 +653,8 @@ export function resolveDailyStudentAttendance(
     if (absensiJson && Object.keys(absensiJson).length > 0) {
       let val = (student.nisn !== undefined && student.nisn !== null && absensiJson[student.nisn] !== undefined)
         ? absensiJson[student.nisn]
-        : (student.nama_siswa && absensiJson[student.nama_siswa] !== undefined)
-          ? absensiJson[student.nama_siswa]
+        : (student.nama_siswa && (absensiJson[student.nama_siswa] !== undefined || absensiJson[student.nama_siswa.trim().toLowerCase()] !== undefined))
+          ? (absensiJson[student.nama_siswa] || absensiJson[student.nama_siswa.trim().toLowerCase()])
           : (student.id && absensiJson[student.id] !== undefined)
             ? absensiJson[student.id]
             : undefined;

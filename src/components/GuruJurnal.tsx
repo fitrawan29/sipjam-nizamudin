@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance, hasJournalContent } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -63,7 +63,7 @@ export default function GuruJurnal({
   const [tipeJurnal, setTipeJurnal] = useState('Jurnal KBM');
   const [mapel, setMapel] = useState('');
   const [kelas, setKelas] = useState('');
-  const [tanggal, setTanggal] = useState('');
+  const [tanggal, setTanggal] = useState(() => getWitaDateStr());
   const [materi, setMateri] = useState('');
   const [kegiatan, setKegiatan] = useState('');
   const [catatanSiswa, setCatatanSiswa] = useState('');
@@ -621,7 +621,7 @@ export default function GuruJurnal({
         }
       } else if (state.hasBlockedSchedule) {
         setDateBlok(state.blokInfo || (state.activeBloks && state.activeBloks[0]) || null);
-        const hasPendingUnblocked = state.jadwalKBM.some((jk: any) => !jk.isBlocked && !(state.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-')));
+        const hasPendingUnblocked = state.jadwalKBM.some((jk: any) => !jk.isBlocked && !(state.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && (!(j.materi === '-' && j.kegiatan === '-') || hasJournalContent(j))));
         if (hasPendingUnblocked) {
           setTipeJurnal('Jurnal KBM');
         } else {
@@ -634,7 +634,7 @@ export default function GuruJurnal({
         setTipeJurnal('Jurnal Kegiatan');
       } else if (state.jadwalKBM && state.jadwalKBM.length > 0) {
         setTipeJurnal('Jurnal KBM');
-      } else {
+      } else if (!kelas && !mapel && (myAssignments.length === 0 || (state as any).isNonKbmOrTu)) {
         setTipeJurnal('Jurnal Kegiatan');
       }
     };
@@ -726,7 +726,7 @@ export default function GuruJurnal({
 
     // Pilih jadwal hari ini yang belum diisi jurnalnya terlebih dahulu, fallback ke jadwal pertama hari ini
     const j =
-      jadwalHariIni.find((jk: any) => !(dailyState.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk) && !(jr.materi === '-' && jr.kegiatan === '-'))) ||
+      jadwalHariIni.find((jk: any) => !(dailyState.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk) && (!(jr.materi === '-' && jr.kegiatan === '-') || hasJournalContent(jr)))) ||
       jadwalHariIni[0];
 
     const matchedMapel = mapelList.find(m =>
@@ -1064,12 +1064,14 @@ export default function GuruJurnal({
                 : ((matchingSession.konten && matchingSession.konten !== '-') ? matchingSession.konten : ''));
             if (savedMateri) {
               setMateri(prev => prev || savedMateri);
-              setKonten(prev => prev || matchingSession.konten || savedMateri);
+              setKonten(prev => prev || ((matchingSession.konten && matchingSession.konten !== '-') ? matchingSession.konten : savedMateri));
             }
             if (matchingSession.tujuan_pembelajaran && matchingSession.tujuan_pembelajaran !== '-') {
               setTujuanPembelajaran(prev => prev || matchingSession.tujuan_pembelajaran);
             }
             if (matchingSession.kktp && matchingSession.kktp !== '-') setKktp(prev => prev || matchingSession.kktp);
+            if (matchingSession.pertemuan_ke && matchingSession.pertemuan_ke !== '-') setPertemuanKe(prev => prev || matchingSession.pertemuan_ke);
+            if (matchingSession.jam_ke && matchingSession.jam_ke !== '-') setJamKe(prev => prev || matchingSession.jam_ke);
 
             const savedKegiatan = (matchingSession.kegiatan && matchingSession.kegiatan !== '-')
               ? matchingSession.kegiatan
@@ -1088,8 +1090,11 @@ export default function GuruJurnal({
               : ((matchingSession.refleksi && matchingSession.refleksi !== '-') ? matchingSession.refleksi : '');
             if (savedRefleksi) setRefleksi(prev => prev || savedRefleksi);
 
-            if (matchingSession.link_bukti_foto || matchingSession.foto_kegiatan) {
-              setPhotoPreviewUrl(prev => prev || matchingSession.link_bukti_foto || matchingSession.foto_kegiatan);
+            const savedPhoto = (matchingSession.link_bukti_foto && matchingSession.link_bukti_foto !== '-')
+              ? matchingSession.link_bukti_foto
+              : ((matchingSession.foto_kegiatan && matchingSession.foto_kegiatan !== '-') ? matchingSession.foto_kegiatan : '');
+            if (savedPhoto) {
+              setPhotoPreviewUrl(prev => prev || savedPhoto);
             }
           }
 

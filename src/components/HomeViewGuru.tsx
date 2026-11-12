@@ -526,11 +526,7 @@ export default function HomeViewGuru({
         steps.push({ label: 'Jurnal Kegiatan', status: canOpen ? 'active' : 'locked', detail: canOpen ? 'Belum mengisi jurnal kegiatan' : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
       }
     } else {
-      const filled = (dailyState.jurnalKBM || []).filter(j => {
-        const mat = (j.materi && j.materi !== '-') ? j.materi : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : ((j.konten && j.konten !== '-') ? j.konten : null));
-        const keg = (j.kegiatan && j.kegiatan !== '-') ? j.kegiatan : ((j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') ? j.kegiatan_pembelajaran : null);
-        return Boolean(mat && (keg || (j.kegiatan && j.kegiatan !== '-')));
-      }).length;
+      const filled = (dailyState.jurnalKBM || []).filter(j => hasJournalContent(j)).length;
       const total = (dailyState.jadwalKBM || []).length;
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang?.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang?.jenis_presensi === 'Pulang Cepat';
       if (isPulangCepat && total > filled) {
@@ -1347,20 +1343,8 @@ export default function HomeViewGuru({
                         ? Object.keys(matchingJurnal.absensi_siswa).length > 0
                         : String(matchingJurnal.absensi_siswa).trim().length > 2))
                     );
-                    const matVal = (matchingJurnal?.materi && matchingJurnal.materi !== '-') 
-                      ? matchingJurnal.materi 
-                      : ((matchingJurnal?.materi_pembelajaran && matchingJurnal.materi_pembelajaran !== '-') 
-                        ? matchingJurnal.materi_pembelajaran 
-                        : ((matchingJurnal?.konten && matchingJurnal.konten !== '-') ? matchingJurnal.konten : null));
-                    const kegVal = (matchingJurnal?.kegiatan && matchingJurnal.kegiatan !== '-')
-                      ? matchingJurnal.kegiatan
-                      : ((matchingJurnal?.kegiatan_pembelajaran && matchingJurnal.kegiatan_pembelajaran !== '-')
-                        ? matchingJurnal.kegiatan_pembelajaran
-                        : null);
                     const isJurnalFilled = Boolean(
-                      matchingJurnal &&
-                      matVal &&
-                      (kegVal || (matchingJurnal.kegiatan && matchingJurnal.kegiatan !== '-'))
+                      matchingJurnal && hasJournalContent(matchingJurnal)
                     );
 
                     return (

@@ -116,7 +116,7 @@ export function hasJournalContent(j: any): boolean {
     : ((j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') 
       ? j.kegiatan_pembelajaran 
       : null);
-  return Boolean(mat && keg);
+  return Boolean(mat || keg);
 }
 
 /**
@@ -207,7 +207,15 @@ export function parseLegacyOrModernAttendance(
           map[String(key)] = st;
           if (item.nisn) map[String(item.nisn)] = st;
           if (item.id) map[String(item.id)] = st;
-          if (item.nama_siswa) map[String(item.nama_siswa).trim().toLowerCase()] = st;
+          if (item.siswa_id) map[String(item.siswa_id)] = st;
+          if (item.nama_siswa) {
+            map[String(item.nama_siswa)] = st;
+            map[String(item.nama_siswa).trim().toLowerCase()] = st;
+          }
+          if (item.nama) {
+            map[String(item.nama)] = st;
+            map[String(item.nama).trim().toLowerCase()] = st;
+          }
         });
       } else {
         Object.entries(parsed).forEach(([key, val]) => {
@@ -225,7 +233,8 @@ export function parseLegacyOrModernAttendance(
     parts.forEach(part => {
       const p = part.trim();
       if (!p) return;
-      const matchParen = p.match(/^(.+?)\s*\((H|S|I|A|B|Hadir|Sakit|Izin|Alpa|Alfa|Bolos)\)$/i);
+      const cleanPart = p.replace(/^\s*(?:\d+[\.\)]\s*|[-*•]\s*)/, '').trim();
+      const matchParen = cleanPart.match(/^(.+?)\s*\((H|S|I|A|B|Hadir|Sakit|Izin|Alpa|Alfa|Bolos)\)$/i);
       if (matchParen) {
         const iden = matchParen[1].trim();
         const st = normalizeStatusCode(matchParen[2]);
@@ -233,7 +242,7 @@ export function parseLegacyOrModernAttendance(
         map[iden.toLowerCase()] = st;
         return;
       }
-      const matchColon = p.match(/^(.+?)\s*[:=-]\s*(H|S|I|A|B|Hadir|Sakit|Izin|Alpa|Alfa|Bolos)$/i);
+      const matchColon = cleanPart.match(/^(.+?)\s*[:=-]\s*(H|S|I|A|B|Hadir|Sakit|Izin|Alpa|Alfa|Bolos)$/i);
       if (matchColon) {
         const iden = matchColon[1].trim();
         const st = normalizeStatusCode(matchColon[2]);

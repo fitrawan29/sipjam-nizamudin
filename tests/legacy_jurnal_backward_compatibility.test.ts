@@ -31,15 +31,26 @@ test('Legacy Jurnal Backward Compatibility Test Suite', async (t) => {
       'Legacy dual-write journal with konten should have content'
     );
 
-    // Legacy journal with materi_pembelajaran
+    // Legacy journal with materi_pembelajaran only (no kegiatan)
     assert.equal(
       hasJournalContent({
         materi: null,
-        kegiatan: 'Diskusi',
+        kegiatan: null,
         materi_pembelajaran: 'Trigonometri Dasar'
       }),
       true,
-      'Legacy journal with materi_pembelajaran should have content'
+      'Early legacy journal with only materi_pembelajaran should have content'
+    );
+
+    // Legacy journal with kegiatan only (no materi)
+    assert.equal(
+      hasJournalContent({
+        materi: null,
+        kegiatan: 'Praktikum Lapangan',
+        materi_pembelajaran: null
+      }),
+      true,
+      'Legacy journal with only kegiatan should have content'
     );
 
     // Draft / Absensi-only session where everything is '-' or empty
@@ -146,12 +157,22 @@ test('Legacy Jurnal Backward Compatibility Test Suite', async (t) => {
     assert.equal(legacyObjMap['STUDENT_A'], 'A');
     assert.equal(legacyObjMap['STUDENT_B'], 'I');
 
-    // 3d. Legacy detail_absen parsing
-    const fromDetail = parseLegacyOrModernAttendance(null, 'Ali (Hadir), Siti (Sakit), Doni (Izin), Eko (Alfa)');
+    // 3d. Legacy detail_absen parsing with numbering and bullet points
+    const fromDetail = parseLegacyOrModernAttendance(null, '1. Ali (Hadir), 2. Siti (Sakit), - Doni (Izin), • Eko (Alfa)');
     assert.equal(fromDetail['ali'], 'H');
     assert.equal(fromDetail['siti'], 'S');
     assert.equal(fromDetail['doni'], 'I');
     assert.equal(fromDetail['eko'], 'A');
+
+    // 3e. Legacy array with siswa_id and nama_siswa
+    const legacyArrayStudents = parseLegacyOrModernAttendance([
+      { siswa_id: 'uuid-1', nama_siswa: 'Budi Hartono', status: 'Hadir' },
+      { id: 'uuid-2', nama: 'Siti Aminah', status: 'Sakit' }
+    ]);
+    assert.equal(legacyArrayStudents['uuid-1'], 'H');
+    assert.equal(legacyArrayStudents['budi hartono'], 'H');
+    assert.equal(legacyArrayStudents['uuid-2'], 'S');
+    assert.equal(legacyArrayStudents['siti aminah'], 'S');
   });
 
   await t.test('4. formatAttendanceSummary produces uniform readable statistics', () => {

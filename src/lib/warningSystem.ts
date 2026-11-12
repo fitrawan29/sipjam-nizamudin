@@ -3,7 +3,8 @@ import {
   isBkAccount,
   isTeacherNameEquivalent,
   resolveLinkedUserForTeacher,
-  isTeacherRecordMatch
+  isTeacherRecordMatch,
+  hasJournalContent
 } from '@/lib/workflow';
 import { 
   getWitaDateStr, 
@@ -280,7 +281,7 @@ export function evaluateTeacherWarningsSync(
         dayJournals.forEach(j => {
           if (j.kelas && j.mapel && j.kelas !== '-') {
             // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan "-") tidak dihitung sebagai jurnal selesai
-            if (!(j.materi === '-' && j.kegiatan === '-')) {
+            if (!(j.materi === '-' && j.kegiatan === '-') || hasJournalContent(j)) {
               uniqueFilled.add(`${j.kelas}_${j.mapel}`);
             }
           }

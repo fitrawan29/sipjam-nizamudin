@@ -1207,6 +1207,10 @@ export default function AdminVerifView({
           (item.mapel || '').toLowerCase().includes(q) ||
           (item.kelas || '').toLowerCase().includes(q) ||
           (item.materi || '').toLowerCase().includes(q) ||
+          (item.materi_pembelajaran || '').toLowerCase().includes(q) ||
+          (item.konten || '').toLowerCase().includes(q) ||
+          (item.kegiatan || '').toLowerCase().includes(q) ||
+          (item.kegiatan_pembelajaran || '').toLowerCase().includes(q) ||
           (item.nama_siswa || '').toLowerCase().includes(q) ||
           (item.bidang_bimbingan || '').toLowerCase().includes(q) ||
           (item.jenis_layanan || '').toLowerCase().includes(q) ||
@@ -1812,20 +1816,40 @@ export default function AdminVerifView({
                           </span>
                         </div>
                       )}
-                      <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {item.materi || item.kegiatan || '-'}</p>
-                      {(item.link_bukti_foto || item.foto_kegiatan) && (item.link_bukti_foto !== '-' || item.foto_kegiatan !== '-') && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <img 
-                            src={transformGoogleDriveUrl(item.link_bukti_foto || item.foto_kegiatan)} 
-                            alt="Bukti Jurnal" 
-                            className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
-                            onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                          />
-                          <a href={item.link_bukti_foto || item.foto_kegiatan} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
-                            <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
-                          </a>
-                        </div>
-                      )}
+                      {(() => {
+                        const resolvedVerifMateri = ((item.materi && item.materi !== '-') 
+                          ? item.materi 
+                          : ((item.materi_pembelajaran && item.materi_pembelajaran !== '-') 
+                            ? item.materi_pembelajaran 
+                            : ((item.konten && item.konten !== '-') 
+                              ? item.konten 
+                              : ((item.kegiatan && item.kegiatan !== '-') 
+                                ? item.kegiatan 
+                                : ((item.kegiatan_pembelajaran && item.kegiatan_pembelajaran !== '-') 
+                                  ? item.kegiatan_pembelajaran 
+                                  : '-')))));
+                        const verifPhoto = (item.link_bukti_foto && item.link_bukti_foto !== '-') 
+                          ? item.link_bukti_foto 
+                          : ((item.foto_kegiatan && item.foto_kegiatan !== '-') ? item.foto_kegiatan : null);
+                        return (
+                          <>
+                            <p className="line-clamp-2"><span className="font-semibold">{item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? 'Kegiatan / Materi:' : 'Materi:'}</span> {resolvedVerifMateri}</p>
+                            {verifPhoto && (
+                              <div className="mt-2 flex items-center gap-2">
+                                <img 
+                                  src={transformGoogleDriveUrl(verifPhoto)} 
+                                  alt="Bukti Jurnal" 
+                                  className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                />
+                                <a href={verifPhoto} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                                  <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
+                                </a>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                       {(item.lokasi || (item.latitude && item.longitude) || item.waktu_upload) && (
                         <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
                           {(item.lokasi || (item.latitude && item.longitude)) && (
