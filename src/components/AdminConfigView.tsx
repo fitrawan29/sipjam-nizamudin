@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase, masterSupabase } from '@/lib/supabaseClient';
+import { supabase, masterSupabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
@@ -572,13 +572,23 @@ export default function AdminConfigView({
         }
       } catch (_) {}
 
-      // Also sync data_guru.wajib_hadir_hanya_mengajar
+      // Also sync data_guru.wajib_hadir_hanya_mengajar (resilient to schema cache)
       if (guruList.length > 0) {
-        if (exemptIds.length > 0) {
-          await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: true }).in('id', exemptIds);
-        }
-        if (nonExemptIds.length > 0) {
-          await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: false }).in('id', nonExemptIds);
+        try {
+          if (exemptIds.length > 0) {
+            const { error: exErr } = await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: true }).in('id', exemptIds);
+            if (exErr && (exErr.code === 'PGRST204' || String(exErr.message).includes('wajib_hadir_hanya_mengajar') || isSchemaCacheOrMissingTableError(exErr))) {
+              console.warn('[AdminConfigView] Schema cache missing wajib_hadir_hanya_mengajar on data_guru (exempt), skipping column update:', exErr.message);
+            }
+          }
+          if (nonExemptIds.length > 0) {
+            const { error: nonExErr } = await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: false }).in('id', nonExemptIds);
+            if (nonExErr && (nonExErr.code === 'PGRST204' || String(nonExErr.message).includes('wajib_hadir_hanya_mengajar') || isSchemaCacheOrMissingTableError(nonExErr))) {
+              console.warn('[AdminConfigView] Schema cache missing wajib_hadir_hanya_mengajar on data_guru (non-exempt), skipping column update:', nonExErr.message);
+            }
+          }
+        } catch (syncErr) {
+          console.warn('[AdminConfigView] Error updating data_guru.wajib_hadir_hanya_mengajar:', syncErr);
         }
 
         // Update local guruList state so UI reflects the newly persisted values

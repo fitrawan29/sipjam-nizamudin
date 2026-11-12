@@ -949,3 +949,6 @@ VALUES
     ('b0000000-0000-0000-0000-000000000001'::uuid, 'tahun_ajaran', '2024/2025'),
     ('b0000000-0000-0000-0000-000000000001'::uuid, 'semester_aktif', 'Ganjil')
 ON CONFLICT (sekolah_id, key) DO NOTHING;
+
+-- 7.4 REFRESH SCHEMA CACHE POSTGREST
+NOTIFY pgrst, 'reload schema';

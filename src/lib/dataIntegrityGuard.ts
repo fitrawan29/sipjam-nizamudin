@@ -2083,6 +2083,17 @@ export async function importMasterDataFromCsv(
       error = retry.error;
     }
 
+    // Schema cache resilience: if data_guru upsert fails due to missing 'wajib_hadir_hanya_mengajar' column in schema cache
+    if (error && (normTable === 'data_guru' || normTable === 'guru') && (error.code === 'PGRST204' || String(error.message).includes('wajib_hadir_hanya_mengajar') || String(error.message).includes('schema cache'))) {
+      console.warn('[dataIntegrityGuard] Missing wajib_hadir_hanya_mengajar column in schema cache for data_guru, retrying batch without column');
+      const cleanBatch = batch.map(row => {
+        const { wajib_hadir_hanya_mengajar: _w, ...rest } = row;
+        return rest;
+      });
+      const retry = await supabase.from(effectiveTableName).upsert(cleanBatch, upsertOptions);
+      error = retry.error;
+    }
+
     if (error) {
       // Check if data_kelas table is missing from schema cache (PGRST205 / 42P01)
       if (isKelasTable && isSchemaCacheError(error)) {

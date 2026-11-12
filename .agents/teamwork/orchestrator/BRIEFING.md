@@ -1,7 +1,7 @@
-# BRIEFING — 2026-11-09T05:55:00Z
+# BRIEFING — 2026-11-12T05:32:00Z
 
 ## Mission
-Implementasikan role BK (Bimbingan Konseling) dan fitur jurnal khusus BK yang tidak terikat kelas ke dalam aplikasi SIPJAM untuk kebutuhan produksi, dengan memastikan integritas sistem dan tidak merubah fitur atau logika lain yang tidak terdampak.
+Investigasi dan perbaiki dua kendala pada aplikasi sipjam-app: jurnal KBM guru yang tidak bisa disimpan, serta data jurnal guru yang hilang pada cetak jurnal KBM dari yang sebelumnya ada.
 
 ## 🔒 My Identity
 - Archetype: orchestrator
@@ -9,6 +9,7 @@ Implementasikan role BK (Bimbingan Konseling) dan fitur jurnal khusus BK yang ti
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\orchestrator
 - Original parent: Sentinel
 - Original parent conversation ID: 68b9bb7f-cdd0-4a24-afb1-7a1b9d79e1ca
+- Current mission parent: parent (ac374588-35a2-4b0d-a113-4ac7f645be45)
 
 ## 🔒 My Workflow
 - **Pattern**: Project Pattern
@@ -25,12 +26,16 @@ Implementasikan role BK (Bimbingan Konseling) dan fitur jurnal khusus BK yang ti
    - Escalate: report to parent (sub-orchestrators only, last resort)
 4. **Succession**: At 16 spawns, write handoff.md, spawn successor
 - **Work items**:
-  1. Survey Phase [completed]
-  2. Decomposition & PROJECT.md Plan [completed]
-  3. Milestone 1 Implementation & Verification (/ponytail) [completed]
-  4. Final Verification & Git Push [completed in main: 2e65155]
-- **Current phase**: 3 (Final Verification & Delivery)
-- **Current focus**: Handoff preparation and parent reporting
+  1. Survey Phase [completed - BK Role]
+  2. Decomposition & PROJECT.md Plan [completed - BK Role]
+  3. Milestone 1 Implementation & Verification (/ponytail) [completed - BK Role]
+  4. Final Verification & Git Push [completed in main: 2e65155 - BK Role]
+  5. Survey Phase [in-progress - Fix Jurnal KBM Guru Save & Cetak KBM Data Guru]
+  6. Milestone Decomposition & Planning [pending]
+  7. Implementation & Verification Loop [pending]
+  8. Final Gate & Git Push [pending]
+- **Current phase**: 0 (Survey Phase)
+- **Current focus**: Investigating root causes for Jurnal KBM save failure and missing teacher journal data in print view.
 
 ## 🔒 Key Constraints
 - NEVER write, modify, or create source code files directly.
@@ -44,15 +49,14 @@ Implementasikan role BK (Bimbingan Konseling) dan fitur jurnal khusus BK yang ti
 - Approach: /ponytail (solusi paling ringkas, sederhana, dan tepat guna tanpa over-engineering).
 
 ## Current Parent
-- Conversation ID: 68b9bb7f-cdd0-4a24-afb1-7a1b9d79e1ca
-- Updated: 2026-11-09T05:55:00Z
+- Conversation ID: ac374588-35a2-4b0d-a113-4ac7f645be45
+- Updated: 2026-11-12T05:15:39Z
 
 ## Key Decisions Made
-- Completed Survey Phase with consensus from 3 Explorers.
-- Updated PROJECT.md with full architecture, 18 inventoried features, Milestone M1, interface contracts, and code layout.
-- Dispatched worker_bk: implementation completed and pushed to origin/main (commit 2e65155).
-- Dispatched 2 Reviewers, 2 Challengers, and 1 Forensic Auditor in parallel.
-- Gate Check: PASS (unanimous APPROVE, 0 integrity violations, all tests passed).
+- Previous BK Role mission successfully delivered in commit 2e65155.
+- New mission received: Fix KBM journal save failure and restore missing teacher journal data on KBM print.
+- Phase 0 Survey initiated: Dispatched 3 Explorers in parallel (explorer_kbm_1, explorer_kbm_2, explorer_kbm_3).
+- Heartbeat check confirmed all 3 Explorers actively investigating (active commands within past minute).
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
@@ -66,17 +70,20 @@ Implementasikan role BK (Bimbingan Konseling) dan fitur jurnal khusus BK yang ti
 | challenger_bk_1 | teamwork_challenger | Adversarial RBAC & Security Challenger | completed (APPROVE) | f525069f-c220-4ce8-8b37-d8771d2f76e8 |
 | challenger_bk_2 | teamwork_challenger | Adversarial CRUD & Student Selector Challenger | completed (APPROVE) | d0002f28-1c02-442a-97a7-e47169f3110b |
 | auditor_bk_1 | teamwork_auditor | Forensic Integrity Audit | completed (CLEAN) | 08e65848-3320-43ca-bebd-575fb7b84181 |
+| explorer_kbm_1 | teamwork_explorer | Root-cause analysis: Jurnal KBM Guru Save Failure | in-progress | 449e3bfa-6550-489b-89b9-f2856e15654f |
+| explorer_kbm_2 | teamwork_explorer | Root-cause analysis: Missing Teacher Data in Cetak Jurnal KBM | in-progress | 98c8bcbf-ac50-4e71-966e-3c66f4e8437f |
+| explorer_kbm_3 | teamwork_explorer | System integration, data contracts, and verification harness | in-progress | d7facf07-7eb3-4d55-811c-faa13603429d |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 9 / 16
-- Pending subagents: none
+- Spawn count: 12 / 16
+- Pending subagents: 449e3bfa-6550-489b-89b9-f2856e15654f, 98c8bcbf-ac50-4e71-966e-3c66f4e8437f, d7facf07-7eb3-4d55-811c-faa13603429d
 - Predecessor: none
 - Successor: not yet spawned
 
 ## Active Timers
-- Heartbeat cron: cancelled (no subagents running)
-- Safety timer: none
+- Heartbeat cron: f8423969-31b1-4c71-9bae-1480d343ca6a/task-26
+- Safety timer: f8423969-31b1-4c71-9bae-1480d343ca6a/task-47
 
 ## Artifact Index
 - ORIGINAL_REQUEST.md — c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md

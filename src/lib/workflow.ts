@@ -1503,7 +1503,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let teacherCanonicalNama: string | null = null;
     let explicitTeacherSetting: boolean | null = null;
     try {
-      let tQ = supabase.from('data_guru').select('id, nama_guru, nip, mata_pelajaran, wajib_hadir_hanya_mengajar, sekolah_id');
+      let tQ = supabase.from('data_guru').select('*');
       if (sekolahId) {
         tQ = tQ.eq('sekolah_id', sekolahId);
       }

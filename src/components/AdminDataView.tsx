@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import Swal from 'sweetalert2';
 import { showToast } from '@/lib/toast';
 import NaikKelasModal from './NaikKelasModal';
@@ -59,6 +59,48 @@ export { getStorageCache, setStorageCache };
 
 const splitMapel = (s: any): string[] => String(s || '').split(',').map(x => x.trim()).filter(Boolean);
 const escAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+/**
+ * Fallback sync for teacher attendance exemption to pengaturan.guru_hanya_mengajar
+ * when data_guru.wajib_hadir_hanya_mengajar is missing from PostgREST schema cache.
+ */
+async function syncTeacherExemptionToPengaturanFallback(
+  sekolahId: string | undefined,
+  teacherIdentifier: string,
+  isExempt: boolean
+) {
+  if (!sekolahId || !teacherIdentifier) return;
+  try {
+    const pQ = supabase.from('pengaturan').select('key, value').eq('sekolah_id', sekolahId);
+    const { data: pRows } = await pQ;
+    const ghmRow = (pRows || []).find((r: any) => r.key === 'guru_hanya_mengajar');
+    let list: string[] = [];
+    if (ghmRow?.value) {
+      try {
+        const parsed = JSON.parse(ghmRow.value);
+        if (Array.isArray(parsed)) list = parsed.map(String);
+        else if (typeof parsed === 'string') list = [parsed];
+      } catch (_) {
+        list = [String(ghmRow.value)];
+      }
+    }
+    const cleanId = String(teacherIdentifier).trim();
+    if (isExempt) {
+      if (!list.includes(cleanId)) list.push(cleanId);
+    } else {
+      list = list.filter(x => x !== cleanId);
+    }
+    const jsonVal = JSON.stringify(list);
+    await supabase.from('pengaturan').upsert([
+      { sekolah_id: sekolahId, key: 'guru_hanya_mengajar', value: jsonVal }
+    ], { onConflict: 'sekolah_id,key' });
+    try {
+      await supabase.from('pengaturan').update({ guru_hanya_mengajar: jsonVal }).eq('sekolah_id', sekolahId);
+    } catch (_) {}
+  } catch (e) {
+    console.warn('[AdminDataView] Fallback sync to pengaturan.guru_hanya_mengajar note:', e);
+  }
+}
 
 // Checklist mapel guru: sumber data_mapel, mapel yang dipegang guru lain disembunyikan.
 export async function buildMapelChecklistHtml(sekolahId: string | undefined, guruList: any[], selfId: string | undefined, selected: string): Promise<string> {
@@ -1098,7 +1140,25 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       if (formValues) {
         setLoading(true);
-        const { error } = await supabase.from('data_guru').insert([formValues]);
+        let { error } = await supabase.from('data_guru').insert([formValues]);
+        // Schema cache resilience: if database lacks 'wajib_hadir_hanya_mengajar' column or PostgREST schema cache is stale
+        if (error && (
+          error.code === 'PGRST204' ||
+          String(error.message).includes('wajib_hadir_hanya_mengajar') ||
+          isSchemaCacheOrMissingTableError(error)
+        )) {
+          console.warn('[AdminDataView] Schema cache missing wajib_hadir_hanya_mengajar column, retrying insert without wajib_hadir_hanya_mengajar:', error.message);
+          const { wajib_hadir_hanya_mengajar: _w, ...cleanPayload } = formValues;
+          const retry = await supabase.from('data_guru').insert([cleanPayload]);
+          error = retry.error;
+          if (!error && formValues.wajib_hadir_hanya_mengajar) {
+            void syncTeacherExemptionToPengaturanFallback(
+              formValues.sekolah_id || user?.sekolah_id,
+              formValues.id || formValues.nip,
+              true
+            );
+          }
+        }
         setLoading(false);
         if (error) {
           showToast('Gagal Menambah Data', error.message, 'error');
@@ -1930,7 +1990,27 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         const pkVal = item[pkField];
         let q = supabase.from('data_guru').update(formValues).eq(pkField, pkVal);
         if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
-        const { error } = await q;
+        let { error } = await q;
+        // Schema cache resilience: if database lacks 'wajib_hadir_hanya_mengajar' column or PostgREST schema cache is stale
+        if (error && (
+          error.code === 'PGRST204' ||
+          String(error.message).includes('wajib_hadir_hanya_mengajar') ||
+          isSchemaCacheOrMissingTableError(error)
+        )) {
+          console.warn('[AdminDataView] Schema cache missing wajib_hadir_hanya_mengajar column, retrying update without wajib_hadir_hanya_mengajar:', error.message);
+          const { wajib_hadir_hanya_mengajar: _w, ...cleanPayload } = formValues;
+          let retryQ = supabase.from('data_guru').update(cleanPayload).eq(pkField, pkVal);
+          if (user?.sekolah_id) retryQ = retryQ.eq('sekolah_id', user.sekolah_id);
+          const retry = await retryQ;
+          error = retry.error;
+          if (!error && formValues.wajib_hadir_hanya_mengajar !== undefined) {
+            void syncTeacherExemptionToPengaturanFallback(
+              item.sekolah_id || user?.sekolah_id,
+              item.id || item.nip,
+              Boolean(formValues.wajib_hadir_hanya_mengajar)
+            );
+          }
+        }
         if (error) {
           setLoading(false);
           showToast('Gagal Mengubah Data', error.message, 'error');
