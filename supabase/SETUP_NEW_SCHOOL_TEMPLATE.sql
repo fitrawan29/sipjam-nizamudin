@@ -820,6 +820,25 @@ CREATE TRIGGER trg_sync_jadwal_pelajaran_mapel
 BEFORE INSERT OR UPDATE ON public.jadwal_pelajaran
 FOR EACH ROW EXECUTE FUNCTION public.sync_jadwal_pelajaran_mapel();
 
+CREATE OR REPLACE FUNCTION public.sync_jurnal_pembelajaran_kegiatan()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.kegiatan IS NOT NULL AND trim(NEW.kegiatan) <> '')
+       AND (NEW.kegiatan_pembelajaran IS NULL OR trim(NEW.kegiatan_pembelajaran) = '') THEN
+        NEW.kegiatan_pembelajaran := NEW.kegiatan;
+    ELSIF (NEW.kegiatan_pembelajaran IS NOT NULL AND trim(NEW.kegiatan_pembelajaran) <> '')
+       AND (NEW.kegiatan IS NULL OR trim(NEW.kegiatan) = '') THEN
+        NEW.kegiatan := NEW.kegiatan_pembelajaran;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_sync_jurnal_pembelajaran_kegiatan ON public.jurnal_pembelajaran;
+CREATE TRIGGER trg_sync_jurnal_pembelajaran_kegiatan
+BEFORE INSERT OR UPDATE ON public.jurnal_pembelajaran
+FOR EACH ROW EXECUTE FUNCTION public.sync_jurnal_pembelajaran_kegiatan();
+
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) & POLICIES
 -- ==============================================================================

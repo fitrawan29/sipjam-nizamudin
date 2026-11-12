@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
 import { isJurnalMatchJadwal, isLateArrival, connectGuruMapelWithJadwal, normalizeTeacherIdentityName, isTeacherRecordMatch, formatAttendanceSummary } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -1113,7 +1113,18 @@ export default function RekapJurnalView({
         query = query.eq('sekolah_id', user.sekolah_id);
       }
 
-      const { error } = await query;
+      let { error } = await query;
+      if (error && (isSchemaCacheOrMissingTableError(error) || error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('schema cache') || error.message?.includes('column'))) {
+        const { kegiatan_pembelajaran: _kp, ...compatiblePayload } = payload;
+        let retryQuery = supabase
+          .from('jurnal_pembelajaran')
+          .update(compatiblePayload)
+          .eq('id', editingJurnal.id);
+        if (user?.nama) retryQuery = retryQuery.eq('nama_guru', user.nama);
+        if (user?.sekolah_id) retryQuery = retryQuery.eq('sekolah_id', user.sekolah_id);
+        const retryRes = await retryQuery;
+        error = retryRes.error;
+      }
       if (error) throw error;
 
       const updatedEntry = { ...editingJurnal, ...payload };

@@ -528,6 +528,7 @@ export type Database = {
           id: string
           jam_ke: string | null
           kegiatan: string | null
+          kegiatan_pembelajaran?: string | null
           kehadiran_murid: string | null
           kelas: string | null
           keterangan: string | null
@@ -540,6 +541,7 @@ export type Database = {
           longitude: number | null
           mapel: string | null
           materi: string | null
+          materi_kegiatan?: string | null
           materi_pembelajaran: string | null
           nama_guru: string | null
           pertemuan_ke: string | null
@@ -563,6 +565,7 @@ export type Database = {
           id?: string
           jam_ke?: string | null
           kegiatan?: string | null
+          kegiatan_pembelajaran?: string | null
           kehadiran_murid?: string | null
           kelas?: string | null
           keterangan?: string | null
@@ -575,6 +578,7 @@ export type Database = {
           longitude?: number | null
           mapel?: string | null
           materi?: string | null
+          materi_kegiatan?: string | null
           materi_pembelajaran?: string | null
           nama_guru?: string | null
           pertemuan_ke?: string | null
@@ -598,6 +602,7 @@ export type Database = {
           id?: string
           jam_ke?: string | null
           kegiatan?: string | null
+          kegiatan_pembelajaran?: string | null
           kehadiran_murid?: string | null
           kelas?: string | null
           keterangan?: string | null
@@ -610,6 +615,7 @@ export type Database = {
           longitude?: number | null
           mapel?: string | null
           materi?: string | null
+          materi_kegiatan?: string | null
           materi_pembelajaran?: string | null
           nama_guru?: string | null
           pertemuan_ke?: string | null

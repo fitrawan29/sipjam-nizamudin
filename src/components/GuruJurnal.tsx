@@ -1283,7 +1283,13 @@ export default function GuruJurnal({
         let { error } = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existing.id);
         if (isSchemaColumnError(error)) {
           const { waktu_upload: _wu, catatan_khusus_siswa: _ck, ...compatiblePayload } = updatePayload;
-          const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existing.id);
+          const isKpErr = String(error?.message || '').toLowerCase().includes('kegiatan_pembelajaran');
+          const payloadToTry = isKpErr ? (({ kegiatan_pembelajaran: _kp, ...rest }: any) => rest)(compatiblePayload) : compatiblePayload;
+          let retry = await supabase.from('jurnal_pembelajaran').update(payloadToTry).eq('id', existing.id);
+          if (isSchemaColumnError(retry.error)) {
+            const { kegiatan_pembelajaran: _kp, ...strippedPayload } = compatiblePayload as any;
+            retry = await supabase.from('jurnal_pembelajaran').update(strippedPayload).eq('id', existing.id);
+          }
           error = retry.error;
         }
         if (error) throw error;
@@ -1319,7 +1325,13 @@ export default function GuruJurnal({
         let { error } = await supabase.from('jurnal_pembelajaran').insert([newSession]);
         if (isSchemaColumnError(error)) {
           const { user_id: _u, waktu_upload: _wu, catatan_khusus_siswa: _ck, ...compatibleJurnal } = newSession;
-          const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
+          const isKpErr = String(error?.message || '').toLowerCase().includes('kegiatan_pembelajaran');
+          const payloadToTry = isKpErr ? (({ kegiatan_pembelajaran: _kp, ...rest }: any) => rest)(compatibleJurnal) : compatibleJurnal;
+          let retry = await supabase.from('jurnal_pembelajaran').insert([payloadToTry]);
+          if (isSchemaColumnError(retry.error)) {
+            const { kegiatan_pembelajaran: _kp, ...strippedJurnal } = compatibleJurnal;
+            retry = await supabase.from('jurnal_pembelajaran').insert([strippedJurnal]);
+          }
           error = retry.error;
         }
         if (error) throw error;
@@ -1691,7 +1703,13 @@ export default function GuruJurnal({
         error = res.error;
         if (isSchemaColumnError(error)) {
           const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, catatan_khusus_siswa: _ck, ...compatiblePayload } = updatePayload;
-          const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existingSessionRow.id);
+          const isKpErr = String(error?.message || '').toLowerCase().includes('kegiatan_pembelajaran');
+          const payloadToTry = isKpErr ? (({ kegiatan_pembelajaran: _kp, ...rest }: any) => rest)(compatiblePayload) : compatiblePayload;
+          let retry = await supabase.from('jurnal_pembelajaran').update(payloadToTry).eq('id', existingSessionRow.id);
+          if (isSchemaColumnError(retry.error)) {
+            const { kegiatan_pembelajaran: _kp, ...strippedPayload } = compatiblePayload as any;
+            retry = await supabase.from('jurnal_pembelajaran').update(strippedPayload).eq('id', existingSessionRow.id);
+          }
           error = retry.error;
         }
       } else {
@@ -1699,7 +1717,13 @@ export default function GuruJurnal({
         error = insertRes.error;
         if (isSchemaColumnError(error)) {
           const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, catatan_khusus_siswa: _ck, ...compatibleJurnal } = newJurnal;
-          const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
+          const isKpErr = String(error?.message || '').toLowerCase().includes('kegiatan_pembelajaran');
+          const payloadToTry = isKpErr ? (({ kegiatan_pembelajaran: _kp, ...rest }: any) => rest)(compatibleJurnal) : compatibleJurnal;
+          let retry = await supabase.from('jurnal_pembelajaran').insert([payloadToTry]);
+          if (isSchemaColumnError(retry.error)) {
+            const { kegiatan_pembelajaran: _kp, ...strippedJurnal } = compatibleJurnal;
+            retry = await supabase.from('jurnal_pembelajaran').insert([strippedJurnal]);
+          }
           error = retry.error;
         }
       }
