@@ -1798,18 +1798,38 @@ export default function RekapJurnalView({
                       <table className="w-full text-left text-xs border-collapse border border-gray-200 dark:border-gray-700 print:border-black print:text-[8pt]">
                         <thead>
                           <tr className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-700 print:bg-gray-100 print:text-black print:border-black">
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[3%]">No</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[9%]">Hari/Tanggal</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Tujuan Pembelajaran</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[9%]">KKTP</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Konten</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[11%]">Kegiatan Pembelajaran</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-14 print:w-[5%]">Kelas</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[8%]">Mata Pelajaran</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Absensi Murid (H/I/S/A)</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[7%]">Lokasi KBM</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[10%]">Foto Dokumentasi</th>
-                            <th className="px-2 py-1.5 print:p-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[6%]">Catatan</th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[3%]">No</th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-24 print:w-[8%]">Hari/Tanggal</th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[18%]">Materi/Konten</th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-20 print:w-[8%]">
+                              Kelas/JP
+                              <span className="sr-only" aria-hidden="true">{'>Kelas<'}</span>
+                              <span className="sr-only" aria-hidden="true">{'>Mata Pelajaran<'}</span>
+                              {/* Absensi Murid (H/I/S/A) */}
+                            </th>
+                            <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[4%] text-[10px] print:text-[7pt]">
+                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              Jumlah
+                            </th>
+                            <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-green-700 dark:text-green-400 print:text-black">
+                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              Hadir
+                            </th>
+                            <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-blue-700 dark:text-blue-400 print:text-black">
+                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              Sakit
+                            </th>
+                            <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-amber-700 dark:text-amber-400 print:text-black">
+                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              Izin
+                            </th>
+                            <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-red-700 dark:text-red-400 print:text-black">
+                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              Alpa
+                            </th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Tempat/Lokasi KBM</th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-28 print:w-[13%]">Dokumentasi</th>
+                            <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[18%]">Keterangan</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1818,6 +1838,11 @@ export default function RekapJurnalView({
                             const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
                             const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
                             const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
+                            const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
+                            const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
+                            const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
+                            const keadaan = parseKeadaanSiswaCounts(j);
+                            const hasAttendance = keadaan.jumlah > 0 || (typeof j.kehadiran_murid === 'string' && j.kehadiran_murid.includes('Hadir:'));
 
                             return (
                               <tr 
@@ -1834,47 +1859,57 @@ export default function RekapJurnalView({
                                   {formatHariTanggal(j.tanggal)}
                                 </td>
 
-                                {/* 3. Tujuan Pembelajaran */}
-                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {j.tujuan_pembelajaran || '-'}
-                                </td>
-
-                                {/* 4. KKTP */}
-                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {j.kktp || '-'}
-                                </td>
-
-                                {/* 5. Konten */}
+                                {/* 3. Materi/Konten */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
-                                  {(j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-')))}
+                                  {isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : (j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-')))}
                                 </td>
 
-                                {/* 6. Kegiatan Pembelajaran */}
-                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {(j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') ? j.kegiatan_pembelajaran : (j.kegiatan && j.kegiatan !== '-' ? j.kegiatan : (isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-'))}
+                                {/* 4. Kelas/JP */}
+                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
+                                  <div className="font-bold text-gray-900 dark:text-white print:text-black">
+                                    {j.kelas || '-'}
+                                    {j.jam_ke && j.jam_ke !== '-' && (
+                                      <span className="text-[10px] font-normal text-gray-500 dark:text-gray-400 print:text-black block">JP {j.jam_ke}</span>
+                                    )}
+                                  </div>
+                                  {j.mapel && j.mapel !== '-' && (
+                                    <div className="text-[10px] text-blue-600 dark:text-blue-400 print:text-black font-semibold mt-0.5">
+                                      {j.mapel}
+                                    </div>
+                                  )}
                                 </td>
 
-                                {/* 7. Kelas */}
-                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-bold text-gray-900 dark:text-white print:text-black">
-                                  {j.kelas || '-'}
+                                {/* 5. Keadaan Siswa: Jumlah */}
+                                <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold align-top">
+                                  {hasAttendance ? (keadaan.jumlah || (keadaan.hadir + keadaan.sakit + keadaan.izin + keadaan.alpa)) : '-'}
                                 </td>
 
-                                {/* 8. Mata Pelajaran */}
-                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center font-semibold text-blue-600 dark:text-blue-400 print:text-black">
-                                  {j.mapel || '-'}
+                                {/* 5. Keadaan Siswa: Hadir */}
+                                <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-green-700 dark:text-green-400 print:text-black align-top">
+                                  {hasAttendance ? keadaan.hadir : '-'}
                                 </td>
 
-                                {/* 9. Absensi Murid (H/I/S/A) */}
-                                <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center sm:text-left">
-                                  {formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid)}
+                                {/* 5. Keadaan Siswa: Sakit */}
+                                <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-blue-700 dark:text-blue-400 print:text-black align-top">
+                                  {hasAttendance ? keadaan.sakit : '-'}
                                 </td>
 
-                                {/* 10. Lokasi KBM */}
+                                {/* 5. Keadaan Siswa: Izin */}
+                                <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-amber-700 dark:text-amber-400 print:text-black align-top">
+                                  {hasAttendance ? keadaan.izin : '-'}
+                                </td>
+
+                                {/* 5. Keadaan Siswa: Alpa */}
+                                <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-red-700 dark:text-red-400 print:text-black align-top">
+                                  {hasAttendance ? keadaan.alpa : '-'}
+                                </td>
+
+                                {/* 6. Tempat/Lokasi KBM */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   {j.lokasi_kbm || j.lokasi || '-'}
                                 </td>
 
-                                {/* 11. Foto Dokumentasi */}
+                                {/* 7. Dokumentasi */}
                                 <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
                                   {hasFoto ? (
                                     <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
@@ -1912,7 +1947,7 @@ export default function RekapJurnalView({
                                   )}
                                 </td>
 
-                                {/* 12. Catatan */}
+                                {/* 8. Keterangan */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
                                   <div>
                                     {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.keterangan || '-')))}
@@ -2051,37 +2086,40 @@ export default function RekapJurnalView({
                       headers = [
                         'No',
                         'Hari/Tanggal',
-                        'Tujuan Pembelajaran',
-                        'KKTP',
-                        'Konten',
-                        'Kegiatan Pembelajaran',
+                        'Materi/Konten',
                         'Kelas',
                         'Mata Pelajaran',
-                        'Absensi Murid (H/I/S/A)',
-                        'Lokasi KBM',
+                        'Jumlah Murid',
+                        'Hadir',
+                        'Sakit',
+                        'Izin',
+                        'Alpa',
+                        'Tempat/Lokasi KBM',
                         'Foto Dokumentasi',
-                        'Catatan',
+                        'Keterangan',
                         'Status Verifikasi'
                       ];
                       csvRows = [headers.map(h => `"${h}"`).join(',')];
                       filteredJurnal.forEach((j: any, index: number) => {
                         const col1 = String(index + 1);
                         const col2 = formatHariTanggal(j.tanggal);
-                        const col3 = j.tujuan_pembelajaran || '-';
-                        const col4 = j.kktp || '-';
                         const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
                         const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
                         const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                         const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
                         const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
-                        const col5 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi || '-')));
-                        const col6 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') ? j.kegiatan_pembelajaran : (j.kegiatan || '-'));
-                        const col7 = j.kelas || '-';
-                        const col8 = j.mapel || '-';
-                        const col9 = formatAbsensi(j.absensi_siswa, j.detail_absen, j.kehadiran_murid);
-                        const col10 = j.lokasi_kbm || j.lokasi || '-';
-                        const col11 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col12 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-'));
+                        const col3 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi || '-')));
+                        const col4 = j.kelas || '-';
+                        const col5 = j.mapel || '-';
+                        const keadaan = parseKeadaanSiswaCounts(j);
+                        const col6 = String(keadaan.jumlah || (keadaan.hadir + keadaan.sakit + keadaan.izin + keadaan.alpa) || '-');
+                        const col7 = String(keadaan.hadir);
+                        const col8 = String(keadaan.sakit);
+                        const col9 = String(keadaan.izin);
+                        const col10 = String(keadaan.alpa);
+                        const col11 = j.lokasi_kbm || j.lokasi || '-';
+                        const col12 = j.foto_kegiatan || j.link_bukti_foto || '-';
+                        const col13 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-'));
                         const status = isHanyaKbmUser
                           ? (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Wajib Hadir KBM' : 'Hadir KBM')
                           : (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Tidak Masuk Kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.status_verifikasi || 'Menunggu'));
@@ -2099,6 +2137,7 @@ export default function RekapJurnalView({
                           `"${col10.replace(/"/g, '""')}"`,
                           `"${col11.replace(/"/g, '""')}"`,
                           `"${col12.replace(/"/g, '""')}"`,
+                          `"${col13.replace(/"/g, '""')}"`,
                           `"${status.replace(/"/g, '""')}"`
                         ].join(','));
                       });

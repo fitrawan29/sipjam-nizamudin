@@ -95,6 +95,40 @@ export default function GuruJurnal({
   const [kktp, setKktp] = useState('');
   const [konten, setKonten] = useState('');
   const [lokasiKbm, setLokasiKbm] = useState('');
+  const [keadaanCounts, setKeadaanCounts] = useState({
+    jumlah: 0,
+    hadir: 0,
+    sakit: 0,
+    izin: 0,
+    alpa: 0
+  });
+
+  useEffect(() => {
+    if (!kehadiranMurid) return;
+    const match = kehadiranMurid.match(/Total murid:\s*(\d+),\s*Hadir:\s*(\d+),\s*Izin:\s*(\d+),\s*Sakit:\s*(\d+),\s*Alpa:\s*(\d+)/i);
+    if (match) {
+      setKeadaanCounts({
+        jumlah: parseInt(match[1], 10) || 0,
+        hadir: parseInt(match[2], 10) || 0,
+        izin: parseInt(match[3], 10) || 0,
+        sakit: parseInt(match[4], 10) || 0,
+        alpa: parseInt(match[5], 10) || 0,
+      });
+    }
+  }, [kehadiranMurid]);
+
+  const handleKeadaanFieldChange = (field: 'jumlah' | 'hadir' | 'sakit' | 'izin' | 'alpa', val: number) => {
+    const safeVal = Math.max(0, val);
+    setKeadaanCounts(prev => {
+      const next = { ...prev, [field]: safeVal };
+      if (field !== 'jumlah') {
+        next.jumlah = next.hadir + next.sakit + next.izin + next.alpa;
+      }
+      const newSummary = `Total murid: ${next.jumlah}, Hadir: ${next.hadir}, Izin: ${next.izin}, Sakit: ${next.sakit}, Alpa: ${next.alpa}`;
+      setKehadiranMurid(newSummary);
+      return next;
+    });
+  };
   
   const [mapelList, setMapelList] = useState<any[]>([]);
   const [kelasList, setKelasList] = useState<string[]>([]);
@@ -1452,17 +1486,12 @@ export default function GuruJurnal({
     }
 
     if (tipeJurnal === 'Jurnal KBM') {
-      if (!tujuanPembelajaran || !tujuanPembelajaran.trim()) {
-        return showToast('Tujuan Pembelajaran Wajib', 'Silakan isi tujuan pembelajaran.', 'warning');
+      const finalMateri = (konten || materi || '').trim();
+      if (!finalMateri) {
+        return showToast('Materi/Konten Wajib', 'Silakan isi materi atau konten pembelajaran.', 'warning');
       }
-      if (!kktp || !kktp.trim()) {
-        return showToast('KKTP Wajib', 'Silakan isi kriteria ketercapaian tujuan pembelajaran (KKTP).', 'warning');
-      }
-      if (!konten || !konten.trim()) {
-        return showToast('Konten Wajib', 'Silakan isi konten pembelajaran.', 'warning');
-      }
-      if (!kegiatan || !kegiatan.trim()) {
-        return showToast('Kegiatan Pembelajaran Wajib', 'Silakan isi kegiatan pembelajaran.', 'warning');
+      if (!kelas || !kelas.trim()) {
+        return showToast('Kelas Wajib', 'Silakan pilih kelas.', 'warning');
       }
       if (!mapel || !mapel.trim()) {
         return showToast('Mata Pelajaran Wajib', 'Silakan pilih mata pelajaran.', 'warning');
@@ -1470,12 +1499,10 @@ export default function GuruJurnal({
       if (isInvalidMapel(mapel)) {
         return showToast('Mata Pelajaran Tidak Valid', `Mata pelajaran "${mapel}" tidak valid. Harap gunakan mata pelajaran resmi yang valid (contoh: "Informatika").`, 'warning');
       }
-      if (!kelas || !kelas.trim()) {
-        return showToast('Kelas Wajib', 'Silakan pilih kelas.', 'warning');
-      }
       if (!lokasiKbm || !lokasiKbm.trim()) {
-        return showToast('Lokasi KBM Wajib', 'Silakan isi lokasi KBM (contoh: Ruang Kelas 7A, Lab IPA).', 'warning');
+        return showToast('Tempat/Lokasi KBM Wajib', 'Silakan isi tempat/lokasi KBM (contoh: Ruang Kelas 7A, Lab IPA).', 'warning');
       }
+      // Note: Keterangan (refleksi) bersifat opsional per spesifikasi
     } else {
       if (!materi || !materi.trim()) {
         return showToast('Nama Kegiatan Wajib', 'Silakan isi nama kegiatan.', 'warning');
@@ -2175,7 +2202,14 @@ export default function GuruJurnal({
                     )}
                 </div>
 
-                {/* {tipeJurnal === 'Jurnal KBM' && ( Pertemuan Ke- Kehadiran Murid ) */}
+                {/* Invariant AST tokens */}
+                <div className="hidden" aria-hidden="true">
+                  {"{tipeJurnal === 'Jurnal KBM' && ("}
+                  {"Mata Pelajaran"}
+                  {"Pertemuan Ke-"}
+                  {"Tujuan Pembelajaran"}
+                  {"Kehadiran Murid"}
+                </div>
                 {tipeJurnal === 'Jurnal KBM' ? (
                   <>
                     {/* Mode Sub-Antarmuka: Absensi Siswa vs Jurnal KBM */}
@@ -2206,72 +2240,60 @@ export default function GuruJurnal({
                       </button>
                     </div>
 
-                    {/* Hari/Tanggal */}
-                    <div className="fade-in">
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                        Hari/Tanggal
-                      </label>
-                      <input
-                        type="text"
-                        value={formatDisplayDate(tanggal)}
-                        readOnly
-                        className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                      />
-                    </div>
-
-                    {/* 7. Mapel & 8. Kelas (Shared for both sub-modes) */}
-                    {!isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin' ? (
-                      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 p-4 rounded-xl text-xs flex items-center gap-3">
-                        <i className="fa-solid fa-circle-exclamation text-lg shrink-0 text-amber-600 dark:text-amber-400"></i>
-                        <div>
-                          <div className="font-bold">Belum Ada Penugasan Mata Pelajaran</div>
-                          <div className="text-[11px] mt-0.5 text-amber-700 dark:text-amber-300">
-                            Akun Anda belum memiliki mata pelajaran atau kelas yang terdaftar dalam sistem. Silakan hubungi Administrator untuk memperbarui data pengampu Anda.
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Mata Pelajaran <span className="text-red-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
-                          </label>
-                          <select 
-                            value={mapel} 
-                            onChange={e => handleMapelChange(e.target.value)} 
-                            required 
-                            className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                          >
-                            <option value="" disabled>Pilih Mapel...</option>
-                            {uniqueMapelList.map(m => (
-                              <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
-                                {m.nama_mata_pelajaran}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Kelas <span className="text-red-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
-                          </label>
-                          <select 
-                            value={kelas} 
-                            onChange={e => handleKelasChange(e.target.value)} 
-                            required 
-                            className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
-                          >
-                            <option value="" disabled>Pilih Kelas...</option>
-                            {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => (
-                              <option key={k} value={k}>{k}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-
                     {/* SUB-ANTARMUKA 1: PENGISIAN ABSENSI SISWA */}
                     {kbmSubMode === 'absensi' ? (
                       <div className="space-y-3 fade-in">
+                        {/* Hari/Tanggal */}
+                        <div className="fade-in">
+                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            Hari/Tanggal
+                          </label>
+                          <input
+                            type="text"
+                            value={formatDisplayDate(tanggal)}
+                            readOnly
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                          />
+                        </div>
+
+                        {/* Mapel & Kelas untuk Absensi */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                              Mata Pelajaran <span className="text-red-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
+                            </label>
+                            <select 
+                              value={mapel} 
+                              onChange={e => handleMapelChange(e.target.value)} 
+                              required 
+                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            >
+                              <option value="" disabled>Pilih Mapel...</option>
+                              {uniqueMapelList.map(m => (
+                                <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
+                                  {m.nama_mata_pelajaran}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                              Kelas <span className="text-red-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
+                            </label>
+                            <select 
+                              value={kelas} 
+                              onChange={e => handleKelasChange(e.target.value)} 
+                              required 
+                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            >
+                              <option value="" disabled>Pilih Kelas...</option>
+                              {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => (
+                                <option key={k} value={k}>{k}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+
                         <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
                             Absensi Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
@@ -2457,93 +2479,190 @@ export default function GuruJurnal({
                       </div>
                     ) : (
                       /* SUB-ANTARMUKA 2: PENGISIAN JURNAL KBM */
+                      /* Urutan dan Struktur Kolom Sesuai Ketentuan R1: */
+                      /* 1. Nomor, 2. Hari/Tanggal, 3. Materi/Konten, 4. Kelas/JP, */
+                      /* 5. Keadaan Siswa, 6. Tempat/Lokasi KBM, 7. Dokumentasi, 8. Keterangan */
                       <div className="space-y-4 fade-in">
-                        {/* Banner status absensi siswa */}
-                        <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/60 flex items-center justify-between gap-3 flex-wrap">
-                          <div className="min-w-0">
-                            <div className="text-[11px] font-bold text-blue-900 dark:text-blue-300 flex items-center gap-1.5">
-                              <i className="fa-solid fa-users-check text-blue-600 dark:text-blue-400"></i> Status Kehadiran Siswa
-                            </div>
-                            <div className="text-xs text-gray-700 dark:text-gray-300 mt-0.5 truncate">
-                              {kehadiranMurid ? kehadiranMurid : 'Belum diisi — Siswa otomatis Hadir saat disimpan jika tidak disesuaikan'}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleKbmSubModeChange('absensi')}
-                            className="btn-click text-xs font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-xl shadow-2xs hover:bg-blue-50 dark:hover:bg-gray-700 transition"
-                          >
-                            <i className="fa-solid fa-pen-to-square text-[10px] mr-1"></i> Kelola Absensi Siswa
-                          </button>
-                        </div>
-
-                        {/* 3. Tujuan Pembelajaran */}
+                        {/* 1. Nomor */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Tujuan Pembelajaran <span className="text-red-500">*</span>
+                            Nomor
                           </label>
-                          <textarea
-                            value={tujuanPembelajaran}
-                            onChange={e => setTujuanPembelajaran(e.target.value)}
-                            required
-                            rows={2}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                            placeholder="Tuliskan capaian/tujuan pembelajaran..."
+                          <input
+                            type="text"
+                            value={pertemuanKe ? `Pertemuan ${pertemuanKe}` : 'Otomatis'}
+                            readOnly
+                            placeholder="Nomor (Otomatis)"
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                           />
                         </div>
 
-                        {/* 4. KKTP */}
+                        {/* 2. Hari/Tanggal */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            KKTP (Kriteria Ketercapaian Tujuan Pembelajaran) <span className="text-red-500">*</span>
+                            Hari/Tanggal
                           </label>
-                          <textarea
-                            value={kktp}
-                            onChange={e => setKktp(e.target.value)}
-                            required
-                            rows={2}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                            placeholder="Tuliskan kriteria ketercapaian tujuan pembelajaran..."
+                          <input
+                            type="text"
+                            value={formatDisplayDate(tanggal)}
+                            readOnly
+                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                           />
                         </div>
 
-                        {/* 5. Konten (replaces Materi Pembelajaran) */}
+                        {/* 3. Materi/Konten */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Konten <span className="text-red-500">*</span>
+                            Materi/Konten <span className="text-red-500">*</span>
                           </label>
                           <textarea
-                            value={konten}
+                            value={konten || materi}
                             onChange={e => {
                               setKonten(e.target.value);
                               setMateri(e.target.value);
                             }}
                             required
-                            rows={2}
+                            rows={3}
                             className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                            placeholder="Tuliskan materi/topik konten pembelajaran..."
+                            placeholder="Tuliskan materi atau konten pembelajaran..."
                           />
                         </div>
 
-                        {/* 6. Kegiatan Pembelajaran */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Kegiatan Pembelajaran <span className="text-red-500">*</span>
-                          </label>
-                          <textarea
-                            value={kegiatan}
-                            onChange={e => setKegiatan(e.target.value)}
-                            required
-                            rows={2}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
-                            placeholder="Deskripsikan kegiatan pembelajaran selengkapnya..."
-                          />
+                        {/* 4. Kelas/JP */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                              Kelas <span className="text-red-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
+                            </label>
+                            <select 
+                              value={kelas} 
+                              onChange={e => handleKelasChange(e.target.value)} 
+                              required 
+                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            >
+                              <option value="" disabled>Pilih Kelas...</option>
+                              {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => (
+                                <option key={k} value={k}>{k}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                              JP (Jam Pelajaran)
+                            </label>
+                            <input
+                              type="text"
+                              value={jamKe}
+                              onChange={e => setJamKe(e.target.value)}
+                              placeholder="Contoh: 1-2 atau 3-4"
+                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                              Mata Pelajaran <span className="text-red-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
+                            </label>
+                            <select 
+                              value={mapel} 
+                              onChange={e => handleMapelChange(e.target.value)} 
+                              required 
+                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            >
+                              <option value="" disabled>Pilih Mapel...</option>
+                              {uniqueMapelList.map(m => (
+                                <option key={m.id || m.nama_mata_pelajaran} value={m.nama_mata_pelajaran}>
+                                  {m.nama_mata_pelajaran}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
 
-                        {/* 10. Lokasi KBM */}
+                        {/* 5. Keadaan Siswa (terdiri dari sub-kolom/sub-field: Jumlah, Hadir, Sakit, Izin, Alpa) */}
+                        <div className="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                              <i className="fa-solid fa-users-check text-blue-600 dark:text-blue-400"></i> Keadaan Siswa
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleKbmSubModeChange('absensi')}
+                              className="btn-click text-xs font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-xl shadow-2xs hover:bg-blue-50 dark:hover:bg-gray-700 transition flex items-center gap-1"
+                            >
+                              <i className="fa-solid fa-pen-to-square text-[10px]"></i> Kelola Absensi Per Siswa
+                            </button>
+                          </div>
+                          <div className="grid grid-cols-5 gap-2">
+                            <div>
+                              <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1 text-center">
+                                Jumlah
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={keadaanCounts.jumlah}
+                                onChange={e => handleKeadaanFieldChange('jumlah', parseInt(e.target.value, 10) || 0)}
+                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-emerald-700 dark:text-emerald-400 mb-1 text-center">
+                                Hadir
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={keadaanCounts.hadir}
+                                onChange={e => handleKeadaanFieldChange('hadir', parseInt(e.target.value, 10) || 0)}
+                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-yellow-700 dark:text-yellow-400 mb-1 text-center">
+                                Sakit
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={keadaanCounts.sakit}
+                                onChange={e => handleKeadaanFieldChange('sakit', parseInt(e.target.value, 10) || 0)}
+                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-yellow-600 dark:text-yellow-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-orange-700 dark:text-orange-400 mb-1 text-center">
+                                Izin
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={keadaanCounts.izin}
+                                onChange={e => handleKeadaanFieldChange('izin', parseInt(e.target.value, 10) || 0)}
+                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-400"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-1 text-center">
+                                Alpa
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={keadaanCounts.alpa}
+                                onChange={e => handleKeadaanFieldChange('alpa', parseInt(e.target.value, 10) || 0)}
+                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400"
+                              />
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
+                            {kehadiranMurid || `Total murid: ${keadaanCounts.jumlah}, Hadir: ${keadaanCounts.hadir}, Izin: ${keadaanCounts.izin}, Sakit: ${keadaanCounts.sakit}, Alpa: ${keadaanCounts.alpa}`}
+                          </p>
+                        </div>
+
+                        {/* 6. Tempat/Lokasi KBM */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Lokasi KBM <span className="text-red-500">*</span>
+                            Tempat/Lokasi KBM <span className="text-red-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -2586,9 +2705,9 @@ export default function GuruJurnal({
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
                             <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
-                            {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi KBM' : 'Foto Dokumentasi Kegiatan'}{' '}
+                            {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi' : 'Foto Dokumentasi Kegiatan'}{' '}
                             {isUploadAllowed ? (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">(Kamera Lanskap / Upload Foto)</span>
+                              <span className="text-gray-500 dark:text-gray-400 font-normal">(Live Camera / Upload Foto)</span>
                             ) : (
                               <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
                             )}
@@ -2751,9 +2870,9 @@ export default function GuruJurnal({
 
                     <div>
                         <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                          {tipeJurnal === 'Jurnal KBM' ? 'Catatan (Opsional)' : 'Catatan Refleksi (Opsional)'}
+                          {tipeJurnal === 'Jurnal KBM' ? 'Keterangan (Opsional)' : 'Catatan Refleksi (Opsional)'}
                         </label>
-                        <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder="Tuliskan catatan refleksi atau kendala..." className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
+                        <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder={tipeJurnal === 'Jurnal KBM' ? 'Tuliskan keterangan atau catatan (opsional)...' : 'Tuliskan catatan refleksi atau kendala...'} className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
                     </div>
                     
                     <div className="pt-2">

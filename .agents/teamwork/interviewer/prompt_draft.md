@@ -1,29 +1,44 @@
-Investigasi dan perbaiki dua kendala pada aplikasi sipjam-app: jurnal KBM guru yang tidak bisa disimpan, serta data jurnal guru yang hilang pada cetak jurnal KBM dari yang sebelumnya ada.
+This is a single self-contained fix; keep it small and focused. Perbaiki kolom jurnal KBM pada aplikasi sipjam-app agar urutan dan strukturnya sesuai ketentuan pada form input, mode edit, tabel data, data lama, dan tampilan cetak.
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
 ## Requirements
 
-### R1. Perbaikan Penyimpanan Jurnal KBM Guru
-Identifikasi penyebab kegagalan penyimpanan jurnal KBM guru dan perbaiki alur penyimpanan sehingga data jurnal KBM guru dapat tersimpan ke database dengan berhasil tanpa error.
+### R1. Urutan dan Struktur Kolom Jurnal KBM
+Perbarui kolom jurnal KBM agar memiliki urutan dan struktur persis berikut:
+1. Nomor
+2. Hari/Tanggal
+3. Materi/Konten
+4. Kelas/JP
+5. Keadaan Siswa (terdiri dari sub-kolom/sub-field: Jumlah, Hadir, Sakit, Izin, Alpa)
+6. Tempat/Lokasi KBM
+7. Dokumentasi (menyediakan dua opsi: live camera dan upload foto)
+8. Keterangan (opsional)
 
-### R2. Pemulihan Tampilan Data Jurnal Guru pada Cetak Jurnal KBM
-Identifikasi penyebab hilangnya data jurnal guru pada fitur cetak jurnal KBM dan perbaiki logika pemanggilan atau penampilan datanya sehingga data jurnal guru kembali muncul secara lengkap dan akurat saat mencetak jurnal KBM.
+Urutan dan struktur kolom baru ini wajib diterapkan secara konsisten pada:
+- Form input/pengisian baru dan form mode edit jurnal KBM.
+- Tampilan tabel/daftar jurnal KBM, dengan memastikan data jurnal lama yang sudah diisi sebelumnya tetap dapat tampil secara benar menyesuaikan struktur kolom baru.
+- Mode cetak/print dokumen jurnal KBM.
 
-### R3. Mekanisme Verifikasi
-Rancang dan jalankan mekanisme verifikasi objektif untuk membuktikan bahwa penyimpanan jurnal KBM berhasil dan data cetak jurnal KBM tampil kembali tanpa menimbulkan regresi pada fitur lainnya.
+### R2. Pendekatan Implementasi (Ponytail full)
+Terapkan prinsip Ponytail (full): solusi paling sederhana yang berhasil bekerja (laziest solution that works), utamakan fitur native platform (seperti input file / camera capture native), hindari over-engineering, buat diff perubahan seringkas mungkin, dan gunakan kembali kode serta komponen yang sudah ada tanpa membuat abstraksi baru kecuali mutlak diperlukan.
+
+### R3. Alur Kerja Git
+Setelah seluruh perubahan selesai dan terverifikasi, lakukan staging (`git add .`), buat commit dengan pesan deskriptif, dan lakukan push langsung ke branch utama (`git push origin main`).
 
 ## Acceptance Criteria
 
-### Penyimpanan Jurnal KBM Guru
-- [ ] Operasi penyimpanan jurnal KBM guru berhasil dieksekusi tanpa error.
-- [ ] Data jurnal KBM yang disimpan tercatat di database dan dapat dimuat kembali secara benar.
-
-### Cetak Jurnal KBM
-- [ ] Tampilan atau dokumen cetak jurnal KBM menampilkan kembali data jurnal guru yang sebelumnya hilang.
-- [ ] Seluruh data jurnal guru yang bersangkutan muncul secara lengkap dan akurat pada hasil cetak jurnal KBM.
+### Kolom dan Struktur Jurnal KBM
+- [ ] Kolom pada form input dan mode edit jurnal KBM tersusun sesuai urutan: Nomor, Hari/Tanggal, Materi/Konten, Kelas/JP, Keadaan Siswa, Tempat/Lokasi KBM, Dokumentasi, Keterangan.
+- [ ] Kolom pada tampilan tabel/daftar jurnal KBM mencerminkan urutan dan struktur yang sama.
+- [ ] Data jurnal yang sudah tersimpan sebelumnya tetap dapat dimuat dan ditampilkan secara benar pada struktur kolom baru tanpa error.
+- [ ] Tampilan cetak/print dokumen jurnal KBM mencerminkan urutan dan struktur kolom baru secara konsisten.
+- [ ] Bagian Keadaan Siswa mencakup seluruh sub-field/kolom: Jumlah, Hadir, Sakit, Izin, dan Alpa.
+- [ ] Bagian Dokumentasi menyediakan dua opsi fungsional: live camera dan upload foto.
+- [ ] Kolom Keterangan bersifat opsional (tidak wajib diisi).
 
 ### Verifikasi & Integritas
-- [ ] Verifikasi objektif dijalankan dan membuktikan bahwa kedua masalah telah teratasi.
-- [ ] Tidak terjadi regresi pada alur kerja guru, modul KBM, maupun fitur cetak lainnya.
+- [ ] Proyek Next.js dapat di-build atau typecheck tanpa error (`npm run build`).
+- [ ] Alur input, edit, penampilan data lama, dan cetak jurnal KBM terverifikasi berfungsi normal tanpa regresi.
+- [ ] Perubahan di-stage, di-commit, dan di-push ke branch `main`.

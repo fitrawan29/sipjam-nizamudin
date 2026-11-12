@@ -1,73 +1,72 @@
-# BRIEFING — 2026-11-11T10:25:00Z
+# BRIEFING — 2026-11-12T11:52:02Z
 
 ## Mission
-Investigasi dan perbaiki ketidakkonsistenan status KBM antara antarmuka Guru dan Admin/Dashboard pada sipjam-app (/ponytail).
+Perbaiki kolom jurnal KBM pada aplikasi sipjam-app agar urutan dan strukturnya sesuai ketentuan pada form input, mode edit, tabel data, data lama, dan tampilan cetak.
 
 ## 🔒 My Identity
 - Archetype: orchestrator
 - Roles: orchestrator, user_liaison, human_reporter, successor
 - Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1
 - Original parent: parent
-- Original parent conversation ID: f37dbc1c-1060-40cd-9dce-6c6fa163f5ef
+- Original parent conversation ID: 6f94079d-ab60-4ef6-957d-b28555ff2188
 
 ## 🔒 My Workflow
 - **Pattern**: SWE Light
-- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\DISPATCH.md
-1. **Decompose**: SWE Light sequential refinement (no task splitting).
+- **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+1. **Decompose**: SWE Light does not decompose. Sequential refinement by teamwork_implementer -> teamwork_reviewer x3 -> victory auditor.
 2. **Dispatch & Execute**:
-   - teamwork_implementer -> teamwork_reviewer (r1) -> teamwork_reviewer (r2) -> teamwork_reviewer (r3) -> victory auditor -> complete.
-3. **On failure**:
-   - Retry -> Replace -> Skip -> Redistribute -> Degrade
-4. **Succession**: At 16 spawns, write handoff.md, spawn successor.
+   - teamwork_implementer (round 1)
+   - teamwork_reviewer (round 2)
+   - teamwork_reviewer (round 3)
+   - teamwork_reviewer (round 4)
+   - teamwork_victory_auditor
+3. **On failure**: Retry -> Replace -> Degrade
+4. **Succession**: At >=16 spawns, write handoff.md, spawn successor
 - **Work items**:
-  1. teamwork_implementer initial implementation [pending]
-  2. teamwork_reviewer round 1 [pending]
-  3. teamwork_reviewer round 2 [pending]
-  4. teamwork_reviewer round 3 [pending]
-  5. teamwork_victory_auditor audit [pending]
+  1. Primary implementation (teamwork_implementer) [pending]
+  2. Review round 1 (teamwork_reviewer) [pending]
+  3. Review round 2 (teamwork_reviewer) [pending]
+  4. Review round 3 (teamwork_reviewer) [pending]
+  5. Audit (teamwork_victory_auditor) [pending]
 - **Current phase**: 1
 - **Current focus**: Dispatch teamwork_implementer
 
 ## 🔒 Key Constraints
-- Propagate task verbatim
-- Never write source code myself, delegate to implementer/reviewer
-- Floor of 3 review rounds + victory auditor
-- Carry open-issues ledger across all rounds
-- Re-run verification tests independently
-- Never reuse a subagent after it has delivered its handoff — always spawn fresh
+- Never write, modify, or create source code files yourself. Delegate all implementation and all repair to teamwork_implementer and teamwork_reviewer.
+- Never explore or debug the codebase in order to solve the task yourself.
+- Propagate original task verbatim.
+- Floor of three review rounds and verify tests pass.
+- Carry open-issues ledger across all rounds.
+- Never reuse a subagent after it has delivered its handoff.
 
 ## Current Parent
-- Conversation ID: f37dbc1c-1060-40cd-9dce-6c6fa163f5ef
-- Updated: 2026-11-11T10:25:00Z
+- Conversation ID: 6f94079d-ab60-4ef6-957d-b28555ff2188
+- Updated: not yet
 
 ## Key Decisions Made
-- Use SWE Light pattern for self-contained software engineering fix.
-- Attached ponytail & surgical-patch skills.
+- Apply Ponytail full principle (simplest native working solution).
+- SWE Light execution pattern with floor of 3 reviewer rounds.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
-|-------|------|-----------|--------|---------|
-| implementer_1 | teamwork_implementer | Initial implementation & verification | completed | 4ec78209-96dc-4b30-b2e0-2bbfa9096621 |
-| reviewer_r1 | teamwork_reviewer | Review Round 1 - adversarial stress & fixes | completed | b298404b-b40f-46ea-9090-2f671ad8cb73 |
-| reviewer_r2 | teamwork_reviewer | Review Round 2 - deeper adversarial stress | completed | 16a362e3-c786-4596-8d47-9f2d49fd73cc |
-| reviewer_r3 | teamwork_reviewer | Review Round 3 - boundary & corner case stress | completed | 857e7245-f956-4aee-bd14-1f77f64245f8 |
-| reviewer_r4 | teamwork_reviewer | Review Round 4 - fix build error TS2304 & re-verify | completed | 3a96a394-9b0d-455d-9650-40c84580f83d |
-| victory_auditor | teamwork_victory_auditor | Independent victory audit | completed | c41ab338-7f92-4cb8-b55f-549921dea416 |
+|---|---|---|---|---|
+| f143594e-a222-45cb-8d92-987897105236 | teamwork_implementer | Primary implementation (Round 1) | in-progress | f143594e-a222-45cb-8d92-987897105236 |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 6 / 16
-- Pending subagents: none
+- Spawn count: 1 / 16
+- Pending subagents: f143594e-a222-45cb-8d92-987897105236
 - Predecessor: none
 - Successor spawned: not yet spawned
 - Successor generation: none
 - Successor state folder: none
 
 ## Active Timers
-- Heartbeat cron: cancelled
-- Safety timer: none
+- Heartbeat cron: 3b013fb0-1151-4b06-8344-a1b588b31f02/task-10
+- Safety timer: 3b013fb0-1151-4b06-8344-a1b588b31f02/task-88
 
 ## Artifact Index
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_1\DISPATCH.md — Dispatch instructions
-- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original request verbatim
+- ORIGINAL_REQUEST.md — Authoritative user request
+- DISPATCH.md — Incoming parent instructions
+- progress.md — Liveness and execution progress
