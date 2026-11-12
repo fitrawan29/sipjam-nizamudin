@@ -1,5 +1,5 @@
 ## Current Status
-Last visited: 2026-11-12T06:39:30Z
+Last visited: 2026-11-12T06:51:30Z
 
 ## Iteration Status
 Current iteration: 1 / 32
@@ -11,12 +11,14 @@ Current iteration: 1 / 32
   - [x] explorer_kbm_3: Completed (R3 architecture & verification)
 - [x] Phase 1: SCOPE.md Decomposition (Feature Inventory F1–F13, Milestone M1, Interface Contracts)
 - [ ] Phase 2: Iteration Loop for Milestone 1
-  - [x] Worker implementation (`worker_kbm`: all items R1, R2, R3 implemented; tests passing; git delivery in progress)
-  - [ ] Reviewer 1 & Reviewer 2 verification
-  - [ ] Challenger 1 & Challenger 2 adversarial verification
-  - [ ] Forensic Auditor integrity verification
+  - [x] Worker implementation (`worker_kbm`: all items R1, R2, R3 implemented; tests passing; committed `f800a0f` and pushed to `main`)
+  - [ ] Reviewer 1 (`reviewer_kbm_1`: in-progress)
+  - [ ] Reviewer 2 (`reviewer_kbm_2`: in-progress)
+  - [ ] Challenger 1 (`challenger_kbm_1`: in-progress)
+  - [ ] Challenger 2 (`challenger_kbm_2`: in-progress)
+  - [ ] Forensic Auditor (`auditor_kbm_1`: in-progress)
   - [ ] Gate Check
-- [ ] Phase 3: Final Verification, Git Commit & Push to main
+- [ ] Phase 3: Final Verification & Delivery
 
 ### Previous Completed Mission
 - [x] Implementasi Role BK & Jurnal Khusus BK (Delivered in commit 2e65155, Gate PASS)
