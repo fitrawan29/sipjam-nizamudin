@@ -799,7 +799,7 @@ export default function GuruJurnal({
             }
           } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {
             setTipeJurnal('Jurnal KBM');
-          } else if (kbmSubMode !== 'absensi') {
+          } else if (kbmSubMode !== 'absensi' && !kelas && !mapel && (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu)) {
             setTipeJurnal('Jurnal Kegiatan');
           }
         }
@@ -1521,6 +1521,8 @@ export default function GuruJurnal({
       ? 'Disetujui'
       : 'Menunggu';
 
+    const tgl = tanggal || getWitaDateStr();
+
     const newJurnal = {
       id: crypto.randomUUID(),
       timestamp: getWitaTimestamp(),
@@ -1528,7 +1530,7 @@ export default function GuruJurnal({
       user_id: user.id,
       mapel: tipeJurnal === 'Jurnal KBM' ? mapel : '-',
       kelas: tipeJurnal === 'Jurnal KBM' ? kelas : '-',
-      tanggal: tanggal,
+      tanggal: tgl,
       materi: finalKonten,
       kegiatan: kegiatan,
       absensi_siswa: tipeJurnal === 'Jurnal KBM' ? JSON.stringify(cleanAbsensiForSave) : JSON.stringify(absensi),
@@ -1579,26 +1581,56 @@ export default function GuruJurnal({
       }
 
       // Cek sesi yang sudah ada di jurnal_pembelajaran agar absensi dan jurnal terhubung dalam sesi yang sama
-      const tgl = tanggal || getWitaDateStr();
       const targetSearchName = (isInval && guruDigantikan?.nama) ? guruDigantikan.nama : (user?.nama || '');
       const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
       const normName = normalizeTeacherIdentityName(targetSearchName);
-      const cleanNama = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
+      const cleanNama = (user?.nama || '').split(',')[0].trim();
+      const firstToken = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
+      const searchEffectiveName = (isInval && guruDigantikan?.nama)
+        ? (normName.split(' ')[0] || targetSearchName.split(',')[0].trim())
+        : (firstToken || cleanNama);
+
       let existingSessionQuery = supabase
         .from('jurnal_pembelajaran')
         .select('*')
         .eq('tanggal', tgl)
         .eq('kelas', kelas);
       if (user?.sekolah_id) existingSessionQuery = existingSessionQuery.eq('sekolah_id', user.sekolah_id);
-      if (targetSearchUserId && cleanNama) {
-        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${cleanNama}%"`);
+      if (targetSearchUserId && searchEffectiveName) {
+        existingSessionQuery = existingSessionQuery.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
       } else if (targetSearchUserId) {
         existingSessionQuery = existingSessionQuery.eq('user_id', targetSearchUserId);
-      } else if (cleanNama) {
-        existingSessionQuery = existingSessionQuery.ilike('nama_guru', `%${cleanNama}%`);
+      } else if (searchEffectiveName) {
+        existingSessionQuery = existingSessionQuery.ilike('nama_guru', `%${searchEffectiveName}%`);
       }
-      const { data: existingSessionRows } = await existingSessionQuery;
+      let { data: existingSessionRows } = await existingSessionQuery;
+
+      // Fallback query tanpa batas sekolah_id jika belum ditemukan
+      if ((!existingSessionRows || existingSessionRows.length === 0) && user?.sekolah_id) {
+        let fbQ = supabase
+          .from('jurnal_pembelajaran')
+          .select('*')
+          .eq('tanggal', tgl)
+          .eq('kelas', kelas);
+        if (targetSearchUserId && searchEffectiveName) {
+          fbQ = fbQ.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
+        } else if (targetSearchUserId) {
+          fbQ = fbQ.eq('user_id', targetSearchUserId);
+        } else if (searchEffectiveName) {
+          fbQ = fbQ.ilike('nama_guru', `%${searchEffectiveName}%`);
+        }
+        const { data: fbRows } = await fbQ;
+        if (fbRows && fbRows.length > 0) {
+          existingSessionRows = fbRows;
+        }
+      }
+
       const existingSessionRow = (existingSessionRows || []).find((j: any) =>
+        tipeJurnal === 'Jurnal KBM'
+          ? (j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })) &&
+            (!targetSearchName || isTeacherRecordMatch(j, user) || isTeacherNameEquivalent(j.nama_guru, targetSearchName, true))
+          : (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')
+      ) || (existingSessionRows || []).find((j: any) =>
         tipeJurnal === 'Jurnal KBM'
           ? (j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel }))
           : (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan')
@@ -1629,7 +1661,7 @@ export default function GuruJurnal({
         const res = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existingSessionRow.id);
         error = res.error;
         if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
-          const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, ...compatiblePayload } = updatePayload;
+          const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, catatan_khusus_siswa: _ck, ...compatiblePayload } = updatePayload;
           const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existingSessionRow.id);
           error = retry.error;
         }
@@ -1637,7 +1669,7 @@ export default function GuruJurnal({
         let insertRes = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
         error = insertRes.error;
         if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
-          const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, ...compatibleJurnal } = newJurnal;
+          const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, catatan_khusus_siswa: _ck, ...compatibleJurnal } = newJurnal;
           const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
           error = retry.error;
         }
@@ -1653,7 +1685,7 @@ export default function GuruJurnal({
         if (tipeJurnal === 'Jurnal KBM' && students.length > 0) {
           try {
             const nowWita = new Date().toLocaleString('id-ID', { timeZone: 'Asia/Makassar' });
-            let aQ = supabase.from('absensi').select('id, siswa_id, nisn, nama_siswa, status, log_perubahan, keterangan').eq('tanggal', tanggal).eq('kelas', kelas);
+            let aQ = supabase.from('absensi').select('id, siswa_id, nisn, nama_siswa, status, log_perubahan, keterangan').eq('tanggal', tgl).eq('kelas', kelas);
             if (user?.sekolah_id) aQ = aQ.eq('sekolah_id', user.sekolah_id);
             const { data: existingClassAbs } = await aQ;
 
@@ -1671,7 +1703,7 @@ export default function GuruJurnal({
                   const logEntry = `[${nowWita} WITA] Terdeteksi Bolos: Hadir pagi di kelas/gerbang, tetapi Alfa pada mapel ${mapel || 'KBM'} (Jam ${jamKe || '-'}) oleh ${user.nama}`;
                   bolosUpdates.push({
                     sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
-                    tanggal: tanggal,
+                    tanggal: tgl,
                     kelas: kelas,
                     siswa_id: s.id,
                     nisn: s.nisn,
@@ -1869,7 +1901,7 @@ export default function GuruJurnal({
     }
   };
 
-  const hasNoKbmAssignments = tipeJurnal === 'Jurnal KBM' && !isFetchingAssignments && mapelList.length === 0 && user?.role !== 'Admin';
+  const hasNoKbmAssignments = tipeJurnal === 'Jurnal KBM' && !isFetchingAssignments && mapelList.length === 0 && !kelas && !mapel && user?.role !== 'Admin';
   // isLocked: locked if libur, or can't open jurnal, or no assignments
   // BUT: if there are rejected journals, allow re-submission even if canOpenJurnal is normally false
   const hasRejectedJurnal = (dailyState?.jurnalDitolak?.length ?? 0) > 0;
