@@ -10,7 +10,13 @@ import AdminBackupView from './AdminBackupView';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import { isMasterDataModificationAllowed, getStorageCache, setStorageCache, isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { formatKepalaSekolahLabel, normalizeStatusKepalaSekolah } from '@/utils/textUtils';
-import { isTeacherRecordMatch } from '@/lib/workflow';
+import {
+  isTeacherRecordMatch,
+  resolveLinkedUserForTeacher,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy
+} from '@/lib/workflow';
 
 export interface AdminConfigViewProps {
   user: any;
@@ -63,6 +69,7 @@ export default function AdminConfigView({
   });
 
   const [guruList, setGuruList] = useState<any[]>([]);
+  const [usersList, setUsersList] = useState<any[]>([]);
   const [jadwalList, setJadwalList] = useState<any[]>([]);
   const [exemptTeacherIds, setExemptTeacherIds] = useState<string[]>([]);
   const [teacherSearch, setTeacherSearch] = useState('');
@@ -94,10 +101,11 @@ export default function AdminConfigView({
     return mp.includes('bk') || mp.includes('bimbingan') || role === 'bk' || role === 'gurubk';
   };
 
-  const getTeacherKbmCount = (t: any, schedules: any[] = jadwalList): number => {
+  const getTeacherKbmCount = (t: any, schedules: any[] = jadwalList, uList: any[] = usersList): number => {
     if (isTuStaff(t)) return 0;
+    const linkedUser = resolveLinkedUserForTeacher(t, uList);
     return (schedules || []).filter(j =>
-      isTeacherRecordMatch(j, t, null, { allowSingleWordFirstToken: true })
+      isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true })
     ).length;
   };
 
@@ -165,9 +173,6 @@ export default function AdminConfigView({
               newConfig.status_kepala_sekolah = item.value;
               newConfig.status_kepala_sekolah = normalizeStatusKepalaSekolah(item.value);
             }
-            if (item.aturan_kehadiran_guru) {
-              newConfig.aturan_kehadiran_guru = item.aturan_kehadiran_guru;
-            }
             if (item.email_tujuan_upload) {
               newConfig.email_tujuan_upload = item.email_tujuan_upload;
             }
@@ -177,25 +182,9 @@ export default function AdminConfigView({
             if (item.key === 'jam_pulang_jumat' && item.value) {
               newConfig.jam_pulang_jumat = item.value;
             }
-            if (item.key === 'guru_hanya_mengajar' && item.value) {
-              try {
-                const parsed = JSON.parse(item.value);
-                if (Array.isArray(parsed)) ghmList.push(...parsed);
-                else if (typeof parsed === 'string') ghmList.push(parsed);
-              } catch (_) {
-                ghmList.push(item.value);
-              }
-            }
-            if (item.guru_hanya_mengajar) {
-              try {
-                const parsed = JSON.parse(item.guru_hanya_mengajar);
-                if (Array.isArray(parsed)) ghmList.push(...parsed);
-                else if (typeof parsed === 'string') ghmList.push(parsed);
-              } catch (_) {
-                ghmList.push(item.guru_hanya_mengajar);
-              }
-            }
           });
+          newConfig.aturan_kehadiran_guru = resolveSchoolAturanKehadiran(data);
+          ghmList.push(...resolveSchoolLegacyGhmList(data));
           // Ensure bidirectional fallback between kota_kabupaten and kota_ttd
           if (!newConfig.kota_kabupaten && newConfig.kota_ttd) {
             newConfig.kota_kabupaten = newConfig.kota_ttd;
@@ -213,6 +202,7 @@ export default function AdminConfigView({
 
           // Also fetch users with role 'tata_usaha' or 'Tata Usaha' to ensure any TU staff account is included
           let allPersonnel: any[] = teachers ? [...teachers] : [];
+          let fetchedUsers: any[] = [];
           try {
             let tuUserQuery = supabase.from('users').select('id, username, nama, role, sekolah_id');
             if (user?.sekolah_id) {
@@ -220,6 +210,8 @@ export default function AdminConfigView({
             }
             const { data: tuUsers } = await tuUserQuery;
             if (tuUsers && tuUsers.length > 0) {
+              fetchedUsers = tuUsers;
+              setUsersList(tuUsers);
               const tuFiltered = tuUsers.filter((u: any) => {
                 const r = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
                 return r === 'tatausaha';
@@ -239,7 +231,7 @@ export default function AdminConfigView({
                     nip: tu.username || '-',
                     mata_pelajaran: 'Tata Usaha (Administrasi)',
                     role: 'tata_usaha',
-                    wajib_hadir_hanya_mengajar: false,
+                    wajib_hadir_hanya_mengajar: null,
                     sekolah_id: tu.sekolah_id || user?.sekolah_id
                   });
                 }
@@ -273,18 +265,20 @@ export default function AdminConfigView({
               }
             }
 
-            const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
-            const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
-            // All personnel with explicit wajib_hadir_hanya_mengajar = true
-            const dbExempt = allPersonnel
-              .filter(t => isValTrue(t.wajib_hadir_hanya_mengajar))
-              .map(t => t.id);
-            const validLegacyGhm = ghmList.filter(idOrName => {
-              const matched = allPersonnel.find(t => t.id === idOrName || t.nama_guru === idOrName || (t.nip && t.nip === idOrName));
-              if (!matched) return true;
-              return !isValFalse(matched.wajib_hadir_hanya_mengajar);
-            });
-            setExemptTeacherIds(Array.from(new Set([...validLegacyGhm, ...dbExempt])));
+            const effectiveExemptIds = allPersonnel
+              .filter(t => {
+                const linkedUser = resolveLinkedUserForTeacher(t, fetchedUsers);
+                return resolveTeacherAttendancePolicy({
+                  teacher: t,
+                  linkedUser,
+                  weeklySchedules: allSchoolJadwal,
+                  aturanGlobal: newConfig.aturan_kehadiran_guru,
+                  guruHanyaMengajarList: ghmList
+                }).isTeacherExempt;
+              })
+              .map(t => t.id)
+              .filter(Boolean);
+            setExemptTeacherIds(Array.from(new Set(effectiveExemptIds)));
           } else if (ghmList.length > 0) {
             setExemptTeacherIds(Array.from(new Set(ghmList)));
           }

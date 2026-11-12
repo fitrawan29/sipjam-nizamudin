@@ -16,6 +16,10 @@ import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import {
   isGuruDiPiket,
   isBkAccount,
+  isTuAccount,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy,
   normalizeTeacherIdentityName,
   isTeacherNameEquivalent,
   resolveLinkedUserForTeacher,
@@ -219,10 +223,7 @@ export default function AdminVerifView({
         setKalenderEvents(kalenderRes.data);
       }
       if (pengaturanRes.data) {
-        const aturanRow = pengaturanRes.data.find(
-          (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
-        );
-        if (aturanRow) setAturanGlobal('Hari_Mengajar_Saja');
+        setAturanGlobal(resolveSchoolAturanKehadiran(pengaturanRes.data));
 
         const hsRow = pengaturanRes.data.find((p: any) => p.key === 'hari_sekolah' || p.hari_sekolah);
         if (hsRow) {
@@ -230,21 +231,7 @@ export default function AdminVerifView({
           if (!isNaN(hsVal)) setHariSekolah(hsVal);
         }
 
-        const ghmRow = pengaturanRes.data.find((p: any) => p.key === 'guru_hanya_mengajar');
-        if (ghmRow && ghmRow.value) {
-          try {
-            const parsed = JSON.parse(ghmRow.value);
-            if (Array.isArray(parsed)) setGuruHanyaMengajarList(parsed);
-            else if (parsed && typeof parsed === 'object') {
-              const list: string[] = [];
-              if (Array.isArray(parsed.ids)) list.push(...parsed.ids);
-              if (Array.isArray(parsed.names)) list.push(...parsed.names);
-              setGuruHanyaMengajarList(list);
-            }
-          } catch {
-            // ignore json parse error
-          }
-        }
+        setGuruHanyaMengajarList(resolveSchoolLegacyGhmList(pengaturanRes.data));
       }
     } catch (err) {
       console.error('Error loading master data for verification:', err);
@@ -877,30 +864,20 @@ export default function AdminVerifView({
         const hasPiketToday = inJadwalPiket || inPenugasanPiket;
 
         // Check if teacher is TU staff or teacher without KBM hours across all timetable
-        const isTu = (t.mata_pelajaran || '').toLowerCase().includes('tata usaha') ||
-          (linkedUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+        const isTu = isTuAccount(t, linkedUser?.role);
         const totalTeacherSchedules = isTu ? 0 : allJadwalPelajaran.filter((j: any) =>
           isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true })
         ).length;
         const isNonKbmOrTu = isTu || totalTeacherSchedules === 0;
 
         // Check if teacher is in category "wajib hadir pada jadwal KBM"
-        const isExplicitExempt = t.wajib_hadir_hanya_mengajar === true || String(t.wajib_hadir_hanya_mengajar) === 'true' || t.wajib_hadir_hanya_mengajar === 1 || String(t.wajib_hadir_hanya_mengajar) === '1';
-        const isExplicitNonExempt = t.wajib_hadir_hanya_mengajar === false || String(t.wajib_hadir_hanya_mengajar) === 'false' || t.wajib_hadir_hanya_mengajar === 0 || String(t.wajib_hadir_hanya_mengajar) === '0';
-        const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
-        const isLegacyInList = guruHanyaMengajarList.some((item: string) => {
-          const itemClean = item.trim().toLowerCase();
-          return (
-            item === t.id ||
-            (t.user_id && item === t.user_id) ||
-            (linkedUser?.id && item === linkedUser.id) ||
-            (itemClean &&
-              (itemClean === t.nama_guru?.toLowerCase().trim() ||
-                (linkedUser?.nama && itemClean === linkedUser.nama.toLowerCase().trim()) ||
-                (t.nip && itemClean === t.nip.toLowerCase().trim())))
-          );
-        });
-        const isTeacherExempt = !isNonKbmOrTu && (isExplicitExempt || (!hasExplicitSetting && (isLegacyInList || aturanGlobal === 'Hari_Mengajar_Saja')));
+        const isTeacherExempt = resolveTeacherAttendancePolicy({
+          teacher: t,
+          linkedUser,
+          totalTeacherKbmCount: totalTeacherSchedules,
+          aturanGlobal,
+          guruHanyaMengajarList,
+        }).isTeacherExempt;
 
         const isFreeFromPresence = isTeacherExempt && scheduledClasses.length === 0 && !hasPiketToday;
 

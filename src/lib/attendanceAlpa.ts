@@ -8,7 +8,17 @@ import {
   getWitaDayName,
   extractWitaDateStr
 } from '@/lib/wita';
-import { isGuruDiPiket, isJurnalMatchJadwal, isLateArrival, isBkAccount, isTeacherNameEquivalent } from '@/lib/workflow';
+import {
+  isGuruDiPiket,
+  isJurnalMatchJadwal,
+  isLateArrival,
+  isBkAccount,
+  isTeacherNameEquivalent,
+  isTeacherRecordMatch,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy
+} from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface AutoAlpaResult {
@@ -383,23 +393,8 @@ export async function evaluateAndApplyAutoAlpa(
     if (hasRecord) continue;
 
     // Evaluasi aturan kehadiran guru berbasis sekolahnya
-    const isSchoolHariMengajarSaja = schoolPengaturan.some(
-      (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
-    );
-    const ghmRow = schoolPengaturan.find((p: any) => p.key === 'guru_hanya_mengajar');
-    let guruHanyaMengajarList: string[] = [];
-    if (ghmRow && ghmRow.value) {
-      try {
-        const parsed = JSON.parse(ghmRow.value);
-        if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
-        else if (parsed && typeof parsed === 'object') {
-          if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
-          if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
-        }
-      } catch {
-        guruHanyaMengajarList = [ghmRow.value];
-      }
-    }
+    const schoolAturanGlobal = resolveSchoolAturanKehadiran(schoolPengaturan);
+    const guruHanyaMengajarList = resolveSchoolLegacyGhmList(schoolPengaturan);
 
     // Normalisasi nilai string boolean agar evaluasi aman dan konsisten
     if (guru.wajib_hadir_hanya_mengajar === 'false' || guru.wajib_hadir_hanya_mengajar === '0') {
@@ -408,44 +403,29 @@ export async function evaluateAndApplyAutoAlpa(
       guru.wajib_hadir_hanya_mengajar = true;
     }
 
-    // TU staff and teachers without KBM hours are strictly non-exempt
-    const isTu = (guru.mata_pelajaran || '').toLowerCase().includes('tata usaha') ||
-      (guru.mata_pelajaran || '').toLowerCase().includes('tu (administrasi)') ||
-      (guru.mata_pelajaran || '').toLowerCase() === 'tu';
-
-    const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
-
-    const hasAnyWeeklyKbm = !isTu && allWeeklyJadwal.some((j: any) => {
-      if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;
-      if (guru.user_id && j.user_id && String(j.user_id) === String(guru.user_id)) return true;
-      const jNama = (j.nama_guru || '').toLowerCase().trim();
-      if (!jNama || !cleanName) return false;
-      return jNama === namaNorm || jNama === cleanName || (cleanName.length >= 3 && jNama.includes(cleanName)) || (jNama.length >= 3 && cleanName.includes(jNama));
+    const schoolWeeklyJadwal = allWeeklyJadwal.filter((j: any) => !guru.sekolah_id || !j.sekolah_id || j.sekolah_id === guru.sekolah_id);
+    const policy = resolveTeacherAttendancePolicy({
+      teacher: guru,
+      weeklySchedules: schoolWeeklyJadwal,
+      aturanGlobal: schoolAturanGlobal,
+      guruHanyaMengajarList,
     });
-
-    const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
+    const isTu = policy.isTu;
+    const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
+    const hasAnyWeeklyKbm = policy.hasAnyWeeklyKbm;
+    const isNonKbmOrTu = policy.isNonKbmOrTu;
 
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const hasExplicitTeacherSetting = guru.wajib_hadir_hanya_mengajar !== null && guru.wajib_hadir_hanya_mengajar !== undefined;
-    const isTeacherInLegacyList = (guru.id && guruHanyaMengajarList.includes(guru.id)) ||
-      (guru.nip && guruHanyaMengajarList.includes(guru.nip)) ||
-      guruHanyaMengajarList.includes(guru.nama_guru) ||
-      (guru.user_id && guruHanyaMengajarList.includes(guru.user_id));
 
     // const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)
-    const isTeacherExempt = !isNonKbmOrTu && (
-      Boolean(guru.wajib_hadir_hanya_mengajar) ||
-      (!hasExplicitTeacherSetting && (isTeacherInLegacyList || isSchoolHariMengajarSaja))
-    );
+    const isTeacherExempt = policy.isTeacherExempt;
 
     if (isTeacherExempt) {
 
       const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
         if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;
-        if (guru.user_id && j.user_id && String(j.user_id) === String(guru.user_id)) return true;
-        const jNama = (j.nama_guru || '').toLowerCase().trim();
-        if (!jNama || !cleanName) return false;
-        return jNama === namaNorm || jNama === cleanName || (cleanName.length >= 3 && jNama.includes(cleanName)) || (jNama.length >= 3 && cleanName.includes(jNama));
+        return isTeacherRecordMatch(j, guru, null, { allowSingleWordFirstToken: true });
       });
 
       const inPenugasan = (penugasanList || []).some((p: any) => {

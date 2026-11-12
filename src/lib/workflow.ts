@@ -20,6 +20,179 @@ export function isBkAccount(roleOrMapel?: string | null, extra?: string | null):
 }
 
 /**
+ * Deteksi terpusat apakah role atau mata pelajaran merujuk ke staf Tata Usaha (TU).
+ */
+export function isTuAccount(teacherOrRole?: any, extraRole?: string | null): boolean {
+  const mp = (
+    typeof teacherOrRole === 'string'
+      ? teacherOrRole
+      : (teacherOrRole?.mata_pelajaran || teacherOrRole?.mataPelajaran || '')
+  ).toLowerCase();
+  const roleStr = (
+    typeof teacherOrRole === 'string'
+      ? teacherOrRole
+      : (teacherOrRole?.role || '')
+  ).toLowerCase().replace(/[\s_-]+/g, '');
+  const extraStr = (extraRole || '').toLowerCase().replace(/[\s_-]+/g, '');
+  return (
+    mp.includes('tata usaha') ||
+    mp.includes('tu (administrasi)') ||
+    mp.trim() === 'tu' ||
+    roleStr === 'tatausaha' ||
+    extraStr === 'tatausaha'
+  );
+}
+
+/**
+ * Parsing nilai boolean eksplisit dari kolom DB / cache (true/false/1/0/'true'/'false').
+ */
+export function parseExplicitBooleanFlag(val: any): boolean | null {
+  if (val === true || val === 1) return true;
+  if (val === false || val === 0) return false;
+  if (typeof val === 'string') {
+    const norm = val.trim().toLowerCase();
+    if (norm === 'true' || norm === '1' || norm === 'ya') return true;
+    if (norm === 'false' || norm === '0' || norm === 'tidak') return false;
+  }
+  return null;
+}
+
+/**
+ * Resolusi aturan kehadiran global sekolah dari baris-baris tabel pengaturan.
+ * Memprioritaskan key kanonik 'aturan_kehadiran_guru' sebelum fallback kolom legacy.
+ */
+export function resolveSchoolAturanKehadiran(
+  pengaturanRows: any[] = []
+): 'Semua_Hari' | 'Hari_Mengajar_Saja' {
+  if (!Array.isArray(pengaturanRows) || pengaturanRows.length === 0) return 'Semua_Hari';
+  const keyRow = pengaturanRows.find((p: any) => p?.key === 'aturan_kehadiran_guru' && p?.value);
+  const raw = keyRow
+    ? keyRow.value
+    : pengaturanRows.find((p: any) => p?.aturan_kehadiran_guru)?.aturan_kehadiran_guru;
+  return String(raw || '').trim() === 'Hari_Mengajar_Saja' ? 'Hari_Mengajar_Saja' : 'Semua_Hari';
+}
+
+/**
+ * Resolusi daftar ID/nama guru_hanya_mengajar dari baris-baris tabel pengaturan.
+ * Memprioritaskan key kanonik 'guru_hanya_mengajar' / 'guru_bebas_hadir' agar kolom legacy usang tidak mencemari.
+ */
+export function resolveSchoolLegacyGhmList(pengaturanRows: any[] = []): string[] {
+  if (!Array.isArray(pengaturanRows) || pengaturanRows.length === 0) return [];
+  const parseList = (rawVal: any): string[] => {
+    if (!rawVal) return [];
+    if (Array.isArray(rawVal)) return rawVal.map(String).filter(Boolean);
+    try {
+      const parsed = JSON.parse(String(rawVal));
+      if (Array.isArray(parsed)) return parsed.map(String).filter(Boolean);
+      if (parsed && typeof parsed === 'object') {
+        const out: string[] = [];
+        if (Array.isArray(parsed.ids)) out.push(...parsed.ids.map(String));
+        if (Array.isArray(parsed.names)) out.push(...parsed.names.map(String));
+        return out.filter(Boolean);
+      }
+      if (typeof parsed === 'string' && parsed.trim()) return [parsed.trim()];
+      return [];
+    } catch {
+      const s = String(rawVal).trim();
+      return s && s !== '[]' ? [s] : [];
+    }
+  };
+
+  const keyRow = pengaturanRows.find(
+    (p: any) => p?.key === 'guru_hanya_mengajar' || p?.key === 'guru_bebas_hadir'
+  );
+  if (keyRow) {
+    return parseList(keyRow.value);
+  }
+  const colRow = pengaturanRows.find((p: any) => p?.guru_hanya_mengajar);
+  return colRow ? parseList(colRow.guru_hanya_mengajar) : [];
+}
+
+export interface TeacherAttendancePolicyResult {
+  isTu: boolean;
+  hasAnyWeeklyKbm: boolean;
+  isNonKbmOrTu: boolean;
+  explicitSetting: boolean | null;
+  isInLegacyList: boolean;
+  isTeacherExempt: boolean;
+  aturanKehadiran: 'Semua_Hari' | 'Hari_Mengajar_Saja';
+}
+
+/**
+ * Evaluasi tunggal (single source of truth) kebijakan kehadiran per personel:
+ * 1. Pengaturan eksplisit per personel (`wajib_hadir_hanya_mengajar`: true/false) selalu diutamakan.
+ * 2. Jika belum disetel eksplisit (null/undefined): staf TU dan guru tanpa jam KBM tetap
+ *    wajib hadir setiap hari; guru berjadwal mengikuti daftar legacy atau aturan global sekolah.
+ */
+export function resolveTeacherAttendancePolicy(params: {
+  teacher?: any;
+  linkedUser?: any;
+  weeklySchedules?: any[];
+  totalTeacherKbmCount?: number;
+  aturanGlobal?: string | null;
+  guruHanyaMengajarList?: string[];
+}): TeacherAttendancePolicyResult {
+  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, aturanGlobal, guruHanyaMengajarList = [] } = params;
+  const isTu = isTuAccount(teacher, linkedUser?.role);
+  const hasAnyWeeklyKbm = isTu
+    ? false
+    : typeof totalTeacherKbmCount === 'number'
+    ? totalTeacherKbmCount > 0
+    : (weeklySchedules || []).some(
+        (j: any) =>
+          !isInvalidMapel(j?.mata_pelajaran || j?.mapel) &&
+          isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
+      );
+  const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
+  const explicitSetting = parseExplicitBooleanFlag(teacher?.wajib_hadir_hanya_mengajar);
+
+  const idSet = new Set(
+    [teacher?.id, teacher?.user_id, linkedUser?.id]
+      .filter(Boolean)
+      .map(v => String(v).trim())
+  );
+  const identSet = new Set(
+    [teacher?.nip, teacher?.username, linkedUser?.username]
+      .map(v => String(v || '').trim().toLowerCase())
+      .filter(v => v && v !== '-')
+  );
+  const normNames = new Set(
+    [teacher?.nama_guru, teacher?.nama, linkedUser?.nama]
+      .map(v => normalizeTeacherIdentityName(v))
+      .filter(Boolean)
+  );
+  const isInLegacyList = (guruHanyaMengajarList || []).some(rawItem => {
+    const item = String(rawItem || '').trim();
+    if (!item) return false;
+    if (idSet.has(item)) return true;
+    if (identSet.has(item.toLowerCase())) return true;
+    const normItem = normalizeTeacherIdentityName(item);
+    return Boolean(normItem && normNames.has(normItem));
+  });
+
+  let isTeacherExempt = false;
+  if (explicitSetting === false) {
+    isTeacherExempt = false;
+  } else if (explicitSetting === true) {
+    isTeacherExempt = true;
+  } else if (isNonKbmOrTu) {
+    isTeacherExempt = false;
+  } else if (isInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja') {
+    isTeacherExempt = true;
+  }
+
+  return {
+    isTu,
+    hasAnyWeeklyKbm,
+    isNonKbmOrTu,
+    explicitSetting,
+    isInLegacyList,
+    isTeacherExempt,
+    aturanKehadiran: isTeacherExempt ? 'Hari_Mengajar_Saja' : 'Semua_Hari',
+  };
+}
+
+/**
  * Normalisasi nama guru (trim spasi awal/akhir, hapus gelar akademik & tanda baca)
  * untuk pencocokan identitas yang akurat.
  */
@@ -1443,25 +1616,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       if (hsRow && hsRow.value) {
         hariSekolah = parseInt(hsRow.value, 10) || 6;
       }
-      const akRow = pengaturanRows.find((p: any) => p.key === 'aturan_kehadiran_guru' || p.aturan_kehadiran_guru);
-      if (akRow) {
-        aturanKehadiran =
-          (akRow.key === 'aturan_kehadiran_guru' ? akRow.value : akRow.aturan_kehadiran_guru) || 'Semua_Hari';
-      }
-      const ghmRow = pengaturanRows.find((p: any) => p.key === 'guru_hanya_mengajar');
-      if (ghmRow && ghmRow.value) {
-        try {
-          const parsed = JSON.parse(ghmRow.value);
-          if (Array.isArray(parsed)) {
-            guruHanyaMengajarList = parsed;
-          } else if (parsed && typeof parsed === 'object') {
-            if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
-            if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
-          }
-        } catch {
-          guruHanyaMengajarList = [ghmRow.value];
-        }
-      }
+      aturanKehadiran = resolveSchoolAturanKehadiran(pengaturanRows);
+      guruHanyaMengajarList = resolveSchoolLegacyGhmList(pengaturanRows);
       const jpm = pengaturanRows.find((p: any) => p.key === 'jam_pulang_mulai');
       if (jpm && jpm.value) jamPulangMulai = jpm.value;
       const jpj = pengaturanRows.find((p: any) => p.key === 'jam_pulang_jumat');
@@ -1537,19 +1693,20 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
           if (isBkAccount(teacher.mata_pelajaran)) {
             isTeacherBk = true;
           }
-          const mp = (teacher.mata_pelajaran || '').toLowerCase();
-          if (mp.includes('tata usaha') || mp.includes('tu (administrasi)') || mp === 'tu') {
+          if (isTuAccount(teacher.mata_pelajaran)) {
             isTeacherTu = true;
           }
-          if (teacher.wajib_hadir_hanya_mengajar !== null && teacher.wajib_hadir_hanya_mengajar !== undefined) {
-            explicitTeacherSetting = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true';
+          const parsedFlag = parseExplicitBooleanFlag(teacher.wajib_hadir_hanya_mengajar);
+          if (parsedFlag !== null) {
+            explicitTeacherSetting = parsedFlag;
           }
-          if (teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true') {
+          if (parsedFlag === true) {
             isTeacherExempt = true;
           }
           if (
-            guruHanyaMengajarList.includes(teacher.id) || 
-            guruHanyaMengajarList.includes(teacher.nama_guru) || 
+            guruHanyaMengajarList.includes(teacher.id) ||
+            (teacher.user_id && guruHanyaMengajarList.includes(teacher.user_id)) ||
+            guruHanyaMengajarList.includes(teacher.nama_guru) ||
             (teacher.nip && guruHanyaMengajarList.includes(teacher.nip))
           ) {
             isTeacherExempt = true;
@@ -1560,18 +1717,19 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       console.warn('Error checking teacher exemption in data_guru:', tErr);
     }
 
+    let fetchedUserRecord: any = null;
     if ((userId || username)) {
       try {
-        let uQ = supabase.from('users').select('role');
+        let uQ = supabase.from('users').select('id, nama, username, role');
         if (userId) uQ = uQ.eq('id', userId);
         else if (username) uQ = uQ.eq('username', username);
         const { data: uData } = await uQ;
         if (uData && uData.length > 0) {
+          fetchedUserRecord = uData[0];
           if (!isTeacherBk && isBkAccount(uData[0].role)) {
             isTeacherBk = true;
           }
-          const uRole = (uData[0].role || '').toLowerCase().replace(/[\s_-]+/g, '');
-          if (uRole === 'tatausaha') {
+          if (isTuAccount(undefined, uData[0].role)) {
             isTeacherTu = true;
           }
         }
@@ -1579,7 +1737,11 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
     state.isBk = isTeacherBk;
 
-    if (guruHanyaMengajarList.includes(namaGuru) || (username && guruHanyaMengajarList.includes(username))) {
+    if (
+      (userId && guruHanyaMengajarList.includes(userId)) ||
+      guruHanyaMengajarList.includes(namaGuru) ||
+      (username && guruHanyaMengajarList.includes(username))
+    ) {
       isTeacherExempt = true;
     }
 
@@ -1601,7 +1763,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
             isTeacherRecordMatch(
               j,
               { nama_guru: teacherCanonicalNama || namaGuru, nama: namaGuru, user_id: userId, id: teacherDataGuruId, nip: teacherDataGuruNip || username, username },
-              { id: userId, nama: namaGuru, username },
+              fetchedUserRecord || { id: userId, nama: namaGuru, username },
               { allowSingleWordFirstToken: true }
             )
           ).length;
@@ -1611,25 +1773,28 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
 
     isNonKbmOrTu = isTeacherTu || totalTeacherKbmCount === 0;
 
-    // Bidirectional consistency:
-    // If teacher is Staff TU or a teacher without KBM hours, they are strictly protected:
-    // they MUST attend every school day (isTeacherExempt = false).
-    // Otherwise:
-    // If teacher has explicit setting in data_guru:
-    // - true: exempt (only teaching / piket)
-    // - false: NOT exempt (must attend every day, global Hari_Mengajar_Saja does not override)
-    // If explicit setting is null/undefined (backward compatibility):
-    // Fall back to legacy guruHanyaMengajarList or global policy
-    if (isNonKbmOrTu) {
-      isTeacherExempt = false;
-    } else if (explicitTeacherSetting === false) {
+    const policy = resolveTeacherAttendancePolicy({
+      teacher: {
+        id: teacherDataGuruId,
+        user_id: userId,
+        nama_guru: teacherCanonicalNama || namaGuru,
+        nama: namaGuru,
+        nip: teacherDataGuruNip || username,
+        username,
+        mata_pelajaran: isTeacherTu ? 'Tata Usaha' : '',
+        wajib_hadir_hanya_mengajar: explicitTeacherSetting,
+      },
+      linkedUser: fetchedUserRecord || { id: userId, nama: namaGuru, username },
+      totalTeacherKbmCount,
+      aturanGlobal: aturanKehadiran,
+      guruHanyaMengajarList,
+    });
+    if (explicitTeacherSetting === false) {
       isTeacherExempt = false;
     } else if (explicitTeacherSetting === true) {
       isTeacherExempt = true;
     } else {
-      if (aturanKehadiran === 'Hari_Mengajar_Saja') {
-        isTeacherExempt = true;
-      }
+      isTeacherExempt = policy.isTeacherExempt;
     }
 
     state.aturanKehadiran = isTeacherExempt ? 'Hari_Mengajar_Saja' : 'Semua_Hari';

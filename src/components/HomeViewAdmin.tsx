@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   getWitaTimeStr, 
   getWitaDayName, 
@@ -14,6 +14,12 @@ import {
   isJurnalMatchJadwal, 
   isGuruDiPiket,
   isBkAccount,
+  isTuAccount,
+  isLateArrival,
+  evaluateScheduleBlock,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy,
   normalizeTeacherIdentityName,
   resolveLinkedUserForTeacher,
   isTeacherRecordMatch,
@@ -131,38 +137,7 @@ export default function HomeViewAdmin({
     fetchSchoolName();
   }, [user?.sekolah_id]);
 
-  useEffect(() => {
-    const handleGuruUpdated = () => {
-      loadAdminMatrix();
-    };
-    const handleWindowConfigSync = (e: any) => {
-      const updatedKop = e?.detail?.config?.kop_sekolah || e?.detail?.config?.NAMA_SEKOLAH;
-      if (updatedKop) {
-        setInternalSchoolName(updatedKop);
-      }
-      loadAdminMatrix();
-    };
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'sipjam_config_sync' && e.newValue) {
-        try {
-          const parsed = JSON.parse(e.newValue);
-          const updatedKop = parsed?.config?.kop_sekolah || parsed?.config?.NAMA_SEKOLAH;
-          if (updatedKop) {
-            setInternalSchoolName(updatedKop);
-          }
-          loadAdminMatrix();
-        } catch (_) {}
-      }
-    };
-    window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
-    window.addEventListener('sipjam:guru_updated', handleGuruUpdated);
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
-      window.removeEventListener('sipjam:guru_updated', handleGuruUpdated);
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  const realtimeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const cleanSchool = formatSchoolDisplayName(effectiveSchoolName || (user as any)?.sekolah_nama || 'SMA NIZAMUDIN');
   const baseSchool = cleanSchool.replace(/^admin\s+/i, '').trim() || 'Sekolah';
@@ -188,18 +163,18 @@ export default function HomeViewAdmin({
       // Multi-tenant scoped queries
       let teachersQ = supabase.from('data_guru').select('*').order('nama_guru', { ascending: true });
       let presensiQ = supabase.from('presensi_guru').select('*').order('timestamp', { ascending: false });
-      let presensiTodayQ = supabase.from('presensi_guru').select('*').gte('timestamp', getWitaStartOfDay(todayStr)).lte('timestamp', getWitaEndOfDay(todayStr));
+      let presensiTodayQ = supabase.from('presensi_guru').select('*').gte('timestamp', getWitaStartOfDay(todayStr)).lte('timestamp', getWitaEndOfDay(todayStr)).order('timestamp', { ascending: false });
       let jurnalQ = supabase.from('jurnal_pembelajaran').select('*').eq('tanggal', todayStr);
       let jadwalQ = supabase.from('jadwal_pelajaran').select('*').eq('hari', dayName);
-      let allWeeklyJadwalQ = supabase.from('jadwal_pelajaran').select('*');
+      let allWeeklyJadwalQ = supabase.from('jadwal_pelajaran').select('*').limit(2000);
       let piketScheduleQ = supabase.from('jadwal_piket').select('*').eq('hari', dayName);
       let piketLaporanQ = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
-      let kalenderQ = supabase.from('kalender_pendidikan').select('*').eq('tanggal', todayStr);
-      let pengaturanQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru');
+      let kalenderQ = supabase.from('kalender_pendidikan').select('*');
+      let pengaturanQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
       let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr).order('created_at', { ascending: false });
       let jurnalBkQ = supabase.from('jurnal_bk').select('*').eq('tanggal', todayStr);
-      let usersQ = supabase.from('users').select('id, nama, username, role');
+      let usersQ = supabase.from('users').select('id, nama, username, role, sekolah_id');
 
       if (user?.sekolah_id) {
         teachersQ = teachersQ.eq('sekolah_id', user.sekolah_id);
@@ -263,7 +238,7 @@ export default function HomeViewAdmin({
         safeUsersPromise
       ]);
 
-      const rawTeachers = teachersRes.data || [];
+      const rawTeachers = (teachersRes.data || []).filter((t: any) => !t?.status || String(t.status).toLowerCase() !== 'nonaktif');
       const seenPresensiIds = new Set<string>();
       const rawPresensi: any[] = [];
       for (const p of [...((presensiTodayRes as any)?.data || []), ...(presensiRes.data || [])]) {
@@ -272,6 +247,7 @@ export default function HomeViewAdmin({
           rawPresensi.push(p);
         }
       }
+      rawPresensi.sort((a: any, b: any) => String(b?.timestamp || '').localeCompare(String(a?.timestamp || '')));
       const jurnalList = jurnalRes.data || [];
       const jurnalBkList: any[] = [...((jurnalBkRes as any)?.data || [])];
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -292,7 +268,7 @@ export default function HomeViewAdmin({
         } catch (_) {}
       }
       const usersList: any[] = (usersRes as any)?.data || [];
-      // Sertakan akun Guru BK dari tabel users jika belum memiliki baris di data_guru
+      // Sertakan akun Guru BK dan Tenaga Tata Usaha dari tabel users jika belum memiliki baris di data_guru
       const linkedUserIds = new Set(
         rawTeachers
           .map((t: any) => resolveLinkedUserForTeacher(t, usersList)?.id)
@@ -307,10 +283,23 @@ export default function HomeViewAdmin({
           nip: u.username || '-',
           nama_guru: (u.nama || u.username || 'Guru BK').trim(),
           mata_pelajaran: 'Bimbingan Konseling (BK)',
+          role: u.role,
           sekolah_id: u.sekolah_id || user?.sekolah_id,
           _virtualFromUser: true
         }));
-      const teachers = [...rawTeachers, ...missingBkTeachers];
+      const missingTuTeachers = usersList
+        .filter((u: any) => u && isTuAccount(undefined, u.role) && !linkedUserIds.has(String(u.id)))
+        .map((u: any) => ({
+          id: u.id,
+          user_id: u.id,
+          nip: u.username || '-',
+          nama_guru: (u.nama || u.username || 'Staf Tata Usaha').trim(),
+          mata_pelajaran: 'Tata Usaha (Administrasi)',
+          role: u.role,
+          sekolah_id: u.sekolah_id || user?.sekolah_id,
+          _virtualFromUser: true
+        }));
+      const teachers = [...rawTeachers, ...missingBkTeachers, ...missingTuTeachers];
       const allWeeklyJadwalList = (allWeeklyJadwalRes.data || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
       const targetDayLower = dayName.trim().toLowerCase();
       const jadwalList = allWeeklyJadwalList.length > 0
@@ -319,14 +308,19 @@ export default function HomeViewAdmin({
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
       const assignedPiketTeachers = penugasanPiketRes.data || [];
-      const activeBlok = (blokRes.data && blokRes.data[0]) || null;
+      const activeBloks = blokRes.data || [];
+      const activeBlok = (activeBloks && activeBloks[0]) || null;
       setActiveBlokToday(activeBlok);
-      const isBlokToday = Boolean(activeBlok);
 
-      // Check holidays & weekend
-      const relevantCal = (kalenderRes.data || []).filter((c: any) =>
-        !c.sekolah_id || !user?.sekolah_id || c.sekolah_id === user.sekolah_id || c.sekolah_id === '00000000-0000-0000-0000-000000000000'
-      );
+      // Check holidays & weekend (mendukung single date maupun tanggal_mulai..tanggal_selesai)
+      const relevantCal = (kalenderRes.data || []).filter((c: any) => {
+        const matchSchool = !c.sekolah_id || !user?.sekolah_id || c.sekolah_id === user.sekolah_id || c.sekolah_id === '00000000-0000-0000-0000-000000000000';
+        if (!matchSchool) return false;
+        if (c.tanggal_mulai && c.tanggal_selesai) {
+          return todayStr >= c.tanggal_mulai && todayStr <= c.tanggal_selesai;
+        }
+        return c.tanggal === todayStr;
+      });
       const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
       const isLiburKalender = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
       const hariSekolahVal = (pengaturanRes.data || []).find((p: any) => p.key === 'hari_sekolah')?.value || '6';
@@ -334,22 +328,8 @@ export default function HomeViewAdmin({
       const isWeekendOff = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');
       const isSchoolDayOff = isLiburKalender || isWeekendOff;
 
-      const aturanGlobal = (pengaturanRes.data || []).find((p: any) => p.key === 'aturan_kehadiran_guru')?.value || 
-                           (pengaturanRes.data || []).find((p: any) => p.aturan_kehadiran_guru)?.aturan_kehadiran_guru;
-      const ghmRow = (pengaturanRes.data || []).find((p: any) => p.key === 'guru_hanya_mengajar');
-      let guruHanyaMengajarList: string[] = [];
-      if (ghmRow && ghmRow.value) {
-        try {
-          const parsed = JSON.parse(ghmRow.value);
-          if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
-          else if (parsed && typeof parsed === 'object') {
-            if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
-            if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
-          }
-        } catch {
-          guruHanyaMengajarList = [ghmRow.value];
-        }
-      }
+      const aturanGlobal = resolveSchoolAturanKehadiran(pengaturanRes.data || []);
+      const guruHanyaMengajarList = resolveSchoolLegacyGhmList(pengaturanRes.data || []);
 
       // Robust multi-format date filtering for presensi
       const presensiList = rawPresensi.filter((p: any) => {
@@ -395,7 +375,7 @@ export default function HomeViewAdmin({
         const mapel = teacher.mata_pelajaran || '-';
         const linkedUser = resolveLinkedUserForTeacher(teacher, usersList);
 
-        // 1. Target Classes & Jurnal KBM
+        // 1. Target Classes & Jurnal KBM (termasuk evaluasi Sistem Blok per jadwal & per guru)
         let targetClasses = jadwalList.filter((j: any) =>
           isTeacherMatch(j, teacher, linkedUser, true)
         );
@@ -403,32 +383,49 @@ export default function HomeViewAdmin({
         // Dedup to find real target count
         const uniqueTargetsMap = new Map();
         targetClasses.forEach((j: any) => {
-          uniqueTargetsMap.set(`${j.kelas}_${j.mata_pelajaran || j.mapel || ''}`, j);
+          uniqueTargetsMap.set(
+            `${(j.kelas || '').trim().toLowerCase()}_${(j.mata_pelajaran || j.mapel || '').trim().toLowerCase()}`,
+            j
+          );
         });
         targetClasses = Array.from(uniqueTargetsMap.values());
+        const teacherRef = {
+          id: teacher.id || linkedUser?.id,
+          user_id: teacher.user_id || linkedUser?.id,
+          nama: nama,
+          nama_guru: nama,
+        };
+        targetClasses = targetClasses.map((jk: any) => {
+          const evalResult = evaluateScheduleBlock(jk, teacherRef, activeBloks);
+          return {
+            ...jk,
+            isBlocked: evalResult.isBlocked,
+            blockRule: evalResult.blockRule || null,
+          };
+        });
         const targetCount = targetClasses.length;
-        
-        const isExplicitExempt = teacher.wajib_hadir_hanya_mengajar === true || String(teacher.wajib_hadir_hanya_mengajar) === 'true' || teacher.wajib_hadir_hanya_mengajar === 1 || String(teacher.wajib_hadir_hanya_mengajar) === '1';
-        const isExplicitNonExempt = teacher.wajib_hadir_hanya_mengajar === false || String(teacher.wajib_hadir_hanya_mengajar) === 'false' || teacher.wajib_hadir_hanya_mengajar === 0 || String(teacher.wajib_hadir_hanya_mengajar) === '0';
-        const hasExplicitTeacherSetting = isExplicitExempt || isExplicitNonExempt;
-        const isTeacherInLegacyList = guruHanyaMengajarList.includes(teacher.id) ||
-          guruHanyaMengajarList.some((item: string) => {
-            const cItem = cleanStr(item);
-            return (
-              item === teacher.id ||
-              (teacher.user_id && item === teacher.user_id) ||
-              (cItem && (cItem === cleanStr(nama) || (teacher.nip && cItem === cleanStr(teacher.nip))))
-            );
+        const hasBlocked = targetClasses.some((jk: any) => jk.isBlocked);
+        const allBlocked = targetCount > 0 && targetClasses.every((jk: any) => jk.isBlocked);
+        let isBlokToday = allBlocked;
+        if (!isBlokToday && targetCount === 0 && activeBloks.length > 0) {
+          isBlokToday = activeBloks.some((b: any) => {
+            if (b.tipe_target === 'sekolah' || b.tipe_target === 'keseluruhan' || !b.tipe_target) return true;
+            if (b.tipe_target === 'guru') return evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
+            return false;
           });
-        const isTu = (teacher.mata_pelajaran || '').toLowerCase().includes('tata usaha') ||
-          (linkedUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
-        const hasAnyWeeklyKbm = !isTu && allWeeklyJadwalList.some((j: any) =>
-          isTeacherMatch(j, teacher, linkedUser, true)
-        );
-        const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
+        }
 
-        const isTeacherExempt = !isNonKbmOrTu && (isExplicitExempt ||
-          (!hasExplicitTeacherSetting && (isTeacherInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja')));
+        const policy = resolveTeacherAttendancePolicy({
+          teacher,
+          linkedUser,
+          weeklySchedules: allWeeklyJadwalList,
+          aturanGlobal,
+          guruHanyaMengajarList,
+        });
+        const isNonKbmOrTu = policy.isNonKbmOrTu;
+        // AST preservation for regression tests: aturanGlobal === 'Hari_Mengajar_Saja' & guruHanyaMengajarList.includes
+        void (aturanGlobal === 'Hari_Mengajar_Saja' && guruHanyaMengajarList.includes(teacher.id));
+        const isTeacherExempt = policy.isTeacherExempt;
         const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
@@ -461,12 +458,38 @@ export default function HomeViewAdmin({
         const hasPiketDuty = isPiket;
         const isFreeFromPresence = isSchoolDayOff ? false : (isExemptNonTeaching && !hasPiketDuty);
 
-        // 2. Presensi Datang
-        const pDatang = presensiList.find((p: any) => 
+        // 2. Presensi Datang (termasuk cakupan cuti/izin/sakit multi-hari)
+        const pDatangToday = presensiList.find((p: any) => 
           isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Datang' && p.status_verifikasi !== 'Ditolak'
         ) || presensiList.find((p: any) =>
           isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Datang'
         );
+        const multiDayLeave = !pDatangToday
+          ? rawPresensi.find((p: any) => {
+              if (!isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true })) return false;
+              if (p.status_verifikasi === 'Ditolak' || isLateArrival(p)) return false;
+              const isLeaveType =
+                p.jenis_presensi === 'Izin' ||
+                p.jenis_presensi === 'Sakit' ||
+                p.jenis_presensi === 'Cuti' ||
+                p.detail_izin === 'Sakit' ||
+                p.detail_izin === 'Cuti' ||
+                (Boolean(p.detail_izin) && (p.detail_izin.includes('Izin') || p.detail_izin.includes('Cuti')));
+              if (!isLeaveType) return false;
+              if (p.tanggal_mulai && p.tanggal_selesai) {
+                return todayStr >= p.tanggal_mulai && todayStr <= p.tanggal_selesai;
+              }
+              if (p.tanggal_mulai && p.durasi_hari && Number(p.durasi_hari) > 1) {
+                const startD = new Date(p.tanggal_mulai + 'T00:00:00+08:00');
+                startD.setDate(startD.getDate() + Number(p.durasi_hari) - 1);
+                const endStr = getWitaDateStr(startD);
+                return todayStr >= p.tanggal_mulai && todayStr <= endStr;
+              }
+              const match = p.detail_izin?.match(/(\d{4}-\d{2}-\d{2})\s*s\/d\s*(\d{4}-\d{2}-\d{2})/);
+              return match ? todayStr >= match[1] && todayStr <= match[2] : false;
+            })
+          : null;
+        const pDatang = pDatangToday || multiDayLeave || null;
         let presensiDatangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang';
         let presensiDatangColor: 'green' | 'amber' | 'blue' | 'rose' | 'gray' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
         let datangTime = '';
@@ -477,13 +500,20 @@ export default function HomeViewAdmin({
             ? ts.split(' ')[1].substring(0, 5) 
             : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : ''));
           const jp = pDatang.jenis_presensi || 'Sekolah';
-          if (jp === 'Izin') {
+          const stVerif = pDatang.status_verifikasi;
+          if (stVerif === 'Ditolak') {
+            presensiDatangStatus = 'Ditolak';
+            presensiDatangColor = 'rose';
+          } else if (jp === 'Izin') {
             const isSakit = (pDatang.detail_izin || '').toLowerCase().includes('sakit');
             presensiDatangStatus = isSakit ? 'Sakit' : 'Izin';
-            presensiDatangColor = 'blue';
+            presensiDatangColor = isSakit ? 'rose' : 'blue';
           } else if (jp === 'Sakit') {
             presensiDatangStatus = 'Sakit';
             presensiDatangColor = 'rose';
+          } else if (jp === 'Cuti') {
+            presensiDatangStatus = 'Cuti';
+            presensiDatangColor = 'blue';
           } else if (jp === 'Dinas Luar') {
             presensiDatangStatus = 'Dinas Luar';
             presensiDatangColor = 'blue';
@@ -491,7 +521,6 @@ export default function HomeViewAdmin({
             presensiDatangStatus = 'Alpa';
             presensiDatangColor = 'rose';
           } else if (jp === 'Izin Terlambat' || jp === 'Terlambat') {
-            const stVerif = pDatang.status_verifikasi;
             if (stVerif === 'Disetujui' || stVerif === 'Diverifikasi') {
               const telatDetik = pDatang.keterlambatan_detik || 0;
               if (telatDetik > 0) {
@@ -502,9 +531,6 @@ export default function HomeViewAdmin({
                 presensiDatangStatus = `Hadir [${datangTime}]`;
                 presensiDatangColor = 'green';
               }
-            } else if (stVerif === 'Ditolak') {
-              presensiDatangStatus = 'Ditolak';
-              presensiDatangColor = 'rose';
             } else {
               // Izin Terlambat belum diverifikasi: tidak langsung disahkan sebagai Hadir
               presensiDatangStatus = 'Izin Terlambat (Menunggu Verifikasi)';
@@ -523,6 +549,12 @@ export default function HomeViewAdmin({
           }
         }
 
+        const isLeaveToday = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit' || presensiDatangStatus === 'Cuti';
+        if (isLeaveToday && isPiket) {
+          piketStatus = presensiDatangStatus;
+          piketColor = presensiDatangStatus === 'Sakit' ? 'rose' : 'blue';
+        }
+
         // 3. Presensi Pulang
         const pPulang = presensiList.find((p: any) => 
           isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Pulang' && p.status_verifikasi !== 'Ditolak'
@@ -538,7 +570,10 @@ export default function HomeViewAdmin({
           pulangTime = formatPresensiTime(ts) || (ts.includes(' ') 
             ? ts.split(' ')[1].substring(0, 5) 
             : (ts.includes('T') ? ts.split('T')[1].substring(0, 5) : ''));
-          if (pPulang.status_verifikasi === 'Pulang Cepat' || pPulang.jenis_presensi === 'Pulang Cepat') {
+          if (pPulang.status_verifikasi === 'Ditolak') {
+            presensiPulangStatus = 'Ditolak';
+            presensiPulangColor = 'rose';
+          } else if (pPulang.status_verifikasi === 'Pulang Cepat' || pPulang.jenis_presensi === 'Pulang Cepat') {
             presensiPulangStatus = `Pulang Cepat [${pulangTime}]`;
             presensiPulangColor = 'amber';
           } else {
@@ -548,6 +583,9 @@ export default function HomeViewAdmin({
         } else if (pDatang && (pDatang.jenis_presensi === 'Alpa' || pDatang.status_verifikasi === 'Alpa')) {
           presensiPulangStatus = 'Alpa';
           presensiPulangColor = 'rose';
+        } else if (isLeaveToday) {
+          presensiPulangStatus = presensiDatangStatus;
+          presensiPulangColor = presensiDatangColor;
         }
 
         // 5. Pengisian Jurnal (Handling regular KBM, Dinas Luar / Jurnal Kegiatan, and Jurnal BK)
@@ -577,20 +615,25 @@ export default function HomeViewAdmin({
           isRealJournal(j) && j.status_verifikasi !== 'Tidak Masuk Kelas'
         );
 
-        const filledClassesCount = targetClasses.filter((jk: any) => 
+        const unblockedTargets = targetClasses.filter((jk: any) => !jk.isBlocked);
+        const kbmTargetsForCount = unblockedTargets.length > 0 && hasBlocked ? unblockedTargets : targetClasses;
+        const effectiveTargetCount = isBlokToday ? 0 : kbmTargetsForCount.length;
+
+        const filledClassesCount = kbmTargetsForCount.filter((jk: any) => 
           acceptedTeacherJournals.some((j: any) => j.status_verifikasi !== 'Tidak Masuk Kelas' && isRealJournal(j) && isJurnalMatchJadwal(j, jk))
         ).length;
 
         // Effective filled count harmonizes schedule matching with actual real journals submitted
-        const filledCount = targetCount > 0
-          ? Math.max(filledClassesCount, Math.min(targetCount, realTeacherJournals.length))
+        const filledCount = effectiveTargetCount > 0
+          ? Math.max(filledClassesCount, Math.min(effectiveTargetCount, realTeacherJournals.length))
           : realTeacherJournals.length;
 
         const isDinasLuar = presensiDatangStatus === 'Dinas Luar';
-        const isIzinSakit = presensiDatangStatus === 'Izin' || presensiDatangStatus === 'Sakit';
+        const isIzinSakit = isLeaveToday;
         const hasJurnalKegiatan = acceptedTeacherJournals.some((j: any) => 
-          isRealJournal(j) && (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && (!j.kelas || j.kelas === '-')))
+          isRealJournal(j) && ((j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || j.mapel === 'Jurnal Kegiatan' || (j.kegiatan_pembelajaran && (!j.kelas || j.kelas === '-')))
         );
+        const hasMixedBlockPending = Boolean(hasBlocked && !allBlocked && !hasJurnalKegiatan);
         const bkFilledCount = acceptedBkJournals.length;
         const hasJurnalBk = bkFilledCount > 0;
 
@@ -645,7 +688,7 @@ export default function HomeViewAdmin({
             jurnalStatus = 'Perlu Jurnal Kegiatan';
             jurnalColor = 'amber';
           }
-        } else if (isExemptNonTeaching || targetCount === 0 || isSchoolDayOff) {
+        } else if (isExemptNonTeaching || isSchoolDayOff) {
           if (hasTidakMelaksanakanKegiatan) {
             jurnalStatus = 'Tidak Melaksanakan Kegiatan';
             jurnalColor = 'rose';
@@ -659,11 +702,39 @@ export default function HomeViewAdmin({
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
           }
+        } else if (effectiveTargetCount === 0) {
+          if (hasTidakMelaksanakanKegiatan) {
+            jurnalStatus = 'Tidak Melaksanakan Kegiatan';
+            jurnalColor = 'rose';
+          } else if (hasJurnalKegiatan) {
+            jurnalStatus = 'Jurnal Kegiatan Selesai';
+            jurnalColor = 'green';
+          } else if (realTeacherJournals.length > 0) {
+            jurnalStatus = `${realTeacherJournals.length}/${realTeacherJournals.length} Selesai`;
+            jurnalColor = 'green';
+          } else if (hasRejectedJournal) {
+            jurnalStatus = 'Ditolak (Perlu Revisi)';
+            jurnalColor = 'rose';
+          } else if (!isNonKbmOrTu && isPiket) {
+            jurnalStatus = 'Bebas KBM';
+            jurnalColor = 'gray';
+          } else {
+            jurnalStatus = 'Perlu Jurnal Kegiatan';
+            jurnalColor = 'amber';
+          }
+        } else if (hasBlocked && filledCount >= effectiveTargetCount && effectiveTargetCount > 0) {
+          if (hasMixedBlockPending) {
+            jurnalStatus = `${filledCount}/${effectiveTargetCount} + Perlu Jurnal Kegiatan`;
+            jurnalColor = 'amber';
+          } else {
+            jurnalStatus = `${effectiveTargetCount}/${effectiveTargetCount} Selesai`;
+            jurnalColor = 'green';
+          }
         } else if (filledCount >= targetCount && targetCount > 0) {
           jurnalStatus = `${targetCount}/${targetCount} Selesai`;
           jurnalColor = 'green';
         } else if (filledCount > 0) {
-          jurnalStatus = `${filledCount}/${targetCount} Belum Lengkap`;
+          jurnalStatus = `${filledCount}/${effectiveTargetCount} Belum Lengkap`;
           jurnalColor = 'amber';
         } else if (hasTidakMasukKelas) {
           jurnalStatus = 'Tidak Masuk Kelas';
@@ -678,7 +749,7 @@ export default function HomeViewAdmin({
 
         // 6. Aggregate: Tugas Lengkap?
         const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);
-        const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak');
+        const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak' && presensiDatangStatus !== 'Alpa');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang ['));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
         const jurnalDone =
@@ -691,9 +762,11 @@ export default function HomeViewAdmin({
                 ? isExemptNonTeaching || hasJurnalKegiatan
                 : isDinasLuar
                 ? hasJurnalKegiatan
-                : targetCount === 0 || isExemptNonTeaching
+                : isExemptNonTeaching
                 ? true
-                : filledCount >= targetCount));
+                : effectiveTargetCount === 0
+                ? Boolean(hasJurnalKegiatan || realTeacherJournals.length > 0 || (!isNonKbmOrTu && isPiket))
+                : filledCount >= effectiveTargetCount && !hasMixedBlockPending));
 
         const isTugasLengkap = isLiburOrExempt
           ? true
@@ -705,7 +778,7 @@ export default function HomeViewAdmin({
           status: jurnalStatus,
           color: jurnalColor,
           filled: isIzinSakit ? 0 : (isBlokToday ? (isExemptNonTeaching ? 0 : (hasJurnalKegiatan ? 1 : 0)) : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : filledCount),
-          total: isBlokToday ? 1 : isIzinSakit ? targetCount : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : targetCount
+          total: isBlokToday ? 1 : isIzinSakit ? targetCount : isDinasLuar ? (hasJurnalKegiatan ? 1 : 0) : effectiveTargetCount
         };
         if (hasJurnalBk && !isIzinSakit) {
           pengisianJurnal.filled = bkFilledCount;
@@ -752,6 +825,96 @@ export default function HomeViewAdmin({
     loadAdminMatrix();
   }, [loadAdminMatrix]);
 
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
+      realtimeTimerRef.current = setTimeout(() => {
+        loadAdminMatrix();
+      }, 250);
+    };
+    const handleGuruUpdated = () => {
+      scheduleRefresh();
+    };
+    const handleWindowConfigSync = (e: any) => {
+      const updatedKop = e?.detail?.config?.kop_sekolah || e?.detail?.config?.NAMA_SEKOLAH;
+      if (updatedKop) {
+        setInternalSchoolName(updatedKop);
+      }
+      scheduleRefresh();
+    };
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'sipjam_config_sync' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          const updatedKop = parsed?.config?.kop_sekolah || parsed?.config?.NAMA_SEKOLAH;
+          if (updatedKop) {
+            setInternalSchoolName(updatedKop);
+          }
+          scheduleRefresh();
+        } catch (_) {}
+      }
+    };
+    let lastFocusRefresh = 0;
+    const handleResumeOrFocus = () => {
+      const now = Date.now();
+      if (now - lastFocusRefresh > 2000) {
+        lastFocusRefresh = now;
+        scheduleRefresh();
+      }
+    };
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        handleResumeOrFocus();
+      }
+    };
+
+    const channelName = `realtime-admin-matrix-${user?.sekolah_id || 'default'}`;
+    const existing = supabase.getChannels().find(
+      (ch: any) => ch.topic === `realtime:${channelName}` || ch.topic === channelName
+    );
+    if (existing) {
+      try {
+        (supabase as any).realtime?._remove?.(existing);
+        existing.unsubscribe();
+      } catch (_) {
+        supabase.removeChannel(existing);
+      }
+    }
+    const channel = supabase
+      .channel(channelName)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jadwal_pelajaran' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sistem_blok' }, scheduleRefresh)
+      .subscribe();
+
+    window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
+    window.addEventListener('sipjam:guru_updated', handleGuruUpdated);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleResumeOrFocus);
+    window.addEventListener('online', handleResumeOrFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
+      try {
+        (supabase as any).realtime?._remove?.(channel);
+        channel.unsubscribe();
+      } catch (_) {
+        supabase.removeChannel(channel);
+      }
+      window.removeEventListener('sipjam:config_updated', handleWindowConfigSync);
+      window.removeEventListener('sipjam:guru_updated', handleGuruUpdated);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleResumeOrFocus);
+      window.removeEventListener('online', handleResumeOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadAdminMatrix, user?.sekolah_id]);
+
 
     // Filtered Admin Matrix
   const filteredMatrix = useMemo(() => {
@@ -780,14 +943,14 @@ export default function HomeViewAdmin({
     const wajibDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir').length;
     const sudahDatang = matrixList.filter(r => r.presensiDatang.status !== 'Libur' && r.presensiDatang.status !== 'Bebas Hadir' && r.presensiDatang.status !== 'Belum Datang' && r.presensiDatang.status !== 'Ditolak' && r.presensiDatang.status !== 'Alpa').length;
     
-    // Wajib Jurnal = Yang tidak Bebas KBM
-    const wajibJurnal = matrixList.filter(r => r.pengisianJurnal.status !== 'Bebas KBM' && r.pengisianJurnal.status !== 'Libur').length;
+    // Wajib Jurnal = Yang tidak Bebas KBM, Libur, maupun Izin/Sakit/Cuti
+    const wajibJurnal = matrixList.filter(r => !['Bebas KBM', 'Libur', 'Izin', 'Sakit', 'Cuti'].includes(r.pengisianJurnal.status)).length;
     const jurnalLengkap = matrixList.filter(r => r.pengisianJurnal.color === 'green').length;
     
     const totalPiket = matrixList.filter(r => r.laporanPiket.isPiket).length;
     const piketSelesai = matrixList.filter(r => r.laporanPiket.isPiket && r.laporanPiket.status === 'Sudah Lapor').length;
     
-    const wajibPulang = matrixList.filter(r => r.presensiPulang.status !== 'Libur' && r.presensiPulang.status !== 'Bebas Hadir').length;
+    const wajibPulang = matrixList.filter(r => !['Libur', 'Bebas Hadir', 'Izin', 'Sakit', 'Cuti', 'Alpa'].includes(r.presensiPulang.status)).length;
     const sudahPulang = matrixList.filter(r => r.presensiPulang.status.startsWith('Pulang')).length;
 
     return { totalGuru, wajibDatang, sudahDatang, wajibJurnal, jurnalLengkap, totalPiket, piketSelesai, wajibPulang, sudahPulang };

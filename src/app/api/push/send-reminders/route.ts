@@ -2,7 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
-import { isGuruDiPiket, isBkAccount } from '@/lib/workflow';
+import {
+  isGuruDiPiket,
+  isBkAccount,
+  isTeacherRecordMatch,
+  parseExplicitBooleanFlag,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy
+} from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
 export interface ReminderItem {
@@ -46,38 +54,33 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     if (!teachers || teachers.length === 0) continue;
 
     // Query school attendance policy & exempt teachers list from pengaturan
-    let pengaturanQuery = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru');
+    let pengaturanQuery = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
     }
     const { data: pengaturanRows } = await pengaturanQuery;
-    const isGlobalHariMengajarSaja = (pengaturanRows || []).some(
-      (p: any) => (p.key === 'aturan_kehadiran_guru' && p.value === 'Hari_Mengajar_Saja') || p.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
-    );
-    const ghmRow = (pengaturanRows || []).find((p: any) => p.key === 'guru_hanya_mengajar');
-    let guruHanyaMengajarList: string[] = [];
-    if (ghmRow && ghmRow.value) {
-      try {
-        const parsed = JSON.parse(ghmRow.value);
-        if (Array.isArray(parsed)) guruHanyaMengajarList = parsed;
-        else if (parsed && typeof parsed === 'object') {
-          if (Array.isArray(parsed.ids)) guruHanyaMengajarList.push(...parsed.ids);
-          if (Array.isArray(parsed.names)) guruHanyaMengajarList.push(...parsed.names);
-        }
-      } catch {
-        guruHanyaMengajarList = [ghmRow.value];
-      }
+    const aturanGlobal = resolveSchoolAturanKehadiran(pengaturanRows || []);
+    const guruHanyaMengajarList = resolveSchoolLegacyGhmList(pengaturanRows || []);
+
+    // C. Fetch weekly & today schedule
+    let scheduleQuery = supabase.from('jadwal_pelajaran').select('*');
+    if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
+      scheduleQuery = scheduleQuery.eq('sekolah_id', sekolahId);
     }
+    const { data: allSchedules } = await scheduleQuery;
+    const weeklyScheduleList = (allSchedules || []).filter((s: any) => !isInvalidMapel(s.mata_pelajaran || s.mapel));
+    const scheduleList = weeklyScheduleList.filter(
+      (s: any) => (s.hari || '').trim().toLowerCase() === todayDay.trim().toLowerCase()
+    );
 
     const isExemptTeacher = (t: any) => {
       if (!t) return false;
-      const isExplicitExempt = t.wajib_hadir_hanya_mengajar === true || String(t.wajib_hadir_hanya_mengajar) === 'true' || t.wajib_hadir_hanya_mengajar === 1 || String(t.wajib_hadir_hanya_mengajar) === '1';
-      const isExplicitNonExempt = t.wajib_hadir_hanya_mengajar === false || String(t.wajib_hadir_hanya_mengajar) === 'false' || t.wajib_hadir_hanya_mengajar === 0 || String(t.wajib_hadir_hanya_mengajar) === '0';
-      if (isExplicitExempt) return true;
-      if (isExplicitNonExempt) return false;
-      if (isGlobalHariMengajarSaja) return true;
-      if (guruHanyaMengajarList.includes(t.id) || guruHanyaMengajarList.includes(t.nama_guru) || (t.nip && guruHanyaMengajarList.includes(t.nip))) return true;
-      return false;
+      return resolveTeacherAttendancePolicy({
+        teacher: t,
+        weeklySchedules: weeklyScheduleList,
+        aturanGlobal,
+        guruHanyaMengajarList,
+      }).isTeacherExempt;
     };
 
     // B. Check school holiday & weekend
@@ -96,14 +99,6 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
     const isHoliday = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
     const isSchoolDayOff = isHoliday || isWeekendOff;
-
-    // C. Fetch schedule for today
-    let scheduleQuery = supabase.from('jadwal_pelajaran').select('*').eq('hari', todayDay);
-    if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
-      scheduleQuery = scheduleQuery.eq('sekolah_id', sekolahId);
-    }
-    const { data: schedules } = await scheduleQuery;
-    const scheduleList = (schedules || []).filter((s: any) => !isInvalidMapel(s.mata_pelajaran || s.mapel));
 
     // C. Fetch presensi for today (Datang & Pulang)
     let presensiQuery = supabase
@@ -214,24 +209,14 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
 
         // If teacher is exempt on non-teaching days, check if they have schedule today
         if (teacher.wajib_hadir_hanya_mengajar) {
-          const hasTeachingToday = scheduleList.some(s => {
-            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
-            const sName = (s.nama_guru || '').toLowerCase().trim();
-            if (!sName || !tNameLower) return false;
-            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
-          });
+          const hasTeachingToday = scheduleList.some(s => isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true }));
           const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
           if (!hasTeachingToday && !hasPiketDuty) {
             // Teacher is exempt today, skip reminder
             continue;
           }
         } else if (isExemptTeacher(teacher)) {
-          const hasTeachingToday = scheduleList.some(s => {
-            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
-            const sName = (s.nama_guru || '').toLowerCase().trim();
-            if (!sName || !tNameLower) return false;
-            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
-          });
+          const hasTeachingToday = scheduleList.some(s => isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true }));
           const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
           if (!hasTeachingToday && !hasPiketDuty) {
             continue;
@@ -365,13 +350,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       if (!hasReported) {
         if (activeBlok) {
           const teacherObj = teacher;
-          if (teacherObj?.wajib_hadir_hanya_mengajar || isExemptTeacher(teacherObj)) {
-            const hasTeachingToday = scheduleList.some(s => {
-              if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
-              const sName = (s.nama_guru || '').toLowerCase().trim();
-              if (!sName || !tNameLower) return false;
-              return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
-            });
+          if (parseExplicitBooleanFlag(teacherObj?.wajib_hadir_hanya_mengajar) === true || isExemptTeacher(teacherObj)) {
+            const hasTeachingToday = scheduleList.some(s => isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true }));
             if (!hasTeachingToday) {
               continue;
             }

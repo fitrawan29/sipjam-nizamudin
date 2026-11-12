@@ -441,8 +441,12 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
       const teacherName = user.nama || user.name || '';
       const dailyState = await getGuruDailyState(teacherName, user.username, user.id, user.sekolah_id);
 
-      // 3. Evaluate the 4 conditions
-      const activeReminders = evaluateReminderConditions(dailyState, config, new Date(), user);
+      // 3. Evaluate the 4 conditions (sinkronkan dengan aturanKehadiran dari getGuruDailyState)
+      const resolvedTeacherObj = {
+        ...user,
+        wajib_hadir_hanya_mengajar: dailyState.aturanKehadiran === 'Hari_Mengajar_Saja',
+      };
+      const activeReminders = evaluateReminderConditions(dailyState, config, new Date(), resolvedTeacherObj);
       setReminders(activeReminders);
       setCurrentIndex(0);
       setIsDismissed(false); // Reset dismissal on each periodic check so new/unsolved warnings surface

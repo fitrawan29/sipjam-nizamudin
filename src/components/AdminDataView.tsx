@@ -29,7 +29,7 @@ import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
 import AdminKelasView from './AdminKelasView';
 import { parseTingkat } from './AdminKelasView';
-import { connectGuruMapelWithJadwal, isJurnalMatchJadwal } from '@/lib/workflow';
+import { connectGuruMapelWithJadwal, isJurnalMatchJadwal, parseExplicitBooleanFlag, resolveSchoolLegacyGhmList } from '@/lib/workflow';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 import { filterStudentsBySubject, isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { downloadMasterDataCsv } from '@/lib/csvExport';
@@ -67,28 +67,24 @@ const escAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').
 async function syncTeacherExemptionToPengaturanFallback(
   sekolahId: string | undefined,
   teacherIdentifier: string,
-  isExempt: boolean
+  isExempt: boolean,
+  aliases: string[] = []
 ) {
   if (!sekolahId || !teacherIdentifier) return;
   try {
-    const pQ = supabase.from('pengaturan').select('key, value').eq('sekolah_id', sekolahId);
+    const pQ = supabase.from('pengaturan').select('key, value, guru_hanya_mengajar').eq('sekolah_id', sekolahId);
     const { data: pRows } = await pQ;
-    const ghmRow = (pRows || []).find((r: any) => r.key === 'guru_hanya_mengajar');
-    let list: string[] = [];
-    if (ghmRow?.value) {
-      try {
-        const parsed = JSON.parse(ghmRow.value);
-        if (Array.isArray(parsed)) list = parsed.map(String);
-        else if (typeof parsed === 'string') list = [parsed];
-      } catch (_) {
-        list = [String(ghmRow.value)];
-      }
-    }
+    let list: string[] = resolveSchoolLegacyGhmList(pRows || []);
     const cleanId = String(teacherIdentifier).trim();
+    const aliasSet = new Set(
+      [cleanId, ...aliases]
+        .map(a => String(a || '').trim())
+        .filter(a => a && a !== '-')
+    );
     if (isExempt) {
-      if (!list.includes(cleanId)) list.push(cleanId);
+      if (!list.some(x => aliasSet.has(String(x).trim()))) list.push(cleanId);
     } else {
-      list = list.filter(x => x !== cleanId);
+      list = list.filter(x => !aliasSet.has(String(x).trim()) && !aliasSet.has(String(x).trim().toLowerCase()));
     }
     const jsonVal = JSON.stringify(list);
     await supabase.from('pengaturan').upsert([
@@ -1155,9 +1151,18 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             void syncTeacherExemptionToPengaturanFallback(
               formValues.sekolah_id || user?.sekolah_id,
               formValues.id || formValues.nip,
-              true
+              true,
+              [formValues.id, formValues.nip, formValues.nama_guru]
             );
           }
+        }
+        if (!error) {
+          void syncTeacherExemptionToPengaturanFallback(
+            formValues.sekolah_id || user?.sekolah_id,
+            formValues.id || formValues.nip,
+            Boolean(formValues.wajib_hadir_hanya_mengajar),
+            [formValues.id, formValues.nip, formValues.nama_guru]
+          );
         }
         setLoading(false);
         if (error) {
@@ -1941,8 +1946,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             <div>
               <label class="font-bold text-gray-700 block mb-1">Kewajiban Kehadiran *</label>
               <select id="swal-edit-aturan-kehadiran" class="swal2-select !mt-0 !w-full text-xs">
-                <option value="false" ${!item.wajib_hadir_hanya_mengajar ? 'selected' : ''}>Wajib Hadir Setiap Hari (Semua Hari)</option>
-                <option value="true" ${item.wajib_hadir_hanya_mengajar ? 'selected' : ''}>Hanya Hadir Saat Ada Jadwal KBM / Jam Kerja</option>
+                <option value="false" ${parseExplicitBooleanFlag(item.wajib_hadir_hanya_mengajar) !== true ? 'selected' : ''}>Wajib Hadir Setiap Hari (Semua Hari)</option>
+                <option value="true" ${parseExplicitBooleanFlag(item.wajib_hadir_hanya_mengajar) === true ? 'selected' : ''}>Hanya Hadir Saat Ada Jadwal KBM / Jam Kerja</option>
               </select>
             </div>
           </div>
@@ -2015,6 +2020,14 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           setLoading(false);
           showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
+          if (formValues.wajib_hadir_hanya_mengajar !== undefined) {
+            void syncTeacherExemptionToPengaturanFallback(
+              item.sekolah_id || user?.sekolah_id,
+              item.id || item.nip,
+              Boolean(formValues.wajib_hadir_hanya_mengajar),
+              [item.id, item.user_id, item.nip, item.nama_guru, formValues.nip, formValues.nama_guru]
+            );
+          }
           // Sync users.username so teacher's login username is updated by the Admin
           if (formValues.nip && formValues.nip !== '-') {
             try {

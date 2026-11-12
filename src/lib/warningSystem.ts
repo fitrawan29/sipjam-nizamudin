@@ -3,6 +3,9 @@ import {
   isBkAccount,
   isTeacherNameEquivalent,
   resolveLinkedUserForTeacher,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy,
   isTeacherRecordMatch,
   hasJournalContent
 } from '@/lib/workflow';
@@ -506,34 +509,16 @@ export async function getTeacherDisciplineWarnings(
   });
   const bkJurnalRes = (bkJurnalRaw || []).filter((b: any) => isTeacherRecordMatch(b, teacherProfile, linkedUser));
 
-  const configMap = new Map((configs || []).map((c: any) => [c.key, c.value]));
-  const aturanGlobal = configMap.get('aturan_kehadiran_guru') ||
-    (configs || []).find((c: any) => c.aturan_kehadiran_guru)?.aturan_kehadiran_guru || 'Semua_Hari';
-  const ghmRow = (configs || []).find((c: any) => c.key === 'guru_hanya_mengajar');
-  let ghmList: string[] = [];
-  if (ghmRow && ghmRow.value) {
-    try {
-      const p = JSON.parse(ghmRow.value);
-      if (Array.isArray(p)) ghmList = p;
-    } catch {}
-  }
-
-  const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
-  const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
-  const isExplicitExempt = isValTrue(guruData?.wajib_hadir_hanya_mengajar);
-  const isExplicitNonExempt = isValFalse(guruData?.wajib_hadir_hanya_mengajar);
-  const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
-  const isTeacherInLegacy = Boolean(
-    guruData && (
-      ghmList.includes(guruData.id) ||
-      ghmList.includes(guruData.nama_guru) ||
-      (guruData.nip && ghmList.includes(guruData.nip))
-    )
-  );
-
-  const isExemptNonTeaching = hasExplicitSetting
-    ? isExplicitExempt
-    : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
+  const aturanGlobal = resolveSchoolAturanKehadiran(configs || []);
+  const ghmList = resolveSchoolLegacyGhmList(configs || []);
+  const validJadwal = (jadwalData || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
+  const isExemptNonTeaching = resolveTeacherAttendancePolicy({
+    teacher: guruData || teacherProfile,
+    linkedUser,
+    weeklySchedules: validJadwal,
+    aturanGlobal,
+    guruHanyaMengajarList: ghmList,
+  }).isTeacherExempt;
 
   const isSingleTeacherBk = isBkAccount(guruData?.mata_pelajaran, linkedUser?.role);
 
@@ -544,7 +529,7 @@ export async function getTeacherDisciplineWarnings(
     resolvedSekolahId,
     configs || [],
     holidaysData || [],
-    (jadwalData || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel)),
+    validJadwal,
     penugasanData || [],
     legacyPiketData || [],
     presensiRes || [],
@@ -677,35 +662,17 @@ export async function getAllTeachersDisciplineWarnings(
       const linkedUser = resolveLinkedUserForTeacher(teacher, usersRoleList || []);
       const sameSchool = (r: any) => !r.sekolah_id || r.sekolah_id === resolvedSekolahId;
       const tConfigs = (configs || []).filter(c => c.sekolah_id === resolvedSekolahId || !c.sekolah_id);
-      const configMap = new Map((tConfigs || []).map((c: any) => [c.key, c.value]));
-      const aturanGlobal = configMap.get('aturan_kehadiran_guru') ||
-        (tConfigs || []).find((c: any) => c.aturan_kehadiran_guru)?.aturan_kehadiran_guru || 'Semua_Hari';
-      const ghmRow = (tConfigs || []).find((c: any) => c.key === 'guru_hanya_mengajar');
-      let ghmList: string[] = [];
-      if (ghmRow && ghmRow.value) {
-        try {
-          const p = JSON.parse(ghmRow.value);
-          if (Array.isArray(p)) ghmList = p;
-        } catch {}
-      }
-
-      const isValTrue = (v: any) => v === true || v === 'true' || v === 1 || v === '1';
-      const isValFalse = (v: any) => v === false || v === 'false' || v === 0 || v === '0';
-      const isExplicitExempt = isValTrue(teacher.wajib_hadir_hanya_mengajar);
-      const isExplicitNonExempt = isValFalse(teacher.wajib_hadir_hanya_mengajar);
-      const hasExplicitSetting = isExplicitExempt || isExplicitNonExempt;
-      const isTeacherInLegacy = Boolean(
-        ghmList.includes(teacher.id) ||
-        ghmList.includes(teacher.nama_guru) ||
-        (teacher.nip && ghmList.includes(teacher.nip)) ||
-        (linkedUser?.id && ghmList.includes(linkedUser.id))
-      );
-
-      const isExemptNonTeaching = hasExplicitSetting
-        ? isExplicitExempt
-        : (isTeacherInLegacy || aturanGlobal === 'Hari_Mengajar_Saja');
+      const aturanGlobal = resolveSchoolAturanKehadiran(tConfigs);
+      const ghmList = resolveSchoolLegacyGhmList(tConfigs);
       const tHolidays = (holidaysData || []).filter(h => h.sekolah_id === resolvedSekolahId || !h.sekolah_id);
       const tJadwal = (jadwalData || []).filter(j => (j.sekolah_id === resolvedSekolahId || !j.sekolah_id) && !isInvalidMapel(j.mata_pelajaran || j.mapel));
+      const isExemptNonTeaching = resolveTeacherAttendancePolicy({
+        teacher,
+        linkedUser,
+        weeklySchedules: tJadwal,
+        aturanGlobal,
+        guruHanyaMengajarList: ghmList,
+      }).isTeacherExempt;
       const tPenugasan = (penugasanData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
       const tLegacyPiket = (legacyPiketData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
 

@@ -996,6 +996,17 @@ export function parseAndValidateMasterCsv(
           .replace(/^['"]+|['"]+$/g, '')
           .trim();
       }
+      // Normalize optional wajib_hadir_hanya_mengajar boolean column
+      if (row.wajib_hadir_hanya_mengajar !== undefined && row.wajib_hadir_hanya_mengajar !== null) {
+        const wNorm = String(row.wajib_hadir_hanya_mengajar).trim().toLowerCase();
+        if (!wNorm || wNorm === '-' || wNorm === 'null' || wNorm === 'undefined') {
+          delete row.wajib_hadir_hanya_mengajar;
+        } else if (['true', '1', 'ya', 'yes', 'hanya kbm', 'hanya hari kbm', 'hari_mengajar_saja'].includes(wNorm)) {
+          row.wajib_hadir_hanya_mengajar = true;
+        } else if (['false', '0', 'tidak', 'no', 'wajib setiap hari', 'semua hari', 'semua_hari'].includes(wNorm)) {
+          row.wajib_hadir_hanya_mengajar = false;
+        }
+      }
     } else {
       const rawSekolahId = (row.sekolah_id !== undefined && row.sekolah_id !== null) ? String(row.sekolah_id).trim() : '';
       if (rawSekolahId && rawSekolahId.toLowerCase() !== 'null' && rawSekolahId.toLowerCase() !== 'undefined') {
