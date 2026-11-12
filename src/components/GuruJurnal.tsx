@@ -24,6 +24,22 @@ export interface GuruJurnalProps {
   isReadOnly?: boolean;
 }
 
+// ponytail: safe UUID fallback for non-SSL/LAN context and robust PostgREST schema error detection
+const generateSafeId = () => typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+  ? crypto.randomUUID()
+  : 'jrn_' + Date.now() + '_' + Math.random().toString(36).substring(2, 11);
+
+const isSchemaColumnError = (err: any) => Boolean(
+  err && (
+    err.code === 'PGRST204' ||
+    err.code === '42703' ||
+    err.status === 400 ||
+    err.message?.includes('schema cache') ||
+    err.message?.includes('column') ||
+    err.message?.includes('Could not find the')
+  )
+);
+
 export default function GuruJurnal({
   user,
   initialTab = 'input',
@@ -1265,7 +1281,7 @@ export default function GuruJurnal({
           waktu_upload: getWitaTimestamp()
         };
         let { error } = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existing.id);
-        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        if (isSchemaColumnError(error)) {
           const { waktu_upload: _wu, catatan_khusus_siswa: _ck, ...compatiblePayload } = updatePayload;
           const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existing.id);
           error = retry.error;
@@ -1273,7 +1289,7 @@ export default function GuruJurnal({
         if (error) throw error;
       } else {
         const newSession = {
-          id: crypto.randomUUID(),
+          id: generateSafeId(),
           timestamp: getWitaTimestamp(),
           nama_guru: (user.nama || '').trim(),
           user_id: user.id,
@@ -1293,14 +1309,15 @@ export default function GuruJurnal({
           jam_ke: jamKe || '-',
           tujuan_pembelajaran: tujuanPembelajaran || '-',
           materi_pembelajaran: '-',
+          kegiatan_pembelajaran: '-',
           kehadiran_murid: computedKehadiran,
           catatan_refleksi: refleksi || '-',
           foto_kegiatan: '',
           waktu_upload: getWitaTimestamp(),
-          ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
+          sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001'
         };
         let { error } = await supabase.from('jurnal_pembelajaran').insert([newSession]);
-        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        if (isSchemaColumnError(error)) {
           const { user_id: _u, waktu_upload: _wu, catatan_khusus_siswa: _ck, ...compatibleJurnal } = newSession;
           const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
           error = retry.error;
@@ -1471,22 +1488,27 @@ export default function GuruJurnal({
         fileUrl = photoPreviewUrl;
       }
     } catch (err: any) {
-      setLoading(false);
-      return showToast('Gagal Upload', err.message, 'error');
+      console.warn('Gagal upload ke Google Drive, melanjutkan simpan jurnal dengan preview/fallback foto:', err);
+      fileUrl = photoPreviewUrl || '';
+      showToast('Info Upload Foto', 'Foto belum tersinkron ke cloud drive, data jurnal tetap tersimpan di database.', 'info');
     }
 
     const cleanAbsensiForSave: Record<string, string> = {};
-    if (tipeJurnal === 'Jurnal KBM' && Array.isArray(students)) {
-      students.forEach((s, idx) => {
-        const sKey = s.nisn || s.id || `student-${idx}`;
-        const val = (s.nisn && absensi[s.nisn]) || absensi[sKey] || 'H';
-        if (s.nisn) {
-          cleanAbsensiForSave[s.nisn] = absensi[s.nisn] || 'H';
-        }
-        if (sKey) {
-          cleanAbsensiForSave[sKey] = val;
-        }
-      });
+    if (tipeJurnal === 'Jurnal KBM') {
+      if (Array.isArray(students) && students.length > 0) {
+        students.forEach((s, idx) => {
+          const sKey = s.nisn || s.id || `student-${idx}`;
+          const val = (s.nisn && absensi[s.nisn]) || absensi[sKey] || 'H';
+          if (s.nisn) {
+            cleanAbsensiForSave[s.nisn] = absensi[s.nisn] || 'H';
+          }
+          if (sKey) {
+            cleanAbsensiForSave[sKey] = val;
+          }
+        });
+      } else if (absensi && Object.keys(absensi).length > 0) {
+        Object.assign(cleanAbsensiForSave, absensi);
+      }
     }
 
     const computedKehadiran = tipeJurnal === 'Jurnal KBM'
@@ -1524,7 +1546,7 @@ export default function GuruJurnal({
     const tgl = tanggal || getWitaDateStr();
 
     const newJurnal = {
-      id: crypto.randomUUID(),
+      id: generateSafeId(),
       timestamp: getWitaTimestamp(),
       nama_guru: (user.nama || '').trim(),
       user_id: user.id,
@@ -1548,6 +1570,7 @@ export default function GuruJurnal({
       jam_ke: tipeJurnal === 'Jurnal KBM' ? (jamKe || '-') : '-',
       tujuan_pembelajaran: tipeJurnal === 'Jurnal KBM' ? (tujuanPembelajaran || '-') : '-',
       materi_pembelajaran: finalKonten,
+      kegiatan_pembelajaran: kegiatan,
       kehadiran_murid: computedKehadiran,
       catatan_refleksi: refleksi || '-',
       foto_kegiatan: fileUrl,
@@ -1555,7 +1578,7 @@ export default function GuruJurnal({
       longitude: uploadLongitude ?? (jurnalCoords?.longitude || null),
       lokasi: uploadLokasi || (jurnalCoords ? `GPS: ${jurnalCoords.latitude.toFixed(5)}, ${jurnalCoords.longitude.toFixed(5)}` : (lokasiKbm || '-')),
       waktu_upload: uploadWaktu || getWitaTimestamp(),
-      ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
+      sekolah_id: user.sekolah_id || 'a0000000-0000-0000-0000-000000000001'
     };
 
     try {
@@ -1644,7 +1667,13 @@ export default function GuruJurnal({
         existingSessionRow.absensi_siswa !== '{}' &&
         existingSessionRow.absensi_siswa !== '-'
       );
-      if (existingSessionRow?.absensi_siswa && (Object.keys(cleanAbsensiForSave).length === 0 || (kbmSubMode === 'jurnal' && hasExistingAbsensi))) {
+      const hasMemoryAbsensi = Boolean(
+        finalAbsensiJson &&
+        finalAbsensiJson !== '{}' &&
+        finalAbsensiJson !== '-' &&
+        Object.keys(cleanAbsensiForSave).length > 0
+      );
+      if (hasExistingAbsensi && !hasMemoryAbsensi) {
         finalAbsensiJson = existingSessionRow.absensi_siswa;
         finalKehadiranSummary = existingSessionRow.kehadiran_murid || computedKehadiran;
       }
@@ -1660,7 +1689,7 @@ export default function GuruJurnal({
         };
         const res = await supabase.from('jurnal_pembelajaran').update(updatePayload).eq('id', existingSessionRow.id);
         error = res.error;
-        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        if (isSchemaColumnError(error)) {
           const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, catatan_khusus_siswa: _ck, ...compatiblePayload } = updatePayload;
           const retry = await supabase.from('jurnal_pembelajaran').update(compatiblePayload).eq('id', existingSessionRow.id);
           error = retry.error;
@@ -1668,7 +1697,7 @@ export default function GuruJurnal({
       } else {
         let insertRes = await supabase.from('jurnal_pembelajaran').insert([newJurnal]);
         error = insertRes.error;
-        if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        if (isSchemaColumnError(error)) {
           const { user_id: _u, latitude: _lat, longitude: _lng, lokasi: _lok, waktu_upload: _wu, kktp: _k, konten: _ko, lokasi_kbm: _lk, catatan_khusus_siswa: _ck, ...compatibleJurnal } = newJurnal;
           const retry = await supabase.from('jurnal_pembelajaran').insert([compatibleJurnal]);
           error = retry.error;
@@ -1905,7 +1934,11 @@ export default function GuruJurnal({
   // isLocked: locked if libur, or can't open jurnal, or no assignments
   // BUT: if there are rejected journals, allow re-submission even if canOpenJurnal is normally false
   const hasRejectedJurnal = (dailyState?.jurnalDitolak?.length ?? 0) > 0;
-  const isLocked = !!(dailyState?.isLibur || (dailyState && !dailyState.canOpenJurnal && !hasRejectedJurnal) || hasNoKbmAssignments);
+  const isLocked = !hasRejectedJurnal && !!(
+    dailyState?.isLibur ||
+    (dailyState && !dailyState.canOpenJurnal && !(kelas && mapel)) ||
+    (hasNoKbmAssignments && !(kelas && mapel))
+  );
   const lockedMessage = hasNoKbmAssignments 
     ? 'Belum ada mata pelajaran atau kelas yang ditugaskan kepada Anda. Hubungi Administrator.' 
     : dailyState?.lockedReason;

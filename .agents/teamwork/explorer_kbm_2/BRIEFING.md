@@ -1,4 +1,4 @@
-# BRIEFING — 2026-11-12T05:20:30Z
+# BRIEFING — 2026-11-12T05:47:45Z
 
 ## Mission
 Investigasi akar penyebab hilangnya data jurnal guru pada fitur Cetak Jurnal KBM dan rancang rekomendasi perbaikan tepat sasaran.
@@ -19,15 +19,20 @@ Investigasi akar penyebab hilangnya data jurnal guru pada fitur Cetak Jurnal KBM
 
 ## Current Parent
 - Conversation ID: f8423969-31b1-4c71-9bae-1480d343ca6a
-- Updated: not yet
+- Updated: 2026-11-12T05:47:45Z
 
 ## Investigation State
-- **Explored paths**: .agents/teamwork/ORIGINAL_REQUEST.md, DISPATCH.md
-- **Key findings**: Task is focused on R2: Pemulihan Tampilan Data Jurnal Guru pada Cetak Jurnal KBM.
-- **Unexplored areas**: Cetak Jurnal KBM views, Supabase queries, table schemas/joins, git commit history for recent changes to Cetak Jurnal KBM.
+- **Explored paths**: `src/components/RekapJurnalView.tsx`, `src/components/GuruJurnal.tsx`, `src/components/AppScreen.tsx`, `src/components/ClaySidebar.tsx`, `src/lib/workflow.ts`, `src/lib/attendanceAlpa.ts`, `csv/SIPJAM NIZAMUDIN - Jurnal_Pembelajaran (1).csv`, git history commits (`7e4cf9d`, `f012878`, `a79793c`, `a2db0d7`, `3c4ff91`, `bece4f3`).
+- **Key findings**:
+  1. PostgREST exact SQL query `query.eq('mapel', mapel)` and `query.eq('kelas', activeKelas)` in `tarikRekap()` breaks when mapel contains class prefixes (`XI Merdeka_Matematika`) or abbreviations, or when classes are parallel vs broad.
+  2. Multi-tenant filter `query.eq('sekolah_id', user.sekolah_id)` eliminates all historical records where `sekolah_id IS NULL`.
+  3. Auto-select in `fetchMaster()` triggers these rigid queries on single assignment teachers.
+  4. Failure to load real journals causes synthesis of "Tidak Masuk Kelas" placeholders.
+- **Unexplored areas**: None (investigation complete and synthesized).
 
 ## Key Decisions Made
-- Memulai penelusuran dari komponen cetak jurnal KBM (CetakJurnalKbmView, CetakJurnalView, dll.) dan git log terkait cetak jurnal.
+- Analisis selesai, laporan komprehensif ditulis ke `analysis.md` dan `handoff.md`.
+- Mengusulkan perbaikan /ponytail: pindahkan filter mapel/kelas ke in-memory post-processing dengan `isJurnalMatchJadwal()`, dukung `sekolah_id.is.null`, dan sertakan fallback query identitas guru.
 
 ## Artifact Index
 - DISPATCH.md — Task assignment and instructions

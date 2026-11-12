@@ -282,11 +282,11 @@ export default function RekapJurnalView({
               setAssignedMapelList(validAssignedMapels);
               setAssignedKelasList(validAssignedKelas);
 
-              // Auto-select if teacher only teaches 1 subject or 1 class
-              if (validAssignedMapels.length === 1) {
+              // Auto-select if teacher only teaches 1 subject or 1 class (strictly in kelas mode)
+              if (validAssignedMapels.length === 1 && effectiveMode === 'kelas') {
                 setMapel(prev => prev || validAssignedMapels[0]);
               }
-              if (validAssignedKelas.length === 1) {
+              if (validAssignedKelas.length === 1 && effectiveMode === 'kelas') {
                 setKelas(prev => prev || validAssignedKelas[0]);
               }
             }
@@ -342,7 +342,7 @@ export default function RekapJurnalView({
         if (isAdmin || isKepalaSekolah || assignedWalis.length > 0) {
           setIsWaliKelas(true);
           setWaliClasses(assignedWalis);
-          if (!isAdmin && !isKepalaSekolah && assignedWalis.length > 0) {
+          if (!isAdmin && !isKepalaSekolah && assignedWalis.length > 0 && effectiveMode === 'kelas') {
             setKelas(prev => prev || assignedWalis[0]);
           }
         }
@@ -402,7 +402,7 @@ export default function RekapJurnalView({
       }
 
       if (user?.sekolah_id) {
-        query = query.eq('sekolah_id', user.sekolah_id);
+        query = query.or(`sekolah_id.eq."${user.sekolah_id}",sekolah_id.is.null`);
       }
 
       if (startDate && endDate) {
@@ -416,24 +416,76 @@ export default function RekapJurnalView({
         query = query.gte('tanggal', firstDay).lte('tanggal', lastDayStr);
       }
 
+      // In classroom mode, filter database strictly for the designated class and subject
+      // In personal mode, do not restrict database query by exact mapel/kelas to allow multi-class/format retrieval
       if (activeMode === 'kelas') {
         if (!isAdmin && !isKepalaSekolah && waliClasses.length > 0) {
           query = query.eq('kelas', activeKelas || waliClasses[0]);
         } else if (activeKelas) {
           query = query.eq('kelas', activeKelas);
         }
-      } else if (activeKelas) {
-        query = query.eq('kelas', activeKelas);
+        if (mapel) query = query.eq('mapel', mapel);
       }
-
-      if (mapel) query = query.eq('mapel', mapel);
 
       const { data } = await query;
       let combined = (data || []) as any[];
+
+      // Fallback query if initial query returned 0 rows in personal mode
+      if (activeMode === 'pribadi' && combined.length === 0 && user?.nama) {
+        const cleanName = normalizeTeacherIdentityName(user.nama);
+        const tokens = cleanName.split(' ').filter(t => t.length > 1);
+        const fbToken = tokens[0] || (user.nama || '').split(',')[0].trim();
+        if (fbToken) {
+          let fbQuery = supabase
+            .from('jurnal_pembelajaran')
+            .select('*')
+            .order('tanggal', { ascending: true })
+            .order('jam_ke', { ascending: true });
+          
+          if (startDate && endDate) {
+            fbQuery = fbQuery.gte('tanggal', startDate).lte('tanggal', endDate);
+          } else if (bulan) {
+            const year = parseInt(bulan.split('-')[0], 10);
+            const month = parseInt(bulan.split('-')[1], 10);
+            const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const lastDayStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            fbQuery = fbQuery.gte('tanggal', firstDay).lte('tanggal', lastDayStr);
+          }
+          fbQuery = fbQuery.ilike('nama_guru', `%${fbToken}%`);
+          const { data: fbData } = await fbQuery;
+          if (fbData && fbData.length > 0) {
+            combined = fbData as any[];
+          }
+        }
+      }
+
       if (activeMode === 'pribadi' && user?.nama) {
         combined = combined.filter((j: any) =>
           isTeacherRecordMatch(j, { nama_guru: user.nama, user_id: user.id }, user, { allowSingleWordFirstToken: true })
         );
+      }
+
+      // In-memory matching for activeKelas and mapel in personal mode
+      if (activeMode === 'pribadi') {
+        if (activeKelas) {
+          combined = combined.filter((j: any) => {
+            if (!j.kelas) return false;
+            return j.kelas === activeKelas ||
+              j.kelas.toLowerCase().includes(activeKelas.toLowerCase()) ||
+              activeKelas.toLowerCase().includes(j.kelas.toLowerCase());
+          });
+        }
+        if (mapel) {
+          combined = combined.filter((j: any) => {
+            if (!j.mapel) return false;
+            if (j.mapel === mapel) return true;
+            const jClean = j.mapel.includes('_') ? (j.mapel.split('_').pop() || '').trim() : j.mapel;
+            const mClean = mapel.includes('_') ? (mapel.split('_').pop() || '').trim() : mapel;
+            if (jClean.toLowerCase() === mClean.toLowerCase()) return true;
+            return isJurnalMatchJadwal({ mapel: j.mapel, kelas: j.kelas || 'K' }, { mata_pelajaran: mapel, mapel: mapel, kelas: j.kelas || 'K' });
+          });
+        }
       }
 
       // R3: Include unfilled KBM for scheduled classes that have not been filled

@@ -1,17 +1,21 @@
 ## Current Status
-Last visited: 2026-11-12T05:31:30Z
+Last visited: 2026-11-12T06:39:30Z
 
 ## Iteration Status
 Current iteration: 1 / 32
 
 ### Active Mission: Fix Jurnal KBM Guru Save Failure & Cetak Jurnal KBM Missing Data
-- [ ] Phase 0: Survey Phase (Parallel Investigation by 3 Explorers)
-  - [x] Liveness Check 1 (05:31Z): All 3 Explorers active and executing investigation commands (migrations check, git diff analysis, code inspection).
-  - [ ] explorer_kbm_1: Root-cause investigation on Jurnal KBM Guru save failure (frontend form, save handler, API/Supabase mutations, schema constraints)
-  - [ ] explorer_kbm_2: Root-cause investigation on missing teacher journal data in Cetak Jurnal KBM (print views, data fetching, mapping, join/filtering regressions)
-  - [ ] explorer_kbm_3: Cross-impact, data contracts, and regression/verification harness
-- [ ] Phase 1: PROJECT.md & SCOPE.md Decomposition (Feature Inventory & Milestone planning)
-- [ ] Phase 2: Iteration Loop (Worker -> Reviewer 1 & 2 -> Challenger 1 & 2 -> Forensic Auditor -> Gate)
+- [x] Phase 0: Survey Phase (Parallel Investigation by 3 Explorers)
+  - [x] explorer_kbm_1: Completed (R1 analysis)
+  - [x] explorer_kbm_2: Completed (R2 analysis)
+  - [x] explorer_kbm_3: Completed (R3 architecture & verification)
+- [x] Phase 1: SCOPE.md Decomposition (Feature Inventory F1–F13, Milestone M1, Interface Contracts)
+- [ ] Phase 2: Iteration Loop for Milestone 1
+  - [x] Worker implementation (`worker_kbm`: all items R1, R2, R3 implemented; tests passing; git delivery in progress)
+  - [ ] Reviewer 1 & Reviewer 2 verification
+  - [ ] Challenger 1 & Challenger 2 adversarial verification
+  - [ ] Forensic Auditor integrity verification
+  - [ ] Gate Check
 - [ ] Phase 3: Final Verification, Git Commit & Push to main
 
 ### Previous Completed Mission
