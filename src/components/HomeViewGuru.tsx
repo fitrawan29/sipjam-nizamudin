@@ -11,7 +11,9 @@ import {
   getGuruDailyState, 
   GuruDailyState, 
   isJurnalMatchJadwal,
-  evaluatePresensiPulangTiming
+  evaluatePresensiPulangTiming,
+  hasAttendanceData,
+  hasJournalContent
 } from '@/lib/workflow';
 import { supabase } from '@/lib/supabaseClient';
 import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
@@ -526,7 +528,8 @@ export default function HomeViewGuru({
     } else {
       const filled = (dailyState.jurnalKBM || []).filter(j => {
         const mat = (j.materi && j.materi !== '-') ? j.materi : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : ((j.konten && j.konten !== '-') ? j.konten : null));
-        return Boolean(mat && j.kegiatan && j.kegiatan !== '-');
+        const keg = (j.kegiatan && j.kegiatan !== '-') ? j.kegiatan : ((j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') ? j.kegiatan_pembelajaran : null);
+        return Boolean(mat && (keg || (j.kegiatan && j.kegiatan !== '-')));
       }).length;
       const total = (dailyState.jadwalKBM || []).length;
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang?.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang?.jenis_presensi === 'Pulang Cepat';
@@ -1336,23 +1339,28 @@ export default function HomeViewGuru({
 
                     const matchingJurnal = (dailyState.jurnalKBM || []).find(j => isJurnalMatchJadwal(j, jk));
                     const isAbsensiFilled = Boolean(
-                      matchingJurnal?.absensi_siswa &&
+                      hasAttendanceData(matchingJurnal) ||
+                      (matchingJurnal?.absensi_siswa &&
                       matchingJurnal.absensi_siswa !== '{}' &&
                       matchingJurnal.absensi_siswa !== '-' &&
                       (typeof matchingJurnal.absensi_siswa === 'object'
                         ? Object.keys(matchingJurnal.absensi_siswa).length > 0
-                        : String(matchingJurnal.absensi_siswa).trim().length > 2)
+                        : String(matchingJurnal.absensi_siswa).trim().length > 2))
                     );
                     const matVal = (matchingJurnal?.materi && matchingJurnal.materi !== '-') 
                       ? matchingJurnal.materi 
                       : ((matchingJurnal?.materi_pembelajaran && matchingJurnal.materi_pembelajaran !== '-') 
                         ? matchingJurnal.materi_pembelajaran 
                         : ((matchingJurnal?.konten && matchingJurnal.konten !== '-') ? matchingJurnal.konten : null));
+                    const kegVal = (matchingJurnal?.kegiatan && matchingJurnal.kegiatan !== '-')
+                      ? matchingJurnal.kegiatan
+                      : ((matchingJurnal?.kegiatan_pembelajaran && matchingJurnal.kegiatan_pembelajaran !== '-')
+                        ? matchingJurnal.kegiatan_pembelajaran
+                        : null);
                     const isJurnalFilled = Boolean(
                       matchingJurnal &&
                       matVal &&
-                      matchingJurnal.kegiatan &&
-                      matchingJurnal.kegiatan !== '-'
+                      (kegVal || (matchingJurnal.kegiatan && matchingJurnal.kegiatan !== '-'))
                     );
 
                     return (
@@ -1430,7 +1438,7 @@ export default function HomeViewGuru({
                         {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => {
                           if (!isJurnalMatchJadwal(j, jk)) return false;
                           const ab = j.absensi_siswa;
-                          return ab && ab !== '{}' && ab !== '-' && (typeof ab === 'object' ? Object.keys(ab).length > 0 : String(ab).trim().length > 2);
+                          return hasAttendanceData(j) || (ab && ab !== '{}' && ab !== '-' && (typeof ab === 'object' ? Object.keys(ab).length > 0 : String(ab).trim().length > 2));
                         })).length}
                       </strong> selesai
                     </span>

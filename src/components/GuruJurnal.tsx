@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -914,9 +914,10 @@ export default function GuruJurnal({
           const targetSearchUserId = (isInval && guruDigantikan) ? (guruDigantikan.user_id || null) : (user?.id || null);
           const normName = normalizeTeacherIdentityName(targetSearchName);
           const cleanNama = (user?.nama || '').split(',')[0].trim();
+          const firstToken = normName.split(' ')[0] || targetSearchName.split(',')[0].trim();
           const searchEffectiveName = (isInval && guruDigantikan?.nama)
             ? (normName.split(' ')[0] || targetSearchName.split(',')[0].trim())
-            : cleanNama;
+            : (firstToken || cleanNama);
           let sessionJQuery = supabase
             .from('jurnal_pembelajaran')
             .select('*')
@@ -932,19 +933,22 @@ export default function GuruJurnal({
           }
           const { data: sessionData } = await sessionJQuery;
           const matchingSession = (sessionData || []).find((j: any) =>
+            (j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })) &&
+            (!targetSearchName || isTeacherRecordMatch(j, user) || isTeacherNameEquivalent(j.nama_guru, targetSearchName, true))
+          ) || (sessionData || []).find((j: any) =>
             j.mapel === mapel || isJurnalMatchJadwal(j, { kelas, mata_pelajaran: mapel })
           );
 
           let savedAbsensiMap: Record<string, string> | null = null;
-          if (matchingSession?.absensi_siswa) {
-            try {
-              const parsed = typeof matchingSession.absensi_siswa === 'string'
-                ? JSON.parse(matchingSession.absensi_siswa)
-                : matchingSession.absensi_siswa;
-              if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
-                savedAbsensiMap = parsed;
-              }
-            } catch {}
+          if (matchingSession) {
+            const parsedMap = parseLegacyOrModernAttendance(
+              matchingSession.absensi_siswa,
+              matchingSession.detail_absen,
+              matchingSession.kehadiran_murid
+            );
+            if (Object.keys(parsedMap).length > 0) {
+              savedAbsensiMap = parsedMap;
+            }
           }
 
           // Query gate attendance from presensi_siswa for today and this class (status = 'datang')
@@ -993,17 +997,33 @@ export default function GuruJurnal({
             const sKey = s.nisn || s.id || `student-${idx}`;
             const sNisn = s.nisn;
             const sId = s.id;
-            const savedSt = savedAbsensiMap && (savedAbsensiMap[sKey] || (sNisn && savedAbsensiMap[sNisn]) || (sId && savedAbsensiMap[sId]));
+            const sNama = (s.nama_siswa || '').trim().toLowerCase();
+            const savedSt = savedAbsensiMap && (
+              savedAbsensiMap[sKey] || 
+              (sNisn && savedAbsensiMap[sNisn]) || 
+              (sId && savedAbsensiMap[sId]) ||
+              (sNama && (savedAbsensiMap[sNama] || savedAbsensiMap[s.nama_siswa]))
+            );
             if (savedSt) {
-              initialAbsensi[sKey] = savedSt;
-              if (sNisn) initialAbsensi[sNisn] = savedSt;
+              let st = 'H';
+              const up = String(savedSt).trim().toUpperCase();
+              if (up === 'S' || up.startsWith('SAKIT')) st = 'S';
+              else if (up === 'I' || up.startsWith('IZIN')) st = 'I';
+              else if (up === 'A' || up.startsWith('ALPA') || up.startsWith('ALFA')) st = 'A';
+              else if (up === 'B' || up.startsWith('BOLOS')) st = 'B';
+              else st = 'H';
+
+              initialAbsensi[sKey] = st;
+              if (sNisn) initialAbsensi[sNisn] = st;
+              if (sId) initialAbsensi[sId] = st;
               lockedMap[sKey] = {
-                status: (savedSt as any) || 'H',
-                label: savedSt === 'S' ? 'Sakit' : savedSt === 'I' ? 'Izin' : savedSt === 'A' ? 'Alfa' : savedSt === 'B' ? 'Bolos' : 'Hadir',
+                status: (st as any) || 'H',
+                label: st === 'S' ? 'Sakit' : st === 'I' ? 'Izin' : st === 'A' ? 'Alfa' : st === 'B' ? 'Bolos' : 'Hadir',
                 isLocked: false,
                 isMorningHadir: false
               };
               if (sNisn) lockedMap[sNisn] = lockedMap[sKey];
+              if (sId) lockedMap[sId] = lockedMap[sKey];
               return;
             }
 
@@ -1029,21 +1049,45 @@ export default function GuruJurnal({
           setMorningLockedAttendance(lockedMap);
 
           if (matchingSession) {
-            if (matchingSession.kehadiran_murid && matchingSession.kehadiran_murid !== '-') {
-              setKehadiranMurid(matchingSession.kehadiran_murid);
+            const savedKehadiran = (matchingSession.kehadiran_murid && matchingSession.kehadiran_murid !== '-')
+              ? matchingSession.kehadiran_murid
+              : (savedAbsensiMap && Object.keys(savedAbsensiMap).length > 0 ? calculateKehadiranSummary(initialAbsensi, filteredData) : null);
+            if (savedKehadiran) {
+              setKehadiranMurid(savedKehadiran);
             }
             if (matchingSession.catatan_khusus_siswa) setCatatanSiswa(prev => prev || matchingSession.catatan_khusus_siswa);
-            if (matchingSession.materi && matchingSession.materi !== '-') {
-              setMateri(prev => prev || matchingSession.materi);
-              setKonten(prev => prev || matchingSession.konten || matchingSession.materi);
+
+            const savedMateri = (matchingSession.materi && matchingSession.materi !== '-')
+              ? matchingSession.materi
+              : ((matchingSession.materi_pembelajaran && matchingSession.materi_pembelajaran !== '-')
+                ? matchingSession.materi_pembelajaran
+                : ((matchingSession.konten && matchingSession.konten !== '-') ? matchingSession.konten : ''));
+            if (savedMateri) {
+              setMateri(prev => prev || savedMateri);
+              setKonten(prev => prev || matchingSession.konten || savedMateri);
             }
             if (matchingSession.tujuan_pembelajaran && matchingSession.tujuan_pembelajaran !== '-') {
               setTujuanPembelajaran(prev => prev || matchingSession.tujuan_pembelajaran);
             }
-            if (matchingSession.kktp) setKktp(prev => prev || matchingSession.kktp);
-            if (matchingSession.kegiatan && matchingSession.kegiatan !== '-') setKegiatan(prev => prev || matchingSession.kegiatan);
-            if (matchingSession.lokasi_kbm) setLokasiKbm(prev => prev || matchingSession.lokasi_kbm);
-            if (matchingSession.catatan_refleksi && matchingSession.catatan_refleksi !== '-') setRefleksi(prev => prev || matchingSession.catatan_refleksi);
+            if (matchingSession.kktp && matchingSession.kktp !== '-') setKktp(prev => prev || matchingSession.kktp);
+
+            const savedKegiatan = (matchingSession.kegiatan && matchingSession.kegiatan !== '-')
+              ? matchingSession.kegiatan
+              : ((matchingSession.kegiatan_pembelajaran && matchingSession.kegiatan_pembelajaran !== '-')
+                ? matchingSession.kegiatan_pembelajaran
+                : '');
+            if (savedKegiatan) setKegiatan(prev => prev || savedKegiatan);
+
+            const savedLokasi = (matchingSession.lokasi_kbm && matchingSession.lokasi_kbm !== '-')
+              ? matchingSession.lokasi_kbm
+              : ((matchingSession.lokasi && matchingSession.lokasi !== '-') ? matchingSession.lokasi : '');
+            if (savedLokasi) setLokasiKbm(prev => prev || savedLokasi);
+
+            const savedRefleksi = (matchingSession.catatan_refleksi && matchingSession.catatan_refleksi !== '-')
+              ? matchingSession.catatan_refleksi
+              : ((matchingSession.refleksi && matchingSession.refleksi !== '-') ? matchingSession.refleksi : '');
+            if (savedRefleksi) setRefleksi(prev => prev || savedRefleksi);
+
             if (matchingSession.link_bukti_foto || matchingSession.foto_kegiatan) {
               setPhotoPreviewUrl(prev => prev || matchingSession.link_bukti_foto || matchingSession.foto_kegiatan);
             }
@@ -1558,7 +1602,12 @@ export default function GuruJurnal({
       // Pertahankan data absensi siswa yang sudah tersimpan sebelumnya jika state absensi lokal belum diisi manual
       let finalAbsensiJson = newJurnal.absensi_siswa;
       let finalKehadiranSummary = newJurnal.kehadiran_murid;
-      if (existingSessionRow?.absensi_siswa && Object.keys(cleanAbsensiForSave).length === 0) {
+      const hasExistingAbsensi = Boolean(
+        existingSessionRow?.absensi_siswa &&
+        existingSessionRow.absensi_siswa !== '{}' &&
+        existingSessionRow.absensi_siswa !== '-'
+      );
+      if (existingSessionRow?.absensi_siswa && (Object.keys(cleanAbsensiForSave).length === 0 || (kbmSubMode === 'jurnal' && hasExistingAbsensi))) {
         finalAbsensiJson = existingSessionRow.absensi_siswa;
         finalKehadiranSummary = existingSessionRow.kehadiran_murid || computedKehadiran;
       }

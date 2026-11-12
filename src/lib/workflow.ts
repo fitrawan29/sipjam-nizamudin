@@ -100,6 +100,262 @@ export function isTeacherNameEquivalent(
 }
 
 /**
+ * Mendeteksi apakah suatu sesi jurnal KBM memiliki materi/kegiatan riil
+ * dengan mempertimbangkan seluruh variasi field historis maupun modern
+ * (materi, materi_pembelajaran, konten, kegiatan, kegiatan_pembelajaran).
+ */
+export function hasJournalContent(j: any): boolean {
+  if (!j) return false;
+  const mat = (j.materi && j.materi !== '-') 
+    ? j.materi 
+    : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') 
+      ? j.materi_pembelajaran 
+      : ((j.konten && j.konten !== '-') ? j.konten : null));
+  const keg = (j.kegiatan && j.kegiatan !== '-') 
+    ? j.kegiatan 
+    : ((j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') 
+      ? j.kegiatan_pembelajaran 
+      : null);
+  return Boolean(mat && keg);
+}
+
+/**
+ * Mendeteksi apakah suatu sesi jurnal memiliki data absensi siswa yang tercatat,
+ * baik dalam format modern JSON object (absensi_siswa), array objek legacy ([{ id, status }]),
+ * maupun deskripsi kehadiran legacy (kehadiran_murid / detail_absen).
+ */
+export function hasAttendanceData(journal: any): boolean {
+  if (!journal) return false;
+  if (journal.absensi_siswa) {
+    if (typeof journal.absensi_siswa === 'object' && journal.absensi_siswa !== null) {
+      if (Object.keys(journal.absensi_siswa).length > 0) return true;
+    } else if (typeof journal.absensi_siswa === 'string') {
+      const trimmed = journal.absensi_siswa.trim();
+      const stripped = trimmed.replace(/\s+/g, '');
+      if (stripped !== '' && stripped !== '{}' && stripped !== '[]' && stripped !== '-' && stripped !== 'null' && stripped !== 'undefined') {
+        try {
+          const parsed = JSON.parse(trimmed);
+          if (typeof parsed === 'object' && parsed !== null) {
+            if (Object.keys(parsed).length > 0) return true;
+          } else {
+            return true;
+          }
+        } catch {
+          return true;
+        }
+      }
+    }
+  }
+  if (journal.kehadiran_murid && typeof journal.kehadiran_murid === 'string') {
+    const km = journal.kehadiran_murid.trim();
+    if (km !== '' && km !== '-' && !km.toLowerCase().includes('belum diisi')) return true;
+  }
+  if (journal.detail_absen && typeof journal.detail_absen === 'string') {
+    const da = journal.detail_absen.trim();
+    if (da !== '' && da !== '-') return true;
+  }
+  return false;
+}
+
+/**
+ * Melakukan parsing toleran dan normalisasi terhadap data absensi siswa
+ * dari versi terdahulu (array objek, dictionary berstatus kata/objek, atau detail_absen teks)
+ * menjadi dictionary standar: { [identitasSiswa]: 'H' | 'S' | 'I' | 'A' | 'B' }
+ */
+export function parseLegacyOrModernAttendance(
+  rawAbsensi?: any,
+  detailAbsen?: string,
+  kehadiranMurid?: string
+): Record<string, string> {
+  const map: Record<string, string> = {};
+
+  const normalizeStatusCode = (val: any): string => {
+    if (!val) return 'H';
+    if (typeof val === 'object') {
+      val = val.status || val.st || val.code || 'H';
+    }
+    const up = String(val).trim().toUpperCase();
+    if (up === 'S' || up.startsWith('SAKIT')) return 'S';
+    if (up === 'I' || up.startsWith('IZIN')) return 'I';
+    if (up === 'A' || up.startsWith('ALPA') || up.startsWith('ALFA')) return 'A';
+    if (up === 'B' || up.startsWith('BOLOS')) return 'B';
+    if (up === 'H' || up.startsWith('HADIR')) return 'H';
+    if (up.length > 0 && ['H', 'S', 'I', 'A', 'B'].includes(up[0])) return up[0];
+    return 'H';
+  };
+
+  // 1. Parsing rawAbsensi (object, array, atau JSON string)
+  if (rawAbsensi) {
+    let parsed: any = rawAbsensi;
+    if (typeof rawAbsensi === 'string') {
+      const trimmed = rawAbsensi.trim();
+      if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+        try {
+          parsed = JSON.parse(trimmed);
+        } catch (_) {
+          parsed = null;
+        }
+      }
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item, idx) => {
+          if (!item) return;
+          const key = item.nisn || item.siswa_id || item.id || item.nama_siswa || item.nama || `student-${idx}`;
+          const st = normalizeStatusCode(item.status || item.st || item.code || item);
+          map[String(key)] = st;
+          if (item.nisn) map[String(item.nisn)] = st;
+          if (item.id) map[String(item.id)] = st;
+          if (item.nama_siswa) map[String(item.nama_siswa).trim().toLowerCase()] = st;
+        });
+      } else {
+        Object.entries(parsed).forEach(([key, val]) => {
+          const st = normalizeStatusCode(val);
+          map[key] = st;
+          map[key.trim().toLowerCase()] = st;
+        });
+      }
+    }
+  }
+
+  // 2. Fallback detail_absen jika dictionary masih kosong
+  if (Object.keys(map).length === 0 && detailAbsen && typeof detailAbsen === 'string') {
+    const parts = detailAbsen.split(/[,;\n|]+/);
+    parts.forEach(part => {
+      const p = part.trim();
+      if (!p) return;
+      const matchParen = p.match(/^(.+?)\s*\((H|S|I|A|B|Hadir|Sakit|Izin|Alpa|Alfa|Bolos)\)$/i);
+      if (matchParen) {
+        const iden = matchParen[1].trim();
+        const st = normalizeStatusCode(matchParen[2]);
+        map[iden] = st;
+        map[iden.toLowerCase()] = st;
+        return;
+      }
+      const matchColon = p.match(/^(.+?)\s*[:=-]\s*(H|S|I|A|B|Hadir|Sakit|Izin|Alpa|Alfa|Bolos)$/i);
+      if (matchColon) {
+        const iden = matchColon[1].trim();
+        const st = normalizeStatusCode(matchColon[2]);
+        map[iden] = st;
+        map[iden.toLowerCase()] = st;
+      }
+    });
+  }
+
+  return map;
+}
+
+/**
+ * Format string ringkasan kehadiran murid dari absensi, detail_absen, atau kehadiran_murid
+ */
+export function formatAttendanceSummary(
+  rawAbsensi?: any,
+  detailAbsen?: string,
+  kehadiranMurid?: string
+): string {
+  // 1. Validasi kehadiran_murid format standar
+  if (kehadiranMurid && typeof kehadiranMurid === 'string' && kehadiranMurid.trim() && kehadiranMurid.trim() !== '-') {
+    const km = kehadiranMurid.trim();
+    if (/^Total murid:\s*\d+,\s*Hadir:\s*\d+,\s*Izin:\s*\d+,\s*Sakit:\s*\d+,\s*Alpa:\s*\d+$/i.test(km)) {
+      return km;
+    }
+    const semuaHadirMatch = km.match(/Semua Hadir\s*(?:\((\d+)\s*siswa\))?/i);
+    if (semuaHadirMatch) {
+      const total = semuaHadirMatch[1] ? parseInt(semuaHadirMatch[1], 10) : 0;
+      return total > 0 
+        ? `Total murid: ${total}, Hadir: ${total}, Izin: 0, Sakit: 0, Alpa: 0`
+        : km;
+    }
+    const hadirMatch = km.match(/(?:Hadir|Hadir siswa)(?:\s*:\s*|\s+)(\d+)/i);
+    const izinMatch = km.match(/Izin(?:\s*:\s*|\s+)(\d+)/i);
+    const sakitMatch = km.match(/Sakit(?:\s*:\s*|\s+)(\d+)/i);
+    const alpaMatch = km.match(/Alpa(?:\s*:\s*|\s+)(\d+)/i);
+    if (hadirMatch || izinMatch || sakitMatch || alpaMatch) {
+      const h = hadirMatch ? parseInt(hadirMatch[1], 10) : 0;
+      const i = izinMatch ? parseInt(izinMatch[1], 10) : 0;
+      const s = sakitMatch ? parseInt(sakitMatch[1], 10) : 0;
+      const a = alpaMatch ? parseInt(alpaMatch[1], 10) : 0;
+      const total = h + i + s + a;
+      return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+    }
+  }
+
+  // 2. Parsing rawAbsensi
+  if (rawAbsensi) {
+    let parsed: any = null;
+    if (typeof rawAbsensi === 'object') {
+      parsed = rawAbsensi;
+    } else if (typeof rawAbsensi === 'string') {
+      const raw = rawAbsensi.trim();
+      if (raw.startsWith('{') || raw.startsWith('[')) {
+        try {
+          parsed = JSON.parse(raw);
+        } catch (_) {}
+      } else if (raw.includes('|')) {
+        const h = parseInt(raw.match(/H\s*:\s*(\d+)/i)?.[1] || '0', 10);
+        const i = parseInt(raw.match(/I\s*:\s*(\d+)/i)?.[1] || '0', 10);
+        const s = parseInt(raw.match(/S\s*:\s*(\d+)/i)?.[1] || '0', 10);
+        const a = parseInt(raw.match(/A\s*:\s*(\d+)/i)?.[1] || '0', 10);
+        const total = h + i + s + a;
+        return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+      }
+    }
+
+    if (parsed) {
+      const counts = { H: 0, I: 0, S: 0, A: 0 };
+      const extractStatus = (val: any): string => {
+        if (!val) return 'H';
+        if (typeof val === 'object') {
+          return String(val.status || val.st || 'H');
+        }
+        return String(val);
+      };
+
+      if (Array.isArray(parsed)) {
+        parsed.forEach((item: any) => {
+          const st = extractStatus(item?.status || item).trim().toUpperCase();
+          if (st.startsWith('H')) counts.H++;
+          else if (st.startsWith('I')) counts.I++;
+          else if (st.startsWith('S')) counts.S++;
+          else if (st.startsWith('A') || st.startsWith('B')) counts.A++;
+        });
+      } else if (typeof parsed === 'object') {
+        Object.values(parsed).forEach((v: any) => {
+          const st = extractStatus(v).trim().toUpperCase();
+          if (st.startsWith('H')) counts.H++;
+          else if (st.startsWith('I')) counts.I++;
+          else if (st.startsWith('S')) counts.S++;
+          else if (st.startsWith('A') || st.startsWith('B')) counts.A++;
+        });
+      }
+
+      const total = counts.H + counts.I + counts.S + counts.A;
+      if (total > 0) {
+        return `Total murid: ${total}, Hadir: ${counts.H}, Izin: ${counts.I}, Sakit: ${counts.S}, Alpa: ${counts.A}`;
+      }
+    }
+  }
+
+  // 3. Fallback detail_absen
+  if (detailAbsen && typeof detailAbsen === 'string') {
+    const d = detailAbsen.trim();
+    if (d && d !== '-') {
+      const h = (d.match(/\((?:H|Hadir)\)/gi) || []).length;
+      const i = (d.match(/\((?:I|Izin)\)/gi) || []).length;
+      const s = (d.match(/\((?:S|Sakit)\)/gi) || []).length;
+      const a = (d.match(/\((?:A|Alfa|Alpa|Bolos|B)\)/gi) || []).length;
+      const total = h + i + s + a;
+      if (total > 0) {
+        return `Total murid: ${total}, Hadir: ${h}, Izin: ${i}, Sakit: ${s}, Alpa: ${a}`;
+      }
+    }
+  }
+
+  return 'Total murid: 0, Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0';
+}
+
+/**
  * Menautkan baris data_guru ke akun login pada tabel users menggunakan user_id,
  * kecocokan nip == username, atau variasi nama yang setara.
  */
@@ -1938,7 +2194,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       const blockedSchedules = state.jadwalKBM.filter((jk: any) => jk.isBlocked);
 
       const unblockedFulfilled = unblockedSchedules.every(jk => 
-        state.jurnalKBM.some(j => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
+        state.jurnalKBM.some(j => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk) && (!(j.materi === '-' && j.kegiatan === '-') || hasJournalContent(j)))
       );
       const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 
@@ -2016,7 +2272,7 @@ export function canTeacherPresensiPulang(state: Partial<GuruDailyState>): boolea
   const blockedSchedules = (state.jadwalKBM || []).filter((jk: any) => jk.isBlocked);
 
   const unblockedFulfilled = unblockedSchedules.every((jk: any) => 
-    (state.jurnalKBM || []).some((j: any) => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk) && !(j.materi === '-' && j.kegiatan === '-'))
+    (state.jurnalKBM || []).some((j: any) => j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, jk) && (!(j.materi === '-' && j.kegiatan === '-') || hasJournalContent(j)))
   );
   const blockedFulfilled = blockedSchedules.length === 0 || Boolean(state.jurnalKegiatan);
 

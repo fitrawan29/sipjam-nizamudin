@@ -51,10 +51,11 @@ export function isRealSubmittedJournal(j: any): boolean {
   if (sv === 'Sakit' || sv === 'Izin') return false;
   const ket = (j.keterangan || '').trim().toLowerCase();
   if (ket === 'auto-fill sistem karena guru berhalangan hadir') return false;
-  const mat = (j.materi || j.materi_pembelajaran || '').trim().toLowerCase();
+  const mat = ((j.materi && j.materi !== '-') ? j.materi : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : ((j.konten && j.konten !== '-') ? j.konten : ''))).trim().toLowerCase();
   if (mat.startsWith('guru tidak dapat mengisi jurnal karena')) return false;
+  const keg = ((j.kegiatan && j.kegiatan !== '-') ? j.kegiatan : ((j.kegiatan_pembelajaran && j.kegiatan_pembelajaran !== '-') ? j.kegiatan_pembelajaran : '')).trim().toLowerCase();
   // Sesi yang baru diisi absensi siswa saja (materi dan kegiatan masih "-") bukan merupakan jurnal yang telah diserahkan
-  if (j.materi === '-' && j.kegiatan === '-') return false;
+  if (j.materi === '-' && j.kegiatan === '-' && !mat && !keg) return false;
   return true;
 }
 
