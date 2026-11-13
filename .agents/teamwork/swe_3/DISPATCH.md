@@ -1,41 +1,58 @@
-## 2026-09-27T14:28:20Z
+## 2026-11-12T13:26:40Z
 
-You are the SWE Light Orchestrator (teamwork_preview_swe).
-
-Your working directory is: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3
-Project root: c:\Users\Fitra\OneDrive\Documents\sipjam-app
-
-Read the user request from: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md (specifically the section under ## 2026-09-27T14:28:20Z).
-
-User Request Details:
-Fitur Sistem Blok: Membuat fitur manajemen sistem blok waktu. Rentang waktu yang diblokir akan menandakan bahwa tidak ada jadwal mengajar reguler, melainkan digantikan oleh kegiatan khusus. Selama periode ini, guru hanya bertugas mengisi jurnal kegiatan.
-Ini adalah tugas yang relatif terisolasi, gunakan tim kecil yang fokus.
+This is a single self-contained fix; keep it small and focused. Perbaiki kolom jurnal KBM pada aplikasi sipjam-app agar urutan dan strukturnya sesuai ketentuan pada form input, mode edit, tabel data, data lama, dan tampilan cetak.
 
 Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
 Integrity mode: development
 
-Requirements:
-- R1. Halaman Manajemen Sistem Blok (CRUD):
-  Buat halaman (UI) untuk mengelola (menambah, mengedit, menghapus) periode sistem blok. Data yang disimpan minimal mencakup tanggal mulai, tanggal selesai, dan nama/deskripsi kegiatan.
-- R2. Penyesuaian Tampilan Jadwal:
-  Modifikasi tampilan jadwal mengajar. Jika suatu rentang waktu masuk dalam periode sistem blok yang aktif, jadwal reguler di database tidak boleh dihapus, namun di UI jadwal tersebut harus disembunyikan/ditutupi dan diganti dengan informasi kegiatan blok.
-- R3. Jurnal Kegiatan Guru:
-  Selama rentang waktu sistem blok, alur pengisian jurnal guru harus disesuaikan. Guru hanya perlu/bisa mengisi "jurnal kegiatan" untuk periode tersebut, bukan jurnal absensi/mengajar kelas reguler.
-- R4. Batasan Implementasi:
-  Gunakan komponen UI dan styling yang sudah ada di dalam project (jangan install library eksternal baru). Ikuti prinsip minimalis (hanya buat apa yang benar-benar dibutuhkan agar fitur ini jalan).
+## Requirements
 
-Acceptance Criteria:
-- Manajemen Blok (R1):
-  - [ ] Terdapat form untuk menambahkan periode blok baru yang menyimpan data ke database.
-  - [ ] Daftar periode blok yang sudah dibuat dapat dilihat dan dihapus/diedit.
-- Tampilan Jadwal (R2):
-  - [ ] Jadwal mengajar reguler yang bertabrakan dengan tanggal blok tidak ditampilkan seperti biasa.
-  - [ ] Halaman jadwal menampilkan informasi kegiatan blok pada tanggal-tanggal yang terpengaruh.
-  - [ ] Data jadwal asli di database terbukti tidak terhapus.
-- Jurnal Kegiatan (R3):
-  - [ ] Terdapat form atau penyesuaian UI agar guru dapat mengisi jurnal kegiatan (bukan jurnal reguler) pada hari yang masuk dalam periode blok.
+### R1. Urutan dan Struktur Kolom Jurnal KBM
+Perbarui kolom jurnal KBM agar memiliki urutan dan struktur persis berikut:
+1. Nomor
+2. Hari/Tanggal
+3. Materi/Konten
+4. Kelas/JP
+5. Keadaan Siswa (terdiri dari sub-kolom/sub-field: Jumlah, Hadir, Sakit, Izin, Alpa)
+6. Tempat/Lokasi KBM
+7. Dokumentasi (menyediakan dua opsi: live camera dan upload foto)
+8. Keterangan (opsional)
 
-Special Instructions:
-- Follow the Git Workflow Rule defined in GEMINI.md: Whenever completing file modifications/additions/deletions, check git status, stage changes (git add .), commit with a descriptive message, and push to the active origin branch automatically.
-- Maintain progress.md and BRIEFING.md in your working directory.
-- When complete, write your handoff.md and send a completion message back with the handoff path and summary.
+Urutan dan struktur kolom baru ini wajib diterapkan secara konsisten pada:
+- Form input/pengisian baru dan form mode edit jurnal KBM.
+- Tampilan tabel/daftar jurnal KBM, dengan memastikan data jurnal lama yang sudah diisi sebelumnya tetap dapat tampil secara benar menyesuaikan struktur kolom baru.
+- Mode cetak/print dokumen jurnal KBM.
+
+### R2. Pendekatan Implementasi (Ponytail full)
+Terapkan prinsip Ponytail (full): solusi paling sederhana yang berhasil bekerja (laziest solution that works), utamakan fitur native platform (seperti input file / camera capture native), hindari over-engineering, buat diff perubahan seringkas mungkin, dan gunakan kembali kode serta komponen yang sudah ada tanpa membuat abstraksi baru kecuali mutlak diperlukan.
+
+### R3. Alur Kerja Git
+Setelah seluruh perubahan selesai dan terverifikasi, lakukan staging (`git add .`), buat commit dengan pesan deskriptif, dan lakukan push langsung ke branch utama (`git push origin main`).
+
+## Acceptance Criteria
+
+### Kolom dan Struktur Jurnal KBM
+- [ ] Kolom pada form input dan mode edit jurnal KBM tersusun sesuai urutan: Nomor, Hari/Tanggal, Materi/Konten, Kelas/JP, Keadaan Siswa, Tempat/Lokasi KBM, Dokumentasi, Keterangan.
+- [ ] Kolom pada tampilan tabel/daftar jurnal KBM mencerminkan urutan dan struktur yang sama.
+- [ ] Data jurnal yang sudah tersimpan sebelumnya tetap dapat dimuat dan ditampilkan secara benar pada struktur kolom baru tanpa error.
+- [ ] Tampilan cetak/print dokumen jurnal KBM mencerminkan urutan dan struktur kolom baru secara konsisten.
+- [ ] Bagian Keadaan Siswa mencakup seluruh sub-field/kolom: Jumlah, Hadir, Sakit, Izin, dan Alpa.
+- [ ] Bagian Dokumentasi menyediakan dua opsi fungsional: live camera dan upload foto.
+- [ ] Kolom Keterangan bersifat opsional (tidak wajib diisi).
+
+### Verifikasi & Integritas
+- [ ] Proyek Next.js dapat di-build atau typecheck tanpa error (`npm run build`).
+- [ ] Alur input, edit, penampilan data lama, dan cetak jurnal KBM terverifikasi berfungsi normal tanpa regresi.
+- [ ] Perubahan di-stage, di-commit, dan di-push ke branch `main`.
+
+---
+## Continuation Context
+- Round 1 primary implementation has already been completed and committed (commit `f175746` in `src/components/GuruJurnal.tsx` and `src/components/RekapJurnalView.tsx`), with build and tests passing.
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3
+- Original request path: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md
+- Prior open issues ledger from Round 1:
+  1. [Open] Mobile camera stream behavior on low-end WebViews (uses standard HTML5 file input with capture="environment").
+  2. [Open] Robustness: legacy journal with zero attendance records defaults to 0 across all five sub-fields.
+  3. [Open] Edge case: very long custom descriptions in "Tempat/Lokasi KBM" during print preview.
+  4. [Open] Verification: inspect print preview on dataset containing modern and legacy journals.
+- Proceed with Review Round 1 (teamwork_reviewer), Review Round 2, Review Round 3, and final victory audit.

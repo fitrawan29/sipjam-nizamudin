@@ -1,71 +1,74 @@
-# BRIEFING — 2026-09-27T22:30:00+08:00
+# BRIEFING — 2026-11-12T13:28:30Z
 
 ## Mission
-Orchestrate SWE Light refinement loop for Fitur Sistem Blok (CRUD blok, penyesuaian jadwal, jurnal kegiatan guru).
+Perbaiki kolom jurnal KBM pada aplikasi sipjam-app agar urutan dan strukturnya sesuai ketentuan pada form input, mode edit, tabel data, data lama, dan tampilan cetak.
 
 ## 🔒 My Identity
-- Archetype: teamwork_preview_swe
+- Archetype: orchestrator
 - Roles: orchestrator, user_liaison, human_reporter, successor
-- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3
 - Original parent: parent
-- Original parent conversation ID: 14357458-ab41-49cf-ab3e-613c2f7f0bfa
+- Original parent conversation ID: 6f94079d-ab60-4ef6-957d-b28555ff2188
 
 ## 🔒 My Workflow
 - **Pattern**: SWE Light
 - **Scope document**: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3\DISPATCH.md
-1. **Decompose**: No decomposition (SWE Light). Entire task is propagated verbatim to implementer, followed by sequential reviewer rounds.
+1. **Decompose**: No decomposition (SWE Light). Entire task propagated verbatim, sequential refinement through review rounds.
 2. **Dispatch & Execute**:
-   - Dispatch teamwork_preview_implementer
-   - Verify diff and tests independently
-   - Reviewer round 1 (teamwork_preview_reviewer)
-   - Reviewer round 2 (teamwork_preview_reviewer)
-   - Reviewer round 3 (teamwork_preview_reviewer)
-   - Audit with teamwork_preview_victory_auditor
+   - Direct: teamwork_implementer -> teamwork_reviewer -> teamwork_reviewer -> teamwork_reviewer -> teamwork_victory_auditor
 3. **On failure**: Retry -> Replace -> Skip -> Redistribute -> Redesign -> Escalate
 4. **Succession**: At >=16 spawns, write handoff.md, spawn successor
 - **Work items**:
-  1. Implementation [pending]
+  1. Primary implementation [done - f175746]
   2. Review Round 1 [pending]
   3. Review Round 2 [pending]
   4. Review Round 3 [pending]
   5. Victory Audit [pending]
-- **Current phase**: Phase 1 (Implementation)
-- **Current focus**: Dispatch teamwork_preview_implementer
+- **Current phase**: 2
+- **Current focus**: Dispatch Review Round 1 (teamwork_reviewer)
 
 ## 🔒 Key Constraints
-- Never write, modify, or create source code files yourself.
-- Never explore or debug the codebase to solve the task yourself.
-- Maintain open issues ledger across all rounds.
-- Floor of 3 review rounds + independent test verification + victory auditor before completion.
+- NEVER write, modify, or create source code files yourself. Delegate all implementation and repair to teamwork_implementer and teamwork_reviewer.
+- NEVER explore or debug the codebase to solve the task yourself.
+- Propagate the original task verbatim.
+- Floor of three review rounds and independent test re-run before completion.
+- Carry open-issues ledger across ALL rounds.
 - Never reuse a subagent after handoff.
 - Follow Git Workflow Rule in GEMINI.md automatically.
 
 ## Current Parent
-- Conversation ID: 14357458-ab41-49cf-ab3e-613c2f7f0bfa
+- Conversation ID: 6f94079d-ab60-4ef6-957d-b28555ff2188
 - Updated: not yet
 
 ## Key Decisions Made
-- SWE Light pattern selected with 1 implementer and minimum 3 reviewer rounds.
+- Apply Ponytail full principle (simplest native working solution).
+- Sequential refinement with 3 review rounds + victory auditor.
 
 ## Team Roster
 | Agent | Type | Work Item | Status | Conv ID |
 |-------|------|-----------|--------|---------|
-| Implementer 1 | teamwork_preview_implementer | Implementation of Sistem Blok | in-progress | 3daae40c-3175-4460-b569-364e23b119bc |
 
 ## Succession Status
 - Succession required: no
-- Spawn count: 1 / 16
-- Pending subagents: 3daae40c-3175-4460-b569-364e23b119bc
+- Spawn count: 0 / 16
+- Pending subagents: none
 - Predecessor: none
-- Successor: not yet spawned
+- Successor spawned: not yet spawned
+- Successor generation: none
+- Successor state folder: none
 
 ## Active Timers
-- Heartbeat cron: 71d2e598-3ae9-4ced-a023-aab2ef50240c/task-9
-- Safety timer: 71d2e598-3ae9-4ced-a023-aab2ef50240c/task-29
+- Heartbeat cron: not started
+- Safety timer: none
 
 ## Open Issues Ledger
-*(Empty)*
+1. [Open] Mobile camera stream behavior on low-end WebViews (uses standard HTML5 file input with capture="environment"). [Round 1]
+2. [Open] Robustness: legacy journal with zero attendance records defaults to 0 across all five sub-fields. [Round 1]
+3. [Open] Edge case: very long custom descriptions in "Tempat/Lokasi KBM" during print preview. [Round 1]
+4. [Open] Verification: inspect print preview on dataset containing modern and legacy journals. [Round 1]
 
 ## Artifact Index
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3\DISPATCH.md — Dispatch instructions
 - c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\ORIGINAL_REQUEST.md — Original request
+- c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\swe_3\progress.md — Execution progress
