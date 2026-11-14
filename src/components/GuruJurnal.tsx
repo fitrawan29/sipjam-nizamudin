@@ -310,13 +310,7 @@ export default function GuruJurnal({
   };
 
   const isRestoredRef = useRef(false);
-
-  // Lokasi KBM mengikuti kelas: kosongkan saat kelas dikosongkan / berganti ke kelas lain
-  const prevKelasLokasiRef = useRef('');
-  useEffect(() => {
-    if (prevKelasLokasiRef.current && prevKelasLokasiRef.current !== kelas) setLokasiKbm('');
-    prevKelasLokasiRef.current = kelas;
-  }, [kelas]);
+  const prevKelasRef = useRef<string | null>(null);
 
   // Auto-restore draft from localStorage on initial mount
   useEffect(() => {
@@ -886,6 +880,11 @@ export default function GuruJurnal({
 
   useEffect(() => {
     const fetchStudents = async () => {
+      const kelasChanged = prevKelasRef.current !== null && prevKelasRef.current !== kelas;
+      prevKelasRef.current = kelas;
+      if (kelasChanged || !kelas) {
+        setLokasiKbm('');
+      }
       if (!kelas || (tipeJurnal !== 'Jurnal KBM' && kbmSubMode !== 'absensi')) {
         setStudents([]);
         setAbsensi({});
@@ -893,7 +892,6 @@ export default function GuruJurnal({
         setLastChangeMap({});
         setMorningLockedAttendance({});
         setKehadiranMurid('');
-        setLokasiKbm('');
         return;
       }
       setIsFetchingStudents(true);
@@ -1181,8 +1179,8 @@ export default function GuruJurnal({
                 .select('id, user_id, nama_guru, kelas, mapel, lokasi_kbm, lokasi, tanggal, timestamp')
                 .order('tanggal', { ascending: false })
                 .limit(50);
-              histLokQ = histLokQ.eq('kelas', kelas);
               if (user?.sekolah_id) histLokQ = histLokQ.eq('sekolah_id', user.sekolah_id);
+              histLokQ = histLokQ.eq('kelas', kelas);
               if (targetSearchUserId && searchEffectiveName) {
                 histLokQ = histLokQ.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
               } else if (targetSearchUserId) {

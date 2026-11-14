@@ -9,13 +9,14 @@ import {
   extractWitaDateStr
 } from '@/lib/wita';
 import {
+  getPresensiLeaveCategory,
   isGuruDiPiket,
   isJurnalMatchJadwal,
   isLateArrival,
   isBkAccount,
+  isPresensiCoveringDate,
   isTeacherNameEquivalent,
   isTeacherRecordMatch,
-  resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
   resolveTeacherAttendancePolicy
 } from '@/lib/workflow';
@@ -67,20 +68,6 @@ function getDayNameFromDate(dateStr: string): string {
   const cleanDate = normalizeDateStr(dateStr);
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
   return days[new Date(cleanDate + 'T12:00:00+08:00').getDay()];
-}
-
-function addDaysToDateStr(dateStr: string, days: number): string {
-  try {
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dt = new Date(y, m - 1, d);
-    dt.setDate(dt.getDate() + days);
-    const year = dt.getFullYear();
-    const month = String(dt.getMonth() + 1).padStart(2, '0');
-    const day = String(dt.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  } catch {
-    return dateStr;
-  }
 }
 
 /**
@@ -235,6 +222,11 @@ export async function evaluateAndApplyAutoAlpa(
           newStatus: 'Alpa',
           sekolah_id: rejectedRec.sekolah_id
         });
+        await recordUnfilledJournalsAndPiket(
+          { nama_guru: rejectedRec.nama_guru, user_id: rejectedRec.user_id || null, sekolah_id: rejectedRec.sekolah_id || null },
+          evaluatedDate,
+          { presensiDatang: { ...rejectedRec, status_verifikasi: 'Alpa', jenis_presensi: 'Alpa' } }
+        );
       }
     }
   }
@@ -279,10 +271,10 @@ export async function evaluateAndApplyAutoAlpa(
     }
   }
 
-  // Guard: skip Sabtu jika sekolah 5 hari kerja, dan load aturan kehadiran guru
+  // Guard: skip Sabtu jika sekolah 5 hari kerja, dan load daftar kebijakan perorangan guru
   let pengaturanQuery = supabase
     .from('pengaturan')
-    .select('key, value, aturan_kehadiran_guru, sekolah_id');
+    .select('key, value, guru_hanya_mengajar, sekolah_id');
   if (sekolahId) {
     pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
   }
@@ -392,8 +384,7 @@ export async function evaluateAndApplyAutoAlpa(
     });
     if (hasRecord) continue;
 
-    // Evaluasi aturan kehadiran guru berbasis sekolahnya
-    const schoolAturanGlobal = resolveSchoolAturanKehadiran(schoolPengaturan);
+    // Evaluasi aturan kehadiran guru berbasis pilihan perorangan
     const guruHanyaMengajarList = resolveSchoolLegacyGhmList(schoolPengaturan);
 
     // Normalisasi nilai string boolean agar evaluasi aman dan konsisten
@@ -407,7 +398,6 @@ export async function evaluateAndApplyAutoAlpa(
     const policy = resolveTeacherAttendancePolicy({
       teacher: guru,
       weeklySchedules: schoolWeeklyJadwal,
-      aturanGlobal: schoolAturanGlobal,
       guruHanyaMengajarList,
     });
     const isTu = policy.isTu;
@@ -421,13 +411,16 @@ export async function evaluateAndApplyAutoAlpa(
     // const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)
     const isTeacherExempt = policy.isTeacherExempt;
 
+    const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
+      if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;
+      return isTeacherRecordMatch(j, guru, null, { allowSingleWordFirstToken: true });
+    });
+
+    const isBlokActive = Boolean((activeBloks || []).some((b: any) =>
+      !guru.sekolah_id || !b.sekolah_id || b.sekolah_id === guru.sekolah_id
+    ));
+
     if (isTeacherExempt) {
-
-      const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
-        if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;
-        return isTeacherRecordMatch(j, guru, null, { allowSingleWordFirstToken: true });
-      });
-
       const inPenugasan = (penugasanList || []).some((p: any) => {
         if (guru.sekolah_id && p.sekolah_id && p.sekolah_id !== guru.sekolah_id) return false;
         if (p.guru_id && ((guru.user_id && String(p.guru_id) === String(guru.user_id)) || (guru.id && String(p.guru_id) === String(guru.id)))) return true;
@@ -441,10 +434,6 @@ export async function evaluateAndApplyAutoAlpa(
         if (guru.sekolah_id && jp.sekolah_id && jp.sekolah_id !== guru.sekolah_id) return false;
         return isGuruDiPiket(jp.daftar_guru, guru.nama_guru) || isGuruDiPiket(jp.daftar_guru, cleanName);
       });
-
-      const isBlokActive = Boolean((activeBloks || []).some((b: any) =>
-        !guru.sekolah_id || !b.sekolah_id || b.sekolah_id === guru.sekolah_id
-      ));
 
       const hasPiketDuty = (inPenugasan || inJadwalPiket) && (!isBlokActive || hasTeachingToday);
 
@@ -482,6 +471,15 @@ export async function evaluateAndApplyAutoAlpa(
         newStatus: 'Alpa',
         sekolah_id: guru.sekolah_id,
       });
+      await recordUnfilledJournalsAndPiket(
+        { nama_guru: guru.nama_guru, user_id: guru.user_id || null, sekolah_id: guru.sekolah_id || null },
+        evaluatedDate,
+        {
+          isBlok: isBlokActive,
+          isNonTeachingDay: isTeacherExempt && !hasTeachingToday,
+          presensiDatang: alpaRecord,
+        }
+      );
     }
   }
 
@@ -1133,15 +1131,7 @@ export async function recordUnfilledJournalsAndPiket(
             (teacher.user_id && p.user_id && teacher.user_id === p.user_id);
           if (!isMatch) return false;
 
-          if (p.tanggal_mulai && p.tanggal_selesai) {
-            return evaluatedDate >= p.tanggal_mulai && evaluatedDate <= p.tanggal_selesai;
-          }
-          if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
-            const days = Number(p.durasi_hari || p.durasiHari) || 1;
-            const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
-            return evaluatedDate >= p.tanggal_mulai && evaluatedDate <= computedEnd;
-          }
-          return false;
+          return isPresensiCoveringDate(p, evaluatedDate);
         });
 
         presensiDatang = activeMultiLeave || null;
@@ -1149,15 +1139,9 @@ export async function recordUnfilledJournalsAndPiket(
     }
 
     // Izin Terlambat / Terlambat is not leave: KBM journal must still be filled
-    const isLate = isLateArrival(presensiDatang);
-    const jp = (presensiDatang?.jenis_presensi || '').toLowerCase();
-    const di = (presensiDatang?.detail_izin || '').toLowerCase();
-    const sv = (presensiDatang?.status_verifikasi || '').toLowerCase();
-
-    const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = isLate ? null :
-      (state.isIzinSakit || jp === 'sakit' || di.includes('sakit') || sv === 'sakit') ? 'Sakit' :
-      (jp === 'izin' || di.includes('izin') || sv === 'izin') ? 'Izin' :
-      (state.isDinasLuar || jp === 'dinas luar' || di.includes('dinas') || sv === 'dinas luar') ? 'Dinas Luar' : null;
+    const leaveType: 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar' | null =
+      getPresensiLeaveCategory(presensiDatang) ||
+      (state.isIzinSakit ? 'Sakit' : state.isDinasLuar ? 'Dinas Luar' : null);
 
     const leaveNote = presensiDatang?.detail_izin || presensiDatang?.keterangan || (leaveType || '');
     const leaveProof = presensiDatang?.link_bukti && presensiDatang.link_bukti !== '-' ? presensiDatang.link_bukti : '-';
@@ -1284,8 +1268,8 @@ export async function recordUnfilledJournalsAndPiket(
       }
     }
 
-    // 3. Laporan Piket not filled -> "tidak membuat laporan piket"
-    if (isPiket && !laporanPiket) {
+    // 3. Laporan Piket not filled -> "tidak membuat laporan piket" (skip jika guru sedang Sakit/Izin/Cuti/Dinas Luar)
+    if (isPiket && !laporanPiket && !isExcusedFromActivity) {
       let q = client
         .from('laporan_piket')
         .select('*')
@@ -1333,7 +1317,7 @@ export async function recordUnfilledJournalsAndPiket(
 export async function autoFillKbmJournalsForLeave(
   teacher: { nama_guru: string; user_id?: string | null; sekolah_id?: string | null; id?: string },
   targetDateStr: string,
-  leaveType: 'Sakit' | 'Izin' | 'Dinas Luar',
+  leaveType: 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar',
   leaveDetails?: { detail_izin?: string; keterangan?: string; link_bukti?: string },
   client: any = supabase
 ): Promise<number> {

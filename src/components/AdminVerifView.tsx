@@ -14,8 +14,10 @@ import {
 } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import {
+  getPresensiLeaveCategory,
   isGuruDiPiket,
   isBkAccount,
+  isPresensiCoveringDate,
   isTuAccount,
   resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
@@ -907,32 +909,14 @@ export default function AdminVerifView({
     const targetDate = date || effectiveDate;
     const submittedList = jurnalList.filter(j => j.tanggal === targetDate && j.status_verifikasi !== 'Tidak Masuk Kelas' && isRealSubmittedJournal(j));
 
-    // R2: Teachers who have submitted attendance with status Sakit, Izin, or Dinas Luar must not be flagged as unsubmitted delinquency
+    // R2: Teachers who have submitted attendance with status Sakit, Izin, Cuti, or Dinas Luar must not be flagged as unsubmitted delinquency
     const isTeacherOnLeave = (teacher: any) => {
       const linkedUser = resolveLinkedUserForTeacher(teacher, allUsers);
       return presensiList.some(p => {
         if (!isTeacherRecordMatch(p, teacher, linkedUser)) return false;
-        if (p.status_verifikasi === 'Ditolak') return false;
-        const jp = (p.jenis_presensi || '').toLowerCase();
-        const di = (p.detail_izin || '').toLowerCase();
-        const isLeave = jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || di.includes('sakit') || di.includes('izin') || di.includes('dinas');
-        if (!isLeave) return false;
-
-        // Check active multi-day leave span
-        if (p.tanggal_mulai && p.tanggal_selesai && targetDate >= p.tanggal_mulai && targetDate <= p.tanggal_selesai) {
-          return true;
-        }
-        if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
-          const days = Number(p.durasi_hari || p.durasiHari) || 1;
-          const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
-          if (targetDate >= p.tanggal_mulai && targetDate <= computedEnd) {
-            return true;
-          }
-        }
-
-        if (!p.timestamp) return false;
-        const pDate = extractWitaDateStr(p.timestamp) || p.timestamp.substring(0, 10);
-        return pDate === targetDate;
+        const leaveCat = getPresensiLeaveCategory(p);
+        if (!leaveCat) return false;
+        return isPresensiCoveringDate(p, targetDate);
       });
     };
 
@@ -1066,29 +1050,14 @@ export default function AdminVerifView({
       ? rawSubmittedList.filter(j => !isDelinquencyJournal(j))
       : rawSubmittedList;
 
-    // Untuk tab Jurnal: Pastikan guru yang berstatus izin/sakit pada presensi_guru tetap muncul sebagai kartu terverifikasi
+    // Untuk tab Jurnal: Pastikan guru yang berstatus izin/sakit/cuti pada presensi_guru tetap muncul sebagai kartu terverifikasi
     let synthesizedLeaveList: any[] = [];
     if (activeTab === 'Jurnal') {
       const targetDate = date || effectiveDate;
       presensiList.forEach((p: any) => {
-        const jp = (p.jenis_presensi || '').toLowerCase();
-        const di = (p.detail_izin || '').toLowerCase();
-        const isLeave = jp === 'sakit' || jp === 'izin' || di.includes('sakit') || di.includes('izin');
-        if (!isLeave) return;
-        if (p.status_verifikasi === 'Ditolak') return;
-
-        let inDateRange = false;
-        if (p.tanggal_mulai && p.tanggal_selesai && targetDate >= p.tanggal_mulai && targetDate <= p.tanggal_selesai) {
-          inDateRange = true;
-        } else if (p.tanggal_mulai && (p.durasi_hari || p.durasiHari)) {
-          const days = Number(p.durasi_hari || p.durasiHari) || 1;
-          const computedEnd = addDaysToDateStr(p.tanggal_mulai, days - 1);
-          if (targetDate >= p.tanggal_mulai && targetDate <= computedEnd) inDateRange = true;
-        } else if (p.timestamp) {
-          const pDate = extractWitaDateStr(p.timestamp) || p.timestamp.substring(0, 10);
-          if (pDate === targetDate) inDateRange = true;
-        }
-        if (!inDateRange) return;
+        const leaveCat = getPresensiLeaveCategory(p);
+        if (leaveCat !== 'Sakit' && leaveCat !== 'Izin' && leaveCat !== 'Cuti') return;
+        if (!isPresensiCoveringDate(p, targetDate)) return;
 
         const leaveProfile = { nama_guru: p.nama_guru, user_id: p.user_id, nip: p.nip };
         const leaveLinkedUser = resolveLinkedUserForTeacher(leaveProfile, allUsers);
@@ -1096,14 +1065,14 @@ export default function AdminVerifView({
           isTeacherRecordMatch(j, leaveProfile, leaveLinkedUser)
         );
         if (!alreadyInBase) {
-          const leaveLabel = (jp === 'sakit' || di.includes('sakit')) ? 'Sakit' : 'Izin';
+          const leaveLabel = leaveCat;
           synthesizedLeaveList.push({
             id: `excused-jurnal-${p.id}`,
             nama_guru: p.nama_guru,
             nip: p.nip || '-',
             tanggal: targetDate,
             kelas: '-',
-            mapel: 'Dikecualikan (Izin / Sakit)',
+            mapel: 'Dikecualikan (Izin / Sakit / Cuti)',
             materi: `Dikecualikan (${leaveLabel})`,
             keterangan: `Presensi ${leaveLabel}: ${p.detail_izin || p.keterangan || leaveLabel}`,
             status_verifikasi: leaveLabel,

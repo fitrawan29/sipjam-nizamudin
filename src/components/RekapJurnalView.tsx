@@ -4,14 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaDayName, getWitaTimeStr } from '@/lib/wita';
 import {
+  getPresensiLeaveCategory,
   isJurnalMatchJadwal,
   isLateArrival,
+  isPresensiCoveringDate,
   connectGuruMapelWithJadwal,
   normalizeTeacherIdentityName,
   isTeacherRecordMatch,
   formatAttendanceSummary,
   parseExplicitBooleanFlag,
-  resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
   resolveTeacherAttendancePolicy,
   isValidLokasiKbm,
@@ -118,7 +119,6 @@ export default function RekapJurnalView({
   const [allTeachersList, setAllTeachersList] = useState<any[]>([]);
   const [allWeeklySchedules, setAllWeeklySchedules] = useState<any[]>([]);
   const [legacyGhmList, setLegacyGhmList] = useState<string[]>([]);
-  const [aturanKehadiranGlobal, setAturanKehadiranGlobal] = useState<string>('Semua_Hari');
   const [teacherLokasiHistory, setTeacherLokasiHistory] = useState<any[]>([]);
   const [isHanyaKbmUser, setIsHanyaKbmUser] = useState<boolean>(() => {
     const v = parseExplicitBooleanFlag(user?.wajib_hadir_hanya_mengajar ?? (user as any)?.wajibHadirHanyaMengajar);
@@ -163,7 +163,6 @@ export default function RekapJurnalView({
         teacher: matched,
         linkedUser: teacherUserId && user?.id === teacherUserId ? user : null,
         weeklySchedules: allWeeklySchedules,
-        aturanGlobal: aturanKehadiranGlobal,
         guruHanyaMengajarList: legacyGhmList,
         preferLegacyListWhenGlobalKbm: true,
       }).isTeacherExempt;
@@ -174,16 +173,15 @@ export default function RekapJurnalView({
       : null;
     if (uv !== null) return uv;
 
-    // Fallback includes school-wide policy evaluation (aturanKehadiranGlobal === 'Hari_Mengajar_Saja')
+    // Fallback evaluasi kebijakan perorangan tanpa default sekolah
     return resolveTeacherAttendancePolicy({
       teacher: queryObj,
       linkedUser: teacherUserId && user?.id === teacherUserId ? user : null,
       weeklySchedules: allWeeklySchedules,
-      aturanGlobal: aturanKehadiranGlobal,
       guruHanyaMengajarList: legacyGhmList,
       preferLegacyListWhenGlobalKbm: true,
     }).isTeacherExempt;
-  }, [allTeachersList, allWeeklySchedules, legacyGhmList, aturanKehadiranGlobal, user]);
+  }, [allTeachersList, allWeeklySchedules, legacyGhmList, user]);
 
   useEffect(() => {
     const isExempt = checkIsHanyaKbm(user?.nama, user?.username || user?.nip, user?.id);
@@ -258,7 +256,6 @@ export default function RekapJurnalView({
             setAllWeeklySchedules(allJdwl.filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel)));
           }
           if (cfgData && cfgData.length > 0) {
-            setAturanKehadiranGlobal(resolveSchoolAturanKehadiran(cfgData));
             setLegacyGhmList(resolveSchoolLegacyGhmList(cfgData));
           }
           if (lokHistData && lokHistData.length > 0) {
@@ -711,29 +708,16 @@ export default function RekapJurnalView({
             );
 
             if (!hasJournal) {
-              // Check if teacher has excused attendance (Sakit, Izin, Dinas Luar) on dateStr
+              // Check if teacher has excused attendance (Sakit, Izin, Cuti, Dinas Luar) on dateStr
               const leavePresensi = (presensiRows || []).find((p: any) => {
-                const pDate = p.timestamp ? p.timestamp.substring(0, 10) : '';
-                const matchesDate = (p.tanggal_mulai && p.tanggal_selesai)
-                  ? (dateStr >= p.tanggal_mulai && dateStr <= p.tanggal_selesai)
-                  : (pDate === dateStr);
-                if (!matchesDate) return false;
-
                 const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
                 if (!matchTeacher) return false;
-                if (isLateArrival(p)) return false;
-                const jp = (p.jenis_presensi || '').toLowerCase();
-                const di = (p.detail_izin || '').toLowerCase();
-                const sv = (p.status_verifikasi || '').toLowerCase();
-                return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || 
-                       di.includes('sakit') || di.includes('izin') || di.includes('dinas') ||
-                       sv === 'sakit' || sv === 'izin';
+                return Boolean(getPresensiLeaveCategory(p)) && isPresensiCoveringDate(p, dateStr);
               });
 
-              const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = leavePresensi ? (
-                (leavePresensi.jenis_presensi === 'Sakit' || leavePresensi.detail_izin?.toLowerCase().includes('sakit') || leavePresensi.status_verifikasi === 'Sakit') ? 'Sakit' :
-                (leavePresensi.jenis_presensi === 'Dinas Luar' || leavePresensi.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : 'Izin'
-              ) : null;
+              const leaveType: 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar' | null = leavePresensi
+                ? getPresensiLeaveCategory(leavePresensi)
+                : null;
 
               const isExcused = Boolean(leaveType);
               const leaveNote = leavePresensi?.detail_izin || leavePresensi?.keterangan || (leaveType || '');
@@ -788,24 +772,13 @@ export default function RekapJurnalView({
             const isEligibleTime = dateStr < todayStr || currTime >= '07:00';
             if (!hasAnyJournal && isEligibleTime) {
               const teacherLeaveToday = (presensiRows || []).find((p: any) => {
-                const pDate = p.timestamp ? p.timestamp.substring(0, 10) : '';
-                const matchesDate = (p.tanggal_mulai && p.tanggal_selesai)
-                  ? (dateStr >= p.tanggal_mulai && dateStr <= p.tanggal_selesai)
-                  : (pDate === dateStr);
-                if (!matchesDate) return false;
                 if (!isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, { nama_guru: user.nama, user_id: user.id })) return false;
-                const jp = (p.jenis_presensi || '').toLowerCase();
-                const di = (p.detail_izin || '').toLowerCase();
-                const sv = (p.status_verifikasi || '').toLowerCase();
-                return jp === 'sakit' || jp === 'izin' || jp === 'dinas luar' || 
-                       di.includes('sakit') || di.includes('izin') || di.includes('dinas') ||
-                       sv === 'sakit' || sv === 'izin';
+                return Boolean(getPresensiLeaveCategory(p)) && isPresensiCoveringDate(p, dateStr);
               });
 
-              const leaveType: 'Sakit' | 'Izin' | 'Dinas Luar' | null = teacherLeaveToday ? (
-                (teacherLeaveToday.jenis_presensi === 'Sakit' || teacherLeaveToday.detail_izin?.toLowerCase().includes('sakit') || teacherLeaveToday.status_verifikasi === 'Sakit') ? 'Sakit' :
-                (teacherLeaveToday.jenis_presensi === 'Dinas Luar' || teacherLeaveToday.detail_izin?.toLowerCase().includes('dinas')) ? 'Dinas Luar' : 'Izin'
-              ) : null;
+              const leaveType: 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar' | null = teacherLeaveToday
+                ? getPresensiLeaveCategory(teacherLeaveToday)
+                : null;
 
               if (leaveType) {
                 missingEntries.push({
@@ -1384,7 +1357,7 @@ export default function RekapJurnalView({
     })
     .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (Number(a.jam_ke) || 0) - (Number(b.jam_ke) || 0));
 
-  const activeSummaryList = (tabMode === 'pribadi' && isHanyaKbmUser) ? filteredJurnal : (jurnalData || []);
+  const activeSummaryList = tabMode === 'pribadi' ? filteredJurnal : (jurnalData || []);
   const totalJurnal = activeSummaryList?.length || 0;
   const totalDisetujui = activeSummaryList?.filter(j => j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi').length || 0;
   const totalMenunggu = activeSummaryList?.filter(j => !j.status_verifikasi || j.status_verifikasi === 'Menunggu').length || 0;

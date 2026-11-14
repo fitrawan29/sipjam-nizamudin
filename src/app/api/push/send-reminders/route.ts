@@ -3,11 +3,12 @@ import { supabase } from '@/lib/supabaseClient';
 import { sendWebPush, PushNotificationPayload } from '@/lib/vapid';
 import { getWitaDateStr, getWitaDayName } from '@/lib/wita';
 import {
+  getPresensiLeaveCategory,
   isGuruDiPiket,
   isBkAccount,
+  isPresensiCoveringDate,
   isTeacherRecordMatch,
   parseExplicitBooleanFlag,
-  resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
   resolveTeacherAttendancePolicy
 } from '@/lib/workflow';
@@ -53,13 +54,12 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const { data: teachers } = await guruQuery;
     if (!teachers || teachers.length === 0) continue;
 
-    // Query school attendance policy & exempt teachers list from pengaturan
-    let pengaturanQuery = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
+    // Query school exempt teachers list from pengaturan (pure per-person policy)
+    let pengaturanQuery = supabase.from('pengaturan').select('key, value, guru_hanya_mengajar');
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
     }
     const { data: pengaturanRows } = await pengaturanQuery;
-    const aturanGlobal = resolveSchoolAturanKehadiran(pengaturanRows || []);
     const guruHanyaMengajarList = resolveSchoolLegacyGhmList(pengaturanRows || []);
 
     // C. Fetch weekly & today schedule
@@ -78,7 +78,6 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       return resolveTeacherAttendancePolicy({
         teacher: t,
         weeklySchedules: weeklyScheduleList,
-        aturanGlobal,
         guruHanyaMengajarList,
       }).isTeacherExempt;
     };
@@ -100,23 +99,58 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     const isHoliday = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
     const isSchoolDayOff = isHoliday || isWeekendOff;
 
-    // C. Fetch presensi for today (Datang & Pulang)
+    // C. Fetch presensi for today (Datang & Pulang) + active multi-day leaves
     let presensiQuery = supabase
       .from('presensi_guru')
       .select('*')
       .ilike('timestamp', `${todayStr}%`);
+    let multiLeaveQuery = supabase
+      .from('presensi_guru')
+      .select('*')
+      .lte('tanggal_mulai', todayStr)
+      .gte('tanggal_selesai', todayStr)
+      .neq('status_verifikasi', 'Ditolak');
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
+      multiLeaveQuery = multiLeaveQuery.eq('sekolah_id', sekolahId);
     }
-    const { data: presensiList } = await presensiQuery;
+    const [{ data: presensiList }, { data: multiLeaveList }] = await Promise.all([presensiQuery, multiLeaveQuery]);
+    const mergedPresensiMap = new Map<string, any>();
+    [...(presensiList || []), ...(multiLeaveList || [])].forEach((p: any, idx: number) => {
+      mergedPresensiMap.set(p?.id || `pr-${idx}`, p);
+    });
+    const allPresensiToday = Array.from(mergedPresensiMap.values());
+
+    const isTeacherOnLeaveOrAlpa = (teacher: any, includeDinasLuar = true): boolean =>
+      allPresensiToday.some((p: any) => {
+        if (p.status_verifikasi === 'Ditolak') return false;
+        if (!isTeacherRecordMatch(p, teacher, null, { allowSingleWordFirstToken: true })) return false;
+        if (!isPresensiCoveringDate(p, todayStr)) return false;
+        if (p.jenis_presensi === 'Alpa' || p.status_verifikasi === 'Alpa') return true;
+        const cat = getPresensiLeaveCategory(p);
+        if (!cat) return false;
+        return includeDinasLuar ? true : cat !== 'Dinas Luar';
+      });
+
     const checkedInSet = new Set(
       (presensiList || [])
-        .filter(p => p.tipe_absen === 'Datang')
+        .filter(p => p.tipe_absen === 'Datang' && p.status_verifikasi !== 'Ditolak')
+        .map(p => (p.nama_guru || '').toLowerCase().trim())
+    );
+    const checkedInForPulangSet = new Set(
+      (presensiList || [])
+        .filter(p =>
+          p.tipe_absen === 'Datang' &&
+          p.status_verifikasi !== 'Ditolak' &&
+          p.status_verifikasi !== 'Alpa' &&
+          p.jenis_presensi !== 'Alpa' &&
+          !getPresensiLeaveCategory(p)
+        )
         .map(p => (p.nama_guru || '').toLowerCase().trim())
     );
     const checkedOutSet = new Set(
       (presensiList || [])
-        .filter(p => p.tipe_absen === 'Pulang')
+        .filter(p => p.tipe_absen === 'Pulang' && p.status_verifikasi !== 'Ditolak')
         .map(p => (p.nama_guru || '').toLowerCase().trim())
     );
 
@@ -194,7 +228,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       }
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
-      const hasCheckedIn = checkedInSet.has(tNameLower);
+      const hasCheckedIn = checkedInSet.has(tNameLower) || isTeacherOnLeaveOrAlpa(teacher, true);
 
       if (!hasCheckedIn) {
         const isAssignedPiketToday = assignedPiketList.some((p: any) => {
@@ -208,17 +242,11 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         );
 
         // If teacher is exempt on non-teaching days, check if they have schedule today
-        if (teacher.wajib_hadir_hanya_mengajar) {
+        if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true }));
           const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
           if (!hasTeachingToday && !hasPiketDuty) {
             // Teacher is exempt today, skip reminder
-            continue;
-          }
-        } else if (isExemptTeacher(teacher)) {
-          const hasTeachingToday = scheduleList.some(s => isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true }));
-          const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
-          if (!hasTeachingToday && !hasPiketDuty) {
             continue;
           }
         }
@@ -243,6 +271,10 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       for (const teacher of teachers) {
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
+
+      if (isTeacherOnLeaveOrAlpa(teacher, !activeBlok)) {
+        continue;
+      }
 
       if (activeBlok) {
         const hasSubmittedBkToday = bkJurnalList.some((b: any) => {
@@ -340,7 +372,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         isGuruDiPiket(jp.daftar_guru, tName) || isGuruDiPiket(jp.daftar_guru, tNameLower)
       );
 
-      if (!isAssignedPiketToday) continue;
+      if (!isAssignedPiketToday || isTeacherOnLeaveOrAlpa(teacher, true)) continue;
 
       const hasReported = Array.from(reportedPiketSet).some(rep => {
         if (!rep || !tNameLower) return false;
@@ -375,9 +407,10 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     // Task 4: Check Pulang Presensi
     // -------------------------------------------------------------
     for (const teacher of teachers) {
+      if (isTeacherOnLeaveOrAlpa(teacher, true)) continue;
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
-      const hasCheckedIn = checkedInSet.has(tNameLower);
+      const hasCheckedIn = checkedInForPulangSet.has(tNameLower);
       const hasCheckedOut = checkedOutSet.has(tNameLower);
 
       if (hasCheckedIn && !hasCheckedOut) {

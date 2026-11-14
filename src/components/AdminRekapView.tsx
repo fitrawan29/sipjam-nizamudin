@@ -5,11 +5,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaTimeStr, getWitaDayName, extractWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
 import {
   resolveLinkedUserForTeacher,
+  isGuruDiPiket,
   isTeacherRecordMatch,
   isTeacherNameEquivalent,
   isBkAccount,
   isLateArrival,
-  resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
   resolveTeacherAttendancePolicy
 } from '@/lib/workflow';
@@ -238,7 +238,7 @@ export default function AdminRekapView({
             .not('nama_guru', 'ilike', '%guru test%')
             .gte('timestamp', start)
             .lte('timestamp', end)
-            .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat', 'Sakit', 'Izin'])
+            .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Pulang Cepat', 'Sakit', 'Izin', 'Cuti'])
             .order('timestamp', { ascending: true });
           if (user?.sekolah_id) {
             presensiQuery = presensiQuery.eq('sekolah_id', user.sekolah_id);
@@ -253,7 +253,7 @@ export default function AdminRekapView({
             .not('nama_guru', 'ilike', '%guru test%')
             .lte('tanggal_mulai', endDateStr)
             .gte('tanggal_selesai', startDateStr)
-            .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Sakit', 'Izin'])
+            .in('status_verifikasi', ['Disetujui', 'Diverifikasi', 'Sakit', 'Izin', 'Cuti'])
             .order('timestamp', { ascending: true });
           if (user?.sekolah_id) {
             multiDayQuery = multiDayQuery.eq('sekolah_id', user.sekolah_id);
@@ -362,21 +362,26 @@ export default function AdminRekapView({
         calLiburQ = calLiburQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
       }
 
-      let cfgQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
+      let cfgQ = supabase.from('pengaturan').select('key, value, guru_hanya_mengajar');
       let jdwlQ = supabase.from('jadwal_pelajaran').select('*');
+      let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('tipe_petugas', 'Guru');
+      let jadwalPiketQ = supabase.from('jadwal_piket').select('*');
       if (user?.sekolah_id) {
         cfgQ = cfgQ.eq('sekolah_id', user.sekolah_id);
         jdwlQ = jdwlQ.eq('sekolah_id', user.sekolah_id);
+        penugasanPiketQ = penugasanPiketQ.eq('sekolah_id', user.sekolah_id);
+        jadwalPiketQ = jadwalPiketQ.eq('sekolah_id', user.sekolah_id);
       }
 
-      const [{ data: cfgRows }, { data: kalenderLibur }, { data: allSchoolJadwal }] = await Promise.all([
+      const [{ data: cfgRows }, { data: kalenderLibur }, { data: allSchoolJadwal }, { data: penugasanPiketRows }, { data: jadwalPiketRows }] = await Promise.all([
         cfgQ,
         calLiburQ,
-        jdwlQ
+        jdwlQ,
+        penugasanPiketQ,
+        jadwalPiketQ
       ]);
       const hsCfg = (cfgRows || []).find((r: any) => r.key === 'hari_sekolah');
       const hariSekolah = parseInt((hsCfg as any)?.value || '6', 10);
-      const aturanGlobal = resolveSchoolAturanKehadiran(cfgRows || []);
       const legacyGhmList = resolveSchoolLegacyGhmList(cfgRows || []);
       const liburDates = new Set<string>();
       (kalenderLibur || []).forEach((k: any) => {
@@ -595,15 +600,17 @@ export default function AdminRekapView({
           p.tipe_absen === 'Datang' || 
           p.jenis_presensi === 'Sakit' || 
           p.jenis_presensi === 'Izin' ||
+          p.jenis_presensi === 'Cuti' ||
           p.jenis_presensi === 'Dinas Luar' ||
-          (!isLateArrival(p) && ((p.detail_izin || '').toLowerCase().includes('sakit') || (p.status_verifikasi || '').trim().toLowerCase() === 'sakit'))
+          (!isLateArrival(p) && ((p.detail_izin || '').toLowerCase().includes('sakit') || (p.detail_izin || '').toLowerCase().includes('cuti') || ['sakit', 'izin', 'cuti'].includes((p.status_verifikasi || '').trim().toLowerCase())))
         ) {
           const statusLower = (p.status_verifikasi || '').trim().toLowerCase();
           const isApproved = 
             statusLower === 'disetujui' || 
             statusLower === 'diverifikasi' ||
             statusLower === 'sakit' ||
-            statusLower === 'izin';
+            statusLower === 'izin' ||
+            statusLower === 'cuti';
 
           if (!isApproved) return;
 
@@ -617,13 +624,16 @@ export default function AdminRekapView({
             statusLower === 'sakit'
           );
 
-          const isIzin = !isLate && !isSakit && (
-            jenisLower === 'izin' || 
-            detailLower.includes('izin') || 
-            statusLower === 'izin'
+          const isIzinOrCuti = !isLate && !isSakit && (
+            jenisLower === 'izin' ||
+            jenisLower === 'cuti' ||
+            detailLower.includes('izin') ||
+            detailLower.includes('cuti') ||
+            statusLower === 'izin' ||
+            statusLower === 'cuti'
           );
 
-          if (isSakit || isIzin) {
+          if (isSakit || isIzinOrCuti) {
             // Calculate exact workdays within leave span (WITA-aware, handles YYYY-MM-DD, ISO timestamps, & detail_izin range fallback)
             const detailRangeMatch = !p.tanggal_mulai ? (p.detail_izin || '').match(/(\d{4}-\d{2}-\d{2})\s*s\/d\s*(\d{4}-\d{2}-\d{2})/) : null;
             const leaveStartStr = p.tanggal_mulai
@@ -666,10 +676,34 @@ export default function AdminRekapView({
               }
             }
           } else if (p.jenis_presensi === 'Dinas Luar') {
-            pMap[canonicalNama].dinasLuar++;
-            const dStr = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).substring(0, 10) : '');
-            if (dStr && dStr >= startDateStr && dStr <= endDateStr && detailLower !== 'cuti') {
-              datangWorkDates[canonicalNama].add(dStr);
+            const leaveStartStr = p.tanggal_mulai
+              ? (extractWitaDateStr(p.tanggal_mulai) || String(p.tanggal_mulai).trim().substring(0, 10))
+              : '';
+            const leaveEndStr = p.tanggal_selesai
+              ? (extractWitaDateStr(p.tanggal_selesai) || String(p.tanggal_selesai).trim().substring(0, 10))
+              : '';
+            if (leaveStartStr && leaveEndStr) {
+              const curDl = new Date(`${leaveStartStr}T12:00:00+08:00`);
+              const endDl = new Date(`${leaveEndStr}T12:00:00+08:00`);
+              if (!isNaN(curDl.getTime()) && !isNaN(endDl.getTime())) {
+                while (curDl <= endDl) {
+                  const dayNameWita = getWitaDayName(curDl);
+                  const dStr = getWitaDateStr(curDl);
+                  const isWeekend = dayNameWita === 'Minggu' || (hariSekolah === 5 && dayNameWita === 'Sabtu');
+                  if (dStr >= startDateStr && dStr <= endDateStr && !isWeekend && !liburDates.has(dStr) && !creditedLeaveDates[canonicalNama].has(dStr)) {
+                    creditedLeaveDates[canonicalNama].add(dStr);
+                    pMap[canonicalNama].dinasLuar++;
+                    if (detailLower !== 'cuti') datangWorkDates[canonicalNama].add(dStr);
+                  }
+                  curDl.setDate(curDl.getDate() + 1);
+                }
+              }
+            } else {
+              pMap[canonicalNama].dinasLuar++;
+              const dStr = extractWitaDateStr(p.timestamp) || (p.timestamp ? String(p.timestamp).substring(0, 10) : '');
+              if (dStr && dStr >= startDateStr && dStr <= endDateStr && detailLower !== 'cuti') {
+                datangWorkDates[canonicalNama].add(dStr);
+              }
             }
           } else if (
             p.jenis_presensi === 'Sekolah' || 
@@ -766,7 +800,6 @@ export default function AdminRekapView({
               teacher: matchedEntry.teacher,
               linkedUser: matchedEntry.linkedUser,
               weeklySchedules: allSchoolJadwal || [],
-              aturanGlobal,
               guruHanyaMengajarList: legacyGhmList,
             });
             if (policy.isTeacherExempt) {
@@ -775,6 +808,14 @@ export default function AdminRekapView({
                   .filter((s: any) => s?.hari && isTeacherRecordMatch(s, matchedEntry.teacher, matchedEntry.linkedUser))
                   .map((s: any) => String(s.hari).trim().toLowerCase())
               );
+              const teacherPiketDays = [
+                ...(penugasanPiketRows || []).filter((pk: any) => pk?.hari && isTeacherRecordMatch(pk, matchedEntry.teacher, matchedEntry.linkedUser)),
+                ...(jadwalPiketRows || []).filter((jp: any) => jp?.hari && (
+                  isGuruDiPiket(jp.daftar_guru, matchedEntry.teacher?.nama_guru || '') ||
+                  Boolean(matchedEntry.linkedUser?.nama && isGuruDiPiket(jp.daftar_guru, matchedEntry.linkedUser.nama))
+                ))
+              ].map((pk: any) => String(pk.hari).trim().toLowerCase());
+              teacherPiketDays.forEach(d => teacherDays.add(d));
               if (teacherDays.size > 0) {
                 totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates, teacherDays);
               }

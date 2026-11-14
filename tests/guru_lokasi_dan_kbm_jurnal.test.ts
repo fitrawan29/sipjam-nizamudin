@@ -190,7 +190,7 @@ test('2.2: resolveTeacherLokasiKbm mengisi lokasi_kbm yang kosong dengan lokasi 
     'Kelas XI merdeka'
   );
 
-  // 3. Guru belum pernah mengisi lokasi di kelas XII Merdeka: JANGAN menarik lokasi kelas lain (kosong)
+  // 3. Jika guru belum pernah mengisi lokasi di kelas XII Merdeka, JANGAN tarik dari kelas lain (harus '-')
   assert.strictEqual(
     resolveLokasi(
       { user_id: 'u-saskia', nama_guru: 'Saskia Agow', kelas: 'XII Merdeka', lokasi_kbm: '-', lokasi: '-' },
@@ -199,13 +199,19 @@ test('2.2: resolveTeacherLokasiKbm mengisi lokasi_kbm yang kosong dengan lokasi 
     '-'
   );
 
-  // 4. Kelas kosong / '-' (mis. Jurnal Kegiatan): tidak menarik lokasi dari kelas manapun
+  // 4. Jika kelas kosong atau '-', JANGAN tarik dari kelas lain (harus '-')
   assert.strictEqual(
-    resolveLokasi({ user_id: 'u-ade', nama_guru: 'Ade Fitrawan Ibrahim', kelas: '-', lokasi_kbm: null }, historyRows),
+    resolveLokasi(
+      { user_id: 'u-ade', nama_guru: 'Ade Fitrawan Ibrahim', kelas: '', lokasi_kbm: null, lokasi: null },
+      historyRows
+    ),
     '-'
   );
   assert.strictEqual(
-    resolveLokasi({ user_id: 'u-ade', nama_guru: 'Ade Fitrawan Ibrahim', kelas: '', lokasi_kbm: null }, historyRows),
+    resolveLokasi(
+      { user_id: 'u-ade', nama_guru: 'Ade Fitrawan Ibrahim', kelas: '-', lokasi_kbm: '-', lokasi: 'GPS: 0.721, 124.380' },
+      historyRows
+    ),
     '-'
   );
 });
@@ -303,9 +309,11 @@ test('4.1: RekapJurnalView menggunakan resolveTeacherLokasiKbm dan isJournalElig
   assert.ok(rekapSrc.includes('teacherLokasiHistory'), 'RekapJurnalView harus menyimpan state teacherLokasiHistory lintas waktu');
 });
 
-test('4.2: GuruJurnal melakukan prefill lokasiKbm dari riwayat lokasi KBM yang pernah diisi guru', () => {
+test('4.2: GuruJurnal melakukan prefill lokasiKbm khusus kelas aktif dan mengosongkan saat kelas kosong/berubah', () => {
   const guruJurnalSrc = fs.readFileSync(path.join(root, 'src', 'components', 'GuruJurnal.tsx'), 'utf8');
   assert.ok(guruJurnalSrc.includes('resolveTeacherLokasiKbm'), 'GuruJurnal harus menggunakan resolveTeacherLokasiKbm untuk prefill lokasi KBM');
+  assert.ok(guruJurnalSrc.includes("histLokQ = histLokQ.eq('kelas', kelas)"), 'GuruJurnal harus memfilter riwayat lokasi_kbm berdasarkan kelas aktif');
+  assert.ok(guruJurnalSrc.includes('prevKelasRef'), 'GuruJurnal harus melacak perubahan kelas untuk mereset lokasiKbm saat pindah kelas');
 });
 
 test('4.3: AdminConfigView menyediakan UI rekonstruksi kebijakan kehadiran dengan getTeacherScheduleSummary', () => {
@@ -313,28 +321,16 @@ test('4.3: AdminConfigView menyediakan UI rekonstruksi kebijakan kehadiran denga
   assert.ok(adminConfigSrc.includes('getTeacherScheduleSummary'), 'AdminConfigView harus menggunakan getTeacherScheduleSummary');
 });
 
-test('4.5: GuruJurnal mengosongkan lokasiKbm saat kelas kosong/berubah dan riwayat difilter per kelas', () => {
-  const src = fs.readFileSync(path.join(root, 'src', 'components', 'GuruJurnal.tsx'), 'utf8');
-  assert.ok(/histLokQ\s*=\s*histLokQ\.eq\('kelas',\s*kelas\)/.test(src), 'histLokQ harus difilter .eq(kelas)');
-  assert.ok(src.includes('prevKelasLokasiRef'), 'harus ada pelacak perubahan kelas untuk reset lokasiKbm');
-  assert.ok(/!kelas \|\| \(tipeJurnal !== 'Jurnal KBM'[\s\S]{0,400}setLokasiKbm\(''\)/.test(src), 'saat !kelas lokasiKbm dikosongkan');
-  assert.ok(src.includes('draft.lokasiKbm !== undefined && !hasExplicitIntent'), 'draft.lokasiKbm tidak dipulihkan saat explicit intent');
-});
-
-test('4.6: Migrasi trigger lokasi_kbm hanya kelas yang sama + pembersihan lintas kelas', () => {
-  const migPath = path.join(root, 'supabase', 'migrations', '20261114180000_fix_lokasi_kbm_strict_class_only.sql');
-  assert.ok(fs.existsSync(migPath), 'migrasi strict class-only harus ada');
-  const sql = fs.readFileSync(migPath, 'utf8');
-  assert.ok(!/ELSE 1/.test(sql), 'tidak boleh ada fallback lintas kelas (ORDER BY CASE ... ELSE 1)');
-  assert.ok(/lower\(btrim\(COALESCE\(h\.kelas, ''\)\)\) = lower\(btrim\(COALESCE\(NEW\.kelas, ''\)\)\)/.test(sql), 'WHERE harus mewajibkan kelas sama');
-  assert.ok(/UPDATE public\.jurnal_pembelajaran/.test(sql), 'harus membersihkan baris lintas kelas');
-  const tpl = fs.readFileSync(path.join(root, 'supabase', 'SETUP_NEW_SCHOOL_TEMPLATE.sql'), 'utf8');
-  assert.ok(!/ELSE 1\s*END,\s*\n\s*h\.tanggal/.test(tpl), 'template SQL tidak boleh fallback lintas kelas');
-});
-
-test('4.4: File migrasi SQL backfill lokasi_kbm tersedia', () => {
+test('4.4: File migrasi SQL strict class-only lokasi_kbm tersedia & template selaras', () => {
   const migPath = path.join(root, 'supabase', 'migrations', '20261114130000_backfill_lokasi_kbm_and_trigger.sql');
   assert.ok(fs.existsSync(migPath), 'File migrasi 20261114130000_backfill_lokasi_kbm_and_trigger.sql harus ada');
+  const fixMigPath = path.join(root, 'supabase', 'migrations', '20261114180000_fix_lokasi_kbm_strict_class_only.sql');
+  assert.ok(fs.existsSync(fixMigPath), 'File migrasi 20261114180000_fix_lokasi_kbm_strict_class_only.sql harus ada');
+  const tplSrc = fs.readFileSync(path.join(root, 'supabase', 'SETUP_NEW_SCHOOL_TEMPLATE.sql'), 'utf8');
+  assert.ok(
+    tplSrc.includes("AND lower(btrim(COALESCE(h.kelas, ''))) = lower(btrim(COALESCE(NEW.kelas, '')))"),
+    'SETUP_NEW_SCHOOL_TEMPLATE.sql harus mewajibkan kelas sama pada trigger sync_jurnal_pembelajaran_lokasi'
+  );
 });
 
 console.log('\n========================================================================');

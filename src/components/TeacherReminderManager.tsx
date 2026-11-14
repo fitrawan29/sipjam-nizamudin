@@ -235,7 +235,7 @@ export function evaluateReminderConditions(
   }
 
   const hasExplicitTeacherSetting = teacherObj?.wajib_hadir_hanya_mengajar !== null && teacherObj?.wajib_hadir_hanya_mengajar !== undefined;
-  const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar) || (!hasExplicitTeacherSetting && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja');
+  const isExempt = dailyState.isNonTeachingDay || (hasExplicitTeacherSetting ? Boolean(teacherObj?.wajib_hadir_hanya_mengajar) : dailyState.aturanKehadiran === 'Hari_Mengajar_Saja');
   const hasClassesToday = Boolean(dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0);
   const hasPiketDuty = Boolean(dailyState.isPiket);
   const hasObligationToday = hasClassesToday || hasPiketDuty;

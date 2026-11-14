@@ -734,8 +734,8 @@ export function isValidLokasiKbm(val?: any): boolean {
 /**
  * Mengisi / meresolusi Tempat/Lokasi KBM pada entri jurnal:
  * 1. Jika entri sudah memiliki `lokasi_kbm` yang valid, gunakan nilai tersebut.
- * 2. Jika kosong/strip/GPS, cari dari riwayat jurnal yang pernah diisi oleh guru yang sama:
- *    hanya pada `kelas` yang sama (tidak ada fallback ke kelas lain; kelas kosong/'-' => tidak ada tarikan).
+ * 2. Jika kosong/strip/GPS dan `entry.kelas` valid (bukan kosong/'-'), cari dari riwayat jurnal
+ *    yang pernah diisi oleh guru yang sama pada `kelas` yang sama persis (tanpa lintas kelas).
  * 3. Fallback ke `entry.lokasi` jika valid (bukan GPS/strip), atau `'-'`.
  */
 export function resolveTeacherLokasiKbm(
@@ -750,40 +750,37 @@ export function resolveTeacherLokasiKbm(
 
   const targetKelas = String(entry.kelas || '').trim().toLowerCase();
   const hasValidTargetKelas = Boolean(targetKelas && targetKelas !== '-');
-  const teacherRef = {
-    id: entry.guru_id || entry.user_id,
-    user_id: entry.user_id,
-    nama_guru: entry.nama_guru || entry.nama,
-    nama: entry.nama_guru || entry.nama,
-    nip: entry.nip,
-    username: entry.username,
-  };
+  if (hasValidTargetKelas) {
+    const teacherRef = {
+      id: entry.guru_id || entry.user_id,
+      user_id: entry.user_id,
+      nama_guru: entry.nama_guru || entry.nama,
+      nama: entry.nama_guru || entry.nama,
+      nip: entry.nip,
+      username: entry.username,
+    };
 
-  let sameClassMatch: string | null = null;
+    for (const h of historyRows || []) {
+      if (!h) continue;
+      const hKelas = String(h.kelas || '').trim().toLowerCase();
+      if (!hKelas || hKelas !== targetKelas) continue;
 
-  // Lokasi KBM hanya ditarik dari kelas yang sama; tanpa kelas valid tidak ada riwayat yang dipakai.
-  for (const h of hasValidTargetKelas ? historyRows || [] : []) {
-    if (!h) continue;
-    const candidateLoc = isValidLokasiKbm(h.lokasi_kbm)
-      ? String(h.lokasi_kbm).trim()
-      : isValidLokasiKbm(h.lokasi)
-      ? String(h.lokasi).trim()
-      : null;
-    if (!candidateLoc) continue;
+      const candidateLoc = isValidLokasiKbm(h.lokasi_kbm)
+        ? String(h.lokasi_kbm).trim()
+        : isValidLokasiKbm(h.lokasi)
+        ? String(h.lokasi).trim()
+        : null;
+      if (!candidateLoc) continue;
 
-    const isSameTeacher =
-      (teacherRef.user_id && h.user_id && String(teacherRef.user_id) === String(h.user_id)) ||
-      isTeacherRecordMatch(h, teacherRef, currentUser, { allowSingleWordFirstToken: true });
-    if (!isSameTeacher) continue;
-
-    const hKelas = String(h.kelas || '').trim().toLowerCase();
-    if (hKelas && hKelas === targetKelas) {
-      sameClassMatch = candidateLoc;
-      break;
+      const isSameTeacher =
+        (teacherRef.user_id && h.user_id && String(teacherRef.user_id) === String(h.user_id)) ||
+        isTeacherRecordMatch(h, teacherRef, currentUser, { allowSingleWordFirstToken: true });
+      if (isSameTeacher) {
+        return candidateLoc;
+      }
     }
   }
 
-  if (sameClassMatch) return sameClassMatch;
   if (isValidLokasiKbm(entry.lokasi)) return String(entry.lokasi).trim();
   return '-';
 }

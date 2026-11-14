@@ -187,7 +187,7 @@ async function runTests() {
 
     // R1.6: send-reminders/route.ts - Guru exempt tanpa jadwal mengajar tidak dikirimi notifikasi tagihan presensi/jurnal
     try {
-      assert(reminderContent.includes('if (teacher.wajib_hadir_hanya_mengajar)'), 'Reminders check teacher exemption');
+      assert(reminderContent.includes('if (isExemptTeacher(teacher))'), 'Reminders check teacher exemption');
       assert(reminderContent.includes('hasPiketDuty'), 'Reminders account for piket duty');
       assert(reminderContent.includes('if (!hasTeachingToday && !hasPiketDuty) {'), 'Reminders skip exempt teachers without duties');
       pass('R1.6: send-reminders/route.ts tidak mengirimkan push reminder pengingat presensi/jurnal ke guru exempt tanpa jadwal/piket');
@@ -197,7 +197,7 @@ async function runTests() {
 
     // R1.7: TeacherReminderManager.tsx - Anti-spam in-app reminder menghormati guru exempt
     try {
-      assert(teacherReminderContent.includes('const isExempt = dailyState.isNonTeachingDay || Boolean(teacherObj?.wajib_hadir_hanya_mengajar)'), 'TeacherReminder checks exemption');
+      assert(teacherReminderContent.includes('const isExempt = dailyState.isNonTeachingDay || (hasExplicitTeacherSetting ? Boolean(teacherObj?.wajib_hadir_hanya_mengajar)'), 'TeacherReminder checks exemption');
       assert(teacherReminderContent.includes('const hasObligationToday = hasClassesToday || hasPiketDuty;'), 'TeacherReminder calculates total obligation');
       assert(teacherReminderContent.includes('if (needsDatang && (!isExempt || hasObligationToday))'), 'TeacherReminder gates datang reminder cleanly');
       pass('R1.7: TeacherReminderManager.tsx menyelaraskan in-app reminder untuk guru exempt dan piket');
@@ -207,7 +207,11 @@ async function runTests() {
 
     // R1.8: HomeViewAdmin.tsx - Dashboard Admin konsisten menampilkan Bebas Hadir dan mendeteksi tugas piket
     try {
-      assert(adminHomeContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;'), 'Admin Home checks isExemptNonTeaching');
+      assert(
+        adminHomeContent.includes('const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;') ||
+        adminHomeContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;'),
+        'Admin Home checks isExemptNonTeaching'
+      );
       assert(adminHomeContent.includes('const hasPiketDuty = isPiket;'), 'Admin Home checks hasPiketDuty');
       assert(adminHomeContent.includes("isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang'"), 'Admin Home sets Bebas Hadir for Datang');
       assert(adminHomeContent.includes("(isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang'"), 'Admin Home sets Bebas Hadir for Pulang when not present');

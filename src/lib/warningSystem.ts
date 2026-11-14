@@ -1,9 +1,10 @@
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
 import {
+  getPresensiLeaveCategory,
   isBkAccount,
+  isPresensiCoveringDate,
   isTeacherNameEquivalent,
   resolveLinkedUserForTeacher,
-  resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
   resolveTeacherAttendancePolicy,
   isTeacherRecordMatch,
@@ -97,7 +98,13 @@ export function evaluateTeacherWarningsSync(
 
   const configMap = new Map((configs || []).map(c => [c.key, c.value]));
   const hariSekolah = configMap.get('hari_sekolah') || '6';
-  const aturanKehadiran = configMap.get('aturan_kehadiran_guru') || 'Semua_Hari';
+  const isExempt = Boolean(isExemptNonTeaching);
+
+  const getActiveLeaveOnDate = (dateStr: string) =>
+    presensiRecords.find(p => {
+      const cat = getPresensiLeaveCategory(p);
+      return Boolean(cat && isPresensiCoveringDate(p, dateStr));
+    });
 
   const holidaySet = new Set((holidaysData || []).map(h => h.tanggal));
 
@@ -147,16 +154,13 @@ export function evaluateTeacherWarningsSync(
     const hasTeachingClass = teacherJadwal.some(j => j.hari === dayName);
     const isPiketDay = isTeacherPiketOnDay(dayName);
 
-    const isExempt = typeof isExemptNonTeaching === 'boolean'
-      ? isExemptNonTeaching
-      : (aturanKehadiran === 'Hari_Mengajar_Saja');
-
     if (isExempt) {
       if (!hasTeachingClass && !isPiketDay) {
         continue;
       }
     }
 
+    const activeLeave = getActiveLeaveOnDate(dateStr);
     const dayPresensi = presensiRecords.filter(p => {
       const ts = p.timestamp || '';
       const extracted = extractWitaDateStr(ts);
@@ -165,11 +169,13 @@ export function evaluateTeacherWarningsSync(
 
     let isAbsent = false;
 
-    if (dayPresensi.length === 0) {
+    if (activeLeave) {
+      isAbsent = false;
+    } else if (dayPresensi.length === 0) {
       isAbsent = true;
     } else {
       const hasApprovedLeave = dayPresensi.some(
-        p => ['Sakit', 'Izin', 'Dinas Luar'].includes(p.jenis_presensi) && (p.status_verifikasi === 'Disetujui' || p.status_verifikasi === 'Diverifikasi')
+        p => Boolean(getPresensiLeaveCategory(p)) && ['disetujui', 'diverifikasi', 'sakit', 'izin', 'cuti'].includes(String(p.status_verifikasi || '').trim().toLowerCase())
       );
       if (hasApprovedLeave) {
         isAbsent = false;
@@ -235,14 +241,16 @@ export function evaluateTeacherWarningsSync(
     const scheduledOnDay = teacherJadwal.filter(j => j.hari === dayName);
     const isPiketDay = isTeacherPiketOnDay(dayName);
 
-    const isExempt = typeof isExemptNonTeaching === 'boolean'
-      ? isExemptNonTeaching
-      : (aturanKehadiran === 'Hari_Mengajar_Saja');
-
     if (isExempt) {
       if (scheduledOnDay.length === 0 && !isPiketDay) {
         continue;
       }
+    }
+
+    const activeLeave = getActiveLeaveOnDate(dateStr);
+    const leaveCat = activeLeave ? getPresensiLeaveCategory(activeLeave) : null;
+    if (leaveCat === 'Sakit' || leaveCat === 'Izin' || leaveCat === 'Cuti') {
+      continue;
     }
 
     const uniqueTargets = new Set(scheduledOnDay.map(j => `${j.kelas}_${j.mata_pelajaran}`));
@@ -346,6 +354,7 @@ export function evaluateTeacherWarningsSync(
   for (const { dateStr, dayName } of evaluationDates) {
     const isAssigned = isTeacherPiketOnDay(dayName);
     if (!isAssigned) continue;
+    if (getActiveLeaveOnDate(dateStr)) continue;
 
     const dayReports = piketRecords.filter(
       p => p.tanggal === dateStr && p.status_verifikasi !== 'Ditolak'
@@ -475,11 +484,13 @@ export async function getTeacherDisciplineWarnings(
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
   let presensiQuery = supabase.from('presensi_guru').select('*').gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  let multiLeaveQuery = supabase.from('presensi_guru').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', minDate).neq('status_verifikasi', 'Ditolak');
   let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   let piketQuery = supabase.from('laporan_piket').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   let bkJurnalQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   if (resolvedSekolahId) {
     presensiQuery = presensiQuery.eq('sekolah_id', resolvedSekolahId);
+    multiLeaveQuery = multiLeaveQuery.eq('sekolah_id', resolvedSekolahId);
     jurnalQuery = jurnalQuery.eq('sekolah_id', resolvedSekolahId);
     piketQuery = piketQuery.eq('sekolah_id', resolvedSekolahId);
     bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', resolvedSekolahId);
@@ -491,13 +502,20 @@ export async function getTeacherDisciplineWarnings(
   );
 
   const [
-    { data: presensiRaw },
+    { data: presensiSingleRaw },
+    { data: multiLeaveRaw },
     { data: jurnalRaw },
     { data: piketRaw },
     bkJurnalRaw
   ] = await Promise.all([
-    presensiQuery, jurnalQuery, piketQuery, safeBkPromise
+    presensiQuery, multiLeaveQuery, jurnalQuery, piketQuery, safeBkPromise
   ]);
+
+  const presensiMergedMap = new Map<string, any>();
+  [...(presensiSingleRaw || []), ...(multiLeaveRaw || [])].forEach((p: any, idx: number) => {
+    presensiMergedMap.set(p?.id || `row-${idx}`, p);
+  });
+  const presensiRaw = Array.from(presensiMergedMap.values());
 
   const presensiRes = (presensiRaw || []).filter((p: any) => isTeacherRecordMatch(p, teacherProfile, linkedUser));
   const jurnalRes = (jurnalRaw || []).filter((j: any) => isTeacherRecordMatch(j, teacherProfile, linkedUser));
@@ -509,14 +527,12 @@ export async function getTeacherDisciplineWarnings(
   });
   const bkJurnalRes = (bkJurnalRaw || []).filter((b: any) => isTeacherRecordMatch(b, teacherProfile, linkedUser));
 
-  const aturanGlobal = resolveSchoolAturanKehadiran(configs || []);
   const ghmList = resolveSchoolLegacyGhmList(configs || []);
   const validJadwal = (jadwalData || []).filter((j: any) => !isInvalidMapel(j.mata_pelajaran || j.mapel));
   const isExemptNonTeaching = resolveTeacherAttendancePolicy({
     teacher: guruData || teacherProfile,
     linkedUser,
     weeklySchedules: validJadwal,
-    aturanGlobal,
     guruHanyaMengajarList: ghmList,
   }).isTeacherExempt;
 
@@ -605,12 +621,14 @@ export async function getAllTeachersDisciplineWarnings(
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
   let presensiQuery = supabase.from('presensi_guru').select('*').gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  let multiLeaveQuery = supabase.from('presensi_guru').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', minDate).neq('status_verifikasi', 'Ditolak');
   let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   let piketQuery = supabase.from('laporan_piket').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
   let bkJurnalAllQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
 
   if (sekolahId) {
     presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
+    multiLeaveQuery = multiLeaveQuery.eq('sekolah_id', sekolahId);
     jurnalQuery = jurnalQuery.eq('sekolah_id', sekolahId);
     piketQuery = piketQuery.eq('sekolah_id', sekolahId);
     bkJurnalAllQuery = bkJurnalAllQuery.eq('sekolah_id', sekolahId);
@@ -623,14 +641,19 @@ export async function getAllTeachersDisciplineWarnings(
 
   const [
     { data: presensiRes },
+    { data: multiLeaveRes },
     { data: jurnalRes },
     { data: piketRes },
     bkJurnalData
   ] = await Promise.all([
-    presensiQuery, jurnalQuery, piketQuery, safeAllBkPromise
+    presensiQuery, multiLeaveQuery, jurnalQuery, piketQuery, safeAllBkPromise
   ]);
 
-  const presensiData = presensiRes || [];
+  const presensiAllMap = new Map<string, any>();
+  [...(presensiRes || []), ...(multiLeaveRes || [])].forEach((p: any, idx: number) => {
+    presensiAllMap.set(p?.id || `all-${idx}`, p);
+  });
+  const presensiData = Array.from(presensiAllMap.values());
   const jurnalData = jurnalRes || [];
   const piketData = piketRes || [];
 
@@ -662,7 +685,6 @@ export async function getAllTeachersDisciplineWarnings(
       const linkedUser = resolveLinkedUserForTeacher(teacher, usersRoleList || []);
       const sameSchool = (r: any) => !r.sekolah_id || r.sekolah_id === resolvedSekolahId;
       const tConfigs = (configs || []).filter(c => c.sekolah_id === resolvedSekolahId || !c.sekolah_id);
-      const aturanGlobal = resolveSchoolAturanKehadiran(tConfigs);
       const ghmList = resolveSchoolLegacyGhmList(tConfigs);
       const tHolidays = (holidaysData || []).filter(h => h.sekolah_id === resolvedSekolahId || !h.sekolah_id);
       const tJadwal = (jadwalData || []).filter(j => (j.sekolah_id === resolvedSekolahId || !j.sekolah_id) && !isInvalidMapel(j.mata_pelajaran || j.mapel));
@@ -670,7 +692,6 @@ export async function getAllTeachersDisciplineWarnings(
         teacher,
         linkedUser,
         weeklySchedules: tJadwal,
-        aturanGlobal,
         guruHanyaMengajarList: ghmList,
       }).isTeacherExempt;
       const tPenugasan = (penugasanData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);

@@ -1,26 +1,55 @@
-﻿-- ============================================================================
--- Migration: Lokasi KBM hanya boleh ditarik dari kelas yang SAMA
+-- ============================================================================
+-- Migration: Enforce Strict Same-Class Matching for `lokasi_kbm` Trigger & Cleanup
 -- Date: 2026-11-14
 -- Description:
---   1. Perbaiki trigger public.sync_jurnal_pembelajaran_lokasi(): lookup riwayat
---      lokasi_kbm guru wajib kelas yang sama (tanpa fallback lintas kelas).
---   2. Bersihkan baris yang lokasi_kbm-nya menyebut tingkat kelas berbeda dengan
---      kelas barisnya (hasil backfill lintas kelas sebelumnya): kosongkan
---      lokasi_kbm (dan lokasi bila salinan identik).
+--   1. Clears `lokasi_kbm` (and matching copied `lokasi`) on rows where `lokasi_kbm`
+--      explicitly references a different grade level than `kelas`, or where `kelas`
+--      is empty/'-' and `lokasi_kbm` is non-GPS cross-class text.
+--   2. Replaces `public.sync_jurnal_pembelajaran_lokasi()` so auto-fill from history
+--      ONLY matches rows from the exact same teacher AND exact same `kelas`
+--      (removing cross-class fallback).
 -- ============================================================================
 
+-- 1. Clean up any cross-class polluted `lokasi_kbm` rows
+UPDATE public.jurnal_pembelajaran
+SET
+  lokasi = CASE
+    WHEN lokasi IS NOT NULL AND btrim(lokasi) = btrim(lokasi_kbm) THEN NULL
+    ELSE lokasi
+  END,
+  lokasi_kbm = NULL
+WHERE public.is_valid_lokasi_kbm_text(lokasi_kbm)
+  AND (
+    (
+      lower(btrim(COALESCE(kelas, ''))) ~ '^xii([^a-z0-9]|$)'
+      AND lower(btrim(lokasi_kbm)) ~ '(^|[^a-z0-9])((x|10|xi|11)[[:space:]]*merdeka|kelas[[:space:]]+(x|10|xi|11))([^a-z0-9]|$)'
+    )
+    OR (
+      lower(btrim(COALESCE(kelas, ''))) ~ '^xi([^a-z0-9]|$)'
+      AND lower(btrim(lokasi_kbm)) ~ '(^|[^a-z0-9])((x|10|xii|12)[[:space:]]*merdeka|kelas[[:space:]]+(x|10|xii|12))([^a-z0-9]|$)'
+    )
+    OR (
+      lower(btrim(COALESCE(kelas, ''))) ~ '^x([^a-z0-9]|$)'
+      AND lower(btrim(lokasi_kbm)) ~ '(^|[^a-z0-9])((xi|11|xii|12)[[:space:]]*merdeka|kelas[[:space:]]+(xi|11|xii|12))([^a-z0-9]|$)'
+    )
+  );
+
+-- 2. Replace trigger function: strict same-class lookup only (no cross-class fallback)
 CREATE OR REPLACE FUNCTION public.sync_jurnal_pembelajaran_lokasi()
 RETURNS trigger
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_prev_lokasi TEXT;
 BEGIN
+  -- If lokasi_kbm is not valid, try copying from valid non-GPS lokasi first
   IF NOT public.is_valid_lokasi_kbm_text(NEW.lokasi_kbm) AND public.is_valid_lokasi_kbm_text(NEW.lokasi) THEN
     NEW.lokasi_kbm := btrim(NEW.lokasi);
   END IF;
 
-  -- Isi dari riwayat guru pada kelas yang SAMA saja
+  -- If lokasi_kbm is still empty/invalid on a KBM entry, look up ONLY from the same teacher & same kelas
   IF NOT public.is_valid_lokasi_kbm_text(NEW.lokasi_kbm)
      AND COALESCE(btrim(NEW.kelas), '') <> ''
      AND btrim(NEW.kelas) <> '-' THEN
@@ -37,7 +66,9 @@ BEGIN
           AND lower(split_part(btrim(COALESCE(h.nama_guru, '')), ',', 1)) = lower(split_part(btrim(COALESCE(NEW.nama_guru, '')), ',', 1))
         )
       )
-    ORDER BY h.tanggal DESC NULLS LAST, h.timestamp DESC NULLS LAST
+    ORDER BY
+      h.tanggal DESC NULLS LAST,
+      h.timestamp DESC NULLS LAST
     LIMIT 1;
 
     IF v_prev_lokasi IS NOT NULL THEN
@@ -45,6 +76,7 @@ BEGIN
     END IF;
   END IF;
 
+  -- Keep legacy compatibility: sync between lokasi and lokasi_kbm
   IF (NEW.lokasi_kbm IS NULL OR btrim(NEW.lokasi_kbm) = '') AND NEW.lokasi IS NOT NULL AND btrim(NEW.lokasi) <> '' THEN
     NEW.lokasi_kbm := NEW.lokasi;
   ELSIF (NEW.lokasi IS NULL OR btrim(NEW.lokasi) = '' OR btrim(NEW.lokasi) = '-') AND NEW.lokasi_kbm IS NOT NULL AND btrim(NEW.lokasi_kbm) <> '' THEN
@@ -54,23 +86,5 @@ BEGIN
   RETURN NEW;
 END;
 $$;
-
--- Bersihkan lokasi_kbm yang menyebut tingkat kelas (X / XI / XII) berbeda dengan
--- tingkat kolom `kelas` barisnya (hasil backfill lintas kelas, mis. kelas XII berisi
--- 'X merdeka'). Nilai tanpa tingkat kelas (mis. 'Ruang guru') tidak disentuh.
--- Trigger dinonaktifkan sementara agar tidak mengisi ulang nilai yang baru dikosongkan.
-ALTER TABLE public.jurnal_pembelajaran DISABLE TRIGGER trg_sync_jurnal_pembelajaran_lokasi;
-
-UPDATE public.jurnal_pembelajaran jp
-SET
-  lokasi = CASE WHEN btrim(COALESCE(jp.lokasi, '')) = btrim(jp.lokasi_kbm) THEN NULL ELSE jp.lokasi END,
-  lokasi_kbm = NULL
-WHERE public.is_valid_lokasi_kbm_text(jp.lokasi_kbm)
-  AND substring(lower(jp.lokasi_kbm) from '\m(xii|xi|x)\M') IS NOT NULL
-  AND substring(lower(btrim(COALESCE(jp.kelas, ''))) from '^(xii|xi|x)\M') IS NOT NULL
-  AND substring(lower(jp.lokasi_kbm) from '\m(xii|xi|x)\M')
-      <> substring(lower(btrim(COALESCE(jp.kelas, ''))) from '^(xii|xi|x)\M');
-
-ALTER TABLE public.jurnal_pembelajaran ENABLE TRIGGER trg_sync_jurnal_pembelajaran_lokasi;
 
 NOTIFY pgrst, 'reload schema';

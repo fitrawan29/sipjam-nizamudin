@@ -95,7 +95,7 @@ check('2.4: Pengaturan eksplisit true pada Kepsek / 0-KBM / TU tetap dihormati (
   assert.strictEqual(res0Kbm.isTeacherExempt, true);
 });
 
-check('2.5: Tanpa pengaturan eksplisit (null), staf TU dan guru 0-KBM terlindungi Wajib Setiap Hari meski global Hari_Mengajar_Saja', () => {
+check('2.5: Tanpa pengaturan eksplisit (null), staf TU maupun guru yang belum disetel tetap Wajib Setiap Hari (tanpa fallback global Hari_Mengajar_Saja)', () => {
   const resTu = resolveTeacherAttendancePolicy({
     teacher: { id: 'g-tu', nama_guru: 'Staf TU', mata_pelajaran: 'Tata Usaha (Administrasi)', wajib_hadir_hanya_mengajar: null },
     weeklySchedules: sampleJadwal,
@@ -110,7 +110,7 @@ check('2.5: Tanpa pengaturan eksplisit (null), staf TU dan guru 0-KBM terlindung
     weeklySchedules: sampleJadwal,
     aturanGlobal: 'Hari_Mengajar_Saja',
   });
-  assert.strictEqual(resUnsetKbm.isTeacherExempt, true);
+  assert.strictEqual(resUnsetKbm.isTeacherExempt, false);
 });
 
 check('2.6: Fitra Suryazana tidak bertabrakan dengan Ade Fitrawan Ibrahim atau Assyfa Fitra', () => {

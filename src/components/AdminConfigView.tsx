@@ -13,7 +13,6 @@ import { formatKepalaSekolahLabel, normalizeStatusKepalaSekolah } from '@/utils/
 import {
   isTeacherRecordMatch,
   resolveLinkedUserForTeacher,
-  resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
   resolveTeacherAttendancePolicy,
   getTeacherScheduleSummary
@@ -36,7 +35,6 @@ export default function AdminConfigView({
     waktu_efektif_mulai: '',
     waktu_efektif_akhir: '',
     hari_sekolah: '6',
-    aturan_kehadiran_guru: 'Semua_Hari',
     email_tujuan_upload: '',
     jam_datang_mulai: '06:45',
     jam_datang_batas: '07:15',
@@ -190,7 +188,6 @@ export default function AdminConfigView({
               newConfig.jam_pulang_jumat = jpjColRow.jam_pulang_jumat;
             }
           }
-          newConfig.aturan_kehadiran_guru = resolveSchoolAturanKehadiran(data);
           ghmList.push(...resolveSchoolLegacyGhmList(data));
           // Ensure bidirectional fallback between kota_kabupaten and kota_ttd
           if (!newConfig.kota_kabupaten && newConfig.kota_ttd) {
@@ -279,7 +276,6 @@ export default function AdminConfigView({
                   teacher: t,
                   linkedUser,
                   weeklySchedules: allSchoolJadwal,
-                  aturanGlobal: newConfig.aturan_kehadiran_guru,
                   guruHanyaMengajarList: ghmList
                 }).isTeacherExempt;
               })
@@ -341,17 +337,6 @@ export default function AdminConfigView({
       setConfig(prev => ({ ...prev, kota_kabupaten: value, kota_ttd: value }));
     } else if (name === 'kota_ttd') {
       setConfig(prev => ({ ...prev, kota_ttd: value, kota_kabupaten: value }));
-    } else if (name === 'aturan_kehadiran_guru') {
-      setConfig(prev => ({ ...prev, aturan_kehadiran_guru: value }));
-      if (value === 'Hari_Mengajar_Saja') {
-        const eligibleIds = guruList
-          .filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0)
-          .map(g => g.id)
-          .filter(Boolean);
-        setExemptTeacherIds(eligibleIds);
-      } else if (value === 'Semua_Hari') {
-        setExemptTeacherIds([]);
-      }
     } else {
       setConfig(prev => ({ ...prev, [name]: value }));
     }
@@ -458,7 +443,6 @@ export default function AdminConfigView({
       sekolah_id: targetSekolahId,
       key,
       value: value !== undefined && value !== null ? value.toString() : '',
-      aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
       email_tujuan_upload: saveConfig.email_tujuan_upload,
       jam_pulang_jumat: saveConfig.jam_pulang_jumat,
       guru_hanya_mengajar: jsonExempt
@@ -469,7 +453,6 @@ export default function AdminConfigView({
       sekolah_id: targetSekolahId,
       key: 'guru_hanya_mengajar',
       value: jsonExempt,
-      aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
       email_tujuan_upload: saveConfig.email_tujuan_upload,
       jam_pulang_jumat: saveConfig.jam_pulang_jumat,
       guru_hanya_mengajar: jsonExempt
@@ -501,7 +484,6 @@ export default function AdminConfigView({
       if (!error && !hasColumnError) {
         try {
           await supabase.from('pengaturan').update({
-            aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
             email_tujuan_upload: saveConfig.email_tujuan_upload,
             jam_pulang_jumat: saveConfig.jam_pulang_jumat,
             guru_hanya_mengajar: jsonExempt
@@ -650,7 +632,6 @@ export default function AdminConfigView({
         sekolah_id: targetSekolahId,
         tahun_ajaran: saveConfig.tahun_ajaran,
         semester: saveConfig.semester,
-        aturan_kehadiran_guru: saveConfig.aturan_kehadiran_guru,
         exemptTeacherIds: exemptIds,
         timestamp: Date.now(),
         config: saveConfig
@@ -814,19 +795,11 @@ export default function AdminConfigView({
                 <div className="bg-indigo-50/70 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-3 sm:p-4 space-y-3">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase flex items-center gap-2">
-                        <i className="fa-solid fa-user-check text-xs"></i> Kebijakan Kehadiran Guru
+                        <i className="fa-solid fa-user-check text-xs"></i> Kebijakan Kehadiran Guru (Perorangan)
                       </h3>
-                      <select 
-                        name="aturan_kehadiran_guru" 
-                        value={config.aturan_kehadiran_guru} 
-                        onChange={handleChange} 
-                        required 
-                        aria-label="Aturan Kehadiran Default Sekolah"
-                        className="w-full sm:w-auto px-3 py-1.5 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
-                      >
-                        <option value="Semua_Hari">Default: Hadir Setiap Hari (Semua_Hari)</option>
-                        <option value="Hari_Mengajar_Saja">Default: Sesuai Hari KBM (Hari_Mengajar_Saja)</option>
-                      </select>
+                      <span className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
+                        Pilih perorangan: Sesuai KBM atau Wajib Setiap Hari
+                      </span>
                     </div>
 
                     {/* Pengecualian Kehadiran Guru */}

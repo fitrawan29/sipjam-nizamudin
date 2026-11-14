@@ -54,7 +54,8 @@ assert(
 
 // 1.4 HomeView.tsx: isExemptNonTeaching applies during block days
 assert(
-  (homeViewContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;') ||
+  (homeViewContent.includes('const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;') ||
+   homeViewContent.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;') ||
    homeViewContent.includes('const isExemptNonTeaching = Boolean(teacher.wajib_hadir_hanya_mengajar) && targetCount === 0;')) &&
   homeViewContent.includes('targetCount === 0'),
   'R1.4 HomeView.tsx: isExemptNonTeaching is active for exempt teachers with targetCount === 0 even during block system'
@@ -89,7 +90,7 @@ assert(
 
 // 1.7 send-reminders: Push reminders skip exempt teachers without classes during block
 assert(
-  sendRemindersContent.includes('if (teacher.wajib_hadir_hanya_mengajar)') &&
+  sendRemindersContent.includes('if (isExemptTeacher(teacher))') &&
   !sendRemindersContent.includes('if (teacher.wajib_hadir_hanya_mengajar && !activeBlok)'),
   'R1.9 send-reminders: Presensi reminder skips exempt teachers without classes even during active block'
 );

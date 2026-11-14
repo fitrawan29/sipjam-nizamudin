@@ -105,9 +105,9 @@ async function runM5TestSuite() {
   console.log('\n--- SECTION 5: Teacher Attendance Requirement Logic ---');
   const adminConfigPath = path.join(__dirname, '..', 'src', 'components', 'AdminConfigView.tsx');
   const configContent = fs.readFileSync(adminConfigPath, 'utf8');
-  assert(configContent.includes('aturan_kehadiran_guru'), 'AdminConfigView contains aturan_kehadiran_guru field');
-  assert(configContent.includes('Hari_Mengajar_Saja'), 'AdminConfigView contains Hari_Mengajar_Saja option');
-  assert(configContent.includes('Semua_Hari'), 'AdminConfigView contains Semua_Hari option');
+  assert(!configContent.includes('name="aturan_kehadiran_guru"'), 'AdminConfigView removed global default aturan_kehadiran_guru dropdown');
+  assert(configContent.includes('wajib_hadir_hanya_mengajar'), 'AdminConfigView manages per-person wajib_hadir_hanya_mengajar');
+  assert(configContent.includes('guru_hanya_mengajar'), 'AdminConfigView saves per-person guru_hanya_mengajar');
 
   const workflowPath = path.join(__dirname, '..', 'src', 'lib', 'workflow.ts');
   const workflowContent = fs.readFileSync(workflowPath, 'utf8');
