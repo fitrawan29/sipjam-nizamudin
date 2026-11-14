@@ -3,7 +3,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getWitaDateStr, getWitaTimeStr, getWitaDayName, extractWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
-import { resolveLinkedUserForTeacher, isTeacherRecordMatch, isTeacherNameEquivalent, isBkAccount, isLateArrival } from '@/lib/workflow';
+import {
+  resolveLinkedUserForTeacher,
+  isTeacherRecordMatch,
+  isTeacherNameEquivalent,
+  isBkAccount,
+  isLateArrival,
+  resolveSchoolAturanKehadiran,
+  resolveSchoolLegacyGhmList,
+  resolveTeacherAttendancePolicy
+} from '@/lib/workflow';
 import { isBeforeCutoff } from '@/lib/attendanceAlpa';
 import { PrintHeader, PrintSignature, formatPeriodHeader } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
@@ -19,16 +28,18 @@ function countWorkdays(
   startDateStr: string,
   endDateStr: string,
   hariSekolah: number,
-  liburDates: Set<string>
+  liburDates: Set<string>,
+  allowedDayNames?: Set<string>
 ): number {
   let count = 0;
   const cur = new Date(startDateStr + 'T12:00:00+08:00');
   const end = new Date(endDateStr + 'T12:00:00+08:00');
   while (cur <= end) {
-    const dow = cur.getDay(); // 0=Minggu, 6=Sabtu
-    const dateStr = cur.toLocaleDateString('en-CA', { timeZone: 'Asia/Makassar' });
-    const isWeekend = dow === 0 || (hariSekolah === 5 && dow === 6);
-    if (!isWeekend && !liburDates.has(dateStr)) count++;
+    const dayName = getWitaDayName(cur);
+    const dateStr = getWitaDateStr(cur);
+    const isWeekend = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');
+    const isAllowedDay = !allowedDayNames || allowedDayNames.size === 0 || allowedDayNames.has(dayName.toLowerCase());
+    if (!isWeekend && !liburDates.has(dateStr) && isAllowedDay) count++;
     cur.setDate(cur.getDate() + 1);
   }
   return count;
@@ -351,11 +362,22 @@ export default function AdminRekapView({
         calLiburQ = calLiburQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
       }
 
-      const [{ data: hsCfg }, { data: kalenderLibur }] = await Promise.all([
-        supabase.from('pengaturan').select('value').eq('key', 'hari_sekolah').maybeSingle(),
-        calLiburQ
+      let cfgQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
+      let jdwlQ = supabase.from('jadwal_pelajaran').select('*');
+      if (user?.sekolah_id) {
+        cfgQ = cfgQ.eq('sekolah_id', user.sekolah_id);
+        jdwlQ = jdwlQ.eq('sekolah_id', user.sekolah_id);
+      }
+
+      const [{ data: cfgRows }, { data: kalenderLibur }, { data: allSchoolJadwal }] = await Promise.all([
+        cfgQ,
+        calLiburQ,
+        jdwlQ
       ]);
+      const hsCfg = (cfgRows || []).find((r: any) => r.key === 'hari_sekolah');
       const hariSekolah = parseInt((hsCfg as any)?.value || '6', 10);
+      const aturanGlobal = resolveSchoolAturanKehadiran(cfgRows || []);
+      const legacyGhmList = resolveSchoolLegacyGhmList(cfgRows || []);
       const liburDates = new Set<string>();
       (kalenderLibur || []).forEach((k: any) => {
         if (k.tanggal_mulai && k.tanggal_selesai) {
@@ -370,7 +392,7 @@ export default function AdminRekapView({
           liburDates.add(k.tanggal);
         }
       });
-      const totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates);
+      const schoolWorkdays = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates);
 
       let telatPenaltiAktif = true;
       let batasJamPenalti = 4;
@@ -737,12 +759,33 @@ export default function AdminRekapView({
         .filter(k => !isTestGuruName(k))
         .map(k => {
           const { hadir, dinasLuar, sakit, izin, telatDetik } = pMap[k];
+          const matchedEntry = teacherEntries.find(e => e.canonicalName === k);
+          let totalHariKerja = schoolWorkdays;
+          if (matchedEntry) {
+            const policy = resolveTeacherAttendancePolicy({
+              teacher: matchedEntry.teacher,
+              linkedUser: matchedEntry.linkedUser,
+              weeklySchedules: allSchoolJadwal || [],
+              aturanGlobal,
+              guruHanyaMengajarList: legacyGhmList,
+            });
+            if (policy.isTeacherExempt) {
+              const teacherDays = new Set<string>(
+                (allSchoolJadwal || [])
+                  .filter((s: any) => s?.hari && isTeacherRecordMatch(s, matchedEntry.teacher, matchedEntry.linkedUser))
+                  .map((s: any) => String(s.hari).trim().toLowerCase())
+              );
+              if (teacherDays.size > 0) {
+                totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates, teacherDays);
+              }
+            }
+          }
           // Keterlambatan >= batasJam (default 4 jam / 14400 detik) dihitung sebagai penalti alpa otomatis
           const alpaOtomatis = telatPenaltiAktif && batasDetikPenalti > 0
             ? (batasDetikPenalti === 14400 ? Math.floor((telatDetik || 0) / 14400) : Math.floor((telatDetik || 0) / batasDetikPenalti)) * penaltiHariAlpa
             : 0;
           const hadirEfektif = Math.max(0, hadir - alpaOtomatis);
-          // Alpa = Selisih hari kerja dari kehadiran aktual + penalti alpa otomatis (tanpa double-counting)
+          // Alpa = Selisih hari kerja wajib dari kehadiran aktual + penalti alpa otomatis (tanpa double-counting)
           const alpaMurni = Math.max(0, totalHariKerja - hadir - dinasLuar - sakit - izin);
           const alpa = alpaMurni + alpaOtomatis;
           return {

@@ -760,23 +760,35 @@ export default function GuruJurnal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tanggal, myAssignments, isInval, user?.role]);
 
-  // Auto-fill mapel & kelas & jam ke- saat mapelList + dailyState sudah ready
+  // Auto-fill mapel & kelas berdasarkan jadwal pada tanggal yang dipilih
   useEffect(() => {
     if (
       tipeJurnal !== 'Jurnal KBM' ||
       isInval ||
       isFetchingAssignments ||
       mapelList.length === 0 ||
-      !dailyState?.jadwalKBM ||
       (kelas && mapel)
     ) return;
 
-    const jadwalHariIni = dailyState.jadwalKBM.filter((jk: any) => !jk.isBlocked);
+    const todayStr = getWitaDateStr();
+    let jadwalHariIni: any[] = [];
+    if (!tanggal || tanggal === todayStr) {
+      if (!dailyState?.jadwalKBM) return;
+      jadwalHariIni = dailyState.jadwalKBM.filter((jk: any) => !jk.isBlocked);
+    } else {
+      const selectedDay = getWitaDayName(new Date(`${tanggal}T12:00:00+08:00`));
+      jadwalHariIni = filterGuruMapelByHari(myAssignments, selectedDay, mapel).map((m: any) => ({
+        kelas: m.kelas,
+        mata_pelajaran: m.nama_mata_pelajaran || m.nama_mapel,
+        jam_mulai: m.jam_mulai,
+        jam_selesai: m.jam_selesai,
+      }));
+    }
     if (jadwalHariIni.length === 0) return;
 
     // Pilih jadwal hari ini yang belum diisi jurnalnya terlebih dahulu, fallback ke jadwal pertama hari ini
     const j =
-      jadwalHariIni.find((jk: any) => !(dailyState.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk) && (!(jr.materi === '-' && jr.kegiatan === '-') || hasJournalContent(jr)))) ||
+      jadwalHariIni.find((jk: any) => !(dailyState?.jurnalKBM || []).some(jr => isJurnalMatchJadwal(jr, jk) && (!(jr.materi === '-' && jr.kegiatan === '-') || hasJournalContent(jr)))) ||
       jadwalHariIni[0];
 
     const matchedMapel = mapelList.find(m =>
@@ -798,7 +810,7 @@ export default function GuruJurnal({
       setJamKe(j.jam_selesai ? `${j.jam_mulai} - ${j.jam_selesai}` : j.jam_mulai);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapelList, dailyState, tipeJurnal, isInval]);
+  }, [mapelList, dailyState, tipeJurnal, isInval, tanggal]);
 
   // Auto-fill pertemuan ke- berdasarkan jurnal terakhir untuk mapel+kelas ini
   useEffect(() => {
@@ -849,7 +861,12 @@ export default function GuruJurnal({
             }
           } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {
             setTipeJurnal('Jurnal KBM');
-          } else if (kbmSubMode !== 'absensi' && !kelas && !mapel && (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu)) {
+          } else if (
+            kbmSubMode !== 'absensi' &&
+            !kelas &&
+            !mapel &&
+            (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu || !dailyState?.isNonTeachingDay)
+          ) {
             setTipeJurnal('Jurnal Kegiatan');
           }
         }

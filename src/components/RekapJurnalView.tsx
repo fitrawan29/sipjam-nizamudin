@@ -570,13 +570,13 @@ export default function RekapJurnalView({
           }
         }
 
-        // Load 5-day vs 6-day school configuration
-        let hariSekolah = 6;
+        // Load 5-day vs 6-day school configuration (default 5 hari kerja: Senin - Jumat)
+        let hariSekolah = 5;
         try {
           let hsQ = supabase.from('pengaturan').select('value').eq('key', 'hari_sekolah');
           if (user?.sekolah_id) hsQ = hsQ.eq('sekolah_id', user.sekolah_id);
           const { data: hsRow } = await hsQ.maybeSingle();
-          if (hsRow?.value) hariSekolah = parseInt(hsRow.value, 10) || 6;
+          if (hsRow?.value) hariSekolah = parseInt(hsRow.value, 10) || 5;
         } catch (_) {}
 
         // Load educational calendar holidays covering the period
@@ -654,8 +654,8 @@ export default function RekapJurnalView({
         const presensiRows = Array.from(combinedPresensiMap.values());
 
         const missingEntries: any[] = [];
-        const cur = new Date(`${startDStr}T00:00:00+08:00`);
-        const end = new Date(`${endDStr}T00:00:00+08:00`);
+        const cur = new Date(`${startDStr}T12:00:00+08:00`);
+        const end = new Date(`${endDStr}T12:00:00+08:00`);
 
         while (cur <= end) {
           const dateStr = getWitaDateStr(cur);

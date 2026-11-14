@@ -836,6 +836,24 @@ export function isJournalEligibleForKbmTeacher(
     return true;
   }
 
+  // Jika tanggal jurnal tersedia dan jadwal mingguan guru memiliki atribut hari,
+  // pastikan hari jurnal sesuai dengan hari KBM aktif guru tersebut.
+  const dateMatch = String(journal.tanggal || '').trim().match(/^(\d{4}-\d{2}-\d{2})/);
+  const schedulesWithDay = hasSchedules
+    ? teacherSchedules.filter((s: any) => s && s.hari)
+    : [];
+  if (dateMatch && schedulesWithDay.length > 0) {
+    const journalDay = getWitaDayName(new Date(`${dateMatch[1]}T12:00:00+08:00`)).toLowerCase();
+    const matchingDaySchedule = schedulesWithDay.some((s: any) =>
+      String(s.hari).trim().toLowerCase() === journalDay &&
+      isJurnalMatchJadwal(
+        { kelas: kls, mapel: mpl },
+        { kelas: s.kelas, mata_pelajaran: s.mata_pelajaran || s.mapel }
+      )
+    );
+    if (!matchingDaySchedule) return false;
+  }
+
   if (hasAssignments) {
     const matchedAssignment = teacherAssignments.some((a: any) =>
       isJurnalMatchJadwal(
