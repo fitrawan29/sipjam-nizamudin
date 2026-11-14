@@ -109,6 +109,8 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (rawStr.includes('wajib_hadir_hanya_mengajar') && rawStr.includes('schema cache')) ||
     (rawStr.includes('jurnal_pembelajaran') && rawStr.includes('schema cache')) ||
     (rawStr.includes('kegiatan_pembelajaran') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('lokasi') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('lokasi_kbm') && rawStr.includes('schema cache')) ||
     message.includes('could not find the table') ||
     (message.includes('could not find the') && message.includes('column')) ||
     (message.includes('sekolah_registry') && message.includes('schema cache')) ||
@@ -119,12 +121,16 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (message.includes('wajib_hadir_hanya_mengajar') && message.includes('schema cache')) ||
     (message.includes('jurnal_pembelajaran') && message.includes('schema cache')) ||
     (message.includes('kegiatan_pembelajaran') && message.includes('schema cache')) ||
+    (message.includes('lokasi') && message.includes('schema cache')) ||
+    (message.includes('lokasi_kbm') && message.includes('schema cache')) ||
     (details.includes('sekolah_registry') && details.includes('schema cache')) ||
     (details.includes('push_subscriptions') && details.includes('schema cache')) ||
     (details.includes('data_guru') && details.includes('schema cache')) ||
     (details.includes('wajib_hadir_hanya_mengajar') && details.includes('schema cache')) ||
     (details.includes('jurnal_pembelajaran') && details.includes('schema cache')) ||
     (details.includes('kegiatan_pembelajaran') && details.includes('schema cache')) ||
+    (details.includes('lokasi') && details.includes('schema cache')) ||
+    (details.includes('lokasi_kbm') && details.includes('schema cache')) ||
     details.includes('could not find the table') ||
     hint.includes('reload schema') ||
     jsonStr.includes('pgrst205') ||
@@ -137,6 +143,8 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (jsonStr.includes('wajib_hadir_hanya_mengajar') && jsonStr.includes('schema cache')) ||
     (jsonStr.includes('jurnal_pembelajaran') && jsonStr.includes('schema cache')) ||
     (jsonStr.includes('kegiatan_pembelajaran') && jsonStr.includes('schema cache')) ||
+    (jsonStr.includes('lokasi') && jsonStr.includes('schema cache')) ||
+    (jsonStr.includes('lokasi_kbm') && jsonStr.includes('schema cache')) ||
     isMissingTableOrRelation
   );
 }

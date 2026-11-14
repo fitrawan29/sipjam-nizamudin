@@ -1181,13 +1181,41 @@ export default function RekapJurnalView({
       let { error } = await query;
       if (error && (isSchemaCacheOrMissingTableError(error) || error.code === 'PGRST204' || error.code === '42703' || error.message?.includes('schema cache') || error.message?.includes('column'))) {
         const { kegiatan_pembelajaran: _kp, ...compatiblePayload } = payload;
+        const errMsg = String(error?.message || '').toLowerCase();
+        const targetedPayload: any = { ...payload };
+        delete targetedPayload.catatan_penolakan;
+        delete targetedPayload.keterangan_penolakan;
+        if (errMsg.includes("'lokasi'") || (errMsg.includes('lokasi') && !errMsg.includes('lokasi_kbm'))) delete targetedPayload.lokasi;
+        if (errMsg.includes('lokasi_kbm')) delete targetedPayload.lokasi_kbm;
+        if (errMsg.includes('kegiatan_pembelajaran')) delete targetedPayload.kegiatan_pembelajaran;
+
         let retryQuery = supabase
           .from('jurnal_pembelajaran')
-          .update(compatiblePayload)
+          .update(targetedPayload)
           .eq('id', editingJurnal.id);
         if (user?.nama) retryQuery = retryQuery.eq('nama_guru', user.nama);
         if (user?.sekolah_id) retryQuery = retryQuery.eq('sekolah_id', user.sekolah_id);
-        const retryRes = await retryQuery;
+        let retryRes = await retryQuery;
+
+        if (retryRes.error && (isSchemaCacheOrMissingTableError(retryRes.error) || retryRes.error.code === 'PGRST204' || retryRes.error.code === '42703' || retryRes.error.message?.includes('schema cache') || retryRes.error.message?.includes('column'))) {
+          const {
+            lokasi: _lok,
+            lokasi_kbm: _lk,
+            kktp: _k,
+            konten: _ko,
+            catatan_khusus_siswa: _ck,
+            catatan_penolakan: _cp2,
+            keterangan_penolakan: _ketp2,
+            ...strippedPayload
+          } = compatiblePayload;
+          let fallbackQuery = supabase
+            .from('jurnal_pembelajaran')
+            .update(strippedPayload)
+            .eq('id', editingJurnal.id);
+          if (user?.nama) fallbackQuery = fallbackQuery.eq('nama_guru', user.nama);
+          if (user?.sekolah_id) fallbackQuery = fallbackQuery.eq('sekolah_id', user.sekolah_id);
+          retryRes = await fallbackQuery;
+        }
         error = retryRes.error;
       }
       if (error) throw error;

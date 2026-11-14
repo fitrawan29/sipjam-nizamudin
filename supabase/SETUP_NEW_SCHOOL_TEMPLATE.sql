@@ -839,6 +839,25 @@ CREATE TRIGGER trg_sync_jurnal_pembelajaran_kegiatan
 BEFORE INSERT OR UPDATE ON public.jurnal_pembelajaran
 FOR EACH ROW EXECUTE FUNCTION public.sync_jurnal_pembelajaran_kegiatan();
 
+CREATE OR REPLACE FUNCTION public.sync_jurnal_pembelajaran_lokasi()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (NEW.lokasi_kbm IS NOT NULL AND trim(NEW.lokasi_kbm) <> '' AND trim(NEW.lokasi_kbm) <> '-')
+       AND (NEW.lokasi IS NULL OR trim(NEW.lokasi) = '' OR trim(NEW.lokasi) = '-') THEN
+        NEW.lokasi := NEW.lokasi_kbm;
+    ELSIF (NEW.lokasi IS NOT NULL AND trim(NEW.lokasi) <> '' AND trim(NEW.lokasi) <> '-')
+       AND (NEW.lokasi_kbm IS NULL OR trim(NEW.lokasi_kbm) = '' OR trim(NEW.lokasi_kbm) = '-') THEN
+        NEW.lokasi_kbm := NEW.lokasi;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp;
+
+DROP TRIGGER IF EXISTS trg_sync_jurnal_pembelajaran_lokasi ON public.jurnal_pembelajaran;
+CREATE TRIGGER trg_sync_jurnal_pembelajaran_lokasi
+BEFORE INSERT OR UPDATE ON public.jurnal_pembelajaran
+FOR EACH ROW EXECUTE FUNCTION public.sync_jurnal_pembelajaran_lokasi();
+
 -- ==============================================================================
 -- 6. ROW LEVEL SECURITY (RLS) & POLICIES
 -- ==============================================================================
