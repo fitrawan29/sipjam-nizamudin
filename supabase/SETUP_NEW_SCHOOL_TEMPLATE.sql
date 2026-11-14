@@ -884,6 +884,7 @@ BEGIN
         FROM public.jurnal_pembelajaran h
         WHERE (NEW.id IS NULL OR h.id <> NEW.id)
           AND public.is_valid_lokasi_kbm_text(h.lokasi_kbm)
+          AND lower(btrim(COALESCE(h.kelas, ''))) = lower(btrim(COALESCE(NEW.kelas, '')))
           AND (
               (NEW.user_id IS NOT NULL AND h.user_id = NEW.user_id)
               OR (
@@ -892,7 +893,6 @@ BEGIN
               )
           )
         ORDER BY
-            CASE WHEN lower(btrim(COALESCE(h.kelas, ''))) = lower(btrim(COALESCE(NEW.kelas, ''))) THEN 0 ELSE 1 END,
             h.tanggal DESC NULLS LAST,
             h.timestamp DESC NULLS LAST
         LIMIT 1;

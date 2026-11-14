@@ -119,10 +119,11 @@ export interface TeacherAttendancePolicyResult {
 }
 
 /**
- * Evaluasi tunggal (single source of truth) kebijakan kehadiran per personel:
+ * Evaluasi tunggal (single source of truth) kebijakan kehadiran per personel (murni perorangan):
  * 1. Pengaturan eksplisit per personel (`wajib_hadir_hanya_mengajar`: true/false) selalu diutamakan.
  * 2. Jika belum disetel eksplisit (null/undefined): staf TU dan guru tanpa jam KBM tetap
- *    wajib hadir setiap hari; guru berjadwal mengikuti daftar legacy atau aturan global sekolah.
+ *    wajib hadir setiap hari; guru berjadwal mengikuti daftar perorangan `guru_hanya_mengajar`,
+ *    dan bila tidak ada di daftar tersebut default-nya wajib hadir setiap hari (tanpa default sekolah).
  */
 export function resolveTeacherAttendancePolicy(params: {
   teacher?: any;
@@ -133,7 +134,7 @@ export function resolveTeacherAttendancePolicy(params: {
   guruHanyaMengajarList?: string[];
   preferLegacyListWhenGlobalKbm?: boolean;
 }): TeacherAttendancePolicyResult {
-  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, aturanGlobal, guruHanyaMengajarList = [], preferLegacyListWhenGlobalKbm = false } = params;
+  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, guruHanyaMengajarList = [], preferLegacyListWhenGlobalKbm = false } = params;
   const isTu = isTuAccount(teacher, linkedUser?.role);
   const hasAnyWeeklyKbm = isTu
     ? false
@@ -180,7 +181,7 @@ export function resolveTeacherAttendancePolicy(params: {
     isTeacherExempt = true;
   } else if (isNonKbmOrTu) {
     isTeacherExempt = false;
-  } else if (isInLegacyList || aturanGlobal === 'Hari_Mengajar_Saja') {
+  } else if (isInLegacyList) {
     isTeacherExempt = true;
   }
 
@@ -734,8 +735,7 @@ export function isValidLokasiKbm(val?: any): boolean {
  * Mengisi / meresolusi Tempat/Lokasi KBM pada entri jurnal:
  * 1. Jika entri sudah memiliki `lokasi_kbm` yang valid, gunakan nilai tersebut.
  * 2. Jika kosong/strip/GPS, cari dari riwayat jurnal yang pernah diisi oleh guru yang sama:
- *    - Prioritas 1: Lokasi yang pernah diisi guru tersebut pada `kelas` yang sama.
- *    - Prioritas 2: Lokasi yang pernah diisi guru tersebut pada kelas manapun.
+ *    hanya pada `kelas` yang sama (tidak ada fallback ke kelas lain; kelas kosong/'-' => tidak ada tarikan).
  * 3. Fallback ke `entry.lokasi` jika valid (bukan GPS/strip), atau `'-'`.
  */
 export function resolveTeacherLokasiKbm(
@@ -760,9 +760,9 @@ export function resolveTeacherLokasiKbm(
   };
 
   let sameClassMatch: string | null = null;
-  let anyClassMatch: string | null = null;
 
-  for (const h of historyRows || []) {
+  // Lokasi KBM hanya ditarik dari kelas yang sama; tanpa kelas valid tidak ada riwayat yang dipakai.
+  for (const h of hasValidTargetKelas ? historyRows || [] : []) {
     if (!h) continue;
     const candidateLoc = isValidLokasiKbm(h.lokasi_kbm)
       ? String(h.lokasi_kbm).trim()
@@ -776,20 +776,14 @@ export function resolveTeacherLokasiKbm(
       isTeacherRecordMatch(h, teacherRef, currentUser, { allowSingleWordFirstToken: true });
     if (!isSameTeacher) continue;
 
-    if (!anyClassMatch) {
-      anyClassMatch = candidateLoc;
-    }
-    if (hasValidTargetKelas && !sameClassMatch) {
-      const hKelas = String(h.kelas || '').trim().toLowerCase();
-      if (hKelas && hKelas === targetKelas) {
-        sameClassMatch = candidateLoc;
-        break;
-      }
+    const hKelas = String(h.kelas || '').trim().toLowerCase();
+    if (hKelas && hKelas === targetKelas) {
+      sameClassMatch = candidateLoc;
+      break;
     }
   }
 
   if (sameClassMatch) return sameClassMatch;
-  if (anyClassMatch) return anyClassMatch;
   if (isValidLokasiKbm(entry.lokasi)) return String(entry.lokasi).trim();
   return '-';
 }
@@ -1279,6 +1273,53 @@ export function isGuruDiPiket(daftarGuru: string, namaGuru: string): boolean {
 export function isLateArrival(p: any): boolean {
   // Izin Terlambat/Terlambat bukan cuti: guru tetap wajib mengisi jurnal KBM.
   return /terlambat/i.test(p?.jenis_presensi || '');
+}
+
+/**
+ * Klasifikasi terpusat status ketidakhadiran sah dari record presensi_guru.
+ * Mengembalikan null bila ditolak atau merupakan keterlambatan (Izin Terlambat / Terlambat).
+ */
+export function getPresensiLeaveCategory(p: any): 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar' | null {
+  if (!p || p.status_verifikasi === 'Ditolak' || isLateArrival(p)) return null;
+  const jp = String(p.jenis_presensi || '').trim().toLowerCase();
+  const di = String(p.detail_izin || '').trim().toLowerCase();
+  const sv = String(p.status_verifikasi || '').trim().toLowerCase();
+  if (jp === 'sakit' || di.includes('sakit') || sv === 'sakit') return 'Sakit';
+  if (jp === 'cuti' || di.includes('cuti') || sv === 'cuti') return 'Cuti';
+  if (jp === 'dinas luar' || di.includes('dinas') || sv === 'dinas luar') return 'Dinas Luar';
+  if (jp === 'izin' || di.includes('izin') || sv === 'izin') return 'Izin';
+  return null;
+}
+
+/**
+ * Cek apakah suatu record presensi (harian atau multi-hari) mencakup tanggal target (YYYY-MM-DD).
+ */
+export function isPresensiCoveringDate(p: any, targetDateStr: string): boolean {
+  if (!p || !targetDateStr) return false;
+  const normDate = (raw: any) => extractWitaDateStr(String(raw || '')) || String(raw || '').trim().substring(0, 10);
+  if (p.tanggal_mulai && p.tanggal_selesai) {
+    const start = normDate(p.tanggal_mulai);
+    const end = normDate(p.tanggal_selesai);
+    return Boolean(start && end && targetDateStr >= start && targetDateStr <= end);
+  }
+  const durasi = Number(p.durasi_hari || p.durasiHari) || 0;
+  if (p.tanggal_mulai && durasi > 0) {
+    const start = normDate(p.tanggal_mulai);
+    if (start) {
+      const dt = new Date(`${start}T12:00:00+08:00`);
+      if (!isNaN(dt.getTime())) {
+        dt.setDate(dt.getDate() + Math.max(1, durasi) - 1);
+        const end = getWitaDateStr(dt);
+        return targetDateStr >= start && targetDateStr <= end;
+      }
+    }
+  }
+  const match = String(p.detail_izin || '').match(/(\d{4}-\d{2}-\d{2})\s*s\/d\s*(\d{4}-\d{2}-\d{2})/);
+  if (match) {
+    return targetDateStr >= match[1] && targetDateStr <= match[2];
+  }
+  const pDate = p.timestamp ? (extractWitaDateStr(p.timestamp) || String(p.timestamp).trim().substring(0, 10)) : '';
+  return pDate === targetDateStr;
 }
 
 /**
