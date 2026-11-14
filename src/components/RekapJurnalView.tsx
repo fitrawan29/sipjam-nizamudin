@@ -133,6 +133,7 @@ export default function RekapJurnalView({
   const [editKonten, setEditKonten] = useState('');
   const [editKegiatan, setEditKegiatan] = useState('');
   const [editRefleksi, setEditRefleksi] = useState('');
+  const [editCatatanKhususSiswa, setEditCatatanKhususSiswa] = useState('');
   const [editAbsensiCounts, setEditAbsensiCounts] = useState({ total: 0, hadir: 0, izin: 0, sakit: 0, alpa: 0 });
   const [editFile, setEditFile] = useState<File | null>(null);
   const [editPhotoPreview, setEditPhotoPreview] = useState<string>('');
@@ -964,6 +965,7 @@ export default function RekapJurnalView({
     setEditLokasiKbm(resolvedLokasi);
     const resolvedRefleksi = (jurnal.catatan_refleksi && jurnal.catatan_refleksi !== '-') ? jurnal.catatan_refleksi : (jurnal.refleksi && jurnal.refleksi !== '-' ? jurnal.refleksi : '');
     setEditRefleksi(resolvedRefleksi);
+    setEditCatatanKhususSiswa(jurnal.catatan_khusus_siswa && jurnal.catatan_khusus_siswa !== '-' ? jurnal.catatan_khusus_siswa : '');
 
     // Attendance parsing Keadaan Siswa (Jumlah, Hadir, Sakit, Izin, Alpa)
     const keadaan = parseKeadaanSiswaCounts(jurnal);
@@ -1046,30 +1048,45 @@ export default function RekapJurnalView({
     }
   };
 
+  const isEditingJurnalKegiatan = Boolean(
+    editingJurnal && (
+      editingJurnal.keterangan?.includes('Jurnal Kegiatan') ||
+      editingJurnal.mapel === 'Jurnal Kegiatan' ||
+      (!editingJurnal.keterangan?.includes('Jurnal KBM') && (!editingJurnal.kelas || editingJurnal.kelas === '-') && (!editingJurnal.mapel || editingJurnal.mapel === '-'))
+    )
+  );
+
   const handleSaveEdit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!editingJurnal || !editingJurnal.id) return;
 
-    // Form validation sesuai struktur jurnal KBM
+    // Form validation sesuai struktur jurnal KBM atau Jurnal Kegiatan
     if (!editTanggal) {
-      showToast('Tanggal Wajib Diisi', 'Silakan pilih tanggal KBM.', 'warning');
+      showToast('Tanggal Wajib Diisi', 'Silakan pilih tanggal.', 'warning');
       return;
     }
     if (!editKonten || editKonten.trim() === '') {
-      showToast('Materi / Konten Wajib', 'Silakan isi materi atau konten pembelajaran.', 'warning');
+      showToast(isEditingJurnalKegiatan ? 'Nama Kegiatan Wajib' : 'Materi / Konten Wajib', isEditingJurnalKegiatan ? 'Silakan isi nama kegiatan.' : 'Silakan isi materi atau konten pembelajaran.', 'warning');
       return;
     }
-    if (!editKelas || editKelas.trim() === '') {
-      showToast('Kelas Wajib', 'Silakan pilih atau isi kelas pembelajaran.', 'warning');
-      return;
-    }
-    if (!editMapel || editMapel.trim() === '') {
-      showToast('Mata Pelajaran Wajib', 'Silakan pilih atau isi mata pelajaran.', 'warning');
-      return;
-    }
-    if (!editLokasiKbm || editLokasiKbm.trim() === '') {
-      showToast('Tempat/Lokasi KBM Wajib', 'Silakan isi tempat/lokasi pelaksanaan KBM.', 'warning');
-      return;
+    if (isEditingJurnalKegiatan) {
+      if (!editKegiatan || editKegiatan.trim() === '') {
+        showToast('Uraian / Deskripsi Wajib', 'Silakan isi uraian atau deskripsi kegiatan.', 'warning');
+        return;
+      }
+    } else {
+      if (!editKelas || editKelas.trim() === '') {
+        showToast('Kelas Wajib', 'Silakan pilih atau isi kelas pembelajaran.', 'warning');
+        return;
+      }
+      if (!editMapel || editMapel.trim() === '') {
+        showToast('Mata Pelajaran Wajib', 'Silakan pilih atau isi mata pelajaran.', 'warning');
+        return;
+      }
+      if (!editLokasiKbm || editLokasiKbm.trim() === '') {
+        showToast('Tempat/Lokasi KBM Wajib', 'Silakan isi tempat/lokasi pelaksanaan KBM.', 'warning');
+        return;
+      }
     }
 
     setIsSavingEdit(true);
@@ -1104,12 +1121,14 @@ export default function RekapJurnalView({
       const totalMurid = editAbsensiCounts.total > 0 
         ? editAbsensiCounts.total 
         : (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa);
-      const computedKehadiran = `Total murid: ${totalMurid}, Hadir: ${editAbsensiCounts.hadir}, Izin: ${editAbsensiCounts.izin}, Sakit: ${editAbsensiCounts.sakit}, Alpa: ${editAbsensiCounts.alpa}`;
+      const computedKehadiran = isEditingJurnalKegiatan
+        ? (editingJurnal.kehadiran_murid || '-')
+        : `Total murid: ${totalMurid}, Hadir: ${editAbsensiCounts.hadir}, Izin: ${editAbsensiCounts.izin}, Sakit: ${editAbsensiCounts.sakit}, Alpa: ${editAbsensiCounts.alpa}`;
 
       const isMateriLengkap = Boolean(editKonten && editKonten.trim().length > 0);
       const isKegiatanLengkap = Boolean((editKegiatan && editKegiatan.trim().length > 0) || isMateriLengkap);
       const isFotoLengkap = Boolean(finalPhotoUrl && finalPhotoUrl.trim().length > 0 && finalPhotoUrl !== '-' && finalPhotoUrl !== 'pending:uploading' && finalPhotoUrl !== 'gagal_upload');
-      const isAbsensiLengkap = Boolean(totalMurid > 0);
+      const isAbsensiLengkap = isEditingJurnalKegiatan ? true : Boolean(totalMurid > 0);
 
       let nextStatus = editingJurnal.status_verifikasi;
       if (editingJurnal.status_verifikasi === 'Ditolak') {
@@ -1120,10 +1139,10 @@ export default function RekapJurnalView({
         tanggal: editTanggal,
         jam_ke: editJamKe || '-',
         pertemuan_ke: editPertemuanKe || '-',
-        mapel: editMapel,
-        kelas: editKelas,
-        lokasi_kbm: editLokasiKbm,
-        lokasi: editLokasiKbm,
+        mapel: isEditingJurnalKegiatan ? (editingJurnal.mapel || '-') : editMapel,
+        kelas: isEditingJurnalKegiatan ? (editingJurnal.kelas || '-') : editKelas,
+        lokasi_kbm: isEditingJurnalKegiatan ? (editingJurnal.lokasi_kbm || '-') : editLokasiKbm,
+        lokasi: isEditingJurnalKegiatan ? (editingJurnal.lokasi || '-') : editLokasiKbm,
         tujuan_pembelajaran: editTujuanPembelajaran || '-',
         kktp: editKktp || '-',
         konten: editKonten,
@@ -1133,6 +1152,7 @@ export default function RekapJurnalView({
         kegiatan_pembelajaran: editKegiatan || editKonten || '-',
         catatan_refleksi: editRefleksi || '-',
         refleksi: editRefleksi || '-',
+        catatan_khusus_siswa: isEditingJurnalKegiatan ? (editingJurnal.catatan_khusus_siswa || null) : (editCatatanKhususSiswa || null),
         kehadiran_murid: computedKehadiran,
         link_bukti_foto: finalPhotoUrl,
         foto_kegiatan: finalPhotoUrl,
@@ -2422,215 +2442,267 @@ export default function RekapJurnalView({
                 </div>
               )}
 
-              {/* Form Fields: Urutan & Struktur 8 Kolom Standar */}
+              {/* Form Fields: Urutan & Struktur 8 Kolom Standar (KBM) atau Jurnal Kegiatan */}
               <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
-                {/* 1. Nomor */}
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-between text-xs">
-                  <span className="font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-md bg-amber-500 text-white flex items-center justify-center text-[10px] font-bold">1</span>
-                    Nomor Jurnal
-                  </span>
-                  <span className="font-mono font-bold text-gray-500 dark:text-gray-400 text-[11px]">
-                    #{editingJurnal.id?.substring(0, 8) || '-'}
-                  </span>
-                </div>
-
-                {/* 2. Hari/Tanggal */}
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">2</span>
-                    Hari/Tanggal <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={editTanggal}
-                    onChange={e => setEditTanggal(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                {/* 3. Materi/Konten */}
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">3</span>
-                    Materi / Konten Pembelajaran <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={editKonten}
-                    onChange={e => setEditKonten(e.target.value)}
-                    placeholder="Tuliskan uraian materi atau konten pembelajaran..."
-                    required
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-
-                {/* 4. Kelas/JP */}
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2.5">
-                  <span className="block text-[11px] font-bold text-gray-800 dark:text-gray-200">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">4</span>
-                    Kelas / Jam Pembelajaran (JP)
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {!isEditingJurnalKegiatan ? (
+                  <>
+                    {/* 1. Nomor */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        Kelas <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        list="edit-kelas-list"
-                        type="text"
-                        value={editKelas}
-                        onChange={e => setEditKelas(e.target.value)}
-                        placeholder="Pilih atau ketik kelas"
-                        required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
-                      <datalist id="edit-kelas-list">
-                        {Array.from(new Set([...kelasList, ...assignedKelasList].filter(Boolean))).map((k: string) => (
-                          <option key={k} value={k} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        Jam ke- / JP
+                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">1</span>
+                        Nomor (Pertemuan ke-)
                       </label>
                       <input
                         type="text"
-                        placeholder="Contoh: 1-2 atau 3"
-                        value={editJamKe}
-                        onChange={e => setEditJamKe(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        Mata Pelajaran <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        list="edit-mapel-list"
-                        type="text"
-                        value={editMapel}
-                        onChange={e => setEditMapel(e.target.value)}
-                        placeholder="Pilih atau ketik mata pelajaran"
-                        required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                      />
-                      <datalist id="edit-mapel-list">
-                        {Array.from(new Set([...mapelList, ...assignedMapelList].filter(Boolean))).map((m: string) => (
-                          <option key={m} value={m} />
-                        ))}
-                      </datalist>
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        Pertemuan ke-
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Contoh: 1 atau 4"
+                        placeholder="Contoh: 1 atau 4 (Otomatis jika dikosongkan)"
                         value={editPertemuanKe}
                         onChange={e => setEditPertemuanKe(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
-                  </div>
-                </div>
 
-                {/* 5. Keadaan Siswa */}
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">5</span>
-                      Keadaan Siswa (H / I / S / A)
-                    </span>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                      Total: {editAbsensiCounts.total || (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa)} siswa
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-5 gap-2">
+                    {/* 2. Hari/Tanggal */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-0.5 text-center">
-                        Jumlah
+                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">2</span>
+                        Hari/Tanggal <span className="text-red-500">*</span>
                       </label>
                       <input
-                        type="number"
-                        min="0"
-                        value={editAbsensiCounts.total}
-                        onChange={e => updateAbsensiCount('total', parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                        type="date"
+                        value={editTanggal}
+                        onChange={e => setEditTanggal(e.target.value)}
+                        required
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-green-700 dark:text-green-400 mb-0.5 text-center">
-                        Hadir
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editAbsensiCounts.hadir}
-                        onChange={e => updateAbsensiCount('hadir', parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-green-600 dark:text-green-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 text-center">
-                        Sakit
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editAbsensiCounts.sakit}
-                        onChange={e => updateAbsensiCount('sakit', parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-0.5 text-center">
-                        Izin
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editAbsensiCounts.izin}
-                        onChange={e => updateAbsensiCount('izin', parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5 text-center">
-                        Alpa
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={editAbsensiCounts.alpa}
-                        onChange={e => updateAbsensiCount('alpa', parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400"
-                      />
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono italic">
-                    Ringkasan: Total murid: {editAbsensiCounts.total || (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa)}, Hadir: {editAbsensiCounts.hadir}, Izin: {editAbsensiCounts.izin}, Sakit: {editAbsensiCounts.sakit}, Alpa: {editAbsensiCounts.alpa}
-                  </div>
-                </div>
 
-                {/* 6. Tempat/Lokasi KBM */}
-                <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">6</span>
-                    Tempat / Lokasi KBM <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={editLokasiKbm}
-                    onChange={e => setEditLokasiKbm(e.target.value)}
-                    placeholder="Contoh: Ruang Kelas VIII A, Laboratorium Komputer"
-                    required
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
+                    {/* 3. Materi/Konten */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">3</span>
+                        Materi / Konten Pembelajaran <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={editKonten}
+                        onChange={e => setEditKonten(e.target.value)}
+                        placeholder="Tuliskan uraian materi atau konten pembelajaran..."
+                        required
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+
+                    {/* 4. Kelas/JP */}
+                    <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                      <span className="block text-[11px] font-bold text-gray-800 dark:text-gray-200">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">4</span>
+                        Kelas / Jam Pembelajaran (JP)
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                            Kelas <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            list="edit-kelas-list"
+                            type="text"
+                            value={editKelas}
+                            onChange={e => setEditKelas(e.target.value)}
+                            placeholder="Pilih atau ketik kelas"
+                            required
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                          <datalist id="edit-kelas-list">
+                            {Array.from(new Set([...kelasList, ...assignedKelasList].filter(Boolean))).map((k: string) => (
+                              <option key={k} value={k} />
+                            ))}
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                            JP (Jam Pelajaran)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Contoh: 1-2 atau 3-4"
+                            value={editJamKe}
+                            onChange={e => setEditJamKe(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                            Mata Pelajaran <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            list="edit-mapel-list"
+                            type="text"
+                            value={editMapel}
+                            onChange={e => setEditMapel(e.target.value)}
+                            placeholder="Pilih atau ketik mata pelajaran"
+                            required
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          />
+                          <datalist id="edit-mapel-list">
+                            {Array.from(new Set([...mapelList, ...assignedMapelList].filter(Boolean))).map((m: string) => (
+                              <option key={m} value={m} />
+                            ))}
+                          </datalist>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 5. Keadaan Siswa */}
+                    <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">5</span>
+                          Keadaan Siswa (H / I / S / A)
+                        </span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                          Total: {editAbsensiCounts.total || (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa)} siswa
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-5 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-0.5 text-center">
+                            Jumlah
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editAbsensiCounts.total}
+                            onChange={e => updateAbsensiCount('total', parseInt(e.target.value, 10) || 0)}
+                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-green-700 dark:text-green-400 mb-0.5 text-center">
+                            Hadir
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editAbsensiCounts.hadir}
+                            onChange={e => updateAbsensiCount('hadir', parseInt(e.target.value, 10) || 0)}
+                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-green-600 dark:text-green-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 text-center">
+                            Sakit
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editAbsensiCounts.sakit}
+                            onChange={e => updateAbsensiCount('sakit', parseInt(e.target.value, 10) || 0)}
+                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-0.5 text-center">
+                            Izin
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editAbsensiCounts.izin}
+                            onChange={e => updateAbsensiCount('izin', parseInt(e.target.value, 10) || 0)}
+                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5 text-center">
+                            Alpa
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={editAbsensiCounts.alpa}
+                            onChange={e => updateAbsensiCount('alpa', parseInt(e.target.value, 10) || 0)}
+                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400"
+                          />
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono italic">
+                        Ringkasan: Total murid: {editAbsensiCounts.total || (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa)}, Hadir: {editAbsensiCounts.hadir}, Izin: {editAbsensiCounts.izin}, Sakit: {editAbsensiCounts.sakit}, Alpa: {editAbsensiCounts.alpa}
+                      </div>
+                      <div className="pt-1">
+                        <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          Catatan Khusus Siswa <span className="text-gray-400 font-normal">(Opsional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editCatatanKhususSiswa}
+                          onChange={e => setEditCatatanKhususSiswa(e.target.value)}
+                          placeholder="Catatan khusus terkait kehadiran/perilaku siswa (opsional)..."
+                          className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* 6. Tempat/Lokasi KBM */}
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">6</span>
+                        Tempat / Lokasi KBM <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={editLokasiKbm}
+                        onChange={e => setEditLokasiKbm(e.target.value)}
+                        placeholder="Contoh: Ruang Kelas VIII A, Laboratorium Komputer"
+                        required
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  /* Form Edit Jurnal Kegiatan (Non-KBM) sesuai struktur GuruJurnal.tsx */
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          Tanggal <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          value={editTanggal}
+                          onChange={e => setEditTanggal(e.target.value)}
+                          required
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          Nama Kegiatan <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={editKonten}
+                          onChange={e => setEditKonten(e.target.value)}
+                          placeholder="Tuliskan nama kegiatan..."
+                          required
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        Uraian / Deskripsi <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={editKegiatan}
+                        onChange={e => setEditKegiatan(e.target.value)}
+                        placeholder="Deskripsikan selengkapnya..."
+                        required
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {/* 7. Dokumentasi Foto */}
                 <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">

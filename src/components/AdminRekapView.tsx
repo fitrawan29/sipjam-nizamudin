@@ -737,13 +737,14 @@ export default function AdminRekapView({
         .filter(k => !isTestGuruName(k))
         .map(k => {
           const { hadir, dinasLuar, sakit, izin, telatDetik } = pMap[k];
-          // Keterlambatan >= 4 jam (14400 detik) dihitung sebagai 1 alpa otomatis
+          // Keterlambatan >= batasJam (default 4 jam / 14400 detik) dihitung sebagai penalti alpa otomatis
           const alpaOtomatis = telatPenaltiAktif && batasDetikPenalti > 0
             ? (batasDetikPenalti === 14400 ? Math.floor((telatDetik || 0) / 14400) : Math.floor((telatDetik || 0) / batasDetikPenalti)) * penaltiHariAlpa
             : 0;
           const hadirEfektif = Math.max(0, hadir - alpaOtomatis);
-          // Alpa = Total Wajib Hadir − Hadir − Dinas Luar − Sakit − Izin
-          const alpa = Math.max(0, totalHariKerja - hadirEfektif - dinasLuar - sakit - izin);
+          // Alpa = Selisih hari kerja dari kehadiran aktual + penalti alpa otomatis (tanpa double-counting)
+          const alpaMurni = Math.max(0, totalHariKerja - hadir - dinasLuar - sakit - izin);
+          const alpa = alpaMurni + alpaOtomatis;
           return {
             ...pMap[k],
             hadir: hadirEfektif,

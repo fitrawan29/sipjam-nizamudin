@@ -230,9 +230,15 @@ export default function GuruPresensi({
           if (item.key === 'jam_datang_batas') newJam.datangBatas = item.value;
           if (item.key === 'jam_datang_akhir') newJam.datangAkhir = item.value;
           if (item.key === 'jam_pulang_mulai') newJam.pulangMulai = item.value;
-          if (item.key === 'jam_pulang_jumat' && item.value) newJam.pulangJumat = item.value; else if (item.jam_pulang_jumat) newJam.pulangJumat = item.jam_pulang_jumat;
           if (item.key === 'jam_pulang_akhir') newJam.pulangAkhir = item.value;
         });
+        const jpjKeyRow = data.find((r: any) => r.key === 'jam_pulang_jumat' && r.value);
+        if (jpjKeyRow) {
+          newJam.pulangJumat = jpjKeyRow.value;
+        } else {
+          const jpjColRow = data.find((r: any) => r.jam_pulang_jumat);
+          if (jpjColRow?.jam_pulang_jumat) newJam.pulangJumat = jpjColRow.jam_pulang_jumat;
+        }
         setGpsConfig(newConfig);
         setJamPresensi(newJam);
       }

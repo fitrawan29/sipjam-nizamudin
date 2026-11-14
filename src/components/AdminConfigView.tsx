@@ -144,11 +144,16 @@ export default function AdminConfigView({
         if (data && data.length > 0) {
           const newConfig = { ...config };
           const ghmList: string[] = [];
+          const canonicalKeysSeen = new Set<string>();
           data.forEach(item => {
             if (item.key in newConfig) {
               (newConfig as any)[item.key] = item.value;
+              canonicalKeysSeen.add(item.key);
             } else if (item.key && item.key.toLowerCase() in newConfig) {
-              (newConfig as any)[item.key.toLowerCase()] = item.value;
+              const lowerKey = item.key.toLowerCase();
+              if (!canonicalKeysSeen.has(lowerKey)) {
+                (newConfig as any)[lowerKey] = item.value;
+              }
             }
             // Aliases for pengawas bina and kepala sekolah
             if (item.key === 'opsi_ttd_pengawas' || item.key === 'pengawas_bina_aktif') {
@@ -173,16 +178,19 @@ export default function AdminConfigView({
               newConfig.status_kepala_sekolah = item.value;
               newConfig.status_kepala_sekolah = normalizeStatusKepalaSekolah(item.value);
             }
-            if (item.email_tujuan_upload) {
+            if (item.email_tujuan_upload && !canonicalKeysSeen.has('email_tujuan_upload')) {
               newConfig.email_tujuan_upload = item.email_tujuan_upload;
             }
-            if (item.jam_pulang_jumat) {
-              newConfig.jam_pulang_jumat = item.jam_pulang_jumat;
-            }
-            if (item.key === 'jam_pulang_jumat' && item.value) {
-              newConfig.jam_pulang_jumat = item.value;
-            }
           });
+          const jpjKeyRow = data.find((r: any) => r.key === 'jam_pulang_jumat' && r.value);
+          if (jpjKeyRow) {
+            newConfig.jam_pulang_jumat = jpjKeyRow.value;
+          } else {
+            const jpjColRow = data.find((r: any) => r.jam_pulang_jumat);
+            if (jpjColRow?.jam_pulang_jumat) {
+              newConfig.jam_pulang_jumat = jpjColRow.jam_pulang_jumat;
+            }
+          }
           newConfig.aturan_kehadiran_guru = resolveSchoolAturanKehadiran(data);
           ghmList.push(...resolveSchoolLegacyGhmList(data));
           // Ensure bidirectional fallback between kota_kabupaten and kota_ttd
@@ -490,6 +498,16 @@ export default function AdminConfigView({
           }).eq('sekolah_id', targetSekolahId);
         } catch (_) {}
       }
+
+      // Clean up legacy UPPERCASE duplicate keys that would conflict with canonical lowercase keys
+      try {
+        const uppercaseKeysToDelete = Object.keys(saveConfig).map(k => k.toUpperCase());
+        await supabase
+          .from('pengaturan')
+          .delete()
+          .eq('sekolah_id', targetSekolahId)
+          .in('key', uppercaseKeysToDelete);
+      } catch (_) {}
 
       // Persistently update all school profile fields (nama, alamat, npsn, kota_kabupaten, logo)
       // into the sekolah table in addition to pengaturan
@@ -871,11 +889,11 @@ export default function AdminConfigView({
                           <button
                             type="button"
                             onClick={() => {
-                              const eligibleTeachers = guruList.filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0);
-                              setExemptTeacherIds(guruList.map(g => g.id).filter(Boolean));
+                              const eligibleTeachers = guruList.filter(g => !isTuStaff(g) && !isKepsekStaff(g) && getTeacherKbmCount(g, jadwalList) > 0);
+                              setExemptTeacherIds(eligibleTeachers.map(g => g.id).filter(Boolean));
                               showToast(
                                 'Kebijakan Kehadiran',
-                                'Seluruh personel disetel Hanya Hadir di Hari KBM / Jam Kerja.',
+                                'Seluruh guru berjadwal KBM disetel Hanya Hadir di Hari KBM / Piket.',
                                 'info'
                               );
                             }}

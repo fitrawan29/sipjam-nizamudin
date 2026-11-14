@@ -474,9 +474,13 @@ export async function fetchJadwalIntervensiWali(
       : (configMap.jam_pulang_mulai || '11:00');
 
     const pulangAkhir60m = addMinutesToTime(effectivePulang, 60);
+    const configuredBatasIntervensi = normalizeTime(configMap.jam_batas_intervensi_siswa || '08:00');
+    const batasPagiWali = configuredBatasIntervensi > '12:00'
+      ? configuredBatasIntervensi
+      : '12:00';
 
     return {
-      batasPagi: '12:00', // Wali Kelas batas pagi diperpanjang hingga pk. 12:00 WITA
+      batasPagi: batasPagiWali,
       jamPulangMulai: effectivePulang,
       jamPulangPiketAkhir: pulangAkhir60m,
       jamBatasMalam: pulangAkhir60m // Ditutup 1 jam pasca jam pulang (akses malam 22:00 dinonaktifkan)

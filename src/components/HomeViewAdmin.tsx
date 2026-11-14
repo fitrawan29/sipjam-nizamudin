@@ -426,7 +426,8 @@ export default function HomeViewAdmin({
         // AST preservation for regression tests: aturanGlobal === 'Hari_Mengajar_Saja' & guruHanyaMengajarList.includes
         void (aturanGlobal === 'Hari_Mengajar_Saja' && guruHanyaMengajarList.includes(teacher.id));
         const isTeacherExempt = policy.isTeacherExempt;
-        const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
+        const activeTargetCount = targetClasses.filter((jk: any) => !jk.isBlocked).length;
+        const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
         const inPenugasan = assignedPiketTeachers.some((p: any) =>

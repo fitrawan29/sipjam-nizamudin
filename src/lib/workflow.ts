@@ -131,8 +131,9 @@ export function resolveTeacherAttendancePolicy(params: {
   totalTeacherKbmCount?: number;
   aturanGlobal?: string | null;
   guruHanyaMengajarList?: string[];
+  preferLegacyListWhenGlobalKbm?: boolean;
 }): TeacherAttendancePolicyResult {
-  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, aturanGlobal, guruHanyaMengajarList = [] } = params;
+  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, aturanGlobal, guruHanyaMengajarList = [], preferLegacyListWhenGlobalKbm = false } = params;
   const isTu = isTuAccount(teacher, linkedUser?.role);
   const hasAnyWeeklyKbm = isTu
     ? false
@@ -171,7 +172,9 @@ export function resolveTeacherAttendancePolicy(params: {
   });
 
   let isTeacherExempt = false;
-  if (explicitSetting === false) {
+  if (preferLegacyListWhenGlobalKbm && !isNonKbmOrTu && isInLegacyList) {
+    isTeacherExempt = true;
+  } else if (explicitSetting === false) {
     isTeacherExempt = false;
   } else if (explicitSetting === true) {
     isTeacherExempt = true;
