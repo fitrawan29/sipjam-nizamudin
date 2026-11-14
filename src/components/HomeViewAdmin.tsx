@@ -57,6 +57,8 @@ interface TeacherStatusRow {
     time?: string;
   };
   isTugasLengkap: boolean;
+  isLibur?: boolean;
+  keteranganLibur?: string;
 }
 
 const formatSchoolDisplayName = (name: string): string => {
@@ -152,6 +154,7 @@ export default function HomeViewAdmin({
   const [matrixSearch, setMatrixSearch] = useState('');
   const [matrixFilter, setMatrixFilter] = useState<'Semua' | 'Tugas Lengkap' | 'Belum Lengkap'>('Semua');
   const [activeBlokToday, setActiveBlokToday] = useState<any | null>(null);
+  const [holidayInfo, setHolidayInfo] = useState<{ isHoliday: boolean; keterangan: string } | null>(null);
 
 
     const loadAdminMatrix = useCallback(async () => {
@@ -312,21 +315,56 @@ export default function HomeViewAdmin({
       const activeBlok = (activeBloks && activeBloks[0]) || null;
       setActiveBlokToday(activeBlok);
 
-      // Check holidays & weekend (mendukung single date maupun tanggal_mulai..tanggal_selesai)
+      // Check holidays & weekend (mendukung single date, tanggal_mulai only, maupun tanggal_mulai..tanggal_selesai)
       const relevantCal = (kalenderRes.data || []).filter((c: any) => {
         const matchSchool = !c.sekolah_id || !user?.sekolah_id || c.sekolah_id === user.sekolah_id || c.sekolah_id === '00000000-0000-0000-0000-000000000000';
         if (!matchSchool) return false;
-        if (c.tanggal_mulai && c.tanggal_selesai) {
-          return todayStr >= c.tanggal_mulai && todayStr <= c.tanggal_selesai;
-        }
-        return c.tanggal === todayStr;
+        const start = (c.tanggal_mulai || '').slice(0, 10);
+        const end = (c.tanggal_selesai || '').slice(0, 10);
+        const single = (c.tanggal || '').slice(0, 10);
+        if (start && end) return todayStr >= start && todayStr <= end;
+        if (start && !end && start === todayStr) return true;
+        return single === todayStr;
       });
-      const isExplicitMasuk = relevantCal.some((c: any) => c.tipe === 'Masuk' || c.tipe === 'Efektif');
-      const isLiburKalender = !isExplicitMasuk && relevantCal.some((c: any) => c.tipe === 'Libur');
-      const hariSekolahVal = (pengaturanRes.data || []).find((p: any) => p.key === 'hari_sekolah')?.value || '6';
-      const hariSekolah = parseInt(hariSekolahVal, 10);
+      const isExplicitMasuk = relevantCal.some((c: any) => {
+        if (c.tipe === 'Masuk' || c.tipe === 'Efektif') return true;
+        const t = (c.tipe || '').trim().toLowerCase();
+        return t === 'masuk' || t === 'efektif';
+      });
+      const liburEntry = !isExplicitMasuk
+        ? relevantCal.find((c: any) => {
+            const t = (c.tipe || '').trim().toLowerCase();
+            return t === 'libur' || t.includes('libur');
+          })
+        : null;
+      const isLiburKalender = Boolean(liburEntry);
+      const hariSekolahRow = (pengaturanRes.data || []).find((p: any) => (p.key || '').toLowerCase() === 'hari_sekolah');
+      const hariSekolahVal = hariSekolahRow?.value || '6';
+      const hariSekolah = parseInt(hariSekolahVal, 10) || 6;
       const isWeekendOff = dayName === 'Minggu' || (hariSekolah === 5 && dayName === 'Sabtu');
-      const isSchoolDayOff = isLiburKalender || isWeekendOff;
+
+      const waktuMulaiRow = (pengaturanRes.data || []).find((p: any) => (p.key || '').toLowerCase() === 'waktu_efektif_mulai');
+      const waktuAkhirRow = (pengaturanRes.data || []).find((p: any) => (p.key || '').toLowerCase() === 'waktu_efektif_akhir');
+      const waktuMulai = (waktuMulaiRow?.value || '').trim();
+      const waktuAkhir = (waktuAkhirRow?.value || '').trim();
+      const isOutsideEffectiveSemester = Boolean(
+        (waktuMulai && todayStr < waktuMulai) ||
+        (waktuAkhir && todayStr > waktuAkhir)
+      );
+
+      const isSchoolDayOff = isLiburKalender || isWeekendOff || isOutsideEffectiveSemester;
+      const holidayKeterangan = isSchoolDayOff
+        ? (dayName === 'Minggu'
+            ? 'Hari Minggu (Libur Akhir Pekan)'
+            : (hariSekolah === 5 && dayName === 'Sabtu')
+              ? 'Hari Sabtu (Libur Sekolah 5 Hari)'
+              : (liburEntry?.keterangan || (isOutsideEffectiveSemester ? 'Di Luar Waktu Efektif KBM Semester' : 'Libur Kalender Pendidikan')))
+        : undefined;
+      if (isSchoolDayOff && holidayKeterangan) {
+        setHolidayInfo({ isHoliday: true, keterangan: holidayKeterangan });
+      } else {
+        setHolidayInfo(null);
+      }
 
       const aturanGlobal = resolveSchoolAturanKehadiran(pengaturanRes.data || []);
       const guruHanyaMengajarList = resolveSchoolLegacyGhmList(pengaturanRes.data || []);
@@ -439,9 +477,9 @@ export default function HomeViewAdmin({
             Boolean(linkedUser?.nama && isGuruDiPiket(piketSchedule.daftar_guru, linkedUser.nama))
           : false;
         const isAssignedPiket = inPenugasan || inJadwalPiket;
-        const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
-        let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
-        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = isExemptNonTeaching && isAssignedPiket ? 'blue' : 'gray';
+        const isPiket = !isSchoolDayOff && isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
+        let piketStatus = isSchoolDayOff ? 'Libur' : (isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas');
+        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = (isSchoolDayOff || (isExemptNonTeaching && isAssignedPiket)) ? 'blue' : 'gray';
 
         if (isPiket) {
           const hasReport = piketReports.some((lp: any) => 
@@ -465,7 +503,7 @@ export default function HomeViewAdmin({
         ) || presensiList.find((p: any) =>
           isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Datang'
         );
-        const multiDayLeave = !pDatangToday
+        const multiDayLeave = !pDatangToday && !isSchoolDayOff
           ? rawPresensi.find((p: any) => {
               if (!isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true })) return false;
               if (p.status_verifikasi === 'Ditolak' || isLateArrival(p)) return false;
@@ -655,10 +693,10 @@ export default function HomeViewAdmin({
             jurnalStatus = 'Ditolak (Perlu Revisi)';
             jurnalColor = 'rose';
           } else {
-            jurnalStatus = 'Bebas KBM';
-            jurnalColor = 'gray';
+            jurnalStatus = isSchoolDayOff ? 'Libur' : 'Bebas KBM';
+            jurnalColor = isSchoolDayOff ? 'blue' : 'gray';
           }
-        } else if (isBlokToday) {
+        } else if (isBlokToday && !isSchoolDayOff) {
           if (isExemptNonTeaching) {
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
@@ -700,8 +738,8 @@ export default function HomeViewAdmin({
             jurnalStatus = `${realTeacherJournals.length}/${realTeacherJournals.length} Selesai`;
             jurnalColor = 'green';
           } else {
-            jurnalStatus = 'Bebas KBM';
-            jurnalColor = 'gray';
+            jurnalStatus = isSchoolDayOff ? 'Libur' : 'Bebas KBM';
+            jurnalColor = isSchoolDayOff ? 'blue' : 'gray';
           }
         } else if (effectiveTargetCount === 0) {
           if (hasTidakMelaksanakanKegiatan) {
@@ -789,6 +827,17 @@ export default function HomeViewAdmin({
           pengisianJurnal.total = hasRejectedJournal ? 1 : 0;
         }
 
+        const leaveDetail = isLeaveToday
+          ? String(pDatang?.detail_izin || pDatang?.keterangan || '').trim()
+          : '';
+        const keteranganLibur = isSchoolDayOff
+          ? holidayKeterangan
+          : (isFreeFromPresence && !pDatang)
+            ? 'Tidak ada jadwal mengajar'
+            : (leaveDetail && leaveDetail.toLowerCase() !== presensiDatangStatus.toLowerCase())
+              ? leaveDetail
+              : undefined;
+
         return {
           id: teacher.id,
           nip,
@@ -810,7 +859,9 @@ export default function HomeViewAdmin({
             color: presensiPulangColor as any,
             time: pulangTime
           },
-          isTugasLengkap
+          isTugasLengkap,
+          isLibur: isSchoolDayOff,
+          keteranganLibur
         };
       });
 
@@ -891,6 +942,7 @@ export default function HomeViewAdmin({
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jadwal_pelajaran' }, scheduleRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sistem_blok' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kalender_pendidikan' }, scheduleRefresh)
       .subscribe();
 
     window.addEventListener('sipjam:config_updated', handleWindowConfigSync);
@@ -925,7 +977,8 @@ export default function HomeViewAdmin({
       const matchSearch = !q || 
         row.nama_guru.toLowerCase().includes(q) ||
         row.nip.toLowerCase().includes(q) ||
-        row.mata_pelajaran.toLowerCase().includes(q);
+        row.mata_pelajaran.toLowerCase().includes(q) ||
+        (row.keteranganLibur || '').toLowerCase().includes(q);
 
       if (!matchSearch) return false;
 
@@ -1002,7 +1055,9 @@ export default function HomeViewAdmin({
         <div className="relative z-10 grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/10">
           <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
             <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Status</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white truncate">Aktif</p>
+            <p className={`text-[10px] sm:text-xs font-bold truncate ${holidayInfo?.isHoliday ? 'text-amber-300' : 'text-white'}`}>
+              {holidayInfo?.isHoliday ? 'Hari Libur' : 'Hari Kerja'}
+            </p>
           </div>
           <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
             <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
@@ -1087,6 +1142,24 @@ export default function HomeViewAdmin({
             </div>
           </div>
 
+          {/* Holiday Alert for Admin */}
+          {holidayInfo?.isHoliday && (
+            <div
+              data-testid="holiday-banner"
+              className="clay-card p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3 shadow-sm"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <i className="fa-solid fa-umbrella-beach text-base"></i>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="font-bold block text-sm">Hari Libur: {holidayInfo.keterangan}</span>
+                <span className="text-[11px] opacity-90 block">
+                  Hari ini adalah hari libur. Seluruh guru dibebaskan dari kewajiban presensi, jurnal KBM, dan laporan piket.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Active Blok Alert for Admin */}
           {activeBlokToday && (
             <div className="clay-card clay-card-amber p-4 rounded-2xl border-2 border-white/90 dark:border-amber-800/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1134,6 +1207,15 @@ export default function HomeViewAdmin({
                 <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full whitespace-normal break-words">
                   {dashboardDateStr}
                 </span>
+                {holidayInfo?.isHoliday && (
+                  <span
+                    data-testid="matrix-holiday-badge"
+                    className="text-[10px] font-bold text-sky-800 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-800 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                  >
+                    <i className="fa-solid fa-umbrella-beach text-[9px]"></i>
+                    Libur: {holidayInfo.keterangan}
+                  </span>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -1286,17 +1368,33 @@ export default function HomeViewAdmin({
 
                             {/* Overall Status */}
                             <td className="py-3 px-3 text-center whitespace-nowrap">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-sm ${
-                                row.isTugasLengkap
-                                  ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                                  : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-700'
-                              }`}>
-                                {row.isTugasLengkap ? (
-                                  <><i className="fa-solid fa-check mr-1"></i> Lengkap</>
+                              <div className="flex flex-col items-center gap-0.5">
+                                {row.isLibur ? (
+                                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-sm bg-sky-50 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 border-sky-300 dark:border-sky-700">
+                                    <i className="fa-solid fa-umbrella-beach mr-1"></i> Libur
+                                  </span>
                                 ) : (
-                                  <><i className="fa-solid fa-clock mr-1"></i> Belum Lengkap</>
+                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-sm ${
+                                    row.isTugasLengkap
+                                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                      : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                                  }`}>
+                                    {row.isTugasLengkap ? (
+                                      <><i className="fa-solid fa-check mr-1"></i> Lengkap</>
+                                    ) : (
+                                      <><i className="fa-solid fa-clock mr-1"></i> Belum Lengkap</>
+                                    )}
+                                  </span>
                                 )}
-                              </span>
+                                {row.keteranganLibur && (
+                                  <span
+                                    className="text-[10px] text-sky-700 dark:text-sky-300 font-medium max-w-[180px] truncate"
+                                    title={row.keteranganLibur}
+                                  >
+                                    {row.keteranganLibur}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         );

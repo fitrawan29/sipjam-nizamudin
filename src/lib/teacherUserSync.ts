@@ -186,6 +186,19 @@ export async function syncTeacherAccounts(
         }
       }
 
+      // Link data_guru.user_id to matched user account
+      if (matchedUser?.id && guru.id && (!guru.user_id || guru.user_id !== matchedUser.id)) {
+        try {
+          await supabaseClient
+            .from('data_guru')
+            .update({ user_id: matchedUser.id })
+            .eq('id', guru.id);
+          guru.user_id = matchedUser.id;
+        } catch (linkErr) {
+          console.warn('[teacherUserSync] Failed to link data_guru.user_id:', linkErr);
+        }
+      }
+
       const isTeacherBk = (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan konseling') ||
         (guru.mata_pelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
         (guru.mata_pelajaran || '').toLowerCase().trim() === 'bk';
@@ -238,12 +251,13 @@ export async function updateTeacherCredentials(
     newPassword?: string;
     newNama?: string;
     newNip?: string;
+    newRole?: string;
     syncNipToDataGuru?: boolean;
     sekolahId?: string;
   }
 ): Promise<{ success: boolean; message: string; userId?: string }> {
   let { userId } = params;
-  const { guruId, oldUsername, newUsername, newPassword, newNama, newNip, syncNipToDataGuru } = params;
+  const { guruId, oldUsername, newUsername, newPassword, newNama, newNip, newRole, syncNipToDataGuru } = params;
 
   let rawCleanUsername = (newUsername || '')
     .replace(/[\u200B-\u200D\uFEFF]/g, '')
@@ -396,6 +410,9 @@ export async function updateTeacherCredentials(
     if (newNama && newNama.trim()) {
       userPayload.nama = newNama.trim();
     }
+    if (newRole && newRole.trim()) {
+      userPayload.role = newRole.trim();
+    }
 
     // Direct update on users table
     const { error: userUpdateErr } = await supabaseClient
@@ -417,6 +434,9 @@ export async function updateTeacherCredentials(
     // 4. Keep data_guru synchronized (NIP and nama)
     try {
       const guruPayload: Record<string, any> = {};
+      if (userId) {
+        guruPayload.user_id = userId;
+      }
       if (newNip && newNip.trim()) {
         guruPayload.nip = newNip.trim();
       } else if (syncNipToDataGuru && cleanUsername && cleanUsername !== '-') {

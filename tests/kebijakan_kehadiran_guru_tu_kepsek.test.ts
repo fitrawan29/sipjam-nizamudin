@@ -27,58 +27,54 @@ function fail(title: string, error: any) {
 }
 
 // -----------------------------------------------------------------------------
-// BAGIAN 1: AdminConfigView Tab 4 (Kehadiran & Jam Kerja)
+// BAGIAN 1: AdminConfigView Pemindahan Kebijakan Kehadiran ke Master Data (R2)
 // -----------------------------------------------------------------------------
-console.log('--- [Bagian 1] AdminConfigView: Desain Fleksibel & Akses Tanpa Hambatan ---');
+console.log('--- [Bagian 1] AdminConfigView: Kebijakan Guru Bersih dari Menu Pengaturan (R2) ---');
 
 const adminConfigContent = fs.readFileSync(adminConfigPath, 'utf8');
 
-// Test 1.1: Tidak ada artificial block disabled / cursor-not-allowed pada switch toggle
+// Test 1.1: Tab 'kehadiran' telah dihapus dari tabs array dan antarmuka pengaturan
 try {
-  assert(!adminConfigContent.includes('disabled={!isEligibleForKbmOnly}'), 'AdminConfigView tidak boleh mendisable switch toggle berdasarkan isEligibleForKbmOnly');
-  assert(!adminConfigContent.includes('cursor-not-allowed opacity-50'), 'AdminConfigView tidak boleh memberi class cursor-not-allowed pada switch toggle');
-  pass('1.1: Switch toggle bebas diklik untuk seluruh personil (Guru, TU, Kepsek) tanpa artificial block');
+  assert(!adminConfigContent.includes("id: 'kehadiran'"), 'AdminConfigView tidak boleh memuat tab id kehadiran');
+  assert(!adminConfigContent.includes("activeTab === 'kehadiran'"), 'AdminConfigView tidak boleh merender tab kehadiran');
+  pass('1.1: Tab kebijakan kehadiran guru bersih dari menu pengaturan');
 } catch (e) {
-  fail('1.1: Switch toggle masih terhambat blokir buatan', e);
+  fail('1.1: Tab kebijakan kehadiran masih ditemukan di menu pengaturan', e);
 }
 
-// Test 1.2: Tersedia filter peran (Guru, TU, Kepsek)
+// Test 1.2: Tidak ada lagi filter peran atau switch kehadiran massal pada menu pengaturan
 try {
-  assert(adminConfigContent.includes('roleFilterTab'), 'AdminConfigView memiliki state roleFilterTab');
-  assert(adminConfigContent.includes('Semua Peran'), 'AdminConfigView memiliki filter Semua Peran');
-  assert(adminConfigContent.includes('isTuStaff'), 'AdminConfigView memiliki helper isTuStaff');
-  assert(adminConfigContent.includes('isKepsekStaff'), 'AdminConfigView memiliki helper isKepsekStaff');
-  pass('1.2: Tersedia filter pill peran lengkap: Semua Peran, Guru, TU, dan Kepsek');
+  assert(!adminConfigContent.includes('roleFilterTab'), 'AdminConfigView tidak lagi memiliki state roleFilterTab');
+  assert(!adminConfigContent.includes('Set Semua Hadir Setiap Hari'), 'AdminConfigView tidak lagi memiliki tombol Set Semua Hadir Setiap Hari');
+  pass('1.2: Filter peran dan tombol massal kehadiran guru bersih dari AdminConfigView');
 } catch (e) {
-  fail('1.2: Filter pill peran belum lengkap', e);
+  fail('1.2: Filter atau tombol massal kehadiran masih ada di AdminConfigView', e);
 }
 
-// Test 1.3: Tersedia tombol batch "Otomatis Sesuai KBM" selain Semua Hadir & Hanya KBM
+// Test 1.3: Save handler AdminConfigView tidak lagi menimpa (bulk clobber) data_guru
 try {
-  assert(adminConfigContent.includes('Otomatis Sesuai KBM'), 'AdminConfigView memiliki tombol Otomatis Sesuai KBM');
-  assert(adminConfigContent.includes('Set Semua Hadir Setiap Hari'), 'AdminConfigView memiliki tombol Set Semua Hadir Setiap Hari');
-  assert(adminConfigContent.includes('Set Semua Hanya Hari KBM'), 'AdminConfigView memiliki tombol Set Semua Hanya Hari KBM');
-  pass('1.3: Tombol aksi massal lengkap: Set Semua Hadir, Set Semua Hanya KBM, dan Otomatis Sesuai KBM');
+  assert(!adminConfigContent.includes("wajib_hadir_hanya_mengajar: true"), 'AdminConfigView tidak boleh bulk update wajib_hadir_hanya_mengajar true');
+  assert(!adminConfigContent.includes("wajib_hadir_hanya_mengajar: false"), 'AdminConfigView tidak boleh bulk update wajib_hadir_hanya_mengajar false');
+  pass('1.3: Save handler AdminConfigView tidak menimpa pengaturan guru secara massal');
 } catch (e) {
-  fail('1.3: Tombol aksi massal belum lengkap', e);
+  fail('1.3: AdminConfigView masih melakukan bulk update pada data_guru', e);
 }
 
-// Test 1.4: Query guruList juga memuat akun Tata Usaha dari tabel users
+// Test 1.4: AdminConfigView tetap memelihara komentar resiliensi schema cache
 try {
-  assert(adminConfigContent.includes("ilike('role', '%tata%')") || adminConfigContent.includes("ilike('role', '%tata_usaha%')") || adminConfigContent.includes("role: 'tata_usaha'"), 'AdminConfigView memuat akun TU dari users');
-  pass('1.4: Akun Tata Usaha digabungkan secara utuh ke daftar personil');
+  assert(adminConfigContent.includes('Schema cache missing wajib_hadir_hanya_mengajar on data_guru'), 'AdminConfigView memelihara resiliensi schema cache');
+  pass('1.4: Resiliensi schema cache tetap terpelihara');
 } catch (e) {
-  fail('1.4: Akun Tata Usaha belum termuat secara utuh', e);
+  fail('1.4: Penanganan schema cache hilang', e);
 }
 
-// Test 1.5: Save handler menyimpan pilihan guru, TU, dan Kepsek ke database
+// Test 1.5: AdminConfigView tetap menyimpan konfigurasi waktu efektif dan pengaturan umum sekolah
 try {
-  assert(adminConfigContent.includes("guru_hanya_mengajar: jsonExempt") || adminConfigContent.includes("guru_hanya_mengajar"), 'AdminConfigView menyimpan exemptIds ke pengaturan');
-  assert(adminConfigContent.includes("wajib_hadir_hanya_mengajar: true"), 'AdminConfigView memperbarui data_guru dengan wajib_hadir_hanya_mengajar true');
-  assert(adminConfigContent.includes("wajib_hadir_hanya_mengajar: false"), 'AdminConfigView memperbarui data_guru dengan wajib_hadir_hanya_mengajar false');
-  pass('1.5: Handler simpan memperbarui database pengaturan dan data_guru secara dua arah');
+  assert(adminConfigContent.includes('hari_sekolah'), 'AdminConfigView menyimpan hari_sekolah');
+  assert(adminConfigContent.includes('waktu_efektif_mulai') || adminConfigContent.includes('waktuEfektifMulai'), 'AdminConfigView memelihara waktu efektif');
+  pass('1.5: Konfigurasi waktu efektif dan pengaturan umum sekolah tetap terjaga');
 } catch (e) {
-  fail('1.5: Handler simpan belum memperbarui data_guru secara dua arah', e);
+  fail('1.5: Konfigurasi pengaturan sekolah mengalami regresi', e);
 }
 
 // -----------------------------------------------------------------------------

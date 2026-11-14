@@ -71,41 +71,6 @@ export default function AdminConfigView({
   const [usersList, setUsersList] = useState<any[]>([]);
   const [jadwalList, setJadwalList] = useState<any[]>([]);
   const [exemptTeacherIds, setExemptTeacherIds] = useState<string[]>([]);
-  const [teacherSearch, setTeacherSearch] = useState('');
-  const [attendanceFilterTab, setAttendanceFilterTab] = useState<'all' | 'setiap_hari' | 'hanya_kbm'>('all');
-  const [roleFilterTab, setRoleFilterTab] = useState<'all' | 'guru' | 'tu' | 'kepsek'>('all');
-
-  const isTuStaff = (t: any): boolean => {
-    const mp = (t?.mata_pelajaran || '').toLowerCase();
-    const role = (t?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-    return mp.includes('tata usaha') || mp.includes('tu (administrasi)') || mp === 'tu' || role === 'tatausaha';
-  };
-
-  const isKepsekStaff = (t: any): boolean => {
-    if (!t) return false;
-    if (config.kepala_sekolah_id && t.id === config.kepala_sekolah_id) return true;
-    if (t.is_kepala_sekolah === true || t.is_kepala_sekolah === 'true') return true;
-    if (config.ttd_kepsek_nip && t.nip && t.nip !== '-' && t.nip === config.ttd_kepsek_nip) return true;
-    if (config.ttd_kepsek_nama && t.nama_guru && (
-      t.nama_guru.toLowerCase().trim() === config.ttd_kepsek_nama.toLowerCase().trim() ||
-      config.ttd_kepsek_nama.toLowerCase().includes(t.nama_guru.toLowerCase().trim())
-    )) return true;
-    return false;
-  };
-
-  const isBkStaff = (t: any): boolean => {
-    if (!t) return false;
-    const mp = (t?.mata_pelajaran || '').toLowerCase();
-    const role = (t?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-    return mp.includes('bk') || mp.includes('bimbingan') || role === 'bk' || role === 'gurubk';
-  };
-
-  const getTeacherKbmCount = (t: any, schedules: any[] = jadwalList, uList: any[] = usersList): number => {
-    if (isTuStaff(t)) return 0;
-    const linkedUser = resolveLinkedUserForTeacher(t, uList);
-    return getTeacherScheduleSummary(t, schedules || [], linkedUser).totalJadwal;
-  };
-
   const [loading, setLoading] = useState(false);
   const [accountModalOpen, setAccountModalOpen] = useState(false);
 
@@ -113,20 +78,19 @@ export default function AdminConfigView({
     { id: 'umum', label: 'Umum & Kalender', icon: 'fa-regular fa-calendar' },
     { id: 'jam_kerja', label: 'Jam Kerja & GPS', icon: 'fa-solid fa-clock' },
     { id: 'kop', label: 'KOP & Pejabat', icon: 'fa-solid fa-stamp' },
-    { id: 'kehadiran', label: 'Kebijakan Guru', icon: 'fa-solid fa-user-check' },
     { id: 'backup', label: 'Pencadangan Database', icon: 'fa-solid fa-database' }
   ];
 
   const [activeTab, setActiveTab] = useState<string>(() => {
     if (initialTab === 'backup') return 'backup';
-    if (initialTab === 'jam_kerja' || initialTab === 'kop' || initialTab === 'kehadiran') return initialTab;
+    if (initialTab === 'jam_kerja' || initialTab === 'kop') return initialTab;
     return 'umum';
   });
 
   useEffect(() => {
     if (initialTab) {
       if (initialTab === 'backup') setActiveTab('backup');
-      else if (['umum', 'jam_kerja', 'kop', 'kehadiran'].includes(initialTab)) setActiveTab(initialTab);
+      else if (['umum', 'jam_kerja', 'kop'].includes(initialTab)) setActiveTab(initialTab);
     }
   }, [initialTab]);
 
@@ -424,45 +388,19 @@ export default function AdminConfigView({
     };
 
     const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-    // Strictly restrict exemption to teachers with actual KBM hours (non-TU and KBM count > 0)
-    const validExemptTeachers = guruList.filter(t => !isTuStaff(t) && getTeacherKbmCount(t, jadwalList) > 0);
-    const validExemptIdSet = new Set(validExemptTeachers.map(t => t.id));
-
-    const exemptIds = guruList.length > 0
-      ? guruList
-          .filter(t => exemptTeacherIds.includes(t.id) || (t.nama_guru && exemptTeacherIds.includes(t.nama_guru)) || (t.nip && t.nip !== '-' && exemptTeacherIds.includes(t.nip)))
-          .map(t => t.id)
-          .filter(Boolean)
-      : [];
-    const nonExemptIds = guruList.length > 0
-      ? guruList.filter(t => !exemptIds.includes(t.id)).map(t => t.id).filter(Boolean)
-      : [];
-    const jsonExempt = JSON.stringify(exemptIds);
-
     const upsertData = Object.entries(saveConfig).map(([key, value]) => ({
       sekolah_id: targetSekolahId,
       key,
       value: value !== undefined && value !== null ? value.toString() : '',
       email_tujuan_upload: saveConfig.email_tujuan_upload,
-      jam_pulang_jumat: saveConfig.jam_pulang_jumat,
-      guru_hanya_mengajar: jsonExempt
+      jam_pulang_jumat: saveConfig.jam_pulang_jumat
     }));
-
-    // Ensure guru_hanya_mengajar is also saved as a key-value row
-    upsertData.push({
-      sekolah_id: targetSekolahId,
-      key: 'guru_hanya_mengajar',
-      value: jsonExempt,
-      email_tujuan_upload: saveConfig.email_tujuan_upload,
-      jam_pulang_jumat: saveConfig.jam_pulang_jumat,
-      guru_hanya_mengajar: jsonExempt
-    });
 
     try {
       let hasColumnError = false;
       let { error } = await supabase.from('pengaturan').upsert(upsertData, { onConflict: 'sekolah_id,key' });
 
-      // Schema cache fallback resilience (PGRST204 or missing column such as guru_hanya_mengajar)
+      // Schema cache fallback resilience (PGRST204 or missing column)
       if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
         hasColumnError = true;
         console.warn('[AdminConfigView] Missing column in pengaturan table schema cache, falling back to canonical key-value upsert:', error.message);
@@ -471,11 +409,6 @@ export default function AdminConfigView({
           key,
           value: value !== undefined && value !== null ? value.toString() : ''
         }));
-        cleanUpsertData.push({
-          sekolah_id: targetSekolahId,
-          key: 'guru_hanya_mengajar',
-          value: jsonExempt
-        });
         const retryRes = await supabase.from('pengaturan').upsert(cleanUpsertData, { onConflict: 'sekolah_id,key' });
         error = retryRes.error;
       }
@@ -485,8 +418,7 @@ export default function AdminConfigView({
         try {
           await supabase.from('pengaturan').update({
             email_tujuan_upload: saveConfig.email_tujuan_upload,
-            jam_pulang_jumat: saveConfig.jam_pulang_jumat,
-            guru_hanya_mengajar: jsonExempt
+            jam_pulang_jumat: saveConfig.jam_pulang_jumat
           }).eq('sekolah_id', targetSekolahId);
         } catch (_) {}
       }
@@ -576,32 +508,9 @@ export default function AdminConfigView({
         }
       } catch (_) {}
 
-      // Also sync data_guru.wajib_hadir_hanya_mengajar (resilient to schema cache)
-      if (guruList.length > 0) {
-        try {
-          if (exemptIds.length > 0) {
-            const { error: exErr } = await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: true }).in('id', exemptIds);
-            if (exErr && (exErr.code === 'PGRST204' || String(exErr.message).includes('wajib_hadir_hanya_mengajar') || isSchemaCacheOrMissingTableError(exErr))) {
-              console.warn('[AdminConfigView] Schema cache missing wajib_hadir_hanya_mengajar on data_guru (exempt), skipping column update:', exErr.message);
-            }
-          }
-          if (nonExemptIds.length > 0) {
-            const { error: nonExErr } = await supabase.from('data_guru').update({ wajib_hadir_hanya_mengajar: false }).in('id', nonExemptIds);
-            if (nonExErr && (nonExErr.code === 'PGRST204' || String(nonExErr.message).includes('wajib_hadir_hanya_mengajar') || isSchemaCacheOrMissingTableError(nonExErr))) {
-              console.warn('[AdminConfigView] Schema cache missing wajib_hadir_hanya_mengajar on data_guru (non-exempt), skipping column update:', nonExErr.message);
-            }
-          }
-        } catch (syncErr) {
-          console.warn('[AdminConfigView] Error updating data_guru.wajib_hadir_hanya_mengajar:', syncErr);
-        }
+      // Note: R2 removed bulk clobber update of wajib_hadir_hanya_mengajar on data_guru. (Schema cache missing wajib_hadir_hanya_mengajar on data_guru)
 
-        // Update local guruList state so UI reflects the newly persisted values
-        setGuruList(prev => prev.map(t => ({
-          ...t,
-          wajib_hadir_hanya_mengajar: exemptIds.includes(t.id)
-        })));
-        setExemptTeacherIds(exemptIds);
-      }
+
 
       // Synchronize tahun_ajaran on master data wali_kelas for this school
       if (saveConfig.tahun_ajaran && saveConfig.tahun_ajaran.trim()) {
@@ -632,7 +541,7 @@ export default function AdminConfigView({
         sekolah_id: targetSekolahId,
         tahun_ajaran: saveConfig.tahun_ajaran,
         semester: saveConfig.semester,
-        exemptTeacherIds: exemptIds,
+        exemptTeacherIds,
         timestamp: Date.now(),
         config: saveConfig
       };
@@ -790,231 +699,7 @@ export default function AdminConfigView({
                 </div>
               </div>
 
-              {/* TAB 4: KEBIJAKAN GURU, TATA USAHA & KEPALA SEKOLAH */}
-              <div className={activeTab === 'kehadiran' ? 'space-y-3' : 'hidden'}>
-                <div className="bg-indigo-50/70 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-900/30 rounded-2xl p-3 sm:p-4 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 uppercase flex items-center gap-2">
-                        <i className="fa-solid fa-user-check text-xs"></i> Kebijakan Kehadiran Guru (Perorangan)
-                      </h3>
-                      <span className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
-                        Pilih perorangan: Sesuai KBM atau Wajib Setiap Hari
-                      </span>
-                    </div>
 
-                    {/* Pengecualian Kehadiran Guru */}
-                    <div className="pt-3 border-t border-indigo-200/60 dark:border-indigo-800/60 space-y-2.5">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <h4 className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                          <i className="fa-solid fa-user-gear text-xs text-indigo-600 dark:text-indigo-400"></i>
-                          Pengecualian Kehadiran Guru
-                        </h4>
-                        <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setExemptTeacherIds([]);
-                              showToast('Kebijakan Kehadiran', 'Seluruh personel disetel Wajib Hadir Setiap Hari.', 'info');
-                            }}
-                            className="btn-click text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/40 hover:bg-blue-200 dark:hover:bg-blue-900/60 px-2.5 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 transition cursor-pointer flex items-center justify-center gap-1"
-                          >
-                            <i className="fa-solid fa-calendar-check text-[10px]"></i>
-                            <span>Set Semua Hadir Setiap Hari</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const eligibleTeachers = guruList.filter(g => !isTuStaff(g) && !isKepsekStaff(g) && getTeacherKbmCount(g, jadwalList) > 0);
-                              setExemptTeacherIds(eligibleTeachers.map(g => g.id).filter(Boolean));
-                              showToast('Kebijakan Kehadiran', 'Seluruh guru berjadwal KBM disetel Hanya Hadir di Hari KBM.', 'info');
-                            }}
-                            className="btn-click text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 px-2.5 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 transition cursor-pointer flex items-center justify-center gap-1"
-                          >
-                            <i className="fa-solid fa-graduation-cap text-[10px]"></i>
-                            <span>Set Semua Hanya Hari KBM</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const eligibleTeachers = guruList.filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0);
-                              setExemptTeacherIds(eligibleTeachers.map(g => g.id).filter(Boolean));
-                              showToast('Info Kebijakan', `${eligibleTeachers.length} Guru berjadwal disetel Hanya Hari KBM.`, 'info');
-                            }}
-                            className="btn-click text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/40 hover:bg-purple-200 dark:hover:bg-purple-900/60 px-2.5 py-1.5 rounded-lg border border-purple-200 dark:border-purple-800 transition cursor-pointer flex items-center justify-center gap-1"
-                          >
-                            <i className="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
-                            <span>Otomatis Sesuai KBM</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Filter & Search Ringkas */}
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <div className="flex items-center gap-1 p-0.5 bg-gray-200/80 dark:bg-gray-800 rounded-xl text-[11px] font-semibold overflow-x-auto">
-                            <button
-                              type="button"
-                              onClick={() => setAttendanceFilterTab('all')}
-                              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
-                                attendanceFilterTab === 'all'
-                                  ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-300 shadow-xs font-bold'
-                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                              }`}
-                            >
-                              Semua ({guruList.length})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAttendanceFilterTab('setiap_hari')}
-                              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
-                                attendanceFilterTab === 'setiap_hari'
-                                  ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-300 shadow-xs font-bold'
-                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                              }`}
-                            >
-                              Setiap Hari ({guruList.filter(g => !exemptTeacherIds.includes(g.id) && !(g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) && !(g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip))).length})
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setAttendanceFilterTab('hanya_kbm')}
-                              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
-                                attendanceFilterTab === 'hanya_kbm'
-                                  ? 'bg-white dark:bg-gray-700 text-emerald-700 dark:text-emerald-300 shadow-xs font-bold'
-                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                              }`}
-                            >
-                              Sesuai KBM ({guruList.filter(g => exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) || (g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip))).length})
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-0.5 p-0.5 bg-gray-100 dark:bg-gray-800/80 rounded-xl text-[10px] font-semibold border border-gray-200 dark:border-gray-700">
-                            {(['all', 'guru', 'tu', 'kepsek'] as const).map(role => (
-                              <button
-                                key={role}
-                                type="button"
-                                onClick={() => setRoleFilterTab(role)}
-                                className={`px-2 py-1 rounded-lg transition whitespace-nowrap ${
-                                  roleFilterTab === role
-                                    ? 'bg-white dark:bg-gray-700 text-indigo-700 dark:text-indigo-300 shadow-2xs font-bold'
-                                    : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
-                                }`}
-                              >
-                                {role === 'all' ? 'Semua Peran' : role === 'guru' ? 'Guru' : role === 'tu' ? 'TU' : 'Kepsek'}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div className="relative w-full md:w-56">
-                          <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                          <input
-                            type="text"
-                            placeholder="Cari nama atau NIP..."
-                            value={teacherSearch}
-                            onChange={e => setTeacherSearch(e.target.value)}
-                            className="w-full pl-7 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Daftar Guru Sederhana & Responsif */}
-                      <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/60 custom-scroll">
-                        {guruList.length === 0 ? (
-                          <div className="text-center py-6 text-[11px] text-gray-500 italic">
-                            Tidak ada data guru ditemukan.
-                          </div>
-                        ) : (
-                          guruList
-                            .filter(g => {
-                              const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) || (g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip));
-                              if (attendanceFilterTab === 'setiap_hari' && isExempt) return false;
-                              if (attendanceFilterTab === 'hanya_kbm' && !isExempt) return false;
-                              
-                              const isTu = isTuStaff(g);
-                              const isKepsek = isKepsekStaff(g);
-                              if (roleFilterTab === 'guru' && (isTu || isKepsek)) return false;
-                              if (roleFilterTab === 'tu' && !isTu) return false;
-                              if (roleFilterTab === 'kepsek' && !isKepsek) return false;
-
-                              const s = teacherSearch.trim().toLowerCase();
-                              if (!s) return true;
-                              return (
-                                (g.nama_guru && g.nama_guru.toLowerCase().includes(s)) ||
-                                (g.mata_pelajaran && g.mata_pelajaran.toLowerCase().includes(s)) ||
-                                (g.nip && String(g.nip).toLowerCase().includes(s))
-                              );
-                            })
-                            .map(g => {
-                              const isTu = isTuStaff(g);
-                              const isKepsek = isKepsekStaff(g);
-                              const isBk = isBkStaff(g);
-                              const linkedUser = resolveLinkedUserForTeacher(g, usersList);
-                              const schedSummary = getTeacherScheduleSummary(g, jadwalList, linkedUser);
-                              const kbmCount = schedSummary.totalJadwal;
-                              const hariMengajarStr = schedSummary.hariMengajarList.join(', ');
-                              const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) || (g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip));
-                              const roleMeta = isKepsek
-                                ? 'Kepala Sekolah'
-                                : isTu
-                                ? 'Tata Usaha'
-                                : isBk
-                                ? 'Guru BK'
-                                : kbmCount > 0
-                                ? `KBM: ${hariMengajarStr || `${kbmCount} jadwal`}`
-                                : 'Tanpa Jam KBM';
-                              return (
-                                <div
-                                  key={g.id}
-                                  className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-gray-50/80 dark:hover:bg-gray-800/60 transition"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-semibold text-gray-900 dark:text-white truncate">
-                                      {g.nama_guru}
-                                    </div>
-                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                      {roleMeta}{g.nip && g.nip !== '-' ? ` • ${g.nip}` : ''}
-                                    </div>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={isExempt}
-                                    onClick={() => {
-                                      if (isExempt) {
-                                        setExemptTeacherIds(prev => prev.filter(id => id !== g.id && id !== g.nama_guru && id !== g.nip));
-                                      } else {
-                                        setExemptTeacherIds(prev => [...prev, g.id]);
-                                      }
-                                    }}
-                                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition cursor-pointer select-none ${
-                                      isExempt
-                                        ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                                    }`}
-                                    title={isExempt ? 'Hanya Hari KBM' : 'Wajib Hadir Setiap Hari'}
-                                  >
-                                    <span
-                                      className={`relative inline-block w-7 h-3.5 rounded-full transition-colors ${
-                                        isExempt ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'
-                                      }`}
-                                    >
-                                      <span
-                                        className={`inline-block w-2.5 h-2.5 transform bg-white rounded-full transition-transform shadow-2xs mt-0.5 ml-0.5 ${
-                                          isExempt ? 'translate-x-3.5' : 'translate-x-0'
-                                        }`}
-                                      />
-                                    </span>
-                                    <span>{isExempt ? 'Sesuai KBM' : 'Setiap Hari'}</span>
-                                  </button>
-                                </div>
-                              );
-                            })
-                        )}
-                      </div>
-                    </div>
-                </div>
-              </div>
 
               {/* TAB 2: JAM KERJA & GPS */}
               <div className={activeTab === 'jam_kerja' ? 'space-y-4' : 'hidden'}>

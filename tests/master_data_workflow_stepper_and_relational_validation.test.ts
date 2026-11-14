@@ -117,22 +117,14 @@ async function runAllTests() {
     );
   });
 
-  await test('1.2: Visual Workflow Stepper card renders with Clay styling and 9 interactive steps', () => {
+  await test('1.2: Visual Workflow Stepper component is cleanly removed from AdminDataView (R3)', () => {
     assert.ok(
-      adminDataCode.includes('Panduan Alur Penginputan Master Data'),
-      'AdminDataView must contain "Panduan Alur Penginputan Master Data" header'
+      !adminDataCode.includes('Panduan Alur Penginputan Master Data'),
+      'AdminDataView must NOT contain "Panduan Alur Penginputan Master Data" stepper'
     );
     assert.ok(
-      adminDataCode.includes('fa-chevron-right'),
-      'Stepper must render connecting chevron arrows between steps'
-    );
-    assert.ok(
-      adminDataCode.includes('handleSwitchTab'),
-      'Stepper buttons must invoke handleSwitchTab'
-    );
-    assert.ok(
-      adminDataCode.includes('overflow-x-auto') && adminDataCode.includes('shrink-0'),
-      'Stepper container must be horizontally scrollable with non-shrinking step cards'
+      adminDataCode.includes('{/* TABS */}') || adminDataCode.includes('handleSwitchTab'),
+      'Tab bar navigation must remain intact and functional'
     );
   });
 

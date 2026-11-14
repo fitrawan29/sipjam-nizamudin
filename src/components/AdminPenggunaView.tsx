@@ -99,20 +99,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       const filteredBkAccounts = bkAccounts.filter(a => !existingUserIds.has(a.userId));
 
       const combinedAccounts = [
-        ...(result.accounts || []).map((acc: TeacherAccountItem) => {
-          if ((acc.mataPelajaran || '').toLowerCase().includes('tata usaha')) {
-            return { ...acc, role: 'tata_usaha' };
-          }
-          const normAcc = (acc.role || '').toLowerCase().replace(/[\s_-]+/g, '');
-          const isAccBk = normAcc === 'bk' || normAcc === 'gurubk' || normAcc === 'bimbingankonseling' || normAcc === 'bimbingandankonseling' ||
-            (acc.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') ||
-            (acc.mataPelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
-            (acc.mataPelajaran || '').toLowerCase().trim() === 'bk';
-          if (isAccBk) {
-            return { ...acc, role: 'bk' };
-          }
-          return acc;
-        }),
+        ...(result.accounts || []),
         ...filteredTuAccounts,
         ...filteredBkAccounts
       ];
@@ -240,11 +227,9 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
         if (updErr) {
           if (updErr.message?.includes('users_role_check')) {
-            const newMapel = targetRole === 'tata_usaha' ? 'Tata Usaha (Administrasi)' : '-';
-            await supabase
-              .from('data_guru')
-              .update({ mata_pelajaran: newMapel })
-              .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+            if (item.guruId && item.userId) {
+              try { await supabase.from('data_guru').update({ user_id: item.userId }).eq('id', item.guruId); } catch (_) {}
+            }
 
             await Swal.fire({
               icon: 'warning',
@@ -256,7 +241,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                   <div class="p-2.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] select-all border border-gray-300 dark:border-gray-700">
                     ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
                   </div>
-                  <p class="text-[11px] text-teal-700 dark:text-teal-400 font-semibold">Tugas di data guru telah disesuaikan ke "${newMapel}".</p>
+                  <p class="text-[11px] text-teal-700 dark:text-teal-400 font-semibold">Mata pelajaran asli guru tetap dipertahankan.</p>
                 </div>
               `,
               confirmButtonText: 'Salin Perintah SQL',
@@ -275,11 +260,9 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           throw updErr;
         }
 
-        const newMapel = targetRole === 'tata_usaha' ? 'Tata Usaha (Administrasi)' : '-';
-        await supabase
-          .from('data_guru')
-          .update({ mata_pelajaran: newMapel })
-          .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+        if (item.guruId && item.userId) {
+          try { await supabase.from('data_guru').update({ user_id: item.userId }).eq('id', item.guruId); } catch (_) {}
+        }
       }
       showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'tata_usaha' ? 'Tata Usaha' : 'Guru'}.`, 'success');
       handleLoadAndSync(false);
@@ -527,11 +510,9 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
         if (updErr) {
           if (updErr.message?.includes('users_role_check')) {
-            const newMapel = targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-';
-            await supabase
-              .from('data_guru')
-              .update({ mata_pelajaran: newMapel })
-              .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
+            if (item.guruId && item.userId) {
+              try { await supabase.from('data_guru').update({ user_id: item.userId }).eq('id', item.guruId); } catch (_) {}
+            }
 
             // Sync active session even in fallback mode
             syncLocalSessionIfMatching(item.userId, item.username, targetRole);
@@ -546,7 +527,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                   <div class="p-2.5 bg-gray-100 dark:bg-gray-800 rounded font-mono text-[11px] select-all border border-gray-300 dark:border-gray-700">
                     ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
                   </div>
-                  <p class="text-[11px] text-rose-700 dark:text-rose-400 font-semibold">Tugas di data guru telah disesuaikan ke "${newMapel}".</p>
+                  <p class="text-[11px] text-rose-700 dark:text-rose-400 font-semibold">Mata pelajaran asli guru tetap dipertahankan.</p>
                 </div>
               `,
               confirmButtonText: 'Salin Perintah SQL',
@@ -565,17 +546,11 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           throw updErr;
         }
 
-        const newMapel = targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-';
-        await supabase
-          .from('data_guru')
-          .update({ mata_pelajaran: newMapel })
-          .or(`user_id.eq.${item.userId},id.eq.${item.guruId}`);
-      } else if (item.guruId) {
-        const newMapel = targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-';
-        await supabase
-          .from('data_guru')
-          .update({ mata_pelajaran: newMapel })
-          .eq('id', item.guruId);
+        if (item.guruId && item.userId) {
+          try { await supabase.from('data_guru').update({ user_id: item.userId }).eq('id', item.guruId); } catch (_) {}
+        }
+      } else if (item.guruId && item.userId) {
+        try { await supabase.from('data_guru').update({ user_id: item.userId }).eq('id', item.guruId); } catch (_) {}
       }
 
       // Sync active session if currently logged-in user is updated
@@ -765,6 +740,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               <input id="swal-tu-user" class="swal2-input !mt-0 !w-full text-xs font-mono" value="${item.username}" placeholder="Username...">
             </div>
             <div>
+              <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Peran / Role Pengguna *</label>
+              <select id="swal-tu-role" class="swal2-select !mt-0 !w-full text-xs">
+                <option value="tata_usaha" ${normRole === 'tatausaha' || normRole === 'tu' ? 'selected' : ''}>Tata Usaha</option>
+                <option value="Guru" ${normRole === 'guru' ? 'selected' : ''}>Guru</option>
+                <option value="bk" ${normRole === 'bk' || normRole === 'gurubk' ? 'selected' : ''}>Guru BK</option>
+                <option value="Admin" ${normRole === 'admin' ? 'selected' : ''}>Admin</option>
+                <option value="kepalasekolah" ${normRole === 'kepalasekolah' || normRole === 'kepsek' ? 'selected' : ''}>Kepala Sekolah</option>
+              </select>
+            </div>
+            <div>
               <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Kata Sandi Baru (Opsional)</label>
               <input id="swal-tu-pwd" type="password" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Kosongkan jika tidak diubah...">
             </div>
@@ -779,16 +764,17 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           const nama = (document.getElementById('swal-tu-nama') as HTMLInputElement)?.value?.trim();
           const username = (document.getElementById('swal-tu-user') as HTMLInputElement)?.value?.trim();
           const password = (document.getElementById('swal-tu-pwd') as HTMLInputElement)?.value?.trim();
+          const role = (document.getElementById('swal-tu-role') as HTMLSelectElement)?.value || item.role;
           if (!nama || !username) {
             Swal.showValidationMessage('Nama dan username tidak boleh kosong!');
             return null;
           }
-          return { nama, username, password };
+          return { nama, username, password, role };
         }
       });
       if (formValues) {
         setLoading(true);
-        const updateData: any = { nama: formValues.nama, username: formValues.username };
+        const updateData: any = { nama: formValues.nama, username: formValues.username, role: formValues.role };
         if (formValues.password) updateData.password = formValues.password;
         const { error: updErr } = await supabase.from('users').update(updateData).eq('id', item.userId);
         setLoading(false);
@@ -816,6 +802,19 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               <span class="font-semibold">NIP:</span> <span class="font-mono">${item.nip}</span> &bull; 
               <span class="font-semibold">Mapel:</span> ${item.mataPelajaran}
             </div>
+          </div>
+
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">
+              Peran / Role Pengguna *
+            </label>
+            <select id="swal-role" class="swal2-select !mt-0 !w-full text-xs">
+              <option value="Guru" ${normRole === 'guru' || !normRole ? 'selected' : ''}>Guru</option>
+              <option value="tata_usaha" ${normRole === 'tatausaha' || normRole === 'tu' ? 'selected' : ''}>Tata Usaha</option>
+              <option value="bk" ${normRole === 'bk' || normRole === 'gurubk' ? 'selected' : ''}>Guru BK</option>
+              <option value="Admin" ${normRole === 'admin' ? 'selected' : ''}>Admin</option>
+              <option value="kepalasekolah" ${normRole === 'kepalasekolah' || normRole === 'kepsek' ? 'selected' : ''}>Kepala Sekolah</option>
+            </select>
           </div>
 
           <div>
@@ -922,9 +921,11 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           return null;
         }
 
+        const roleVal = (document.getElementById('swal-role') as HTMLSelectElement)?.value || item.role || 'Guru';
         return {
           newUsername: usernameVal,
           newPassword: passwordVal || undefined,
+          newRole: roleVal,
           syncNipToDataGuru: syncNipVal
         };
       }
@@ -938,6 +939,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
         oldUsername: item.username,
         newUsername: formValues.newUsername,
         newPassword: formValues.newPassword,
+        newRole: formValues.newRole,
         syncNipToDataGuru: formValues.syncNipToDataGuru,
         sekolahId: item.sekolahId || user?.sekolah_id,
         newNama: item.nama

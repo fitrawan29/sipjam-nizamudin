@@ -106,7 +106,6 @@ export async function buildMapelChecklistHtml(sekolahId: string | undefined, gur
   if (!data?.length && sekolahId) data = getStorageCache('Data_Mapel', sekolahId);
   const isCrossSchool = (n: string) => (sekolahId === 'a0000000-0000-0000-0000-000000000001' && /^(X|XI|XII)\s+Merdeka\s+[A-Z]\b/i.test(n)) || (sekolahId === 'fd7f077e-5fc6-4f3b-b375-21c6be89b492' && /^(X|XI|XII)\s+Merdeka_/i.test(n));
   data = (data || []).filter((m: any) => (!sekolahId || !m?.sekolah_id || m.sekolah_id === sekolahId) && !isCrossSchool(String(m?.nama_mata_pelajaran || m?.nama_mapel || '').trim()));
-  const taken = new Set(guruList.filter(g => g.id !== selfId).flatMap(g => splitMapel(g.mata_pelajaran)).map(x => x.toLowerCase()));
   const mine = splitMapel(selected).filter(n => !isCrossSchool(n));
   const mineSet = new Set(mine.map(x => x.toLowerCase()));
   const names = new Map<string, string>();
@@ -115,8 +114,8 @@ export async function buildMapelChecklistHtml(sekolahId: string | undefined, gur
     if (n) names.set(n.toLowerCase(), n);
   }
   mine.forEach(n => { if (!names.has(n.toLowerCase())) names.set(n.toLowerCase(), n); });
-  const items = [...names.entries()].filter(([k]) => mineSet.has(k) || !taken.has(k));
-  if (items.length === 0) return '<div class="text-[11px] text-gray-500 italic p-2 border rounded">Tidak ada mata pelajaran tersedia. Semua mapel sudah dipilih guru lain atau Data Mapel masih kosong.</div>';
+  const items = [...names.entries()];
+  if (items.length === 0) return '<div class="text-[11px] text-gray-500 italic p-2 border rounded">Tidak ada mata pelajaran tersedia di Data Mapel.</div>';
   return `<div id="swal-mapel-list" class="max-h-44 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-1">${items.map(([k, n]) =>
     `<label class="flex items-center gap-2 text-xs cursor-pointer"><input type="checkbox" class="swal-mapel-cb" value="${escAttr(n)}" ${mineSet.has(k) ? 'checked' : ''}> <span>${escAttr(n)}</span></label>`).join('')}</div>`;
 }
@@ -431,6 +430,57 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         }
       } else if (data && data.length > 0) {
         let finalData = data;
+
+        if (currentTab === 'Data_Guru') {
+          try {
+            let gmQuery = supabase.from('guru_mapel').select('guru_id, nip, nama_guru, kelas');
+            let jpQuery = supabase.from('jadwal_pelajaran').select('nama_guru, user_id, kelas');
+            if (user?.sekolah_id) {
+              gmQuery = gmQuery.eq('sekolah_id', user.sekolah_id);
+              jpQuery = jpQuery.eq('sekolah_id', user.sekolah_id);
+            }
+            const [gmRes, jpRes] = await Promise.all([gmQuery, jpQuery]);
+            const gmList = gmRes.data || [];
+            const jpList = jpRes.data || [];
+
+            finalData = finalData.map((g: any) => {
+              const matchedClasses = new Set<string>();
+              const gName = (g.nama_guru || '').toLowerCase().trim();
+              const gNip = (g.nip || '').trim();
+
+              for (const gm of gmList) {
+                if (gm.kelas) {
+                  if ((g.id && gm.guru_id === g.id) || (gNip && gNip !== '-' && gm.nip === gNip) || (gName && (gm.nama_guru || '').toLowerCase().trim() === gName)) {
+                    gm.kelas.split(',').forEach((k: string) => {
+                      const trimmed = k.trim();
+                      if (trimmed) matchedClasses.add(trimmed);
+                    });
+                  }
+                }
+              }
+
+              for (const jp of jpList) {
+                if (jp.kelas) {
+                  if ((g.user_id && jp.user_id === g.user_id) || (gName && (jp.nama_guru || '').toLowerCase().trim() === gName)) {
+                    jp.kelas.split(',').forEach((k: string) => {
+                      const trimmed = k.trim();
+                      if (trimmed) matchedClasses.add(trimmed);
+                    });
+                  }
+                }
+              }
+
+              const kelasArr = Array.from(matchedClasses).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+              return {
+                ...g,
+                assignedKelas: kelasArr,
+                kelasDisplay: kelasArr.length > 0 ? kelasArr.join(', ') : '-'
+              };
+            });
+          } catch (e) {
+            console.warn('[AdminDataView] Error loading teacher assigned classes:', e);
+          }
+        }
 
         if (currentTab === 'Wali_Kelas' && configuredTahunAjaran) {
           const hasLegacyOrMissingTa = finalData.some((d: any) => !d.tahun_ajaran || (configuredTahunAjaran !== '2024/2025' && d.tahun_ajaran === '2024/2025'));
@@ -1991,10 +2041,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
       if (formValues) {
         setLoading(true);
-        const pkField = item.id ? 'id' : 'nip';
-        const pkVal = item[pkField];
-        let q = supabase.from('data_guru').update(formValues).eq(pkField, pkVal);
-        if (user?.sekolah_id) q = q.eq('sekolah_id', user.sekolah_id);
+        let q = item.id
+          ? supabase.from('data_guru').update(formValues).eq('id', item.id)
+          : supabase.from('data_guru').update(formValues).eq('nip', item.nip);
         let { error } = await q;
         // Schema cache resilience: if database lacks 'wajib_hadir_hanya_mengajar' column or PostgREST schema cache is stale
         if (error && (
@@ -2004,8 +2053,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         )) {
           console.warn('[AdminDataView] Schema cache missing wajib_hadir_hanya_mengajar column, retrying update without wajib_hadir_hanya_mengajar:', error.message);
           const { wajib_hadir_hanya_mengajar: _w, ...cleanPayload } = formValues;
-          let retryQ = supabase.from('data_guru').update(cleanPayload).eq(pkField, pkVal);
-          if (user?.sekolah_id) retryQ = retryQ.eq('sekolah_id', user.sekolah_id);
+          let retryQ = item.id
+            ? supabase.from('data_guru').update(cleanPayload).eq('id', item.id)
+            : supabase.from('data_guru').update(cleanPayload).eq('nip', item.nip);
           const retry = await retryQ;
           error = retry.error;
           if (!error && formValues.wajib_hadir_hanya_mengajar !== undefined) {
@@ -2020,6 +2070,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           setLoading(false);
           showToast('Gagal Mengubah Data', error.message, 'error');
         } else {
+          delete uploadedRowsCacheRef.current['Data_Guru'];
+          delete uploadedRowsCacheRef.current[activeTab];
+          setStorageCache('Data_Guru', user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001', []);
           if (formValues.wajib_hadir_hanya_mengajar !== undefined) {
             void syncTeacherExemptionToPengaturanFallback(
               item.sekolah_id || user?.sekolah_id,
@@ -2603,6 +2656,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
             <p><span className="font-semibold">NIP:</span> {item.nip || '-'}</p>
             <p><span className="font-semibold">Mapel:</span> {item.mata_pelajaran || '-'}</p>
+            <p><span className="font-semibold">Kelas:</span> {item.kelasDisplay || (Array.isArray(item.assignedKelas) && item.assignedKelas.length > 0 ? item.assignedKelas.join(', ') : (item.kelas || '-'))}</p>
             <p><span className="font-semibold">Kontak:</span> {item.no_hp || '-'}</p>
             {item.email && <p className="truncate"><span className="font-semibold">Email:</span> {item.email}</p>}
             <p className="mt-1.5 flex items-center gap-1">
@@ -2694,111 +2748,6 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
               <i className="fa-solid fa-database text-purple-500 dark:text-purple-400"></i> Master Data
             </h2>
-            
-            {/* PANDUAN ALUR PENGINPUTAN MASTER DATA (VISUAL WORKFLOW STEPPER) */}
-            <div className="clay-card p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-sm bg-[#FAF7F2]/90 dark:bg-gray-800/80 mb-4 overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-xs sm:text-sm font-bold shadow-sm shrink-0">
-                    <i className="fa-solid fa-diagram-project"></i>
-                  </div>
-                  <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                      <span>Panduan Alur Penginputan Master Data</span>
-                      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                        9 Tahap Terstruktur
-                      </span>
-                    </h3>
-                    <p className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">
-                      Urutan penginputan &amp; dependensi data master untuk menjamin integritas relasi antar-tabel.
-                    </p>
-                  </div>
-                </div>
-                <div className="text-[10px] text-gray-500 dark:text-gray-400 hidden lg:flex items-center gap-1.5 bg-white/70 dark:bg-gray-900/50 px-2.5 py-1 rounded-xl border border-gray-200/80 dark:border-gray-700">
-                  <i className="fa-solid fa-hand-pointer text-purple-500"></i>
-                  <span>Klik tahap untuk berpindah menu</span>
-                </div>
-              </div>
-
-              {/* Stepper Pipeline */}
-              {(() => {
-                const currentNormTab = normalizeAdminTab(activeTab);
-                const activeIndex = visibleTabs.findIndex(t => normalizeAdminTab(t.id) === currentNormTab);
-
-                return (
-                  <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto custom-scroll pb-1.5 pt-0.5 max-w-full">
-                    {visibleTabs.map((step, idx) => {
-                      const isActive = idx === activeIndex;
-                      const isPast = activeIndex !== -1 && idx < activeIndex;
-
-                      return (
-                        <div key={step.id} className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => handleSwitchTab(step.id)}
-                            className={`group relative flex items-center gap-2 px-3 py-1.5 sm:py-2 rounded-2xl text-left transition-all duration-200 shrink-0 border cursor-pointer ${
-                              isActive
-                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent shadow-md shadow-purple-500/25 ring-2 ring-purple-400/50 ring-offset-1 dark:ring-offset-gray-900'
-                                : isPast
-                                ? 'bg-white/90 dark:bg-gray-800/90 text-gray-700 dark:text-gray-200 border-purple-200/80 dark:border-purple-900/50 hover:bg-purple-50/60 dark:hover:bg-purple-900/30'
-                                : 'bg-white/70 dark:bg-gray-800/70 text-gray-600 dark:text-gray-400 border-gray-200/80 dark:border-gray-700/80 hover:bg-gray-50 dark:hover:bg-gray-700/40 hover:border-gray-300'
-                            }`}
-                            title={`Tahap ${step.step}: ${step.label} (${step.desc})`}
-                          >
-                            {/* Step Circle */}
-                            <div
-                              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] font-extrabold shrink-0 transition-colors ${
-                                isActive
-                                  ? 'bg-white text-purple-700 shadow-sm'
-                                  : isPast
-                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/60 dark:text-purple-300'
-                                  : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                              }`}
-                            >
-                              {isPast ? <i className="fa-solid fa-check text-[9px] sm:text-[10px]"></i> : step.step}
-                            </div>
-
-                            {/* Step Info */}
-                            <div className="flex flex-col pr-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <i className={`fa-solid ${step.icon} text-[11px] ${
-                                  isActive ? 'text-purple-100' : isPast ? 'text-purple-600 dark:text-purple-400' : 'text-gray-400 dark:text-gray-500 group-hover:text-purple-500'
-                                }}`}></i>
-                                <span className={`text-xs font-bold whitespace-nowrap ${
-                                  isActive ? 'text-white' : 'text-gray-800 dark:text-gray-200'
-                                }}`}>
-                                  {step.label}
-                                </span>
-                                {step.optional && (
-                                  <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-semibold ${
-                                    isActive
-                                      ? 'bg-white/20 text-white'
-                                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                                  }`}>
-                                    Opsional
-                                  </span>
-                                )}
-                              </div>
-                              <span className={`text-[9px] sm:text-[10px] whitespace-nowrap ${
-                                isActive ? 'text-purple-100' : 'text-gray-400 dark:text-gray-500'
-                              }`}>
-                                {step.desc}
-                              </span>
-                            </div>
-                          </button>
-
-                          {/* Connecting Chevron between steps */}
-                          {idx < visibleTabs.length - 1 && (
-                            <i className="fa-solid fa-chevron-right text-[9px] text-gray-300 dark:text-gray-600 shrink-0"></i>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-
             {/* TABS */}
             <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1 max-w-full">
                 {visibleTabs.map(tab => {

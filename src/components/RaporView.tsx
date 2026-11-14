@@ -180,14 +180,25 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
         if (sekolahId) wq = wq.eq('sekolah_id', sekolahId);
         const { data: wData } = await wq;
 
+        let dkData: any[] = [];
+        try {
+          let dkq = supabase.from('data_kelas').select('nama_kelas, kelas');
+          if (sekolahId) dkq = dkq.eq('sekolah_id', sekolahId);
+          const { data: dkd, error: dkErr } = await dkq;
+          if (dkd && !dkErr) {
+            dkData = dkd;
+          }
+        } catch (_) {}
+
         const allClasses = [
           ...(data || []).map((d: any) => d.kelas),
-          ...(wData || []).map((w: any) => w.kelas)
+          ...(wData || []).map((w: any) => w.kelas),
+          ...dkData.map((k: any) => k.nama_kelas || k.kelas)
         ].filter(Boolean);
 
         if (allClasses.length > 0) {
           const unique = Array.from(new Set(allClasses)) as string[];
-          unique.sort();
+          unique.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
           setKelasList(unique);
           if (!selectedKelas && unique.length > 0) {
             setSelectedKelas(assignedKelas || unique[0]);
@@ -578,51 +589,60 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
       }
       setAttendanceMap(attRecord);
 
-      // 3. Fetch Active Subjects (guru_mapel & data_mapel) for this class
-      let gmQuery = supabase
-        .from('guru_mapel')
-        .select('nama_mapel')
-        .eq('kelas', selectedKelas);
-      if (sekolahId) gmQuery = gmQuery.eq('sekolah_id', sekolahId);
-      const { data: gmData } = await gmQuery;
+      // 3. Fetch Active Subjects (guru_mapel, jadwal_pelajaran & data_mapel) for this class
+      const activeMapelSet = new Set<string>();
 
-      let mapels = Array.from(
-        new Set((gmData || []).map((g: any) => g.nama_mapel).filter(Boolean))
-      ) as string[];
+      try {
+        let gmQuery = supabase
+          .from('guru_mapel')
+          .select('nama_mapel')
+          .eq('kelas', selectedKelas);
+        if (sekolahId) gmQuery = gmQuery.eq('sekolah_id', sekolahId);
+        const { data: gmData } = await gmQuery;
+        (gmData || []).forEach((g: any) => {
+          if (g.nama_mapel) activeMapelSet.add(g.nama_mapel);
+        });
+      } catch {
+        // ignore
+      }
 
-      if (mapels.length === 0) {
+      try {
+        let jpQuery = supabase.from('jadwal_pelajaran').select('mata_pelajaran').eq('kelas', selectedKelas);
+        if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
+        const { data: jpData } = await jpQuery;
+        if (jpData && jpData.length > 0) {
+          jpData.forEach((j: any) => {
+            if (j.mata_pelajaran) activeMapelSet.add(j.mata_pelajaran);
+          });
+        }
+      } catch {
+        // ignore
+      }
+
+      if (activeMapelSet.size === 0) {
         try {
-          let jpQuery = supabase.from('jadwal_pelajaran').select('mata_pelajaran').eq('kelas', selectedKelas);
-          if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
-          const { data: jpData } = await jpQuery;
-          if (jpData && jpData.length > 0) {
-            mapels = Array.from(new Set(jpData.map((j: any) => j.mata_pelajaran).filter(Boolean))) as string[];
+          let dmQuery = supabase.from('data_mapel').select('*');
+          if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
+          const { data: dmData } = await dmQuery;
+          if (dmData && dmData.length > 0) {
+            const filtered = dmData.filter((d: any) => {
+              const kat = (d.kategori || d.kelompok || '').toLowerCase().trim();
+              const sk = (selectedKelas || '').toLowerCase().trim();
+              if (!kat) return true;
+              return kat === sk || sk.startsWith(kat) || kat.startsWith(sk);
+            });
+            const source = filtered.length > 0 ? filtered : dmData;
+            source.forEach((d: any) => {
+              const name = d.nama_mata_pelajaran || d.nama_mapel;
+              if (name) activeMapelSet.add(name);
+            });
           }
         } catch {
           // ignore
         }
       }
 
-      if (mapels.length === 0) {
-        let dmQuery = supabase.from('data_mapel').select('*');
-        if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
-        const { data: dmData } = await dmQuery;
-        if (dmData && dmData.length > 0) {
-          const filtered = dmData.filter((d: any) => {
-            const kat = (d.kategori || d.kelompok || '').toLowerCase().trim();
-            const sk = (selectedKelas || '').toLowerCase().trim();
-            if (!kat) return true;
-            return kat === sk || sk.startsWith(kat) || kat.startsWith(sk);
-          });
-          const source = filtered.length > 0 ? filtered : dmData;
-          mapels = Array.from(
-            new Set(source.map((d: any) => d.nama_mata_pelajaran || d.nama_mapel).filter(Boolean))
-          ) as string[];
-        }
-      }
-
-      // Ensure all candidate subjects from any source exclude invalid / non-existent subjects
-      mapels = mapels.filter((m: string) => !isInvalidMapel(m));
+      let mapels = Array.from(activeMapelSet).filter((m: string) => !isInvalidMapel(m));
 
       // 4. Fetch Capaian Pembelajaran (capaian_pembelajaran)
       let cpQuery = supabase

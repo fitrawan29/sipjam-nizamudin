@@ -204,11 +204,14 @@ export function isTeacherMatch(
 
 export function isAssignmentMatchTeacher(
   assignment: { guru_id?: string | null; user_id?: string | null; nama_guru?: string | null; nip?: string | null },
-  teacher: { id?: string | null; nama_guru?: string | null; nip?: string | null }
+  teacher: { id?: string | null; user_id?: string | null; nama_guru?: string | null; nip?: string | null }
 ): boolean {
   if (!assignment || !teacher) return false;
   const aId = assignment.guru_id || assignment.user_id;
-  if (aId && teacher.id && String(aId) === String(teacher.id)) return true;
+  if (aId) {
+    if (teacher.id && String(aId) === String(teacher.id)) return true;
+    if (teacher.user_id && String(aId) === String(teacher.user_id)) return true;
+  }
 
   if (assignment.nip && teacher.nip) {
     const aNip = String(assignment.nip).replace(/['\s]/g, '').trim();
@@ -420,14 +423,18 @@ export default function GradebookView({
     if (matched.length === 0) {
       const rawMapel = (currentTeacher as any).mata_pelajaran;
       if (rawMapel && !isInvalidMapel(rawMapel)) {
-        matched = [{
-          id: 'fallback',
+        const tokens = String(rawMapel)
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => s && !isInvalidMapel(s));
+        matched = tokens.map((token, idx) => ({
+          id: `fallback-${idx}`,
           guru_id: currentTeacher.id,
           nama_guru: currentTeacher.nama_guru,
           nip: currentTeacher.nip || '',
-          nama_mapel: rawMapel,
+          nama_mapel: token,
           kelas: ''
-        }];
+        }));
       } else if (isAdmin && fallbackMapels.length > 0) {
         matched = fallbackMapels.map(m => ({
           id: m.id,
@@ -978,7 +985,7 @@ export default function GradebookView({
     const fetchMasterAssignments = async () => {
       setIsLoadingMaster(true);
       try {
-        let teachers: { id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[] = [];
+        let teachers: { id?: string; user_id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[] = [];
         let assignments: typeof allTeacherAssignments = [];
         let masterMapels: { id?: string; nama_mapel: string }[] = [];
         let masterClasses: string[] = [];
@@ -987,12 +994,13 @@ export default function GradebookView({
         if (canSelectAllTeachers) {
           let gQuery = supabase
             .from('data_guru')
-            .select('id, nama_guru, nip, mata_pelajaran');
+            .select('id, user_id, nama_guru, nip, mata_pelajaran');
           if (sekolahId) gQuery = gQuery.eq('sekolah_id', sekolahId);
           const { data: gData } = await gQuery.order('nama_guru', { ascending: true });
           if (gData && gData.length > 0) {
             teachers = gData.map(g => ({
               id: g.id,
+              user_id: g.user_id,
               nama_guru: g.nama_guru || 'Tanpa Nama',
               nip: g.nip || '',
               mata_pelajaran: g.mata_pelajaran || '',
@@ -1001,6 +1009,7 @@ export default function GradebookView({
         } else {
           teachers = [{
             id: user?.id,
+            user_id: user?.id,
             nama_guru: user?.nama || 'Tanpa Nama',
             nip: user?.username || '',
             mata_pelajaran: user?.mata_pelajaran || '',
@@ -1044,9 +1053,30 @@ export default function GradebookView({
         let sQuery = supabase.from('data_siswa').select('kelas');
         if (sekolahId) sQuery = sQuery.eq('sekolah_id', sekolahId);
         const { data: sData } = await sQuery;
-        if (sData) {
-          masterClasses = Array.from(new Set(sData.map(s => s.kelas).filter(Boolean))) as string[];
-          masterClasses.sort();
+
+        let wQuery = supabase.from('wali_kelas').select('kelas');
+        if (sekolahId) wQuery = wQuery.eq('sekolah_id', sekolahId);
+        const { data: wData } = await wQuery;
+
+        let dkData: any[] = [];
+        try {
+          let dkQuery = supabase.from('data_kelas').select('nama_kelas, kelas');
+          if (sekolahId) dkQuery = dkQuery.eq('sekolah_id', sekolahId);
+          const dkRes = await dkQuery;
+          if (dkRes.data && !dkRes.error) {
+            dkData = dkRes.data;
+          }
+        } catch (_) {}
+
+        const combinedClassList = [
+          ...(sData || []).map((s: any) => s.kelas),
+          ...(wData || []).map((w: any) => w.kelas),
+          ...dkData.map((k: any) => k.nama_kelas || k.kelas)
+        ].filter(Boolean);
+
+        if (combinedClassList.length > 0) {
+          masterClasses = Array.from(new Set(combinedClassList)) as string[];
+          masterClasses.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
           setMasterClassesList(masterClasses);
         }
 
