@@ -154,7 +154,7 @@ export default function RekapJurnalView({
       username: teacherNip,
     };
     const matched = (allTeachersList || []).find((t: any) =>
-      isTeacherRecordMatch(queryObj, t, teacherUserId && user?.id === teacherUserId ? user : null)
+      isTeacherRecordMatch(queryObj, t, teacherUserId && user?.id === teacherUserId ? user : null, { allowSingleWordFirstToken: true })
     );
 
     if (matched) {
@@ -164,6 +164,7 @@ export default function RekapJurnalView({
         weeklySchedules: allWeeklySchedules,
         aturanGlobal: aturanKehadiranGlobal,
         guruHanyaMengajarList: legacyGhmList,
+        preferLegacyListWhenGlobalKbm: aturanKehadiranGlobal === 'Hari_Mengajar_Saja',
       }).isTeacherExempt;
     }
 
@@ -179,6 +180,7 @@ export default function RekapJurnalView({
       weeklySchedules: allWeeklySchedules,
       aturanGlobal: aturanKehadiranGlobal,
       guruHanyaMengajarList: legacyGhmList,
+      preferLegacyListWhenGlobalKbm: aturanKehadiranGlobal === 'Hari_Mengajar_Saja',
     }).isTeacherExempt;
   }, [allTeachersList, allWeeklySchedules, legacyGhmList, aturanKehadiranGlobal, user]);
 
@@ -229,7 +231,7 @@ export default function RekapJurnalView({
         try {
           let dgAllQuery = supabase.from('data_guru').select('*');
           let jdwlAllQuery = supabase.from('jadwal_pelajaran').select('*');
-          let cfgQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
+          let cfgQ = supabase.from('pengaturan').select('*');
           let lokHistQ = supabase
             .from('jurnal_pembelajaran')
             .select('id, user_id, nama_guru, kelas, mapel, lokasi_kbm, lokasi, tanggal, timestamp')
@@ -394,6 +396,7 @@ export default function RekapJurnalView({
 
   // Auto-fetch on mount for current month and re-sync once master policy/schedules finish loading
   useEffect(() => {
+    if (!isMasterReady) return;
     tarikRekap();
   }, [isMasterReady]);
 
@@ -671,7 +674,7 @@ export default function RekapJurnalView({
             continue;
           }
 
-          const daySchedules = (allSchedules || []).filter(s => s.hari === dayName);
+          const daySchedules = (allSchedules || []).filter(s => String(s.hari || '').trim().toLowerCase() === dayName.toLowerCase());
           let teacherSchedulesToday: any[] = [];
 
           if (activeMode === 'pribadi' && user?.nama) {
