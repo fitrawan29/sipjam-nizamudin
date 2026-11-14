@@ -839,15 +839,73 @@ CREATE TRIGGER trg_sync_jurnal_pembelajaran_kegiatan
 BEFORE INSERT OR UPDATE ON public.jurnal_pembelajaran
 FOR EACH ROW EXECUTE FUNCTION public.sync_jurnal_pembelajaran_kegiatan();
 
+CREATE OR REPLACE FUNCTION public.is_valid_lokasi_kbm_text(val TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+    t TEXT;
+BEGIN
+    IF val IS NULL THEN
+        RETURN FALSE;
+    END IF;
+    t := btrim(val);
+    IF t = '' OR t = '-' OR t = '--' THEN
+        RETURN FALSE;
+    END IF;
+    IF t ~* '^lokasi\s+tidak\s+terdeteksi$' THEN
+        RETURN FALSE;
+    END IF;
+    IF t ~* '^gps\s*:' THEN
+        RETURN FALSE;
+    END IF;
+    IF t ~ '^-?[0-9]+(\.[0-9]+)?\s*,\s*-?[0-9]+(\.[0-9]+)?$' THEN
+        RETURN FALSE;
+    END IF;
+    RETURN TRUE;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.sync_jurnal_pembelajaran_lokasi()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_prev_lokasi TEXT;
 BEGIN
-    IF (NEW.lokasi_kbm IS NOT NULL AND trim(NEW.lokasi_kbm) <> '' AND trim(NEW.lokasi_kbm) <> '-')
-       AND (NEW.lokasi IS NULL OR trim(NEW.lokasi) = '' OR trim(NEW.lokasi) = '-') THEN
-        NEW.lokasi := NEW.lokasi_kbm;
-    ELSIF (NEW.lokasi IS NOT NULL AND trim(NEW.lokasi) <> '' AND trim(NEW.lokasi) <> '-')
-       AND (NEW.lokasi_kbm IS NULL OR trim(NEW.lokasi_kbm) = '' OR trim(NEW.lokasi_kbm) = '-') THEN
+    IF NOT public.is_valid_lokasi_kbm_text(NEW.lokasi_kbm) AND public.is_valid_lokasi_kbm_text(NEW.lokasi) THEN
+        NEW.lokasi_kbm := btrim(NEW.lokasi);
+    END IF;
+
+    IF NOT public.is_valid_lokasi_kbm_text(NEW.lokasi_kbm)
+       AND COALESCE(btrim(NEW.kelas), '') <> ''
+       AND btrim(NEW.kelas) <> '-' THEN
+        SELECT btrim(h.lokasi_kbm)
+        INTO v_prev_lokasi
+        FROM public.jurnal_pembelajaran h
+        WHERE (NEW.id IS NULL OR h.id <> NEW.id)
+          AND public.is_valid_lokasi_kbm_text(h.lokasi_kbm)
+          AND (
+              (NEW.user_id IS NOT NULL AND h.user_id = NEW.user_id)
+              OR (
+                  COALESCE(btrim(NEW.nama_guru), '') <> ''
+                  AND lower(split_part(btrim(COALESCE(h.nama_guru, '')), ',', 1)) = lower(split_part(btrim(COALESCE(NEW.nama_guru, '')), ',', 1))
+              )
+          )
+        ORDER BY
+            CASE WHEN lower(btrim(COALESCE(h.kelas, ''))) = lower(btrim(COALESCE(NEW.kelas, ''))) THEN 0 ELSE 1 END,
+            h.tanggal DESC NULLS LAST,
+            h.timestamp DESC NULLS LAST
+        LIMIT 1;
+
+        IF v_prev_lokasi IS NOT NULL THEN
+            NEW.lokasi_kbm := v_prev_lokasi;
+        END IF;
+    END IF;
+
+    IF (NEW.lokasi_kbm IS NULL OR btrim(NEW.lokasi_kbm) = '') AND NEW.lokasi IS NOT NULL AND btrim(NEW.lokasi) <> '' THEN
         NEW.lokasi_kbm := NEW.lokasi;
+    ELSIF (NEW.lokasi IS NULL OR btrim(NEW.lokasi) = '' OR btrim(NEW.lokasi) = '-') AND NEW.lokasi_kbm IS NOT NULL AND btrim(NEW.lokasi_kbm) <> '' THEN
+        NEW.lokasi := NEW.lokasi_kbm;
     END IF;
     RETURN NEW;
 END;

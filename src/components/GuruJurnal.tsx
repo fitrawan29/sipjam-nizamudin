@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance, hasJournalContent } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance, hasJournalContent, isValidLokasiKbm, resolveTeacherLokasiKbm } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
@@ -1130,9 +1130,9 @@ export default function GuruJurnal({
                 : '');
             if (savedKegiatan) setKegiatan(prev => prev || savedKegiatan);
 
-            const savedLokasi = (matchingSession.lokasi_kbm && matchingSession.lokasi_kbm !== '-')
+            const savedLokasi = isValidLokasiKbm(matchingSession.lokasi_kbm)
               ? matchingSession.lokasi_kbm
-              : ((matchingSession.lokasi && matchingSession.lokasi !== '-') ? matchingSession.lokasi : '');
+              : (isValidLokasiKbm(matchingSession.lokasi) ? matchingSession.lokasi : '');
             if (savedLokasi) setLokasiKbm(prev => prev || savedLokasi);
 
             const savedRefleksi = (matchingSession.catatan_refleksi && matchingSession.catatan_refleksi !== '-')
@@ -1146,6 +1146,36 @@ export default function GuruJurnal({
             if (savedPhoto) {
               setPhotoPreviewUrl(prev => prev || savedPhoto);
             }
+          }
+
+          // Prefill lokasiKbm from teacher's previously filled KBM location if still empty
+          if (!matchingSession || (!isValidLokasiKbm(matchingSession.lokasi_kbm) && !isValidLokasiKbm(matchingSession.lokasi))) {
+            try {
+              let histLokQ = supabase
+                .from('jurnal_pembelajaran')
+                .select('id, user_id, nama_guru, kelas, mapel, lokasi_kbm, lokasi, tanggal, timestamp')
+                .order('tanggal', { ascending: false })
+                .limit(50);
+              if (user?.sekolah_id) histLokQ = histLokQ.eq('sekolah_id', user.sekolah_id);
+              if (targetSearchUserId && searchEffectiveName) {
+                histLokQ = histLokQ.or(`user_id.eq.${targetSearchUserId},nama_guru.ilike."%${searchEffectiveName}%"`);
+              } else if (targetSearchUserId) {
+                histLokQ = histLokQ.eq('user_id', targetSearchUserId);
+              } else if (searchEffectiveName) {
+                histLokQ = histLokQ.ilike('nama_guru', `%${searchEffectiveName}%`);
+              }
+              const { data: histLokRows } = await histLokQ;
+              if (histLokRows && histLokRows.length > 0) {
+                const resolvedPrevLok = resolveTeacherLokasiKbm(
+                  { user_id: targetSearchUserId, nama_guru: targetSearchName, kelas, mapel },
+                  histLokRows,
+                  user
+                );
+                if (resolvedPrevLok && resolvedPrevLok !== '-') {
+                  setLokasiKbm(prev => prev || resolvedPrevLok);
+                }
+              }
+            } catch (_) {}
           }
 
           setAbsensi((prevAbsensi) => {

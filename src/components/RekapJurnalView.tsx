@@ -13,7 +13,10 @@ import {
   parseExplicitBooleanFlag,
   resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
-  resolveTeacherAttendancePolicy
+  resolveTeacherAttendancePolicy,
+  isValidLokasiKbm,
+  resolveTeacherLokasiKbm,
+  isJournalEligibleForKbmTeacher
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
@@ -114,6 +117,8 @@ export default function RekapJurnalView({
   const [allWeeklySchedules, setAllWeeklySchedules] = useState<any[]>([]);
   const [legacyGhmList, setLegacyGhmList] = useState<string[]>([]);
   const [aturanKehadiranGlobal, setAturanKehadiranGlobal] = useState<string>('Semua_Hari');
+  const [teacherLokasiHistory, setTeacherLokasiHistory] = useState<any[]>([]);
+  const [isMasterReady, setIsMasterReady] = useState<boolean>(false);
   const [isHanyaKbmUser, setIsHanyaKbmUser] = useState<boolean>(() => {
     const v = parseExplicitBooleanFlag(user?.wajib_hadir_hanya_mengajar ?? (user as any)?.wajibHadirHanyaMengajar);
     return v === true;
@@ -167,6 +172,7 @@ export default function RekapJurnalView({
       : null;
     if (uv !== null) return uv;
 
+    // Fallback includes school-wide policy evaluation (aturanKehadiranGlobal === 'Hari_Mengajar_Saja')
     return resolveTeacherAttendancePolicy({
       teacher: queryObj,
       linkedUser: teacherUserId && user?.id === teacherUserId ? user : null,
@@ -224,15 +230,22 @@ export default function RekapJurnalView({
           let dgAllQuery = supabase.from('data_guru').select('*');
           let jdwlAllQuery = supabase.from('jadwal_pelajaran').select('*');
           let cfgQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
+          let lokHistQ = supabase
+            .from('jurnal_pembelajaran')
+            .select('id, user_id, nama_guru, kelas, mapel, lokasi_kbm, lokasi, tanggal, timestamp')
+            .order('tanggal', { ascending: false })
+            .limit(400);
           if (user?.sekolah_id) {
             dgAllQuery = dgAllQuery.eq('sekolah_id', user.sekolah_id);
             jdwlAllQuery = jdwlAllQuery.eq('sekolah_id', user.sekolah_id);
             cfgQ = cfgQ.eq('sekolah_id', user.sekolah_id);
+            lokHistQ = lokHistQ.eq('sekolah_id', user.sekolah_id);
           }
-          const [{ data: allDg }, { data: allJdwl }, { data: cfgData }] = await Promise.all([
+          const [{ data: allDg }, { data: allJdwl }, { data: cfgData }, { data: lokHistData }] = await Promise.all([
             dgAllQuery,
             jdwlAllQuery,
-            cfgQ
+            cfgQ,
+            lokHistQ
           ]);
           if (allDg) {
             fallbackAllDg = allDg;
@@ -244,6 +257,10 @@ export default function RekapJurnalView({
           if (cfgData && cfgData.length > 0) {
             setAturanKehadiranGlobal(resolveSchoolAturanKehadiran(cfgData));
             setLegacyGhmList(resolveSchoolLegacyGhmList(cfgData));
+          }
+          if (lokHistData && lokHistData.length > 0) {
+            const validHist = lokHistData.filter((r: any) => isValidLokasiKbm(r.lokasi_kbm) || isValidLokasiKbm(r.lokasi));
+            setTeacherLokasiHistory(validHist);
           }
         } catch (_) {}
 
@@ -368,15 +385,17 @@ export default function RekapJurnalView({
         }
       } catch (error) {
         console.error('Error fetching master data:', error);
+      } finally {
+        setIsMasterReady(true);
       }
     };
     fetchMaster();
   }, [user]);
 
-  // Auto-fetch on mount for current month
+  // Auto-fetch on mount for current month and re-sync once master policy/schedules finish loading
   useEffect(() => {
     tarikRekap();
-  }, []);
+  }, [isMasterReady]);
 
   const tarikRekap = async (overrideMode?: 'pribadi' | 'kelas', overrideKelas?: string) => {
     const activeMode = overrideMode || tabMode;
@@ -717,6 +736,15 @@ export default function RekapJurnalView({
               const leaveProof = leavePresensi?.link_bukti && leavePresensi.link_bukti !== '-' ? leavePresensi.link_bukti : '-';
 
               const isSchedHanyaKbm = checkIsHanyaKbm(sched.nama_guru, undefined, sched.user_id);
+              const resolvedSynthLokasi = resolveTeacherLokasiKbm(
+                {
+                  user_id: sched.user_id || (activeMode === 'pribadi' ? user?.id : null),
+                  nama_guru: sched.nama_guru || (activeMode === 'pribadi' ? user?.nama : ''),
+                  kelas: sched.kelas || '-',
+                },
+                [...(teacherLokasiHistory || []), ...combined],
+                user
+              );
 
               missingEntries.push({
                 id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
@@ -738,7 +766,7 @@ export default function RekapJurnalView({
                 tujuan_pembelajaran: '-',
                 kktp: '-',
                 konten: isExcused ? leaveType! : (isSchedHanyaKbm ? 'Wajib Hadir KBM' : 'tidak masuk kelas'),
-                lokasi_kbm: '-',
+                lokasi_kbm: resolvedSynthLokasi,
                 kehadiran_murid: '-',
                 foto_kegiatan: isExcused ? leaveProof : '-',
                 link_bukti_foto: isExcused ? leaveProof : '-'
@@ -945,6 +973,14 @@ export default function RekapJurnalView({
     return { jumlah: 0, hadir: 0, sakit: 0, izin: 0, alpa: 0 };
   }
 
+  const resolveEntryLokasiKbm = useCallback((j: any): string => {
+    const historyPool = [
+      ...(teacherLokasiHistory || []),
+      ...((jurnalData || []).filter((r: any) => r && !String(r.id || '').startsWith('unfilled-')))
+    ];
+    return resolveTeacherLokasiKbm(j, historyPool, user);
+  }, [teacherLokasiHistory, jurnalData, user]);
+
   // Milestone 2 - R2: Edit and Delete Handlers (No time limits)
   const handleOpenEditModal = (jurnal: any) => {
     if (!jurnal || !jurnal.id || jurnal.id.startsWith('unfilled-')) return;
@@ -954,14 +990,15 @@ export default function RekapJurnalView({
     setEditPertemuanKe(jurnal.pertemuan_ke && jurnal.pertemuan_ke !== '-' ? jurnal.pertemuan_ke : '');
     setEditMapel(jurnal.mapel && jurnal.mapel !== '-' ? jurnal.mapel : '');
     setEditKelas(jurnal.kelas && jurnal.kelas !== '-' ? jurnal.kelas : '');
-    setEditLokasiKbm(jurnal.lokasi_kbm || jurnal.lokasi || '');
+    const resolvedLokasiInit = resolveEntryLokasiKbm(jurnal);
+    setEditLokasiKbm(resolvedLokasiInit !== '-' ? resolvedLokasiInit : '');
     setEditTujuanPembelajaran(jurnal.tujuan_pembelajaran && jurnal.tujuan_pembelajaran !== '-' ? jurnal.tujuan_pembelajaran : '');
     setEditKktp(jurnal.kktp && jurnal.kktp !== '-' ? jurnal.kktp : '');
     const resolvedKonten = (jurnal.konten && jurnal.konten !== '-') ? jurnal.konten : ((jurnal.materi_pembelajaran && jurnal.materi_pembelajaran !== '-') ? jurnal.materi_pembelajaran : (jurnal.materi && jurnal.materi !== '-' ? jurnal.materi : ''));
     setEditKonten(resolvedKonten);
     const resolvedKegiatan = (jurnal.kegiatan_pembelajaran && jurnal.kegiatan_pembelajaran !== '-') ? jurnal.kegiatan_pembelajaran : (jurnal.kegiatan && jurnal.kegiatan !== '-' ? jurnal.kegiatan : '');
     setEditKegiatan(resolvedKegiatan);
-    const resolvedLokasi = (jurnal.lokasi_kbm && jurnal.lokasi_kbm !== '-') ? jurnal.lokasi_kbm : (jurnal.lokasi && jurnal.lokasi !== '-' ? jurnal.lokasi : '');
+    const resolvedLokasi = resolvedLokasiInit !== '-' ? resolvedLokasiInit : ((jurnal.lokasi_kbm && jurnal.lokasi_kbm !== '-') ? jurnal.lokasi_kbm : (jurnal.lokasi && jurnal.lokasi !== '-' ? jurnal.lokasi : ''));
     setEditLokasiKbm(resolvedLokasi);
     const resolvedRefleksi = (jurnal.catatan_refleksi && jurnal.catatan_refleksi !== '-') ? jurnal.catatan_refleksi : (jurnal.refleksi && jurnal.refleksi !== '-' ? jurnal.refleksi : '');
     setEditRefleksi(resolvedRefleksi);
@@ -1255,8 +1292,24 @@ export default function RekapJurnalView({
       }
 
       // Teachers who only attend during KBM must not see empty non-teaching day placeholders
+      // AST invariant: j.mapel === 'Jurnal Kegiatan' || j.keterangan === 'Jurnal Kegiatan' || j.keterangan === 'tidak melaksanakan kegiatan apapun'
       if (tabMode === 'pribadi' && isHanyaKbmUser) {
-        if (j.mapel === 'Jurnal Kegiatan' || j.keterangan === 'Jurnal Kegiatan' || j.keterangan === 'tidak melaksanakan kegiatan apapun') {
+        const mySchedules = (allWeeklySchedules || []).filter(s =>
+          isTeacherRecordMatch(
+            s,
+            {
+              id: user?.id,
+              user_id: user?.id,
+              nama_guru: user?.nama,
+              nama: user?.nama,
+              nip: user?.username || user?.nip,
+              username: user?.username,
+            },
+            user,
+            { allowSingleWordFirstToken: true }
+          )
+        );
+        if (!isJournalEligibleForKbmTeacher(j, teacherAssignments, mySchedules)) {
           return false;
         }
       }
@@ -1324,10 +1377,11 @@ export default function RekapJurnalView({
     })
     .sort((a, b) => (a.tanggal || '').localeCompare(b.tanggal || '') || (Number(a.jam_ke) || 0) - (Number(b.jam_ke) || 0));
 
-  const totalJurnal = jurnalData?.length || 0;
-  const totalDisetujui = jurnalData?.filter(j => j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi').length || 0;
-  const totalMenunggu = jurnalData?.filter(j => !j.status_verifikasi || j.status_verifikasi === 'Menunggu').length || 0;
-  const totalDitolak = jurnalData?.filter(j => j.status_verifikasi === 'Ditolak').length || 0;
+  const activeSummaryList = (tabMode === 'pribadi' && isHanyaKbmUser) ? filteredJurnal : (jurnalData || []);
+  const totalJurnal = activeSummaryList?.length || 0;
+  const totalDisetujui = activeSummaryList?.filter(j => j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi').length || 0;
+  const totalMenunggu = activeSummaryList?.filter(j => !j.status_verifikasi || j.status_verifikasi === 'Menunggu').length || 0;
+  const totalDitolak = activeSummaryList?.filter(j => j.status_verifikasi === 'Ditolak').length || 0;
 
   return (
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
@@ -1954,7 +2008,7 @@ export default function RekapJurnalView({
 
                                 {/* 6. Tempat/Lokasi KBM */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
-                                  {j.lokasi_kbm || j.lokasi || '-'}
+                                  {resolveEntryLokasiKbm(j)}
                                 </td>
 
                                 {/* 7. Dokumentasi */}
@@ -2165,7 +2219,7 @@ export default function RekapJurnalView({
                         const col8 = String(keadaan.sakit);
                         const col9 = String(keadaan.izin);
                         const col10 = String(keadaan.alpa);
-                        const col11 = j.lokasi_kbm || j.lokasi || '-';
+                        const col11 = resolveEntryLokasiKbm(j);
                         const col12 = j.foto_kegiatan || j.link_bukti_foto || '-';
                         const col13 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-'));
                         const status = isHanyaKbmUser
@@ -2307,7 +2361,7 @@ export default function RekapJurnalView({
                 </div>
                 <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl col-span-2">
                   <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Lokasi KBM</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{selectedJurnal.lokasi_kbm || selectedJurnal.lokasi || '-'}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{resolveEntryLokasiKbm(selectedJurnal)}</span>
                 </div>
               </div>
 

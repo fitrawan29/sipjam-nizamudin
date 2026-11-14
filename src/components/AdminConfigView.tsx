@@ -15,7 +15,8 @@ import {
   resolveLinkedUserForTeacher,
   resolveSchoolAturanKehadiran,
   resolveSchoolLegacyGhmList,
-  resolveTeacherAttendancePolicy
+  resolveTeacherAttendancePolicy,
+  getTeacherScheduleSummary
 } from '@/lib/workflow';
 
 export interface AdminConfigViewProps {
@@ -104,9 +105,7 @@ export default function AdminConfigView({
   const getTeacherKbmCount = (t: any, schedules: any[] = jadwalList, uList: any[] = usersList): number => {
     if (isTuStaff(t)) return 0;
     const linkedUser = resolveLinkedUserForTeacher(t, uList);
-    return (schedules || []).filter(j =>
-      isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true })
-    ).length;
+    return getTeacherScheduleSummary(t, schedules || [], linkedUser).totalJadwal;
   };
 
   const [loading, setLoading] = useState(false);
@@ -342,6 +341,17 @@ export default function AdminConfigView({
       setConfig(prev => ({ ...prev, kota_kabupaten: value, kota_ttd: value }));
     } else if (name === 'kota_ttd') {
       setConfig(prev => ({ ...prev, kota_ttd: value, kota_kabupaten: value }));
+    } else if (name === 'aturan_kehadiran_guru') {
+      setConfig(prev => ({ ...prev, aturan_kehadiran_guru: value }));
+      if (value === 'Hari_Mengajar_Saja') {
+        const eligibleIds = guruList
+          .filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0)
+          .map(g => g.id)
+          .filter(Boolean);
+        setExemptTeacherIds(eligibleIds);
+      } else if (value === 'Semua_Hari') {
+        setExemptTeacherIds([]);
+      }
     } else {
       setConfig(prev => ({ ...prev, [name]: value }));
     }
@@ -838,25 +848,56 @@ export default function AdminConfigView({
                       </p>
                     </div>
 
-                    {/* Panduan Kebijakan Kehadiran Guru & Staf TU */}
+                    {/* Panduan & Kartu Pilihan Mode Kebijakan Kehadiran Guru & Staf TU */}
                     <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/60">
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-emerald-900 dark:text-emerald-300 mb-1">
-                          <i className="fa-solid fa-graduation-cap text-emerald-600 dark:text-emerald-400"></i>
-                          Guru Hadir Sesuai KBM (Hari_Mengajar_Saja)
+                      <div
+                        onClick={() => {
+                          setConfig(prev => ({ ...prev, aturan_kehadiran_guru: 'Hari_Mengajar_Saja' }));
+                          const eligibleTeachers = guruList.filter(g => !isTuStaff(g) && getTeacherKbmCount(g, jadwalList) > 0);
+                          setExemptTeacherIds(eligibleTeachers.map(g => g.id).filter(Boolean));
+                        }}
+                        className={`p-3 rounded-xl border transition cursor-pointer ${
+                          config.aturan_kehadiran_guru === 'Hari_Mengajar_Saja'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-400 dark:border-emerald-600 ring-1 ring-emerald-400/50'
+                            : 'bg-emerald-50/60 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/60 hover:border-emerald-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1.5 font-bold text-xs text-emerald-900 dark:text-emerald-300 mb-1">
+                          <span className="flex items-center gap-1.5">
+                            <i className="fa-solid fa-graduation-cap text-emerald-600 dark:text-emerald-400"></i>
+                            Guru Hadir Sesuai KBM (Hari_Mengajar_Saja)
+                          </span>
+                          {config.aturan_kehadiran_guru === 'Hari_Mengajar_Saja' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-emerald-600 text-white">Mode Aktif</span>
+                          )}
                         </div>
                         <p className="text-[11px] text-emerald-800 dark:text-emerald-400/90 leading-relaxed">
-                          Hanya wajib hadir di hari mengajar atau ada tugas piket. Di hari tanpa KBM/piket bebas kehadiran (tidak dihitung Alpa). Opsi ini <em>hanya berlaku untuk guru yang memiliki jadwal KBM aktif</em>, staf tata usaha, atau kepala sekolah sesuai pilihan di bawah.
+                          Hanya wajib hadir di hari mengajar atau ada tugas piket. Di hari tanpa KBM/piket bebas kehadiran (tidak dihitung Alpa), serta jurnal yang ditampilkan & dicetak murni sesuai KBM-nya. Opsi ini <em>hanya berlaku untuk guru yang memiliki jadwal KBM aktif</em>, staf tata usaha, atau kepala sekolah sesuai pilihan di bawah.
                         </p>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/60">
-                        <div className="flex items-center gap-1.5 font-bold text-xs text-blue-900 dark:text-blue-300 mb-1">
-                          <i className="fa-solid fa-calendar-check text-blue-600 dark:text-blue-400"></i>
-                          Guru Hadir Setiap Hari & Staf TU / Tanpa Jam KBM
+                      <div
+                        onClick={() => {
+                          setConfig(prev => ({ ...prev, aturan_kehadiran_guru: 'Semua_Hari' }));
+                          setExemptTeacherIds([]);
+                        }}
+                        className={`p-3 rounded-xl border transition cursor-pointer ${
+                          config.aturan_kehadiran_guru === 'Semua_Hari'
+                            ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 dark:border-blue-600 ring-1 ring-blue-400/50'
+                            : 'bg-blue-50/60 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800/60 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1.5 font-bold text-xs text-blue-900 dark:text-blue-300 mb-1">
+                          <span className="flex items-center gap-1.5">
+                            <i className="fa-solid fa-calendar-check text-blue-600 dark:text-blue-400"></i>
+                            Guru Hadir Setiap Hari & Staf TU / Tanpa Jam KBM
+                          </span>
+                          {config.aturan_kehadiran_guru === 'Semua_Hari' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-600 text-white">Mode Aktif</span>
+                          )}
                         </div>
                         <p className="text-[11px] text-blue-800 dark:text-blue-400/90 leading-relaxed">
-                          Wajib hadir setiap hari kerja aktif sekolah: alur harian wajib melakukan Presensi Datang, Laporan Piket (jika bertugas), Jurnal Kegiatan harian, dan Presensi Pulang.
+                          Wajib hadir setiap hari kerja aktif sekolah: alur harian wajib melakukan Presensi Datang, Laporan Piket (jika bertugas), Jurnal KBM / Jurnal Kegiatan harian, dan Presensi Pulang.
                         </p>
                       </div>
                     </div>
@@ -1025,7 +1066,10 @@ export default function AdminConfigView({
                               const isTu = isTuStaff(g);
                               const isKepsek = isKepsekStaff(g);
                               const isBk = isBkStaff(g);
-                              const kbmCount = getTeacherKbmCount(g, jadwalList);
+                              const linkedUser = resolveLinkedUserForTeacher(g, usersList);
+                              const schedSummary = getTeacherScheduleSummary(g, jadwalList, linkedUser);
+                              const kbmCount = schedSummary.totalJadwal;
+                              const hariMengajarStr = schedSummary.hariMengajarList.join(', ');
                               const isEligibleForKbmOnly = true; // All teachers, staff TU, and Kepala Sekolah can be selected
                               const isExempt = exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) || (g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip));
                               return (
@@ -1093,7 +1137,7 @@ export default function AdminConfigView({
                                           </span>
                                         ) : (
                                           <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-                                            <i className="fa-solid fa-book-open text-[8px]"></i> Guru KBM ({kbmCount} Jadwal)
+                                            <i className="fa-solid fa-book-open text-[8px]"></i> Guru KBM ({kbmCount} Jadwal{hariMengajarStr ? ` • ${hariMengajarStr}` : ''})
                                           </span>
                                         )}
                                         {g.nip && <span className="text-[10px] text-gray-500 dark:text-gray-400">NIP: {g.nip}</span>}

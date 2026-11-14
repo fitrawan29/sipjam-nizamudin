@@ -235,8 +235,19 @@ export function isTeacherNameEquivalent(
   if (tA.length === 1 || tB.length === 1) {
     if (!allowSingleWordFirstToken) return false;
     const single = tA.length === 1 ? tA[0] : tB[0];
-    const multiFirst = tA.length === 1 ? tB[0] : tA[0];
-    return single.length >= 2 && single === multiFirst;
+    const multiTokens = tA.length === 1 ? tB : tA;
+    const multiFirst = multiTokens[0];
+    if (single.length >= 2 && single === multiFirst) return true;
+    // Shortened first-name variant differing only by trailing 'a' (e.g. "Susan" <-> "Susana")
+    if (single.length >= 4 && multiFirst.length >= 4 && (multiFirst === single + 'a' || single === multiFirst + 'a')) {
+      return true;
+    }
+    // Given-name second token when first token is a standard lead prefix (e.g. "Mohamad Adnan Mamangkai" -> "Adnan", "Setia Ambar Ningsih Mamonto" -> "Ambar")
+    const commonLeadPrefixes = new Set(['mohamad', 'muhammad', 'moh', 'muh', 'mohammad', 'setia', 'siti', 'nur', 'abdul', 'andi', 'ni', 'i', 'la', 'wa']);
+    if (single.length >= 3 && commonLeadPrefixes.has(multiFirst) && multiTokens.slice(1).includes(single)) {
+      return true;
+    }
+    return false;
   }
 
   // Same token count: allow 1-char initial abbreviations when >=1 full word (>=2 chars) matches identically
@@ -652,6 +663,197 @@ export function isTeacherRecordMatch(
         return true;
       }
     }
+  }
+
+  return false;
+}
+
+const CANONICAL_DAYS_ORDER = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+/**
+ * Mengembalikan ringkasan jadwal KBM mingguan untuk seorang guru:
+ * - totalJadwal: total sesi jadwal KBM aktif per minggu
+ * - hariMengajarList: daftar hari mengajar terurut (Senin..Sabtu)
+ * - kelasMapelList: daftar pasangan hari, kelas, dan mata pelajaran
+ */
+export function getTeacherScheduleSummary(
+  teacher: any,
+  weeklySchedules: any[] = [],
+  linkedUser?: any
+): {
+  totalJadwal: number;
+  hariMengajarList: string[];
+  kelasMapelList: { hari: string; kelas: string; mapel: string }[];
+} {
+  if (!teacher || isTuAccount(teacher, linkedUser?.role)) {
+    return { totalJadwal: 0, hariMengajarList: [], kelasMapelList: [] };
+  }
+  const matchedSchedules = (weeklySchedules || []).filter(
+    (j: any) =>
+      !isInvalidMapel(j?.mata_pelajaran || j?.mapel) &&
+      isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
+  );
+  const daySet = new Set<string>();
+  const kelasMapelList: { hari: string; kelas: string; mapel: string }[] = [];
+  for (const j of matchedSchedules) {
+    const hari = String(j?.hari || '').trim();
+    const kelas = String(j?.kelas || '').trim();
+    const mapel = String(j?.mata_pelajaran || j?.mapel || '').trim();
+    if (hari) {
+      const canonicalDay = CANONICAL_DAYS_ORDER.find(d => d.toLowerCase() === hari.toLowerCase()) || hari;
+      daySet.add(canonicalDay);
+    }
+    kelasMapelList.push({ hari, kelas, mapel });
+  }
+  const hariMengajarList = CANONICAL_DAYS_ORDER.filter(d => daySet.has(d));
+  for (const d of daySet) {
+    if (!hariMengajarList.includes(d)) hariMengajarList.push(d);
+  }
+  return {
+    totalJadwal: matchedSchedules.length,
+    hariMengajarList,
+    kelasMapelList,
+  };
+}
+
+/**
+ * Mengecek apakah string lokasi_kbm adalah nama tempat/ruang KBM yang valid
+ * (bukan kosong, '-', 'Lokasi tidak terdeteksi', atau koordinat mentah 'GPS: ...').
+ */
+export function isValidLokasiKbm(val?: any): boolean {
+  if (val === null || val === undefined || typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === '-' || trimmed === '--') return false;
+  if (/^lokasi\s+tidak\s+terdeteksi$/i.test(trimmed)) return false;
+  if (/^gps\s*:/i.test(trimmed)) return false;
+  if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(trimmed)) return false;
+  return true;
+}
+
+/**
+ * Mengisi / meresolusi Tempat/Lokasi KBM pada entri jurnal:
+ * 1. Jika entri sudah memiliki `lokasi_kbm` yang valid, gunakan nilai tersebut.
+ * 2. Jika kosong/strip/GPS, cari dari riwayat jurnal yang pernah diisi oleh guru yang sama:
+ *    - Prioritas 1: Lokasi yang pernah diisi guru tersebut pada `kelas` yang sama.
+ *    - Prioritas 2: Lokasi yang pernah diisi guru tersebut pada kelas manapun.
+ * 3. Fallback ke `entry.lokasi` jika valid (bukan GPS/strip), atau `'-'`.
+ */
+export function resolveTeacherLokasiKbm(
+  entry: any,
+  historyRows: any[] = [],
+  currentUser?: any
+): string {
+  if (!entry) return '-';
+  if (isValidLokasiKbm(entry.lokasi_kbm)) {
+    return String(entry.lokasi_kbm).trim();
+  }
+
+  const targetKelas = String(entry.kelas || '').trim().toLowerCase();
+  const hasValidTargetKelas = Boolean(targetKelas && targetKelas !== '-');
+  const teacherRef = {
+    id: entry.guru_id || entry.user_id,
+    user_id: entry.user_id,
+    nama_guru: entry.nama_guru || entry.nama,
+    nama: entry.nama_guru || entry.nama,
+    nip: entry.nip,
+    username: entry.username,
+  };
+
+  let sameClassMatch: string | null = null;
+  let anyClassMatch: string | null = null;
+
+  for (const h of historyRows || []) {
+    if (!h) continue;
+    const candidateLoc = isValidLokasiKbm(h.lokasi_kbm)
+      ? String(h.lokasi_kbm).trim()
+      : isValidLokasiKbm(h.lokasi)
+      ? String(h.lokasi).trim()
+      : null;
+    if (!candidateLoc) continue;
+
+    const isSameTeacher =
+      (teacherRef.user_id && h.user_id && String(teacherRef.user_id) === String(h.user_id)) ||
+      isTeacherRecordMatch(h, teacherRef, currentUser, { allowSingleWordFirstToken: true });
+    if (!isSameTeacher) continue;
+
+    if (!anyClassMatch) {
+      anyClassMatch = candidateLoc;
+    }
+    if (hasValidTargetKelas && !sameClassMatch) {
+      const hKelas = String(h.kelas || '').trim().toLowerCase();
+      if (hKelas && hKelas === targetKelas) {
+        sameClassMatch = candidateLoc;
+        break;
+      }
+    }
+  }
+
+  if (sameClassMatch) return sameClassMatch;
+  if (anyClassMatch) return anyClassMatch;
+  if (isValidLokasiKbm(entry.lokasi)) return String(entry.lokasi).trim();
+  return '-';
+}
+
+/**
+ * Mengevaluasi apakah suatu entri jurnal sesuai dengan KBM seorang guru
+ * yang berstatus "Wajib Hadir Hanya KBM" (untuk tampilan dan cetak jurnal pribadi):
+ * - Menyaring keluar Jurnal Kegiatan non-KBM (kelas kosong/'-' atau mapel='Jurnal Kegiatan')
+ *   dan baris sintetis "tidak melaksanakan kegiatan apapun".
+ * - Mempertahankan jurnal KBM (termasuk jurnal KBM historis yang memiliki kelas & mapel KBM valid
+ *   meskipun kolom keterangan lamanya tertulis 'Jurnal Kegiatan').
+ * - Memastikan kelas & mata pelajaran pada jurnal cocok dengan penugasan/jadwal KBM guru tersebut
+ *   (atau merupakan sesi INVAL KBM yang sah).
+ */
+export function isJournalEligibleForKbmTeacher(
+  journal: any,
+  teacherAssignments: any[] = [],
+  teacherSchedules: any[] = []
+): boolean {
+  if (!journal) return false;
+  const idStr = String(journal.id || '');
+  if (idStr.startsWith('unfilled-kegiatan-')) return false;
+
+  const ketLower = String(journal.keterangan || '').trim().toLowerCase();
+  if (ketLower === 'tidak melaksanakan kegiatan apapun') return false;
+
+  const kls = String(journal.kelas || '').trim();
+  const mpl = String(journal.mapel || journal.mata_pelajaran || '').trim();
+
+  if (!kls || kls === '-') return false;
+  if (!mpl || mpl === '-' || mpl.toLowerCase() === 'jurnal kegiatan' || isInvalidMapel(mpl)) {
+    return false;
+  }
+
+  // Izinkan sesi INVAL KBM yang memiliki kelas & mapel valid
+  if (/\[inval\s*-/i.test(String(journal.keterangan || ''))) {
+    return true;
+  }
+
+  const hasAssignments = Array.isArray(teacherAssignments) && teacherAssignments.length > 0;
+  const hasSchedules = Array.isArray(teacherSchedules) && teacherSchedules.length > 0;
+
+  if (!hasAssignments && !hasSchedules) {
+    return true;
+  }
+
+  if (hasAssignments) {
+    const matchedAssignment = teacherAssignments.some((a: any) =>
+      isJurnalMatchJadwal(
+        { kelas: kls, mapel: mpl },
+        { kelas: a.kelas, mata_pelajaran: a.nama_mata_pelajaran || a.nama_mapel || a.mapel_singkat }
+      )
+    );
+    if (matchedAssignment) return true;
+  }
+
+  if (hasSchedules) {
+    const matchedSchedule = teacherSchedules.some((s: any) =>
+      isJurnalMatchJadwal(
+        { kelas: kls, mapel: mpl },
+        { kelas: s.kelas, mata_pelajaran: s.mata_pelajaran || s.mapel }
+      )
+    );
+    if (matchedSchedule) return true;
   }
 
   return false;
