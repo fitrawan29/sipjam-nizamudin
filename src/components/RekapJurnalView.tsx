@@ -85,12 +85,14 @@ export default function RekapJurnalView({
     return [];
   });
 
+  const [isMasterReady, setIsMasterReady] = useState<boolean>(false);
+
   useEffect(() => {
     if (controlledMode && controlledMode !== tabMode) {
       setTabMode(controlledMode);
-      tarikRekap(controlledMode);
+      if (isMasterReady) tarikRekap(controlledMode);
     }
-  }, [controlledMode]);
+  }, [controlledMode, isMasterReady]);
 
   const [bulan, setBulan] = useState(() => {
     return getWitaDateStr().substring(0, 7);
@@ -118,7 +120,6 @@ export default function RekapJurnalView({
   const [legacyGhmList, setLegacyGhmList] = useState<string[]>([]);
   const [aturanKehadiranGlobal, setAturanKehadiranGlobal] = useState<string>('Semua_Hari');
   const [teacherLokasiHistory, setTeacherLokasiHistory] = useState<any[]>([]);
-  const [isMasterReady, setIsMasterReady] = useState<boolean>(false);
   const [isHanyaKbmUser, setIsHanyaKbmUser] = useState<boolean>(() => {
     const v = parseExplicitBooleanFlag(user?.wajib_hadir_hanya_mengajar ?? (user as any)?.wajibHadirHanyaMengajar);
     return v === true;
@@ -1312,7 +1313,10 @@ export default function RekapJurnalView({
             { allowSingleWordFirstToken: true }
           )
         );
-        if (!isJournalEligibleForKbmTeacher(j, teacherAssignments, mySchedules)) {
+        const effectiveSchedules = mySchedules.length > 0
+          ? mySchedules
+          : (teacherAssignments || []).filter((a: any) => a && a.hari);
+        if (!isJournalEligibleForKbmTeacher(j, teacherAssignments, effectiveSchedules)) {
           return false;
         }
       }
