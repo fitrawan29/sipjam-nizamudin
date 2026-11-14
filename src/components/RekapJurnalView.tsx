@@ -165,7 +165,7 @@ export default function RekapJurnalView({
         weeklySchedules: allWeeklySchedules,
         aturanGlobal: aturanKehadiranGlobal,
         guruHanyaMengajarList: legacyGhmList,
-        preferLegacyListWhenGlobalKbm: aturanKehadiranGlobal === 'Hari_Mengajar_Saja',
+        preferLegacyListWhenGlobalKbm: true,
       }).isTeacherExempt;
     }
 
@@ -181,7 +181,7 @@ export default function RekapJurnalView({
       weeklySchedules: allWeeklySchedules,
       aturanGlobal: aturanKehadiranGlobal,
       guruHanyaMengajarList: legacyGhmList,
-      preferLegacyListWhenGlobalKbm: aturanKehadiranGlobal === 'Hari_Mengajar_Saja',
+      preferLegacyListWhenGlobalKbm: true,
     }).isTeacherExempt;
   }, [allTeachersList, allWeeklySchedules, legacyGhmList, aturanKehadiranGlobal, user]);
 

@@ -39,8 +39,8 @@ check('1. cfgQ di RekapJurnalView memakai select("*") agar tahan schema cache', 
 
 check('2. checkIsHanyaKbm meneruskan preferLegacyListWhenGlobalKbm dan allowSingleWordFirstToken', () => {
   assert.ok(
-    rekapSrc.includes("preferLegacyListWhenGlobalKbm: aturanKehadiranGlobal === 'Hari_Mengajar_Saja'"),
-    'checkIsHanyaKbm harus meneruskan preferLegacyListWhenGlobalKbm'
+    rekapSrc.includes('preferLegacyListWhenGlobalKbm: true'),
+    'checkIsHanyaKbm harus meneruskan preferLegacyListWhenGlobalKbm: true'
   );
   const checkBlockStart = rekapSrc.indexOf('const checkIsHanyaKbm = useCallback(');
   const checkBlockEnd = rekapSrc.indexOf('useEffect(() => {', checkBlockStart);

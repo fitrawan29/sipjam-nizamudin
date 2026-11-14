@@ -72,7 +72,7 @@ async function syncTeacherExemptionToPengaturanFallback(
 ) {
   if (!sekolahId || !teacherIdentifier) return;
   try {
-    const pQ = supabase.from('pengaturan').select('key, value, guru_hanya_mengajar').eq('sekolah_id', sekolahId);
+    const pQ = supabase.from('pengaturan').select('*').eq('sekolah_id', sekolahId);
     const { data: pRows } = await pQ;
     let list: string[] = resolveSchoolLegacyGhmList(pRows || []);
     const cleanId = String(teacherIdentifier).trim();
