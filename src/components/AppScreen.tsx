@@ -1365,6 +1365,7 @@ export default function AppScreen({
                   user={user}
                   initialTab={urlTab === 'rapor' ? 'rapor' : 'gradebook'}
                   assignedKelas={assignedKelas}
+                  isWaliKelas={isWaliKelas}
                   isKepalaSekolah={isKepalaSekolah}
                   statusKepalaSekolah={statusKepalaSekolah}
                 />

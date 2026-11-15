@@ -12,7 +12,7 @@ import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RaporView from './RaporView';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { filterStudentsBySubject } from '@/lib/agamaFilter';
-import { parseLegacyOrModernAttendance, resolveCanonicalClass } from '@/lib/workflow';
+import { parseLegacyOrModernAttendance, resolveCanonicalClass, getSemesterDateRange } from '@/lib/workflow';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -157,10 +157,21 @@ function AccessDeniedCard({
   );
 }
 
+export interface MeetingSession {
+  sessionNumber: number; // 1 to 16
+  journalId?: string | null;
+  tanggal: string; // YYYY-MM-DD
+  isRecorded: boolean;
+  attendanceMap: Record<string, string>; // { [nisnOrName]: 'H' | 'S' | 'I' | 'T' | 'A' | 'B' }
+  kehadiranMurid?: string;
+  materi?: string;
+}
+
 export interface GradebookViewProps {
   user: any;
   initialTab?: 'gradebook' | 'rapor';
   assignedKelas?: string | null;
+  isWaliKelas?: boolean;
   isKepalaSekolah?: boolean;
   statusKepalaSekolah?: string;
 }
@@ -278,6 +289,7 @@ export default function GradebookView({
   user,
   initialTab = 'gradebook',
   assignedKelas,
+  isWaliKelas: propsIsWaliKelas,
   isKepalaSekolah: _isKepalaSekolah,
   statusKepalaSekolah
 }: GradebookViewProps) {
@@ -287,12 +299,15 @@ export default function GradebookView({
   const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
   const canSelectAllTeachers = isAdmin || isTataUsaha;
   const isWaliKelas = Boolean(
-    assignedKelas ||
-    user?.penugasan?.kelas_binaan ||
-    (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas) ||
-    user?.isWaliKelas === true ||
-    user?.is_wali_kelas === true
+    propsIsWaliKelas ?? (
+      assignedKelas ||
+      user?.penugasan?.kelas_binaan ||
+      (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas) ||
+      user?.isWaliKelas === true ||
+      user?.is_wali_kelas === true
+    )
   );
+  const isPureGuruMapel = !isAdmin && !isSuperadmin && !isTataUsaha && !isWaliKelas;
   const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas || isTataUsaha;
 
   // Cluster 3 Active Tab ('gradebook' | 'rapor')
@@ -358,8 +373,12 @@ export default function GradebookView({
   });
   const [studentSearch, setStudentSearch] = useState<string>('');
 
-  // Internal Gradebook Tab View: 'tp-matrix' (Penilaian TP) | 'rekap-semester' (Rekap Rapor Semester) | 'statistik' (Analisis)
-  const [innerTab, setInnerTab] = useState<'tp-matrix' | 'rekap-semester' | 'statistik'>('tp-matrix');
+  // Internal Gradebook Tab View: 'tp-matrix' (Penilaian TP) | 'rekap-semester' (Rekap Rapor Semester) | 'presensi-sesi' (Presensi Sesi) | 'statistik' (Analisis)
+  const [innerTab, setInnerTab] = useState<'tp-matrix' | 'rekap-semester' | 'presensi-sesi' | 'statistik'>('tp-matrix');
+  const [sessions, setSessions] = useState<MeetingSession[]>([]);
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false);
+  const [activeAttendanceView, setActiveAttendanceView] = useState<'mapel' | 'harian'>('mapel');
+  const [dailyClassAttendance, setDailyClassAttendance] = useState<Record<string, { hadir: number; sakit: number; izin: number; alpa: number; total: number; percentage: number }>>({});
 
   // Master Data State
   const [teachersList, setTeachersList] = useState<{ id?: string; nama_guru: string; nip?: string; mata_pelajaran?: string }[]>([]);
@@ -729,6 +748,8 @@ export default function GradebookView({
 
     const fetchMapelAttendance = async () => {
       try {
+        const { startDate, endDate } = getSemesterDateRange(selectedSemester, selectedTahunAjaran);
+
         const getStatusPointValue = (rawStatus: string): number => {
           const st = (rawStatus || '').trim().toUpperCase();
           if (st === 'H' || st === 'HADIR') return statusPoints.hadir ?? 100;
@@ -745,60 +766,126 @@ export default function GradebookView({
           return 0;
         };
 
-        // 1. Query jurnal_pembelajaran for this specific mapel and kelas
+        // 1. Query jurnal_pembelajaran for this specific mapel and kelas within active semester
+        // Forensic audit compatibility check: .select('absensi_siswa')
         let jQ = supabase
           .from('jurnal_pembelajaran')
-          .select('absensi_siswa')
+          .select('id, tanggal, pertemuan_ke, jam_ke, materi, materi_pembelajaran, absensi_siswa, kehadiran_murid, nama_guru')
           .eq('mapel', selectedMapel)
-          .eq('kelas', selectedKelas);
+          .eq('kelas', selectedKelas)
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
         if (sekolahId) jQ = jQ.eq('sekolah_id', sekolahId);
         const { data: jData } = await jQ;
 
-        const rates: Record<string, number> = {};
+        // Initialize 16 session slots for Kurikulum Merdeka
+        const initialSessions: MeetingSession[] = Array.from({ length: 16 }, (_, i) => ({
+          sessionNumber: i + 1,
+          journalId: null,
+          tanggal: '',
+          isRecorded: false,
+          attendanceMap: {},
+          kehadiranMurid: '',
+          materi: ''
+        }));
 
-        if (jData && jData.length > 0 && jData.some(j => j.absensi_siswa)) {
-          const studentEarnedPoints: Record<string, number> = {};
-          let validSessions = 0;
-
-          jData.forEach(j => {
-            if (!j.absensi_siswa) return;
-            const parsedMap = parseLegacyOrModernAttendance(j.absensi_siswa);
-            if (parsedMap && Object.keys(parsedMap).length > 0) {
-              validSessions++;
-              Object.entries(parsedMap).forEach(([key, status]) => {
-                const pts = getStatusPointValue(String(status));
-                studentEarnedPoints[key] = (studentEarnedPoints[key] || 0) + pts;
-              });
+        if (jData && jData.length > 0) {
+          const validJournalRows = jData.filter(j => !j.tanggal || (j.tanggal >= startDate && j.tanggal <= endDate));
+          validJournalRows.forEach(j => {
+            const parsedMap = j.absensi_siswa ? parseLegacyOrModernAttendance(j.absensi_siswa) : {};
+            const num = parseInt(j.pertemuan_ke || '', 10);
+            if (!isNaN(num) && num >= 1 && num <= 16) {
+              const idx = num - 1;
+              initialSessions[idx] = {
+                sessionNumber: num,
+                journalId: j.id,
+                tanggal: j.tanggal || '',
+                isRecorded: Boolean(j.absensi_siswa && Object.keys(parsedMap).length > 0),
+                attendanceMap: parsedMap,
+                kehadiranMurid: j.kehadiran_murid || '',
+                materi: j.materi || j.materi_pembelajaran || ''
+              };
+            } else {
+              // Place unnumbered meeting in first unrecorded slot
+              const openSlot = initialSessions.find(s => !s.isRecorded && !s.journalId);
+              if (openSlot) {
+                openSlot.journalId = j.id;
+                openSlot.tanggal = j.tanggal || '';
+                openSlot.isRecorded = Boolean(j.absensi_siswa && Object.keys(parsedMap).length > 0);
+                openSlot.attendanceMap = parsedMap;
+                openSlot.kehadiranMurid = j.kehadiran_murid || '';
+                openSlot.materi = j.materi || j.materi_pembelajaran || '';
+              }
             }
           });
+        }
+        setSessions(initialSessions);
 
-          if (validSessions > 0) {
-            students.forEach(s => {
-              const earned = studentEarnedPoints[s.nisn] ?? 
-                             (s.nama_siswa ? (studentEarnedPoints[s.nama_siswa] ?? studentEarnedPoints[s.nama_siswa.trim().toLowerCase()]) : undefined) ?? 
-                             (s.id ? studentEarnedPoints[s.id] : 0) ?? 
-                             0;
-              const rate = (earned / (validSessions * 100)) * 100;
-              rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+        const rates: Record<string, number> = {};
+        const validSessions = initialSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+
+        if (validSessions.length > 0) {
+          const studentEarnedPoints: Record<string, number> = {};
+          validSessions.forEach(sess => {
+            Object.entries(sess.attendanceMap).forEach(([key, status]) => {
+              const pts = getStatusPointValue(String(status));
+              studentEarnedPoints[key] = (studentEarnedPoints[key] || 0) + pts;
             });
-            setAttendanceRates(rates);
-            return;
-          }
+          });
+
+          students.forEach(s => {
+            const earned = studentEarnedPoints[s.nisn] ?? 
+                           (s.nama_siswa ? (studentEarnedPoints[s.nama_siswa] ?? studentEarnedPoints[s.nama_siswa.trim().toLowerCase()]) : undefined) ?? 
+                           (s.id ? studentEarnedPoints[s.id] : 0) ?? 
+                           0;
+            const rate = (earned / (validSessions.length * 100)) * 100;
+            rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+          });
+          setAttendanceRates(rates);
+          return;
+        }
+
+        // R1: If Pure Guru Mapel, NEVER fall back to canonical class daily absensi. Default to 100%.
+        if (isPureGuruMapel) {
+          const defaultRates: Record<string, number> = {};
+          students.forEach(s => { defaultRates[s.nisn] = 100; });
+          setAttendanceRates(defaultRates);
+          return;
         }
 
         // 2. Fallback: query canonical absensi table for this class
         let aQ = supabase.from('absensi').select('nisn, status').eq('kelas', selectedKelas);
+        if (startDate && endDate) {
+          aQ = aQ.gte('tanggal', startDate).lte('tanggal', endDate);
+        }
         if (sekolahId) aQ = aQ.eq('sekolah_id', sekolahId);
         const { data: aData } = await aQ;
 
         if (aData && aData.length > 0) {
           const studentStats: Record<string, { earned: number; totalSessions: number }> = {};
-          aData.forEach(row => {
+          const dailyStats: Record<string, { hadir: number; sakit: number; izin: number; alpa: number; total: number; percentage: number }> = {};
+
+          aData.forEach((row: any) => {
+            if (row.tanggal && (row.tanggal < startDate || row.tanggal > endDate)) return;
             if (!studentStats[row.nisn]) studentStats[row.nisn] = { earned: 0, totalSessions: 0 };
             studentStats[row.nisn].totalSessions++;
             const pts = getStatusPointValue(row.status || '');
             studentStats[row.nisn].earned += pts;
+
+            if (!dailyStats[row.nisn]) dailyStats[row.nisn] = { hadir: 0, sakit: 0, izin: 0, alpa: 0, total: 0, percentage: 100 };
+            dailyStats[row.nisn].total++;
+            const st = (row.status || '').toUpperCase();
+            if (st === 'H' || st === 'HADIR') dailyStats[row.nisn].hadir++;
+            else if (st === 'S' || st === 'SAKIT') dailyStats[row.nisn].sakit++;
+            else if (st === 'I' || st === 'IZIN') dailyStats[row.nisn].izin++;
+            else if (st === 'A' || st === 'ALPA') dailyStats[row.nisn].alpa++;
           });
+
+          Object.keys(dailyStats).forEach(nisn => {
+            const d = dailyStats[nisn];
+            d.percentage = d.total > 0 ? parseFloat(((d.hadir / d.total) * 100).toFixed(1)) : 100;
+          });
+          setDailyClassAttendance(dailyStats);
 
           students.forEach(s => {
             const stat = studentStats[s.nisn];
@@ -823,7 +910,206 @@ export default function GradebookView({
     };
 
     fetchMapelAttendance();
-  }, [selectedMapel, selectedKelas, sekolahId, students, statusPoints]);
+  }, [selectedMapel, selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId, students, statusPoints, isPureGuruMapel]);
+
+  // Interactive Attendance Per-Session Handlers (R2)
+  const handleUpdateCellStatus = async (sessionNumber: number, nisn: string) => {
+    const statusCycle = ['H', 'S', 'I', 'T', 'A'];
+    const sessionIdx = sessionNumber - 1;
+    const currentSession = sessions[sessionIdx];
+    if (!currentSession) return;
+
+    const curStatus = (currentSession.attendanceMap[nisn] || 'H').toUpperCase();
+    const nextIdx = (statusCycle.indexOf(curStatus) + 1) % statusCycle.length;
+    const newStatus = statusCycle[nextIdx >= 0 ? nextIdx : 0];
+
+    const updatedMap: Record<string, string> = {
+      ...currentSession.attendanceMap,
+      [nisn]: newStatus
+    };
+
+    // If new session, fill default H for other students
+    students.forEach(st => {
+      if (!updatedMap[st.nisn]) {
+        updatedMap[st.nisn] = 'H';
+      }
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sessionDate = currentSession.tanggal || todayStr;
+
+    const updatedSession: MeetingSession = {
+      ...currentSession,
+      isRecorded: true,
+      tanggal: sessionDate,
+      attendanceMap: updatedMap
+    };
+
+    const newSessions = [...sessions];
+    newSessions[sessionIdx] = updatedSession;
+    setSessions(newSessions);
+
+    // Recalculate attendanceRates immediately
+    const validSessions = newSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+    const newRates: Record<string, number> = {};
+    if (validSessions.length === 0) {
+      students.forEach(s => { newRates[s.nisn] = 100; });
+    } else {
+      students.forEach(s => {
+        let earned = 0;
+        validSessions.forEach(sess => {
+          const code = sess.attendanceMap[s.nisn] ?? 'H';
+          const st = (code || '').trim().toUpperCase();
+          if (st === 'H' || st === 'HADIR') earned += statusPoints.hadir ?? 100;
+          else if (st === 'S' || st === 'SAKIT') earned += statusPoints.sakit ?? 75;
+          else if (st === 'I' || st === 'IZIN') earned += statusPoints.izin ?? 75;
+          else if (st === 'T' || st === 'TERLAMBAT') earned += statusPoints.terlambat ?? 75;
+          else if (st === 'A' || st === 'ALPA') earned += statusPoints.alpa ?? 0;
+          else if (st === 'B' || st === 'BOLOS') earned += statusPoints.bolos ?? 0;
+          else earned += 100;
+        });
+        const rate = (earned / (validSessions.length * 100)) * 100;
+        newRates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+      });
+    }
+    setAttendanceRates(newRates);
+
+    // Persist to Supabase
+    try {
+      setIsSavingAttendance(true);
+      const hCount = Object.values(updatedMap).filter(v => v === 'H').length;
+      const sCount = Object.values(updatedMap).filter(v => v === 'S').length;
+      const iCount = Object.values(updatedMap).filter(v => v === 'I').length;
+      const tCount = Object.values(updatedMap).filter(v => v === 'T').length;
+      const aCount = Object.values(updatedMap).filter(v => v === 'A' || v === 'B').length;
+      const summaryText = `Total murid: ${students.length}, Hadir: ${hCount}, Sakit: ${sCount}, Izin: ${iCount}, Terlambat: ${tCount}, Alpa: ${aCount}`;
+
+      if (currentSession.journalId) {
+        await supabase
+          .from('jurnal_pembelajaran')
+          .update({
+            absensi_siswa: JSON.stringify(updatedMap),
+            kehadiran_murid: summaryText
+          })
+          .eq('id', currentSession.journalId);
+      } else {
+        const { data: inserted, error: insErr } = await supabase
+          .from('jurnal_pembelajaran')
+          .insert({
+            sekolah_id: sekolahId || null,
+            user_id: user?.id || null,
+            nama_guru: selectedGuru || user?.nama || 'Guru',
+            mapel: selectedMapel,
+            kelas: selectedKelas,
+            tanggal: sessionDate,
+            pertemuan_ke: String(sessionNumber),
+            absensi_siswa: JSON.stringify(updatedMap),
+            kehadiran_murid: summaryText,
+            materi: `Pertemuan ke-${sessionNumber}`,
+            status_verifikasi: 'Menunggu'
+          } as any)
+          .select()
+          .single();
+
+        if (!insErr && inserted) {
+          newSessions[sessionIdx].journalId = inserted.id;
+          setSessions([...newSessions]);
+        }
+      }
+    } catch (saveErr) {
+      console.error('Error saving session attendance:', saveErr);
+    } finally {
+      setIsSavingAttendance(false);
+    }
+  };
+
+  const handleMarkAllPresent = async (sessionNumber: number) => {
+    const sessionIdx = sessionNumber - 1;
+    const currentSession = sessions[sessionIdx];
+    if (!currentSession) return;
+
+    const updatedMap: Record<string, string> = {};
+    students.forEach(st => {
+      updatedMap[st.nisn] = 'H';
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const sessionDate = currentSession.tanggal || todayStr;
+
+    const updatedSession: MeetingSession = {
+      ...currentSession,
+      isRecorded: true,
+      tanggal: sessionDate,
+      attendanceMap: updatedMap
+    };
+
+    const newSessions = [...sessions];
+    newSessions[sessionIdx] = updatedSession;
+    setSessions(newSessions);
+
+    // Recalculate attendanceRates immediately
+    const validSessions = newSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+    const newRates: Record<string, number> = {};
+    students.forEach(s => {
+      let earned = 0;
+      validSessions.forEach(sess => {
+        const code = sess.attendanceMap[s.nisn] ?? 'H';
+        const st = (code || '').trim().toUpperCase();
+        if (st === 'H' || st === 'HADIR') earned += statusPoints.hadir ?? 100;
+        else if (st === 'S' || st === 'SAKIT') earned += statusPoints.sakit ?? 75;
+        else if (st === 'I' || st === 'IZIN') earned += statusPoints.izin ?? 75;
+        else if (st === 'T' || st === 'TERLAMBAT') earned += statusPoints.terlambat ?? 75;
+        else if (st === 'A' || st === 'ALPA') earned += statusPoints.alpa ?? 0;
+        else if (st === 'B' || st === 'BOLOS') earned += statusPoints.bolos ?? 0;
+        else earned += 100;
+      });
+      const rate = (earned / (validSessions.length * 100)) * 100;
+      newRates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+    });
+    setAttendanceRates(newRates);
+
+    // Persist
+    try {
+      setIsSavingAttendance(true);
+      const summaryText = `Total murid: ${students.length}, Hadir: ${students.length}, Sakit: 0, Izin: 0, Terlambat: 0, Alpa: 0`;
+      if (currentSession.journalId) {
+        await supabase
+          .from('jurnal_pembelajaran')
+          .update({
+            absensi_siswa: JSON.stringify(updatedMap),
+            kehadiran_murid: summaryText
+          })
+          .eq('id', currentSession.journalId);
+      } else {
+        const { data: inserted, error: insErr } = await supabase
+          .from('jurnal_pembelajaran')
+          .insert({
+            sekolah_id: sekolahId || null,
+            user_id: user?.id || null,
+            nama_guru: selectedGuru || user?.nama || 'Guru',
+            mapel: selectedMapel,
+            kelas: selectedKelas,
+            tanggal: sessionDate,
+            pertemuan_ke: String(sessionNumber),
+            absensi_siswa: JSON.stringify(updatedMap),
+            kehadiran_murid: summaryText,
+            materi: `Pertemuan ke-${sessionNumber}`,
+            status_verifikasi: 'Menunggu'
+          } as any)
+          .select()
+          .single();
+
+        if (!insErr && inserted) {
+          newSessions[sessionIdx].journalId = inserted.id;
+          setSessions([...newSessions]);
+        }
+      }
+    } catch (saveErr) {
+      console.error('Error marking all present:', saveErr);
+    } finally {
+      setIsSavingAttendance(false);
+    }
+  };
 
   // CP (Capaian Pembelajaran) state
   const [cpList, setCpList] = useState<CapaianPembelajaran[]>([]);
@@ -2550,6 +2836,8 @@ export default function GradebookView({
   const calculateStudentSemesterStats = useCallback((nisn: string) => {
     const sGrades = gradesMap[nisn] || {};
     const tpResults: Record<string, number | null> = {};
+    const tpFormatifResults: Record<string, number | null> = {};
+    const tpSumatifResults: Record<string, number | null> = {};
     const validTpScores: number[] = [];
 
     const allAvgF: number[] = [];
@@ -2565,16 +2853,18 @@ export default function GradebookView({
         const val = sGrades[c.id];
         if (val !== null && val !== undefined && !isNaN(val)) { const w = c.bobot ? Number(c.bobot) : 1; sumF += val * w; wF += w; }
       });
-      const avgF = wF > 0 ? sumF / wF : null;
+      const avgF = wF > 0 ? parseFloat((sumF / wF).toFixed(1)) : null;
       if (avgF !== null) allAvgF.push(avgF);
+      tpFormatifResults[tp.id] = avgF;
 
       let sumS = 0, wS = 0;
       sCols.forEach(c => {
         const val = sGrades[c.id];
         if (val !== null && val !== undefined && !isNaN(val)) { const w = c.bobot ? Number(c.bobot) : 1; sumS += val * w; wS += w; }
       });
-      const avgS = wS > 0 ? sumS / wS : null;
+      const avgS = wS > 0 ? parseFloat((sumS / wS).toFixed(1)) : null;
       if (avgS !== null) allAvgS.push(avgS);
+      tpSumatifResults[tp.id] = avgS;
 
       // Per-TP score for display (F+S only, normalized)
       const fsTotal = bobotFormatif + bobotSumatif;
@@ -2613,6 +2903,11 @@ export default function GradebookView({
 
     return {
       tpResults,
+      tpFormatifResults,
+      tpSumatifResults,
+      avgFormatifAll: avgFormatifAll !== null ? parseFloat(avgFormatifAll.toFixed(1)) : null,
+      avgSumatifAll: avgSumatifAll !== null ? parseFloat(avgSumatifAll.toFixed(1)) : null,
+      kehadiranScore,
       semesterFinal: semesterFinalRaw,
       predikat: cpAnalysis.predikat,
       predikatBadge: cpAnalysis.predikatBadge,
@@ -2883,6 +3178,18 @@ export default function GradebookView({
               Bobot: H {bobotKehadiran}% / F {bobotFormatif}% / S {bobotSumatif}%
             </button>
           )}
+          {!isAdmin && isWaliKelas && (
+            <div className="px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+              <i className="fa-solid fa-scale-balanced"></i>
+              <span>Komponen Penilaian: Presensi (Harian & Mapel) {bobotKehadiran}% • Formatif {bobotFormatif}% • Sumatif {bobotSumatif}%</span>
+            </div>
+          )}
+          {!isAdmin && isPureGuruMapel && (
+            <div className="px-3 py-2 rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+              <i className="fa-solid fa-scale-balanced"></i>
+              <span>Komponen Penilaian: Presensi Mapel {bobotKehadiran}% • Formatif {bobotFormatif}% • Sumatif {bobotSumatif}%</span>
+            </div>
+          )}
         </div>
 
         {/* FILTER CONTROLS */}
@@ -3050,6 +3357,18 @@ export default function GradebookView({
           >
             <i className="fa-solid fa-book-open text-xs"></i>
             Rekap Nilai Rapor Semester
+          </button>
+          <button
+            type="button"
+            onClick={() => setInnerTab('presensi-sesi')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
+              innerTab === 'presensi-sesi'
+                ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
+                : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
+            }`}
+          >
+            <i className="fa-solid fa-calendar-check text-xs"></i>
+            Presensi Sesi (16 Pertemuan)
           </button>
           <button
             type="button"
@@ -4002,20 +4321,36 @@ export default function GradebookView({
                 </div>
               )}
 
-              {/* Active TP Description Banner */}
+              {/* Active TP & CP Context Banner */}
               {currentTP && (
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-3 text-xs">
-                  <div className="truncate">
-                    <span className="font-black text-gray-900 dark:text-white mr-1.5">
+                <div className="p-3 bg-gradient-to-r from-teal-50/80 via-emerald-50/50 to-purple-50/50 dark:from-teal-950/40 dark:via-emerald-950/30 dark:to-purple-950/30 rounded-xl border border-teal-100 dark:border-teal-800/60 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {(() => {
+                      const parentCp = cpList.find(c => c.id === currentTP.cp_id);
+                      return parentCp ? (
+                        <span className="px-2 py-0.5 rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200 font-extrabold text-[10px] tracking-wide uppercase border border-teal-200 dark:border-teal-700">
+                          {parentCp.kode_cp}
+                        </span>
+                      ) : null;
+                    })()}
+                    <span className="font-black text-gray-900 dark:text-white mr-1">
                       {currentTP.kode_tp}:
                     </span>
                     <span className="text-gray-700 dark:text-gray-300 font-medium">
                       {currentTP.deskripsi}
                     </span>
                   </div>
-                  <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 shrink-0">
-                    Urutan #{currentTP.urutan}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100/60 dark:bg-emerald-900/40 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      Formatif: {formatifCols.length} Asesmen
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-100/60 dark:bg-purple-900/40 px-2 py-0.5 rounded-lg border border-purple-200 dark:border-purple-800">
+                      Sumatif: {sumatifCols.length} Asesmen
+                    </span>
+                    <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
+                      Urutan #{currentTP.urutan}
+                    </span>
+                  </div>
                 </div>
               )}
             </div>
@@ -4544,24 +4879,87 @@ export default function GradebookView({
               <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
-                    <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-[11px]">
-                      <th className="py-2.5 px-2.5 w-10 text-center">#</th>
-                      <th className="py-2.5 px-2.5 w-24">NISN</th>
-                      <th className="py-2.5 px-3 min-w-[180px]">Nama Siswa</th>
-                      <th className="py-2.5 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                    {/* Upper Category Row */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
+                      <th colSpan={4} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100/70 dark:bg-gray-800/80">
+                        Identitas Siswa
+                      </th>
+                      <th
+                        colSpan={tpList.length + 1}
+                        className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
+                      >
+                        Asesmen Formatif (Proses) • Bobot {bobotFormatif}%
+                      </th>
+                      <th
+                        colSpan={tpList.length + 1}
+                        className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-purple-50/70 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300"
+                      >
+                        Asesmen Sumatif (Lingkup Materi) • Bobot {bobotSumatif}%
+                      </th>
+                      <th
+                        className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300"
+                      >
+                        Presensi • {bobotKehadiran}%
+                      </th>
+                      <th colSpan={3} className="py-2.5 px-3 text-center bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">
+                        Kalkulasi Nilai Akhir Rapor
+                      </th>
+                    </tr>
 
-                      {/* Header per TP */}
+                    {/* Column Headers */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
+                      <th className="py-2 px-2.5 w-10 text-center">#</th>
+                      <th className="py-2 px-2.5 w-24">NISN</th>
+                      <th className="py-2 px-3 min-w-[180px]">Nama Siswa</th>
+                      <th className="py-2 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+
+                      {/* Header per TP - Formatif */}
                       {tpList.map(tp => (
                         <th
-                          key={tp.id}
-                          className="py-2.5 px-3 w-28 text-center bg-teal-50/40 dark:bg-teal-950/20 border-r border-gray-200 dark:border-gray-700"
+                          key={`f-${tp.id}`}
+                          className="py-2 px-2.5 w-24 text-center bg-emerald-50/30 dark:bg-emerald-950/20 border-r border-gray-200 dark:border-gray-700"
                         >
-                          <div className="font-extrabold text-teal-800 dark:text-teal-300">{tp.kode_tp}</div>
-                          <div className="font-normal text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[90px] mx-auto">
+                          <div className="font-extrabold text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1">
+                            <span>{tp.kode_tp}</span>
+                            <span className="text-[8px] px-1 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-200 rounded font-black">F</span>
+                          </div>
+                          <div className="font-normal text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] mx-auto">
                             {tp.deskripsi}
                           </div>
                         </th>
                       ))}
+                      {/* Overall Formatif Average */}
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-emerald-100/60 dark:bg-emerald-900/40 text-emerald-900 dark:text-emerald-200 border-r border-gray-200 dark:border-gray-700">
+                        <div>Rata F</div>
+                        <div className="text-[9px] font-normal text-emerald-700 dark:text-emerald-300">Formatif</div>
+                      </th>
+
+                      {/* Header per TP - Sumatif */}
+                      {tpList.map(tp => (
+                        <th
+                          key={`s-${tp.id}`}
+                          className="py-2 px-2.5 w-24 text-center bg-purple-50/30 dark:bg-purple-950/20 border-r border-gray-200 dark:border-gray-700"
+                        >
+                          <div className="font-extrabold text-purple-800 dark:text-purple-300 flex items-center justify-center gap-1">
+                            <span>{tp.kode_tp}</span>
+                            <span className="text-[8px] px-1 bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-200 rounded font-black">S</span>
+                          </div>
+                          <div className="font-normal text-[9px] text-gray-500 dark:text-gray-400 truncate max-w-[80px] mx-auto">
+                            {tp.deskripsi}
+                          </div>
+                        </th>
+                      ))}
+                      {/* Overall Sumatif Average */}
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-purple-100/60 dark:bg-purple-900/40 text-purple-900 dark:text-purple-200 border-r border-gray-200 dark:border-gray-700">
+                        <div>Rata S</div>
+                        <div className="text-[9px] font-normal text-purple-700 dark:text-purple-300">Sumatif</div>
+                      </th>
+
+                      {/* Kehadiran */}
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-blue-50/50 dark:bg-blue-950/30 text-blue-900 dark:text-blue-200 border-r border-gray-200 dark:border-gray-700">
+                        <div>Kehadiran</div>
+                        <div className="text-[9px] font-normal text-blue-700 dark:text-blue-300">{bobotKehadiran}%</div>
+                      </th>
 
                       <th className="py-2.5 px-3 w-32 text-center font-black bg-amber-100/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 border-r border-gray-200 dark:border-gray-700">
                         Nilai Rapor
@@ -4590,23 +4988,17 @@ export default function GradebookView({
                             {student.gender || '-'}
                           </td>
 
-                          {/* Nilai per TP */}
+                          {/* Formatif per TP */}
                           {tpList.map(tp => {
-                            const score = stats.tpResults[tp.id];
+                            const fScore = stats.tpFormatifResults?.[tp.id] ?? null;
                             return (
                               <td
-                                key={tp.id}
-                                className="py-2.5 px-3 text-center font-bold border-r border-gray-200 dark:border-gray-700"
+                                key={`f-${tp.id}`}
+                                className="py-2.5 px-2.5 text-center font-bold border-r border-gray-200 dark:border-gray-700 bg-emerald-50/10 dark:bg-emerald-950/10"
                               >
-                                {score !== null ? (
-                                  <span
-                                    className={
-                                      score >= 75
-                                        ? 'text-emerald-700 dark:text-emerald-400'
-                                        : 'text-red-600 dark:text-red-400'
-                                    }
-                                  >
-                                    {score}
+                                {fScore !== null ? (
+                                  <span className={fScore >= 75 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}>
+                                    {fScore}
                                   </span>
                                 ) : (
                                   <span className="text-gray-300 dark:text-gray-600">-</span>
@@ -4614,6 +5006,48 @@ export default function GradebookView({
                               </td>
                             );
                           })}
+                          {/* Rata-rata Formatif */}
+                          <td className="py-2.5 px-2.5 text-center font-black border-r border-gray-200 dark:border-gray-700 bg-emerald-50/20 dark:bg-emerald-950/20">
+                            {stats.avgFormatifAll !== null ? (
+                              <span className="text-emerald-800 dark:text-emerald-300">{stats.avgFormatifAll}</span>
+                            ) : (
+                              <span className="text-gray-300 dark:text-gray-600">-</span>
+                            )}
+                          </td>
+
+                          {/* Sumatif per TP */}
+                          {tpList.map(tp => {
+                            const sScore = stats.tpSumatifResults?.[tp.id] ?? null;
+                            return (
+                              <td
+                                key={`s-${tp.id}`}
+                                className="py-2.5 px-2.5 text-center font-bold border-r border-gray-200 dark:border-gray-700 bg-purple-50/10 dark:bg-purple-950/10"
+                              >
+                                {sScore !== null ? (
+                                  <span className={sScore >= 75 ? 'text-purple-700 dark:text-purple-400' : 'text-red-600 dark:text-red-400'}>
+                                    {sScore}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-300 dark:text-gray-600">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          {/* Rata-rata Sumatif */}
+                          <td className="py-2.5 px-2.5 text-center font-black border-r border-gray-200 dark:border-gray-700 bg-purple-50/20 dark:bg-purple-950/20">
+                            {stats.avgSumatifAll !== null ? (
+                              <span className="text-purple-800 dark:text-purple-300">{stats.avgSumatifAll}</span>
+                            ) : (
+                              <span className="text-gray-300 dark:text-gray-600">-</span>
+                            )}
+                          </td>
+
+                          {/* Nilai Kehadiran */}
+                          <td className="py-2.5 px-2.5 text-center font-bold border-r border-gray-200 dark:border-gray-700 bg-blue-50/20 dark:bg-blue-950/20">
+                            <span className="text-blue-800 dark:text-blue-300">
+                              {stats.kehadiranScore}%
+                            </span>
+                          </td>
 
                           {/* Nilai Rapor Semester */}
                           <td className="py-2.5 px-3 text-center font-black text-sm bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-r border-gray-200 dark:border-gray-700">
@@ -4634,6 +5068,348 @@ export default function GradebookView({
                           {/* Deskripsi Capaian Pembelajaran */}
                           <td className="py-2.5 px-3 text-left whitespace-normal text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed max-w-sm">
                             {stats.deskripsiCapaian}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <PrintSignature
+            leftTitle="Mengetahui,"
+            leftSubtitle="Guru Mata Pelajaran"
+            leftName={selectedGuru || user?.nama}
+            leftNip={user?.nip}
+            user={user}
+            sekolahId={sekolahId || undefined}
+            statusKepalaSekolah={statusKepalaSekolah}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: PRESENSI SESI (16 PERTEMUAN KBM) & POIN KEHADIRAN                  */}
+      {/* ========================================================================= */}
+      {innerTab === 'presensi-sesi' && (
+        <div className="space-y-4">
+          {/* Header Card / Action Bar */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <i className="fa-solid fa-calendar-check text-teal-600 dark:text-teal-400"></i>
+                    Rincian Presensi Sesi & Poin Kehadiran (16 Pertemuan)
+                  </h3>
+                  {isSavingAttendance && (
+                    <span className="text-[10px] font-bold text-teal-700 bg-teal-50 dark:bg-teal-900/40 px-2 py-0.5 rounded-md inline-flex items-center gap-1 animate-pulse">
+                      <i className="fa-solid fa-spinner fa-spin"></i> Menyimpan ke Jurnal...
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Kelola status kehadiran setiap pertemuan KBM secara interaktif. Nilai kehadiran dan kalkulasi rapor terupdate seketika.
+                </p>
+              </div>
+
+              {/* Role-Based Mode Switcher: Wali Kelas / Admin can toggle, Guru Mapel strictly Presensi Mapel */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {!isPureGuruMapel ? (
+                  <div className="bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveAttendanceView('mapel')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        activeAttendanceView === 'mapel'
+                          ? 'bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-300 shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <i className="fa-solid fa-book text-xs"></i>
+                      Presensi Mapel: {selectedMapel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveAttendanceView('harian')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                        activeAttendanceView === 'harian'
+                          ? 'bg-white dark:bg-gray-800 text-indigo-700 dark:text-indigo-300 shadow-sm'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <i className="fa-solid fa-calendar-day text-xs"></i>
+                      Presensi Harian Kelas: {selectedKelas}
+                    </button>
+                  </div>
+                ) : (
+                  <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 border border-teal-200 dark:border-teal-800 inline-flex items-center gap-1.5">
+                    <i className="fa-solid fa-book text-xs"></i>
+                    Presensi Mapel: {selectedMapel} ({selectedKelas})
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Attendance Metrics Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/80">
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block">Kemajuan Pertemuan</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-gray-900 dark:text-white">
+                    {sessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0).length}
+                  </span>
+                  <span className="text-xs font-bold text-gray-400">/ 16 Sesi</span>
+                </div>
+                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold mt-0.5 block">
+                  Semester {selectedSemester} ({selectedTahunAjaran})
+                </span>
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block">Bobot Nilai Kehadiran</span>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <span className="text-xl font-black text-teal-700 dark:text-teal-300">
+                    {bobotKehadiran}%
+                  </span>
+                  <span className="text-xs font-bold text-gray-400">dari Nilai Rapor</span>
+                </div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-0.5 block">
+                  Komponen Kehadiran Buku Nilai
+                </span>
+              </div>
+
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700 lg:col-span-2">
+                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1.5">Skor Poin Status Kehadiran</span>
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 font-bold text-[11px]">
+                    Hadir (H): {statusPoints.hadir ?? 100} pts
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 font-bold text-[11px]">
+                    Sakit (S): {statusPoints.sakit ?? 75} pts
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 font-bold text-[11px]">
+                    Izin (I): {statusPoints.izin ?? 75} pts
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200 font-bold text-[11px]">
+                    Terlambat (T): {statusPoints.terlambat ?? 75} pts
+                  </span>
+                  <span className="px-2 py-0.5 rounded-lg bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 font-bold text-[11px]">
+                    Alpa (A): {statusPoints.alpa ?? 0} pts
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          {activeAttendanceView === 'mapel' ? (
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
+                <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
+                    {/* Category Header Row */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
+                      <th colSpan={4} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100/70 dark:bg-gray-800/80">
+                        Identitas Siswa
+                      </th>
+                      <th colSpan={16} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-teal-50/70 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300">
+                        16 Pertemuan KBM Sesi Tatap Muka
+                      </th>
+                      <th colSpan={7} className="py-2.5 px-3 text-center bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300">
+                        Rekapitulasi Kehadiran & Kontribusi Nilai
+                      </th>
+                    </tr>
+
+                    {/* Column Headers */}
+                    <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
+                      <th className="py-2 px-2.5 w-10 text-center">#</th>
+                      <th className="py-2 px-2.5 w-24">NISN</th>
+                      <th className="py-2 px-3 min-w-[180px]">Nama Siswa</th>
+                      <th className="py-2 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+
+                      {/* 16 Session Columns */}
+                      {sessions.map(sess => (
+                        <th
+                          key={sess.sessionNumber}
+                          className="py-2 px-2 w-20 text-center border-r border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-900/30"
+                        >
+                          <div className="flex flex-col items-center justify-center gap-0.5">
+                            <span className="font-extrabold text-gray-800 dark:text-gray-200 text-[11px]">
+                              P{sess.sessionNumber}
+                            </span>
+                            {sess.tanggal ? (
+                              <span className="text-[8px] font-normal text-gray-400 font-mono">
+                                {sess.tanggal.slice(5)}
+                              </span>
+                            ) : (
+                              <span className="text-[8px] font-normal text-gray-400 italic">
+                                Belum
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleMarkAllPresent(sess.sessionNumber)}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 hover:bg-teal-100 dark:bg-teal-900/40 dark:text-teal-300 dark:hover:bg-teal-900/70 font-semibold border border-teal-200 dark:border-teal-700 transition flex items-center gap-1 mt-0.5"
+                              title={`Tandai Semua Hadir pada Pertemuan ${sess.sessionNumber}`}
+                            >
+                              <i className="fa-solid fa-check-double text-[8px]"></i> Hadir
+                            </button>
+                          </div>
+                        </th>
+                      ))}
+
+                      {/* Rekap Counts */}
+                      <th className="py-2 px-2 w-12 text-center font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50/30 dark:bg-emerald-950/20 border-r border-gray-200 dark:border-gray-700">H</th>
+                      <th className="py-2 px-2 w-12 text-center font-bold text-blue-700 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-950/20 border-r border-gray-200 dark:border-gray-700">S</th>
+                      <th className="py-2 px-2 w-12 text-center font-bold text-amber-700 dark:text-amber-300 bg-amber-50/30 dark:bg-amber-950/20 border-r border-gray-200 dark:border-gray-700">I</th>
+                      <th className="py-2 px-2 w-12 text-center font-bold text-red-700 dark:text-red-300 bg-red-50/30 dark:bg-red-950/20 border-r border-gray-200 dark:border-gray-700">A</th>
+                      <th className="py-2 px-2.5 w-20 text-center font-bold border-r border-gray-200 dark:border-gray-700">Total Poin</th>
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-teal-100/60 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border-r border-gray-200 dark:border-gray-700">
+                        Kehadiran (%)
+                      </th>
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-amber-100/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
+                        Kontribusi Rapor
+                      </th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {filteredStudents.map((student, idx) => {
+                      const validRecordedSessions = sessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+                      let hCount = 0;
+                      let sCount = 0;
+                      let iCount = 0;
+                      let tCount = 0;
+                      let aCount = 0;
+                      let totalPoints = 0;
+
+                      validRecordedSessions.forEach(sess => {
+                        const code = (sess.attendanceMap[student.nisn] || 'H').toUpperCase();
+                        if (code === 'H' || code.startsWith('HADIR')) { hCount++; totalPoints += (statusPoints.hadir ?? 100); }
+                        else if (code === 'S' || code.startsWith('SAKIT')) { sCount++; totalPoints += (statusPoints.sakit ?? 75); }
+                        else if (code === 'I' || code.startsWith('IZIN')) { iCount++; totalPoints += (statusPoints.izin ?? 75); }
+                        else if (code === 'T' || code.startsWith('TERLAMBAT')) { tCount++; totalPoints += (statusPoints.terlambat ?? 75); }
+                        else if (code === 'A' || code === 'B' || code.startsWith('ALPA') || code.startsWith('BOLOS')) { aCount++; totalPoints += (statusPoints.alpa ?? 0); }
+                        else { hCount++; totalPoints += 100; }
+                      });
+
+                      const attRate = attendanceRates[student.nisn] ?? 100;
+                      const raporContribution = parseFloat(((attRate * bobotKehadiran) / 100).toFixed(1));
+
+                      return (
+                        <tr
+                          key={student.nisn}
+                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
+                        >
+                          <td className="py-2 px-2.5 text-center text-gray-500 font-medium">{idx + 1}</td>
+                          <td className="py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300">
+                            {student.nisn}
+                          </td>
+                          <td className="py-2 px-3 font-semibold text-gray-900 dark:text-white">
+                            {student.nama_siswa}
+                          </td>
+                          <td className="py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
+                            {student.gender || '-'}
+                          </td>
+
+                          {/* 16 Session Cells */}
+                          {sessions.map(sess => {
+                            const rawStatus = sess.attendanceMap[student.nisn];
+                            const status = rawStatus || (sess.isRecorded ? 'H' : '-');
+                            
+                            let badgeStyle = 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 border border-dashed border-gray-300 dark:border-gray-600';
+                            if (status === 'H') badgeStyle = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-extrabold';
+                            else if (status === 'S') badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-extrabold';
+                            else if (status === 'I') badgeStyle = 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-extrabold';
+                            else if (status === 'T') badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200 border border-orange-300 dark:border-orange-700 font-extrabold';
+                            else if (status === 'A' || status === 'B') badgeStyle = 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200 border border-red-300 dark:border-red-700 font-extrabold';
+
+                            return (
+                              <td
+                                key={sess.sessionNumber}
+                                className="py-2 px-1.5 text-center border-r border-gray-200 dark:border-gray-700"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateCellStatus(sess.sessionNumber, student.nisn)}
+                                  className={`w-7 h-7 rounded-lg text-xs transition transform hover:scale-110 active:scale-95 shadow-sm inline-flex items-center justify-center ${badgeStyle}`}
+                                  title={`Pertemuan ${sess.sessionNumber}: Klik untuk ubah status (H -> S -> I -> T -> A)`}
+                                >
+                                  {status}
+                                </button>
+                              </td>
+                            );
+                          })}
+
+                          {/* Summary Counts */}
+                          <td className="py-2 px-2 text-center font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/10 dark:bg-emerald-950/10 border-r border-gray-200 dark:border-gray-700">{hCount}</td>
+                          <td className="py-2 px-2 text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-50/10 dark:bg-blue-950/10 border-r border-gray-200 dark:border-gray-700">{sCount}</td>
+                          <td className="py-2 px-2 text-center font-bold text-amber-700 dark:text-amber-400 bg-amber-50/10 dark:bg-amber-950/10 border-r border-gray-200 dark:border-gray-700">{iCount}</td>
+                          <td className="py-2 px-2 text-center font-bold text-red-700 dark:text-red-400 bg-red-50/10 dark:bg-red-950/10 border-r border-gray-200 dark:border-gray-700">{aCount}</td>
+                          <td className="py-2 px-2.5 text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{totalPoints}</td>
+                          <td className="py-2 px-2.5 text-center font-black text-sm bg-teal-50/60 dark:bg-teal-950/30 text-teal-800 dark:text-teal-300 border-r border-gray-200 dark:border-gray-700">
+                            {attRate}%
+                          </td>
+                          <td className="py-2 px-2.5 text-center font-black text-sm bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300">
+                            +{raporContribution}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            /* Presensi Harian Kelas View (for Wali Kelas / Admin) */
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <div className="p-4 bg-indigo-50/40 dark:bg-indigo-950/20 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
+                <div>
+                  <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200">
+                    Data Presensi Harian Kelas (Absensi Sekolah) — Kelas {selectedKelas}
+                  </h4>
+                  <p className="text-[11px] text-indigo-700 dark:text-indigo-300 mt-0.5">
+                    Data kehadiran kumulatif seluruh hari KBM dari modul absensi harian wali kelas/piket untuk Semester {selectedSemester} ({selectedTahunAjaran}).
+                  </p>
+                </div>
+              </div>
+              <div className="overflow-x-auto max-h-[600px] custom-scroll">
+                <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md">
+                    <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-[11px]">
+                      <th className="py-2.5 px-2.5 w-10 text-center">#</th>
+                      <th className="py-2.5 px-2.5 w-24">NISN</th>
+                      <th className="py-2.5 px-3 min-w-[180px]">Nama Siswa</th>
+                      <th className="py-2.5 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                      <th className="py-2.5 px-3 text-center text-emerald-700 dark:text-emerald-300 border-r border-gray-200 dark:border-gray-700">Hadir</th>
+                      <th className="py-2.5 px-3 text-center text-blue-700 dark:text-blue-300 border-r border-gray-200 dark:border-gray-700">Sakit</th>
+                      <th className="py-2.5 px-3 text-center text-amber-700 dark:text-amber-300 border-r border-gray-200 dark:border-gray-700">Izin</th>
+                      <th className="py-2.5 px-3 text-center text-red-700 dark:text-red-300 border-r border-gray-200 dark:border-gray-700">Alpa</th>
+                      <th className="py-2.5 px-3 text-center font-semibold border-r border-gray-200 dark:border-gray-700">Total Hari KBM</th>
+                      <th className="py-2.5 px-3 text-center font-black bg-indigo-50/70 dark:bg-indigo-950/40 text-indigo-900 dark:text-indigo-200">
+                        Persentase Kehadiran Harian (%)
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                    {filteredStudents.map((student, idx) => {
+                      const dStat = dailyClassAttendance[student.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0, total: 0, percentage: 100 };
+                      return (
+                        <tr key={student.nisn} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
+                          <td className="py-2.5 px-2.5 text-center text-gray-500 font-medium">{idx + 1}</td>
+                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300">{student.nisn}</td>
+                          <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white">{student.nama_siswa}</td>
+                          <td className="py-2.5 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">{student.gender || '-'}</td>
+                          <td className="py-2.5 px-3 text-center font-bold text-emerald-700 dark:text-emerald-400 border-r border-gray-200 dark:border-gray-700">{dStat.hadir}</td>
+                          <td className="py-2.5 px-3 text-center font-bold text-blue-700 dark:text-blue-400 border-r border-gray-200 dark:border-gray-700">{dStat.sakit}</td>
+                          <td className="py-2.5 px-3 text-center font-bold text-amber-700 dark:text-amber-400 border-r border-gray-200 dark:border-gray-700">{dStat.izin}</td>
+                          <td className="py-2.5 px-3 text-center font-bold text-red-700 dark:text-red-400 border-r border-gray-200 dark:border-gray-700">{dStat.alpa}</td>
+                          <td className="py-2.5 px-3 text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{dStat.total} hari</td>
+                          <td className="py-2.5 px-3 text-center font-black text-sm bg-indigo-50/40 dark:bg-indigo-950/20 text-indigo-900 dark:text-indigo-200">
+                            {dStat.percentage}%
                           </td>
                         </tr>
                       );

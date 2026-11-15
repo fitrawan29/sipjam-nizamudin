@@ -361,6 +361,28 @@ export function hasAttendanceData(journal: any): boolean {
 }
 
 /**
+ * Menghitung rentang tanggal (startDate, endDate) untuk semester dan tahun ajaran tertentu
+ * Ganjil: 1 Juli - 31 Desember tahun pertama
+ * Genap: 1 Januari - 15 Juli tahun kedua
+ */
+export function getSemesterDateRange(
+  semester: 'Ganjil' | 'Genap' | string,
+  tahunAjaran: string
+): { startDate: string; endDate: string } {
+  const parts = (tahunAjaran || '').split('/');
+  let startYear = parseInt(parts[0], 10);
+  if (isNaN(startYear)) startYear = new Date().getFullYear();
+  let endYear = parts[1] ? parseInt(parts[1], 10) : startYear + 1;
+  if (isNaN(endYear)) endYear = startYear + 1;
+
+  const isGenap = String(semester).trim().toLowerCase() === 'genap';
+  const startDate = isGenap ? `${endYear}-01-01` : `${startYear}-07-01`;
+  const endDate = isGenap ? `${endYear}-07-15` : `${startYear}-12-31`;
+
+  return { startDate, endDate };
+}
+
+/**
  * Melakukan parsing toleran dan normalisasi terhadap data absensi siswa
  * dari versi terdahulu (array objek, dictionary berstatus kata/objek, atau detail_absen teks)
  * menjadi dictionary standar: { [identitasSiswa]: 'H' | 'S' | 'I' | 'A' | 'B' }

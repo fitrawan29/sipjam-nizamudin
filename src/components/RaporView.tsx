@@ -10,6 +10,7 @@ import { generateKurikulumMerdekaDeskripsi } from './GradebookView';
 import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/database';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
+import { getSemesterDateRange } from '@/lib/workflow';
 
 interface RaporViewProps {
   user: any;
@@ -562,11 +563,14 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
         setSelectedStudent(null);
       }
 
-      // 2. Fetch Attendance Summary
+      // 2. Fetch Attendance Summary (filtered by semester date range)
+      const { startDate, endDate } = getSemesterDateRange(selectedSemester, selectedTahunAjaran);
       let aQuery = supabase
         .from('absensi')
-        .select('nisn, status')
-        .eq('kelas', selectedKelas);
+        .select('nisn, status, tanggal')
+        .eq('kelas', selectedKelas)
+        .gte('tanggal', startDate)
+        .lte('tanggal', endDate);
       if (sekolahId) aQuery = aQuery.eq('sekolah_id', sekolahId);
       const { data: aData } = await aQuery;
 
@@ -577,6 +581,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
 
       if (aData) {
         aData.forEach((row: any) => {
+          if (row.tanggal && (row.tanggal < startDate || row.tanggal > endDate)) return;
           if (!attRecord[row.nisn]) {
             attRecord[row.nisn] = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
           }
