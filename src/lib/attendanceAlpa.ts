@@ -410,7 +410,7 @@ export async function evaluateAndApplyAutoAlpa(
     void hasExplicitTeacherSetting;
 
     // const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)
-    const isTeacherExempt = policy.isTeacherExempt;
+    const isTeacherExempt = !isNonKbmOrTu && policy.isTeacherExempt;
 
     const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
       if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;

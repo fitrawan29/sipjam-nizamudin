@@ -146,11 +146,17 @@ export function resolveTeacherAttendancePolicy(params: {
           isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
       );
   const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
-  const explicitSetting = parseExplicitBooleanFlag(
-    teacher?.wajib_hadir_hanya_mengajar ??
+  const teacherFlag = parseExplicitBooleanFlag(teacher?.wajib_hadir_hanya_mengajar);
+  const userFlag = parseExplicitBooleanFlag(
     linkedUser?.wajib_hadir_hanya_mengajar ??
     (linkedUser as any)?.wajibHadirHanyaMengajar
   );
+  const explicitSetting =
+    teacherFlag === true || userFlag === true
+      ? true
+      : teacherFlag === false || userFlag === false
+      ? false
+      : null;
 
   const idSet = new Set(
     [teacher?.id, teacher?.user_id, linkedUser?.id]
@@ -183,14 +189,14 @@ export function resolveTeacherAttendancePolicy(params: {
   let isTeacherExempt = false;
   if (isTu) {
     isTeacherExempt = false;
-  } else if (explicitSetting === false) {
-    isTeacherExempt = false;
-  } else if (explicitSetting === true) {
-    isTeacherExempt = true;
-  } else if (isNonKbmOrTu) {
-    isTeacherExempt = false;
   } else if (preferLegacyListWhenGlobalKbm && isInLegacyList) {
     isTeacherExempt = true;
+  } else if (explicitSetting === true) {
+    isTeacherExempt = true;
+  } else if (explicitSetting === false) {
+    isTeacherExempt = false;
+  } else if (isNonKbmOrTu) {
+    isTeacherExempt = false;
   } else if (isInLegacyList) {
     isTeacherExempt = true;
   } else {
@@ -221,6 +227,7 @@ export function normalizeTeacherIdentityName(name?: string | null): string {
     .replace(/,.*$/, '')
     .replace(/\b(ibu|bu|bapak|pak|bpk|ustadz|ustadzah|ust|guru|haji|h|hj|hjh|kh|kyai|kiai|prof|dr|drs|dra|ir|s\.?\s*pd\.?\s*k?|s\.?\s*pd\.?\s*i?|m\.?\s*pd\.?\s*k?|m\.?\s*pd\.?|s\.?\s*kom\.?|s\.?\s*si\.?|s\.?\s*ag\.?|s\.?\s*th\.?|m\.?\s*th\.?|s\.?\s*pak\.?|s\.?\s*sos\.?|s\.?\s*km\.?|s\.?\s*sn\.?|s\.?\s*or\.?|s\.?\s*tr\.?|s\.?\s*ip\.?|s\.\s*h\.?|s\.\s*p\.?|s\.?\s*e\.?|s\.?\s*t\.?|s\.?\s*psi\.?|s\.?\s*kep\.?|m\.?\s*si\.?|m\.?\s*kom\.?|m\.\s*m\.?|m\.\s*a\.?|a\.?\s*md\.?|gr)\b/gi, '')
     .replace(/[^a-z0-9\s]/gi, ' ')
+    .replace(/\bal\s+([a-z]+)\b/gi, 'al$1')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -239,25 +246,28 @@ export function isTeacherNameEquivalent(
   const normA = normalizeTeacherIdentityName(nameA);
   const normB = normalizeTeacherIdentityName(nameB);
   if (!normA || !normB) return false;
-  if (normA === normB) return true;
+  const areNormEquiv = (a: string, b: string) => a === b || a.replace(/ei/g, 'ai') === b.replace(/ei/g, 'ai');
+  if (areNormEquiv(normA, normB)) return true;
 
   const tA = normA.split(' ').filter(Boolean);
   const tB = normB.split(' ').filter(Boolean);
   if (tA.length === 0 || tB.length === 0) return false;
+
+  const areTokEquiv = (a: string, b: string) => a === b || a.replace(/ei/g, 'ai') === b.replace(/ei/g, 'ai');
 
   if (tA.length === 1 || tB.length === 1) {
     if (!allowSingleWordFirstToken) return false;
     const single = tA.length === 1 ? tA[0] : tB[0];
     const multiTokens = tA.length === 1 ? tB : tA;
     const multiFirst = multiTokens[0];
-    if (single.length >= 2 && single === multiFirst) return true;
+    if (single.length >= 2 && (single === multiFirst || areTokEquiv(single, multiFirst))) return true;
     // Shortened first-name variant differing only by trailing 'a' (e.g. "Susan" <-> "Susana")
     if (single.length >= 4 && multiFirst.length >= 4 && (multiFirst === single + 'a' || single === multiFirst + 'a')) {
       return true;
     }
     // Given-name second token when first token is a standard lead prefix (e.g. "Mohamad Adnan Mamangkai" -> "Adnan", "Setia Ambar Ningsih Mamonto" -> "Ambar")
     const commonLeadPrefixes = new Set(['mohamad', 'muhammad', 'moh', 'muh', 'mohammad', 'setia', 'siti', 'nur', 'abdul', 'andi', 'ni', 'i', 'la', 'wa']);
-    if (single.length >= 3 && commonLeadPrefixes.has(multiFirst) && multiTokens.slice(1).includes(single)) {
+    if (single.length >= 3 && commonLeadPrefixes.has(multiFirst) && multiTokens.slice(1).some(tok => areTokEquiv(tok, single))) {
       return true;
     }
     return false;
@@ -268,7 +278,7 @@ export function isTeacherNameEquivalent(
     let commonFullWords = 0;
     const allPosMatch = tA.every((tokA, i) => {
       const tokB = tB[i];
-      if (tokA === tokB) {
+      if (areTokEquiv(tokA, tokB)) {
         if (tokA.length >= 2) commonFullWords++;
         return true;
       }
@@ -277,8 +287,8 @@ export function isTeacherNameEquivalent(
     if (allPosMatch && commonFullWords >= 1) return true;
   }
 
-  // Subsequence alignment with identical first and last names (e.g. "Alva Saerang" vs "Alva Rolan Saerang")
-  if (tA[0] === tB[0] && tA[tA.length - 1] === tB[tB.length - 1]) {
+  // Subsequence alignment with identical first and last names (e.g. "Alva Saerang" vs "Alva Rolan Saerang", "Sarah Alhaid" vs "Sarah Alheid")
+  if (areTokEquiv(tA[0], tB[0]) && areTokEquiv(tA[tA.length - 1], tB[tB.length - 1])) {
     const shorter = tA.length <= tB.length ? tA : tB;
     const longer = tA.length <= tB.length ? tB : tA;
     let idx = 0;
@@ -286,7 +296,7 @@ export function isTeacherNameEquivalent(
       let found = false;
       while (idx < longer.length) {
         const lTok = longer[idx++];
-        if (lTok === sTok || (sTok.length === 1 && lTok.startsWith(sTok)) || (lTok.length === 1 && sTok.startsWith(lTok))) {
+        if (areTokEquiv(lTok, sTok) || (sTok.length === 1 && lTok.startsWith(sTok)) || (lTok.length === 1 && sTok.startsWith(lTok))) {
           found = true;
           break;
         }
@@ -299,7 +309,7 @@ export function isTeacherNameEquivalent(
   // Prefix multi-word matching (e.g. "Ade Fitrawan" vs "Ade Fitrawan Ibrahim")
   const shorter = tA.length <= tB.length ? tA : tB;
   const longer = tA.length <= tB.length ? tB : tA;
-  if (shorter.length >= 2 && shorter.every((tok, i) => tok === longer[i])) {
+  if (shorter.length >= 2 && shorter.every((tok, i) => areTokEquiv(tok, longer[i]))) {
     return true;
   }
 
@@ -617,7 +627,17 @@ export function resolveLinkedUserForTeacher(teacher: any, usersList: any[] = [])
   );
   if (byExactName) return byExactName;
 
-  return usersList.find(u => isTeacherNameEquivalent(teacher.nama_guru, u?.nama, false)) || null;
+  const byEquivalentName = usersList.find(u => isTeacherNameEquivalent(teacher.nama_guru, u?.nama, false));
+  if (byEquivalentName) return byEquivalentName;
+
+  return usersList.find(u =>
+    isTeacherNameEquivalent(teacher.nama_guru, u?.nama, true) ||
+    isTeacherNameEquivalent(teacher.nama_guru, u?.username, true) ||
+    (u?.username && (
+      (cleanNip && cleanNip !== '-' && cleanNip === (u.username || '').trim().toLowerCase()) ||
+      (teacher.nama_guru && (teacher.nama_guru || '').toLowerCase().includes((u.username || '').trim().toLowerCase()))
+    ))
+  ) || null;
 }
 
 /**
@@ -2003,7 +2023,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
           isTeacherRecordMatch(
             { user_id: userId, nama_guru: namaGuru, nip: username, username },
             teacher,
-            { id: userId, nama: namaGuru, username }
+            { id: userId, nama: namaGuru, username },
+            { allowSingleWordFirstToken: true }
           )
         );
       }
@@ -2110,10 +2131,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       totalTeacherKbmCount,
       aturanGlobal: aturanKehadiran,
       guruHanyaMengajarList,
+      preferLegacyListWhenGlobalKbm: true,
     });
     if (isTeacherTu) {
-      isTeacherExempt = false;
-    } else if (explicitTeacherSetting === false) {
       isTeacherExempt = false;
     } else if (explicitTeacherSetting === true) {
       isTeacherExempt = true;

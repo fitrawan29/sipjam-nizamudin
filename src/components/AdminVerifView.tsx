@@ -861,7 +861,7 @@ export default function AdminVerifView({
           [t.nama_guru, linkedUser?.nama].some(alias => alias && isGuruDiPiket(p.daftar_guru, alias))
         );
         const inPenugasanPiket = allPenugasanPiket.some((p: any) =>
-          (p.hari || '').trim().toLowerCase() === targetDayLower && isTeacherRecordMatch(p, t, linkedUser)
+          (p.hari || '').trim().toLowerCase() === targetDayLower && isTeacherRecordMatch(p, t, linkedUser, { allowSingleWordFirstToken: true })
         );
         const hasPiketToday = inJadwalPiket || inPenugasanPiket;
 
@@ -873,12 +873,13 @@ export default function AdminVerifView({
         const isNonKbmOrTu = isTu || totalTeacherSchedules === 0;
 
         // Check if teacher is in category "wajib hadir pada jadwal KBM"
-        const isTeacherExempt = resolveTeacherAttendancePolicy({
+        const isTeacherExempt = !isNonKbmOrTu && resolveTeacherAttendancePolicy({
           teacher: t,
           linkedUser,
           totalTeacherKbmCount: totalTeacherSchedules,
           aturanGlobal,
           guruHanyaMengajarList,
+          preferLegacyListWhenGlobalKbm: true,
         }).isTeacherExempt;
 
         const isFreeFromPresence = isTeacherExempt && scheduledClasses.length === 0 && !hasPiketToday;

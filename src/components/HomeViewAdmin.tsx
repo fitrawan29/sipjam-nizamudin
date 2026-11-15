@@ -459,13 +459,14 @@ export default function HomeViewAdmin({
           weeklySchedules: allWeeklyJadwalList,
           aturanGlobal,
           guruHanyaMengajarList,
+          preferLegacyListWhenGlobalKbm: true,
         });
         const isTu = policy.isTu;
         const hasAnyWeeklyKbm = policy.hasAnyWeeklyKbm;
         const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
         // AST preservation for regression tests: aturanGlobal === 'Hari_Mengajar_Saja' & guruHanyaMengajarList.includes
         void (aturanGlobal === 'Hari_Mengajar_Saja' && guruHanyaMengajarList.includes(teacher.id));
-        const isTeacherExempt = policy.isTeacherExempt;
+        const isTeacherExempt = !isNonKbmOrTu && policy.isTeacherExempt;
         const activeTargetCount = targetClasses.filter((jk: any) => !jk.isBlocked).length;
         const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;
 
@@ -479,7 +480,7 @@ export default function HomeViewAdmin({
             Boolean(linkedUser?.nama && isGuruDiPiket(piketSchedule.daftar_guru, linkedUser.nama))
           : false;
         const isAssignedPiket = inPenugasan || inJadwalPiket;
-        const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
+        const isPiket = isAssignedPiket && !isExemptNonTeaching && !isBlokToday;
         let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
         let piketColor: 'green' | 'rose' | 'gray' | 'blue' = isExemptNonTeaching && isAssignedPiket ? 'blue' : 'gray';
         if (isSchoolDayOff) {
