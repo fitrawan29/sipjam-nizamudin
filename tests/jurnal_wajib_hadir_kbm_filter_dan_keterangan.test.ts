@@ -266,6 +266,74 @@ check('3.3: Dokumen cetak & tabel hanya memuat hari jadwal KBM dengan teks "tida
   assert.strictEqual(printable[1].materi, 'tidak masuk kelas');
 });
 
+console.log('\n--- Bagian 4: Ketahanan Edge Cases (Lowercase Status, Legacy Text, AST Robustness) ---');
+
+check('4.1: isTidakMasukKelas tahan terhadap lowercase "tidak masuk kelas" dan "unfilled-kbm-"', () => {
+  const evaluator = (j: any) =>
+    j.id?.startsWith('unfilled-kbm-') ||
+    j.status_verifikasi === 'Wajib Hadir KBM' ||
+    (j.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+    (j.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+    (j.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+    (j.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
+
+  const lowerCaseRow = {
+    id: 'db-entry-1',
+    tanggal: '2026-11-04',
+    kelas: 'X Merdeka',
+    mapel: 'Informatika',
+    status_verifikasi: 'tidak masuk kelas',
+    keterangan: '-',
+    materi: 'tidak masuk kelas',
+  };
+  const unfilledKbmRow = {
+    id: 'unfilled-kbm-2026-11-04-X Merdeka-Informatika-Ade',
+    tanggal: '2026-11-04',
+    kelas: 'X Merdeka',
+    mapel: 'Informatika',
+    status_verifikasi: '-',
+    keterangan: '-',
+  };
+  const legacyStatusRow = {
+    id: 'db-entry-2',
+    tanggal: '2026-11-04',
+    kelas: 'X Merdeka',
+    mapel: 'Informatika',
+    status_verifikasi: 'Wajib Hadir KBM',
+    keterangan: '-',
+  };
+
+  assert.strictEqual(evaluator(lowerCaseRow), true, 'Lowercase status_verifikasi harus dikenali');
+  assert.strictEqual(evaluator(unfilledKbmRow), true, 'ID unfilled-kbm- harus dikenali');
+  assert.strictEqual(evaluator(legacyStatusRow), true, 'Legacy status_verifikasi Wajib Hadir KBM harus dikenali');
+});
+
+check('4.2: AST tabel kelas (kolom 6) memprioritaskan isTidakMasukKelas ? "tidak masuk kelas"', () => {
+  assert.ok(
+    rekapCode.includes("{isTidakMasukKelas ? 'tidak masuk kelas' : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (j.konten || '-')))}"),
+    'Materi tabel kelas harus menampilkan "tidak masuk kelas" saat isTidakMasukKelas'
+  );
+});
+
+check('4.3: AST tabel pribadi memprioritaskan isTidakMasukKelas di materi dan keterangan', () => {
+  assert.ok(
+    rekapCode.includes("isTidakMasukKelas ? 'tidak masuk kelas' : (j.konten && j.konten !== '-')"),
+    'Materi tabel pribadi harus memprioritaskan "tidak masuk kelas" saat isTidakMasukKelas'
+  );
+  assert.ok(
+    rekapCode.includes("isTidakMasukKelas ? 'tidak masuk kelas' : (j.catatan_refleksi || j.refleksi"),
+    'Keterangan tabel pribadi harus memprioritaskan "tidak masuk kelas" saat isTidakMasukKelas'
+  );
+});
+
+check('4.4: Detail Modal menangani status & materi tidak masuk kelas secara komprehensif', () => {
+  assert.ok(
+    rekapCode.includes("const isModalTidakMasuk =") &&
+    rekapCode.includes("const isModalDelinquent ="),
+    'Detail Modal harus memiliki evaluator terdedikasi untuk baris tidak masuk'
+  );
+});
+
 console.log('\n========================================================================');
 console.log(`HASIL: ${passed} LULUS, ${failed} GAGAL`);
 console.log('========================================================================\n');

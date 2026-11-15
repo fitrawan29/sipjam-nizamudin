@@ -43,14 +43,14 @@ assert(
 );
 
 assert(
-  rekapCode.includes("aturanKehadiranGlobal === 'Hari_Mengajar_Saja'") &&
-  rekapCode.includes('aturan_kehadiran_guru'),
-  'checkIsHanyaKbm accounts for school-wide Hari_Mengajar_Saja attendance policy'
+  rekapCode.includes('resolveTeacherAttendancePolicy') &&
+  rekapCode.includes('isTeacherExempt'),
+  'checkIsHanyaKbm delegates attendance policy evaluation to resolveTeacherAttendancePolicy'
 );
 
 assert(
   rekapCode.includes('legacyGhmList') &&
-  rekapCode.includes('guru_hanya_mengajar'),
+  rekapCode.includes('guruHanyaMengajarList: legacyGhmList'),
   'checkIsHanyaKbm accounts for legacy guru_hanya_mengajar / guru_bebas_hadir list'
 );
 
@@ -83,9 +83,9 @@ assert(
 );
 
 assert(
-  rekapCode.includes("'Wajib Hadir KBM (tidak masuk kelas)'") &&
+  rekapCode.includes("'tidak masuk kelas'") &&
   rekapCode.includes("'Hadir KBM'"),
-  'Attendance status column renders "Hadir KBM" or "Wajib Hadir KBM" for exempt teachers'
+  'Attendance status column renders "Hadir KBM" or "tidak masuk kelas" for exempt teachers'
 );
 
 assert(
@@ -95,13 +95,13 @@ assert(
 
 assert(
   rekapCode.includes("isRowHanyaKbm ? 'KBM'") &&
-  rekapCode.includes("'Wajib Hadir KBM (tidak masuk kelas)' : 'Hadir KBM'"),
-  'CSV Export cleanly omits hour string and outputs KBM and Hadir KBM / Wajib Hadir KBM'
+  rekapCode.includes("'tidak masuk kelas' : 'Hadir KBM'"),
+  'CSV Export cleanly omits hour string and outputs KBM and Hadir KBM / tidak masuk kelas'
 );
 
 assert(
   rekapCode.includes('checkIsHanyaKbm(selectedJurnal.nama_guru, undefined, selectedJurnal.user_id)') &&
-  rekapCode.includes('Wajib Hadir KBM') &&
+  rekapCode.includes('Tidak Masuk Kelas') &&
   rekapCode.includes('Hadir KBM'),
   'Detail modal formats Jam Ke / Sesi and Status Verifikasi appropriately for KBM-only teachers'
 );

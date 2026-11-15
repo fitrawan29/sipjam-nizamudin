@@ -1687,7 +1687,13 @@ export default function RekapJurnalView({
                             const jamKbmStr = isRowHanyaKbm
                               ? 'KBM'
                               : (j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-'));
-                            const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                            const isTidakMasukKelas =
+                              j.id?.startsWith('unfilled-kbm-') ||
+                              j.status_verifikasi === 'Wajib Hadir KBM' ||
+                              (j.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+                              (j.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+                              (j.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+                              (j.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
                             const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
                             const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                             const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
@@ -1776,7 +1782,7 @@ export default function RekapJurnalView({
                                 {/* 6. Materi */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap">
                                   <div className="font-bold text-gray-900 dark:text-white print:text-black">
-                                    {(j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (j.konten || '-'))}
+                                    {isTidakMasukKelas ? 'tidak masuk kelas' : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (j.konten || '-')))}
                                   </div>
                                   {j.tujuan_pembelajaran && (
                                     <div className="text-[10px] text-gray-600 dark:text-gray-400 print:text-black mt-1">
@@ -1923,7 +1929,13 @@ export default function RekapJurnalView({
                           {filteredJurnal.map((j: any, index: number) => {
                             const fotoUrl = j.foto_kegiatan || j.link_bukti_foto;
                             const hasFoto = fotoUrl && fotoUrl !== '-' && fotoUrl.trim() !== '';
-                            const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                            const isTidakMasukKelas =
+                              j.id?.startsWith('unfilled-kbm-') ||
+                              j.status_verifikasi === 'Wajib Hadir KBM' ||
+                              (j.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+                              (j.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+                              (j.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+                              (j.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
                             const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
                             const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                             const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
@@ -1948,7 +1960,7 @@ export default function RekapJurnalView({
 
                                 {/* 3. Materi/Konten */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
-                                  {isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : (j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-')))}
+                                  {isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : (j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-')))}
                                 </td>
 
                                 {/* 4. Kelas/JP */}
@@ -2037,7 +2049,7 @@ export default function RekapJurnalView({
                                 {/* 8. Keterangan */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
                                   <div>
-                                    {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.keterangan || '-')))}
+                                    {isTidakMasukKelas ? 'tidak masuk kelas' : (j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.keterangan || '-'))))}
                                   </div>
                                   {j.status_verifikasi === 'Ditolak' && (
                                     <div className="mt-1.5 p-1.5 bg-red-50 dark:bg-red-950/40 rounded border border-red-200 dark:border-red-800 text-[9px] text-red-700 dark:text-red-300 not-italic">
@@ -2147,7 +2159,13 @@ export default function RekapJurnalView({
                         const col3 = `${formatHariTanggal(j.tanggal)}${j.timestamp && !isRowHanyaKbm ? ` ${j.timestamp.substring(11, 16)}` : ''}`;
                         const col4 = j.mapel || '-';
                         const col5 = isRowHanyaKbm ? 'KBM' : (j.jam_ke ? `Jam ke-${j.jam_ke}` : (j.pertemuan_ke ? `Pertemuan ${j.pertemuan_ke}` : '-'));
-                        const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                        const isTidakMasukKelas =
+                          j.id?.startsWith('unfilled-kbm-') ||
+                          j.status_verifikasi === 'Wajib Hadir KBM' ||
+                          (j.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+                          (j.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+                          (j.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+                          (j.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
                         const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
                         const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                         const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
@@ -2190,7 +2208,13 @@ export default function RekapJurnalView({
                       filteredJurnal.forEach((j: any, index: number) => {
                         const col1 = String(index + 1);
                         const col2 = formatHariTanggal(j.tanggal);
-                        const isTidakMasukKelas = j.status_verifikasi === 'Tidak Masuk Kelas' || j.keterangan === 'Tidak Masuk Kelas' || j.keterangan?.toLowerCase() === 'tidak masuk kelas';
+                        const isTidakMasukKelas =
+                          j.id?.startsWith('unfilled-kbm-') ||
+                          j.status_verifikasi === 'Wajib Hadir KBM' ||
+                          (j.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+                          (j.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+                          (j.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+                          (j.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
                         const isTidakKegiatan = j.status_verifikasi === 'Tidak Melaksanakan Kegiatan' || j.keterangan?.toLowerCase() === 'tidak melaksanakan kegiatan apapun';
                         const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                         const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
@@ -2322,27 +2346,39 @@ export default function RekapJurnalView({
                 </div>
                 <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
                   <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Status Verifikasi</span>
-                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mt-0.5 ${
-                    selectedJurnal.status_verifikasi === 'Disetujui' || selectedJurnal.status_verifikasi === 'Diverifikasi'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : selectedJurnal.status_verifikasi === 'Ditolak'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      : selectedJurnal.status_verifikasi === 'Sakit'
-                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                      : selectedJurnal.status_verifikasi === 'Izin'
-                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-                      : selectedJurnal.status_verifikasi === 'Dinas Luar'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                      : (selectedJurnal.status_verifikasi === 'Tidak Masuk Kelas' || selectedJurnal.keterangan === 'Tidak Masuk Kelas')
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                  }`}>
-                    {checkIsHanyaKbm(selectedJurnal.nama_guru, undefined, selectedJurnal.user_id)
-                      ? (selectedJurnal.status_verifikasi === 'Tidak Masuk Kelas' || selectedJurnal.keterangan === 'Tidak Masuk Kelas' || selectedJurnal.keterangan?.toLowerCase() === 'tidak masuk kelas'
-                          ? 'Tidak Masuk Kelas'
-                          : (selectedJurnal.status_verifikasi === 'Sakit' || selectedJurnal.status_verifikasi === 'Izin' || selectedJurnal.status_verifikasi === 'Dinas Luar' ? selectedJurnal.status_verifikasi : 'Hadir KBM'))
-                      : (selectedJurnal.status_verifikasi || 'Menunggu')}
-                  </span>
+                  {(() => {
+                    const isModalTidakMasuk =
+                      selectedJurnal.id?.startsWith('unfilled-kbm-') ||
+                      selectedJurnal.status_verifikasi === 'Wajib Hadir KBM' ||
+                      (selectedJurnal.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+                      (selectedJurnal.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+                      (selectedJurnal.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+                      (selectedJurnal.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
+
+                    return (
+                      <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold mt-0.5 ${
+                        selectedJurnal.status_verifikasi === 'Disetujui' || selectedJurnal.status_verifikasi === 'Diverifikasi'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                          : selectedJurnal.status_verifikasi === 'Ditolak'
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : selectedJurnal.status_verifikasi === 'Sakit'
+                          ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                          : selectedJurnal.status_verifikasi === 'Izin'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          : selectedJurnal.status_verifikasi === 'Dinas Luar'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          : isModalTidakMasuk
+                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
+                        {checkIsHanyaKbm(selectedJurnal.nama_guru, undefined, selectedJurnal.user_id)
+                          ? (isModalTidakMasuk
+                              ? 'Tidak Masuk Kelas'
+                              : (selectedJurnal.status_verifikasi === 'Sakit' || selectedJurnal.status_verifikasi === 'Izin' || selectedJurnal.status_verifikasi === 'Dinas Luar' ? selectedJurnal.status_verifikasi : 'Hadir KBM'))
+                          : (isModalTidakMasuk ? 'Tidak Masuk Kelas' : (selectedJurnal.status_verifikasi || 'Menunggu'))}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl col-span-2">
                   <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Lokasi KBM</span>
@@ -2364,32 +2400,69 @@ export default function RekapJurnalView({
                     <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedJurnal.kktp}</p>
                   </div>
                 )}
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Materi / Konten</span>
-                  <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
-                    {(selectedJurnal.konten && selectedJurnal.konten !== '-') ? selectedJurnal.konten : ((selectedJurnal.materi_pembelajaran && selectedJurnal.materi_pembelajaran !== '-') ? selectedJurnal.materi_pembelajaran : (selectedJurnal.materi && selectedJurnal.materi !== '-' ? selectedJurnal.materi : '-'))}
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Kegiatan Pembelajaran</span>
-                  <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
-                    {(selectedJurnal.kegiatan_pembelajaran && selectedJurnal.kegiatan_pembelajaran !== '-') ? selectedJurnal.kegiatan_pembelajaran : (selectedJurnal.kegiatan && selectedJurnal.kegiatan !== '-' ? selectedJurnal.kegiatan : '-')}
-                  </p>
-                </div>
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Absensi Siswa</span>
-                  <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
-                    {formatAbsensi(selectedJurnal.absensi_siswa, selectedJurnal.detail_absen, selectedJurnal.kehadiran_murid)}
-                  </p>
-                </div>
-                {(selectedJurnal.catatan_refleksi || selectedJurnal.refleksi) && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Catatan Refleksi</span>
-                    <p className="text-gray-900 dark:text-white italic whitespace-pre-wrap">
-                      {selectedJurnal.catatan_refleksi || selectedJurnal.refleksi}
-                    </p>
-                  </div>
-                )}
+                {(() => {
+                  const isModalDelinquent =
+                    selectedJurnal.id?.startsWith('unfilled-kbm-') ||
+                    selectedJurnal.status_verifikasi === 'Wajib Hadir KBM' ||
+                    (selectedJurnal.status_verifikasi || '').toLowerCase().includes('tidak masuk kelas') ||
+                    (selectedJurnal.keterangan || '').toLowerCase().includes('tidak masuk kelas') ||
+                    (selectedJurnal.materi || '').toLowerCase().includes('tidak masuk kelas') ||
+                    (selectedJurnal.materi_pembelajaran || '').toLowerCase().includes('tidak masuk kelas');
+
+                  const modalMateri = isModalDelinquent
+                    ? 'tidak masuk kelas'
+                    : ((selectedJurnal.konten && selectedJurnal.konten !== '-' && !selectedJurnal.konten.includes('Wajib Hadir KBM'))
+                        ? selectedJurnal.konten
+                        : ((selectedJurnal.materi_pembelajaran && selectedJurnal.materi_pembelajaran !== '-' && !selectedJurnal.materi_pembelajaran.includes('Wajib Hadir KBM'))
+                            ? selectedJurnal.materi_pembelajaran
+                            : (selectedJurnal.materi && selectedJurnal.materi !== '-' && !selectedJurnal.materi.includes('Wajib Hadir KBM')
+                                ? selectedJurnal.materi
+                                : '-')));
+
+                  const modalKegiatan = isModalDelinquent
+                    ? 'tidak masuk kelas'
+                    : ((selectedJurnal.kegiatan_pembelajaran && selectedJurnal.kegiatan_pembelajaran !== '-' && !selectedJurnal.kegiatan_pembelajaran.includes('Wajib Hadir KBM'))
+                        ? selectedJurnal.kegiatan_pembelajaran
+                        : (selectedJurnal.kegiatan && selectedJurnal.kegiatan !== '-' && !selectedJurnal.kegiatan.includes('Wajib Hadir KBM')
+                            ? selectedJurnal.kegiatan
+                            : '-'));
+
+                  const rawRefleksi = selectedJurnal.catatan_refleksi || selectedJurnal.refleksi;
+                  const modalRefleksi = isModalDelinquent
+                    ? 'tidak masuk kelas'
+                    : (rawRefleksi && rawRefleksi.includes('Wajib Hadir KBM') ? 'tidak masuk kelas' : rawRefleksi);
+
+                  return (
+                    <>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                        <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Materi / Konten</span>
+                        <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
+                          {modalMateri}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                        <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Kegiatan Pembelajaran</span>
+                        <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                          {modalKegiatan}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                        <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Absensi Siswa</span>
+                        <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
+                          {formatAbsensi(selectedJurnal.absensi_siswa, selectedJurnal.detail_absen, selectedJurnal.kehadiran_murid)}
+                        </p>
+                      </div>
+                      {modalRefleksi && (
+                        <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
+                          <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Catatan Refleksi</span>
+                          <p className="text-gray-900 dark:text-white italic whitespace-pre-wrap">
+                            {modalRefleksi}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
                 {/* Photo view */}
                 {(selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto) && (selectedJurnal.foto_kegiatan !== '-' || selectedJurnal.link_bukti_foto !== '-') && (
                   <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
