@@ -79,6 +79,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         teacher: t,
         weeklySchedules: weeklyScheduleList,
         guruHanyaMengajarList,
+        preferLegacyListWhenGlobalKbm: true,
       }).isTeacherExempt;
     };
 
@@ -244,7 +245,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         // If teacher is exempt on non-teaching days, check if they have schedule today
         if (isExemptTeacher(teacher)) {
           const hasTeachingToday = scheduleList.some(s => isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true }));
-          const hasPiketDuty = isAssignedPiketToday && (!activeBlok || hasTeachingToday);
+          const isExemptNonTeaching = !hasTeachingToday;
+          const hasPiketDuty = isAssignedPiketToday && !isExemptNonTeaching && (!activeBlok || hasTeachingToday);
           if (!hasTeachingToday && !hasPiketDuty) {
             // Teacher is exempt today, skip reminder
             continue;

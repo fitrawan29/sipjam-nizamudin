@@ -882,7 +882,9 @@ export default function AdminVerifView({
           preferLegacyListWhenGlobalKbm: true,
         }).isTeacherExempt;
 
-        const isFreeFromPresence = isTeacherExempt && scheduledClasses.length === 0 && !hasPiketToday;
+        const isExemptNonTeaching = isTeacherExempt && scheduledClasses.length === 0;
+        const hasPiketDuty = hasPiketToday && !isExemptNonTeaching;
+        const isFreeFromPresence = isExemptNonTeaching && !hasPiketDuty;
 
         return {
           id: `unsub-presensi-${t.id}`,

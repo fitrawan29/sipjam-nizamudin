@@ -18,6 +18,7 @@ import {
   isTeacherNameEquivalent,
   isTeacherRecordMatch,
   resolveSchoolLegacyGhmList,
+  resolveSchoolAturanKehadiran,
   resolveTeacherAttendancePolicy
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -385,6 +386,7 @@ export async function evaluateAndApplyAutoAlpa(
     if (hasRecord) continue;
 
     // Evaluasi aturan kehadiran guru berbasis pilihan perorangan
+    const aturanGlobal = resolveSchoolAturanKehadiran(schoolPengaturan);
     const guruHanyaMengajarList = resolveSchoolLegacyGhmList(schoolPengaturan);
 
     // Normalisasi nilai string boolean agar evaluasi aman dan konsisten
@@ -399,6 +401,8 @@ export async function evaluateAndApplyAutoAlpa(
       teacher: guru,
       weeklySchedules: schoolWeeklyJadwal,
       guruHanyaMengajarList,
+      aturanGlobal,
+      preferLegacyListWhenGlobalKbm: true,
     });
     const isTu = policy.isTu;
     const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
@@ -436,7 +440,8 @@ export async function evaluateAndApplyAutoAlpa(
         return isGuruDiPiket(jp.daftar_guru, guru.nama_guru) || isGuruDiPiket(jp.daftar_guru, cleanName);
       });
 
-      const hasPiketDuty = (inPenugasan || inJadwalPiket) && (!isBlokActive || hasTeachingToday);
+      const isExemptNonTeaching = isTeacherExempt && !hasTeachingToday;
+      const hasPiketDuty = (inPenugasan || inJadwalPiket) && !isExemptNonTeaching && (!isBlokActive || hasTeachingToday);
 
       if (!hasTeachingToday && !hasPiketDuty) {
         continue; // Tidak wajib hadir, bebas Alpa

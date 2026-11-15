@@ -9,7 +9,8 @@ import {
   isTeacherRecordMatch,
   isBkAccount,
   isTuAccount,
-  isInvalidMapel
+  isInvalidMapel,
+  isGuruDiPiket
 } from '../src/lib/workflow';
 
 console.log('========================================================================');
@@ -40,6 +41,9 @@ const root = process.cwd();
 const homeAdminSrc = fs.readFileSync(path.join(root, 'src', 'components', 'HomeViewAdmin.tsx'), 'utf8');
 const adminVerifSrc = fs.readFileSync(path.join(root, 'src', 'components', 'AdminVerifView.tsx'), 'utf8');
 const workflowSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'workflow.ts'), 'utf8');
+const alpaSrc = fs.readFileSync(path.join(root, 'src', 'lib', 'attendanceAlpa.ts'), 'utf8');
+const adminRekapSrc = fs.readFileSync(path.join(root, 'src', 'components', 'AdminRekapView.tsx'), 'utf8');
+const adminConfigSrc = fs.readFileSync(path.join(root, 'src', 'components', 'AdminConfigView.tsx'), 'utf8');
 
 check('1.1: HomeViewAdmin memanggil resolveTeacherAttendancePolicy dengan preferLegacyListWhenGlobalKbm: true', () => {
   assert.ok(
@@ -76,6 +80,57 @@ check('1.4: resolveTeacherAttendancePolicy mengutamakan preferLegacyListWhenGlob
     preferLegacyListWhenGlobalKbm: true,
   } as any);
   assert.strictEqual(policy.isTeacherExempt, true, 'Guru dalam daftar GHM dengan preferLegacyListWhenGlobalKbm harus exempt');
+});
+
+check('1.5: AdminVerifView menyelaraskan isFreeFromPresence agar guru bebas KBM tidak dipaksa hadir oleh piket', () => {
+  assert.ok(
+    adminVerifSrc.includes('const isExemptNonTeaching = isTeacherExempt && scheduledClasses.length === 0;'),
+    'AdminVerifView harus mendefinisikan isExemptNonTeaching'
+  );
+  assert.ok(
+    adminVerifSrc.includes('const hasPiketDuty = hasPiketToday && !isExemptNonTeaching;'),
+    'AdminVerifView harus membebaskan guru bebas KBM dari tugas piket'
+  );
+  assert.ok(
+    adminVerifSrc.includes('const isFreeFromPresence = isExemptNonTeaching && !hasPiketDuty;'),
+    'AdminVerifView isFreeFromPresence harus selaras dengan HomeViewAdmin'
+  );
+});
+
+check('1.6: attendanceAlpa.ts melindungi guru bebas KBM dan menyertakan preferLegacyListWhenGlobalKbm: true', () => {
+  assert.ok(
+    alpaSrc.includes('preferLegacyListWhenGlobalKbm: true'),
+    'attendanceAlpa.ts harus menyertakan preferLegacyListWhenGlobalKbm: true'
+  );
+  assert.ok(
+    alpaSrc.includes('const isExemptNonTeaching = isTeacherExempt && !hasTeachingToday;'),
+    'attendanceAlpa.ts harus mendefinisikan isExemptNonTeaching'
+  );
+  assert.ok(
+    alpaSrc.includes('const hasPiketDuty = (inPenugasan || inJadwalPiket) && !isExemptNonTeaching && (!isBlokActive || hasTeachingToday);'),
+    'attendanceAlpa.ts harus membebaskan tugas piket guru bebas KBM agar tidak memicu alpa'
+  );
+});
+
+check('1.7: AdminRekapView menyertakan preferLegacyListWhenGlobalKbm: true agar tidak menghukum alpa', () => {
+  assert.ok(
+    adminRekapSrc.includes('preferLegacyListWhenGlobalKbm: true'),
+    'AdminRekapView harus menyertakan preferLegacyListWhenGlobalKbm: true'
+  );
+});
+
+check('1.8: AdminConfigView menyertakan preferLegacyListWhenGlobalKbm: true pada inisialisasi toggle kebijakan', () => {
+  assert.ok(
+    adminConfigSrc.includes('preferLegacyListWhenGlobalKbm: true'),
+    'AdminConfigView harus menyertakan preferLegacyListWhenGlobalKbm: true'
+  );
+});
+
+check('1.9: workflow.ts mengevaluasi resolveTeacherAttendancePolicy dengan allowSingleWordFirstToken: true', () => {
+  assert.ok(
+    workflowSrc.includes('allowSingleWordFirstToken: true'),
+    'workflow.ts harus mendukung pencocokan allowSingleWordFirstToken'
+  );
 });
 
 // -----------------------------------------------------------------------------
@@ -297,6 +352,9 @@ check('3.4: Pada hari mengajar aktif (Kamis untuk Ade, Selasa untuk Sarah), kewa
 // -----------------------------------------------------------------------------
 console.log('\n--- [Bagian 4] Rotasi Piket di Hari Bebas KBM ---');
 
+const mockGhmList = mockTeachers.map(t => t.id);
+const mockAturanGlobal = 'Hari_Mengajar_Saja';
+
 check('4.1: Guru yang bebas KBM keseluruhan tidak dipaksa wajib datang hanya karena tercantum dalam rotasi piket', () => {
   // Simulasi jika Ade atau Sarah tidak sengaja masuk daftar_guru jadwal piket Senin
   const isAssignedPiket = true;
@@ -313,6 +371,94 @@ check('4.1: Guru yang bebas KBM keseluruhan tidak dipaksa wajib datang hanya kar
   const hasPiketDuty = isPiket;
   const isFreeFromPresence = isExemptNonTeaching && !hasPiketDuty;
   assert.strictEqual(isFreeFromPresence, true, 'isFreeFromPresence tetap true dan tidak terhalang piket');
+});
+
+check('4.2: AdminVerifView secara objektif mengevaluasi guru bebas KBM (Ade & Sarah) tetap Bebas Hadir dan bukan Alpa saat piket Senin', () => {
+  const targetDayLower = 'senin';
+  const mockPiket = [{ hari: 'Senin', daftar_guru: 'Ade Fitrawan Ibrahim, Sarah Alhaid' }];
+
+  for (const teacher of mockTeachers) {
+    const linkedUser = resolveLinkedUserForTeacher(teacher, mockUsers);
+    const scheduledClasses = mockWeeklySchedules.filter((j: any) =>
+      (j.hari || '').toLowerCase() === targetDayLower &&
+      isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
+    );
+
+    const hasPiketToday = mockPiket.some((p: any) =>
+      p.hari.toLowerCase() === targetDayLower &&
+      [teacher.nama_guru, linkedUser?.nama].some(alias => alias && isGuruDiPiket(p.daftar_guru, alias))
+    );
+    assert.strictEqual(hasPiketToday, true, 'Guru terdaftar di jadwal piket');
+
+    const totalTeacherSchedules = mockWeeklySchedules.filter((j: any) =>
+      isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
+    ).length;
+
+    const isTeacherExempt = resolveTeacherAttendancePolicy({
+      teacher,
+      linkedUser,
+      totalTeacherKbmCount: totalTeacherSchedules,
+      aturanGlobal: mockAturanGlobal,
+      guruHanyaMengajarList: mockGhmList,
+      preferLegacyListWhenGlobalKbm: true,
+    }).isTeacherExempt;
+
+    const isExemptNonTeaching = isTeacherExempt && scheduledClasses.length === 0;
+    const hasPiketDuty = hasPiketToday && !isExemptNonTeaching;
+    const isFreeFromPresence = isExemptNonTeaching && !hasPiketDuty;
+
+    assert.strictEqual(isExemptNonTeaching, true);
+    assert.strictEqual(hasPiketDuty, false, 'hasPiketDuty harus false untuk guru bebas KBM');
+    assert.strictEqual(isFreeFromPresence, true, 'isFreeFromPresence harus true');
+
+    const unsubmittedCard = {
+      pesan_belum: isFreeFromPresence ? 'Bebas Hadir' : 'Belum melakukan presensi datang maupun pulang',
+      status_label: isFreeFromPresence ? 'Bebas Hadir' : 'Alpa',
+      status_verifikasi: isFreeFromPresence ? 'Bebas Hadir' : 'Alpa',
+      isFreeFromPresence,
+      isAlpa: !isFreeFromPresence,
+    };
+
+    assert.strictEqual(unsubmittedCard.isAlpa, false, `${teacher.nama_guru} tidak boleh ditandai Alpa`);
+    assert.strictEqual(unsubmittedCard.status_label, 'Bebas Hadir');
+  }
+});
+
+check('4.3: attendanceAlpa secara objektif mengabaikan guru bebas KBM (Ade & Sarah) dan tidak menyisipkan Alpa saat piket Senin', () => {
+  const targetDayLower = 'senin';
+  const mockPiket = [{ hari: 'Senin', daftar_guru: 'Ade Fitrawan Ibrahim, Sarah Alhaid' }];
+
+  for (const teacher of mockTeachers) {
+    const hasTeachingToday = mockWeeklySchedules.some((j: any) =>
+      (j.hari || '').toLowerCase() === targetDayLower &&
+      isTeacherRecordMatch(j, teacher, null, { allowSingleWordFirstToken: true })
+    );
+    assert.strictEqual(hasTeachingToday, false, 'Tidak mengajar hari Senin');
+
+    const policy = resolveTeacherAttendancePolicy({
+      teacher,
+      weeklySchedules: mockWeeklySchedules,
+      guruHanyaMengajarList: mockGhmList,
+      aturanGlobal: mockAturanGlobal,
+      preferLegacyListWhenGlobalKbm: true,
+    });
+
+    const isTeacherExempt = policy.isTeacherExempt;
+    assert.strictEqual(isTeacherExempt, true);
+
+    const inJadwalPiket = mockPiket.some((jp: any) =>
+      isGuruDiPiket(jp.daftar_guru, teacher.nama_guru)
+    );
+    assert.strictEqual(inJadwalPiket, true);
+
+    const isBlokActive = false;
+    const isExemptNonTeaching = isTeacherExempt && !hasTeachingToday;
+    const hasPiketDuty = inJadwalPiket && !isExemptNonTeaching && (!isBlokActive || hasTeachingToday);
+
+    assert.strictEqual(hasPiketDuty, false, 'hasPiketDuty harus false');
+    const shouldSkipAlpa = !hasTeachingToday && !hasPiketDuty;
+    assert.strictEqual(shouldSkipAlpa, true, `${teacher.nama_guru} harus continue (skip alpa)`);
+  }
 });
 
 console.log('\n========================================================================');

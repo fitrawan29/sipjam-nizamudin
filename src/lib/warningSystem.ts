@@ -534,6 +534,7 @@ export async function getTeacherDisciplineWarnings(
     linkedUser,
     weeklySchedules: validJadwal,
     guruHanyaMengajarList: ghmList,
+    preferLegacyListWhenGlobalKbm: true,
   }).isTeacherExempt;
 
   const isSingleTeacherBk = isBkAccount(guruData?.mata_pelajaran, linkedUser?.role);
@@ -693,6 +694,7 @@ export async function getAllTeachersDisciplineWarnings(
         linkedUser,
         weeklySchedules: tJadwal,
         guruHanyaMengajarList: ghmList,
+        preferLegacyListWhenGlobalKbm: true,
       }).isTeacherExempt;
       const tPenugasan = (penugasanData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);
       const tLegacyPiket = (legacyPiketData || []).filter(p => p.sekolah_id === resolvedSekolahId || !p.sekolah_id);

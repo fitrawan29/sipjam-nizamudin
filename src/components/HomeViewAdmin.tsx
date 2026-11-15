@@ -386,6 +386,7 @@ export default function HomeViewAdmin({
       });
 
       // Delegasi normalisasi & pencocokan identitas guru ke helper terpusat di workflow.ts
+      // First name match (first word token must match exactly, min 2 chars; prevents substring collision e.g. Fitrawan vs Fitra)
       const cleanStr = (s?: string | null) => normalizeTeacherIdentityName(s);
       const isTeacherMatch = (record: any, teacher: any, linkedUser?: any, allowSingleWord = false) =>
         isTeacherRecordMatch(record, teacher, linkedUser, { allowSingleWordFirstToken: allowSingleWord });

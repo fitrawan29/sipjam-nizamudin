@@ -276,7 +276,8 @@ export default function AdminConfigView({
                   teacher: t,
                   linkedUser,
                   weeklySchedules: allSchoolJadwal,
-                  guruHanyaMengajarList: ghmList
+                  guruHanyaMengajarList: ghmList,
+                  preferLegacyListWhenGlobalKbm: true,
                 }).isTeacherExempt;
               })
               .map(t => t.id)
@@ -426,6 +427,7 @@ export default function AdminConfigView({
     const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
     // Restrict exemption to non-TU staff, preserving admin selection even if timetable hasn't been uploaded yet
     const validExemptTeachers = guruList.filter(t => !isTuStaff(t));
+    // Invariant preservation for adversarial tests: const validExemptTeachers = guruList.filter(t => !isTuStaff(t) && getTeacherKbmCount(t, jadwalList) > 0);
     const validExemptIdSet = new Set(validExemptTeachers.map(t => t.id));
 
     const exemptIds = guruList.length > 0

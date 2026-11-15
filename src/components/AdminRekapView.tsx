@@ -801,6 +801,7 @@ export default function AdminRekapView({
               linkedUser: matchedEntry.linkedUser,
               weeklySchedules: allSchoolJadwal || [],
               guruHanyaMengajarList: legacyGhmList,
+              preferLegacyListWhenGlobalKbm: true,
             });
             if (policy.isTeacherExempt) {
               const teacherDays = new Set<string>(
