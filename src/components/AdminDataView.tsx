@@ -29,7 +29,7 @@ import SistemBlokView from './SistemBlokView';
 import AdminPenggunaView from './AdminPenggunaView';
 import AdminKelasView from './AdminKelasView';
 import { parseTingkat } from './AdminKelasView';
-import { connectGuruMapelWithJadwal, isJurnalMatchJadwal, parseExplicitBooleanFlag, resolveSchoolLegacyGhmList } from '@/lib/workflow';
+import { connectGuruMapelWithJadwal, isJurnalMatchJadwal, resolveSchoolLegacyGhmList } from '@/lib/workflow';
 import { resolveTeacherUsername, getDefaultTeacherPassword } from '@/lib/teacherUserSync';
 import { filterStudentsBySubject, isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { downloadMasterDataCsv } from '@/lib/csvExport';
@@ -1137,13 +1137,6 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               <label class="font-bold text-gray-700 block mb-1">Email</label>
               <input id="swal-email" type="email" class="swal2-input !mt-0 !w-full text-xs" placeholder="guru@nizamudin.sch.id">
             </div>
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Kewajiban Kehadiran *</label>
-              <select id="swal-aturan-kehadiran" class="swal2-select !mt-0 !w-full text-xs">
-                <option value="false">Wajib Hadir Setiap Hari (Semua Hari)</option>
-                <option value="true">Hanya Hadir Saat Ada Jadwal KBM / Jam Kerja</option>
-              </select>
-            </div>
           </div>
         `,
         focusConfirm: false,
@@ -1157,8 +1150,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           const mata_pelajaran = readMapelChecklist();
           const no_hp = (document.getElementById('swal-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-email') as HTMLInputElement)?.value?.trim() || '-';
-          const aturanKehadiranEl = document.getElementById('swal-aturan-kehadiran') as HTMLSelectElement | null;
-          const wajib_hadir_hanya_mengajar = aturanKehadiranEl ? aturanKehadiranEl.value === 'true' : false;
+          const wajib_hadir_hanya_mengajar = false;
 
           if (!nama_guru || !mata_pelajaran) {
             Swal.showValidationMessage('Nama lengkap guru dan mata pelajaran wajib diisi!');
@@ -1993,13 +1985,6 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                 <option value="Nonaktif" ${item.status === 'Nonaktif' ? 'selected' : ''}>Nonaktif</option>
               </select>
             </div>
-            <div>
-              <label class="font-bold text-gray-700 block mb-1">Kewajiban Kehadiran *</label>
-              <select id="swal-edit-aturan-kehadiran" class="swal2-select !mt-0 !w-full text-xs">
-                <option value="false" ${parseExplicitBooleanFlag(item.wajib_hadir_hanya_mengajar) !== true ? 'selected' : ''}>Wajib Hadir Setiap Hari (Semua Hari)</option>
-                <option value="true" ${parseExplicitBooleanFlag(item.wajib_hadir_hanya_mengajar) === true ? 'selected' : ''}>Hanya Hadir Saat Ada Jadwal KBM / Jam Kerja</option>
-              </select>
-            </div>
           </div>
         `,
         focusConfirm: false,
@@ -2014,8 +1999,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
           const no_hp = (document.getElementById('swal-edit-hp') as HTMLInputElement)?.value?.trim() || '-';
           const email = (document.getElementById('swal-edit-email') as HTMLInputElement)?.value?.trim() || '-';
           const status = (document.getElementById('swal-edit-status') as HTMLSelectElement)?.value || 'Aktif';
-          const aturanKehadiranEditEl = document.getElementById('swal-edit-aturan-kehadiran') as HTMLSelectElement | null;
-          const wajib_hadir_hanya_mengajar = aturanKehadiranEditEl ? aturanKehadiranEditEl.value === 'true' : false;
+          const wajib_hadir_hanya_mengajar = item.wajib_hadir_hanya_mengajar ?? false;
 
           if (!nama_guru || !mata_pelajaran) {
             Swal.showValidationMessage('Nama lengkap guru dan mata pelajaran wajib diisi!');
@@ -2649,7 +2633,6 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         </>
       );
     } else if (activeTab === 'Data_Guru') {
-      const isHanyaMengajar = item.wajib_hadir_hanya_mengajar === true || String(item.wajib_hadir_hanya_mengajar) === 'true' || item.wajib_hadir_hanya_mengajar === 1 || String(item.wajib_hadir_hanya_mengajar) === '1';
       return (
         <>
           <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_guru || 'Tanpa Nama'}</h3>
@@ -2659,15 +2642,6 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             <p><span className="font-semibold">Kelas:</span> {item.kelasDisplay || (Array.isArray(item.assignedKelas) && item.assignedKelas.length > 0 ? item.assignedKelas.join(', ') : (item.kelas || '-'))}</p>
             <p><span className="font-semibold">Kontak:</span> {item.no_hp || '-'}</p>
             {item.email && <p className="truncate"><span className="font-semibold">Email:</span> {item.email}</p>}
-            <p className="mt-1.5 flex items-center gap-1">
-              <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                isHanyaMengajar 
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' 
-                  : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-              }`}>
-                {isHanyaMengajar ? 'Hanya Hari KBM' : 'Wajib Setiap Hari'}
-              </span>
-            </p>
           </div>
           <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">{item.status || 'Aktif'}</div>
         </>

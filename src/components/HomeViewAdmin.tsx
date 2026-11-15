@@ -460,10 +460,12 @@ export default function HomeViewAdmin({
           aturanGlobal,
           guruHanyaMengajarList,
         });
-        const isNonKbmOrTu = policy.isNonKbmOrTu;
+        const isTu = policy.isTu;
+        const hasAnyWeeklyKbm = policy.hasAnyWeeklyKbm;
+        const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
         // AST preservation for regression tests: aturanGlobal === 'Hari_Mengajar_Saja' & guruHanyaMengajarList.includes
         void (aturanGlobal === 'Hari_Mengajar_Saja' && guruHanyaMengajarList.includes(teacher.id));
-        const isTeacherExempt = policy.isTeacherExempt;
+        const isTeacherExempt = !isNonKbmOrTu && policy.isTeacherExempt;
         const activeTargetCount = targetClasses.filter((jk: any) => !jk.isBlocked).length;
         const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;
 

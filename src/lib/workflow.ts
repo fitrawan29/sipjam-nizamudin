@@ -173,14 +173,14 @@ export function resolveTeacherAttendancePolicy(params: {
   });
 
   let isTeacherExempt = false;
-  if (preferLegacyListWhenGlobalKbm && !isNonKbmOrTu && isInLegacyList) {
+  if (isNonKbmOrTu) {
+    isTeacherExempt = false;
+  } else if (preferLegacyListWhenGlobalKbm && isInLegacyList) {
     isTeacherExempt = true;
   } else if (explicitSetting === false) {
     isTeacherExempt = false;
   } else if (explicitSetting === true) {
     isTeacherExempt = true;
-  } else if (isNonKbmOrTu) {
-    isTeacherExempt = false;
   } else if (isInLegacyList) {
     isTeacherExempt = true;
   }
@@ -1448,12 +1448,17 @@ export function resolveCanonicalClass(
   const k = (rawKelas || '').trim();
 
   // 1. If validClasses is provided and k is already an exact valid parallel class (not just generic grade)
-  if (validClasses.length > 0 && validClasses.includes(k) && !/^(X|XI|XII)\s+Merdeka$/i.test(k)) {
-    return k;
+  if (validClasses.length > 0) {
+    const exactMatch = validClasses.find(vc => vc.trim().toLowerCase() === k.toLowerCase());
+    if (exactMatch && !/^(X|XI|XII)\s+Merdeka$/i.test(exactMatch)) {
+      return exactMatch;
+    }
   }
 
-  // 2. Check suffix format: e.g. 'B. Indonesia - XII C', 'IPS Sosiologi - X A', 'PJOK - XI D'
-  const suffixMatch = m.match(/-\s*(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])[\s._-]*([A-Za-z0-9])\s*$/i);
+  // 2. Check suffix format: e.g. 'B. Indonesia - XII C', 'IPS Sosiologi - X A', 'PJOK - XI D', or malformed class 'Geografi - XI B'
+  const suffixMatch =
+    m.match(/-\s*(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])[\s._-]*([A-Za-z0-9])\s*$/i) ||
+    k.match(/-\s*(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])[\s._-]*([A-Za-z0-9])\s*$/i);
   if (suffixMatch) {
     const tingkat = suffixMatch[1].toUpperCase();
     const parallel = suffixMatch[2].toUpperCase();
@@ -1476,16 +1481,31 @@ export function resolveCanonicalClass(
     return `${tingkat} ${parallel}`;
   }
 
-  // 3. Check prefix format: e.g. 'X Merdeka A_Matematika' or 'X Merdeka_MTK'
-  if (m.includes('_')) {
-    const prefix = m.split('_')[0].trim();
-    if (validClasses.length > 0 && validClasses.includes(prefix)) {
-      return prefix;
-    }
-    if (prefix && (!k || k === prefix)) return prefix;
+  // 3. Check if rawKelas itself is short parallel token: e.g. 'X A', '10 A', 'X-A', 'XII C'
+  const kShortMatch = k.match(/^(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])[\s._-]*([A-Za-z0-9])$/i);
+  if (kShortMatch && validClasses.length > 0) {
+    const tingkat = kShortMatch[1].toUpperCase();
+    const parallel = kShortMatch[2].toUpperCase();
+    const found = validClasses.find(vc => {
+      const vcTrim = vc.trim();
+      const vcTingkat = vcTrim.match(/^(XII|XI|X|IX|VIII|VII|[1-9]|1[0-2])\b/i)?.[1]?.toUpperCase();
+      const vcParallel = vcTrim.match(/[\s._-]+([A-Za-z0-9])$/i)?.[1]?.toUpperCase();
+      return vcTingkat === tingkat && vcParallel === parallel;
+    });
+    if (found) return found;
   }
 
-  // 4. Default to rawKelas if present
+  // 4. Check prefix format: e.g. 'X Merdeka A_Matematika' or 'X Merdeka_MTK'
+  if (m.includes('_')) {
+    const prefix = m.split('_')[0].trim();
+    if (validClasses.length > 0) {
+      const found = validClasses.find(vc => vc.trim().toLowerCase() === prefix.toLowerCase());
+      if (found) return found;
+    }
+    if (prefix && (!k || k.toLowerCase() === prefix.toLowerCase())) return prefix;
+  }
+
+  // 5. Default to rawKelas if present
   if (k) return k;
 
   return '';
@@ -2050,7 +2070,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       aturanGlobal: aturanKehadiran,
       guruHanyaMengajarList,
     });
-    if (explicitTeacherSetting === false) {
+    if (isNonKbmOrTu) {
+      isTeacherExempt = false;
+    } else if (explicitTeacherSetting === false) {
       isTeacherExempt = false;
     } else if (explicitTeacherSetting === true) {
       isTeacherExempt = true;

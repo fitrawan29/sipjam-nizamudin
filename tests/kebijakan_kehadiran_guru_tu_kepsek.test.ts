@@ -1,6 +1,7 @@
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
+import { resolveTeacherAttendancePolicy } from '../src/lib/workflow';
 
 const root = process.cwd();
 const adminConfigPath = path.join(root, 'src', 'components', 'AdminConfigView.tsx');
@@ -27,37 +28,37 @@ function fail(title: string, error: any) {
 }
 
 // -----------------------------------------------------------------------------
-// BAGIAN 1: AdminConfigView Pemindahan Kebijakan Kehadiran ke Master Data (R2)
+// BAGIAN 1: AdminConfigView Sub-menu Kebijakan Kehadiran Guru di Pengaturan Sistem (R1)
 // -----------------------------------------------------------------------------
-console.log('--- [Bagian 1] AdminConfigView: Kebijakan Guru Bersih dari Menu Pengaturan (R2) ---');
+console.log('--- [Bagian 1] AdminConfigView: Kebijakan Kehadiran Guru di Pengaturan Sistem (R1) ---');
 
 const adminConfigContent = fs.readFileSync(adminConfigPath, 'utf8');
 
-// Test 1.1: Tab 'kehadiran' telah dihapus dari tabs array dan antarmuka pengaturan
+// Test 1.1: Tab 'kehadiran' tersedia pada tabs array dan antarmuka pengaturan
 try {
-  assert(!adminConfigContent.includes("id: 'kehadiran'"), 'AdminConfigView tidak boleh memuat tab id kehadiran');
-  assert(!adminConfigContent.includes("activeTab === 'kehadiran'"), 'AdminConfigView tidak boleh merender tab kehadiran');
-  pass('1.1: Tab kebijakan kehadiran guru bersih dari menu pengaturan');
+  assert(adminConfigContent.includes("id: 'kehadiran'"), 'AdminConfigView harus memuat tab id kehadiran');
+  assert(adminConfigContent.includes("activeTab === 'kehadiran'"), 'AdminConfigView harus merender tab kehadiran');
+  pass('1.1: Tab kebijakan kehadiran guru tersedia di menu pengaturan');
 } catch (e) {
-  fail('1.1: Tab kebijakan kehadiran masih ditemukan di menu pengaturan', e);
+  fail('1.1: Tab kebijakan kehadiran belum ditemukan di menu pengaturan', e);
 }
 
-// Test 1.2: Tidak ada lagi filter peran atau switch kehadiran massal pada menu pengaturan
+// Test 1.2: Filter peran dan tombol massal kehadiran guru tersedia pada menu pengaturan
 try {
-  assert(!adminConfigContent.includes('roleFilterTab'), 'AdminConfigView tidak lagi memiliki state roleFilterTab');
-  assert(!adminConfigContent.includes('Set Semua Hadir Setiap Hari'), 'AdminConfigView tidak lagi memiliki tombol Set Semua Hadir Setiap Hari');
-  pass('1.2: Filter peran dan tombol massal kehadiran guru bersih dari AdminConfigView');
+  assert(adminConfigContent.includes('roleFilterTab'), 'AdminConfigView harus memiliki state roleFilterTab');
+  assert(adminConfigContent.includes('Set Semua Hadir Setiap Hari'), 'AdminConfigView harus memiliki tombol Set Semua Hadir Setiap Hari');
+  pass('1.2: Filter peran dan tombol massal kehadiran guru tersedia di AdminConfigView');
 } catch (e) {
-  fail('1.2: Filter atau tombol massal kehadiran masih ada di AdminConfigView', e);
+  fail('1.2: Filter atau tombol massal kehadiran belum ada di AdminConfigView', e);
 }
 
-// Test 1.3: Save handler AdminConfigView tidak lagi menimpa (bulk clobber) data_guru
+// Test 1.3: Save handler AdminConfigView memperbarui wajib_hadir_hanya_mengajar pada data_guru
 try {
-  assert(!adminConfigContent.includes("wajib_hadir_hanya_mengajar: true"), 'AdminConfigView tidak boleh bulk update wajib_hadir_hanya_mengajar true');
-  assert(!adminConfigContent.includes("wajib_hadir_hanya_mengajar: false"), 'AdminConfigView tidak boleh bulk update wajib_hadir_hanya_mengajar false');
-  pass('1.3: Save handler AdminConfigView tidak menimpa pengaturan guru secara massal');
+  assert(adminConfigContent.includes("wajib_hadir_hanya_mengajar: true"), 'AdminConfigView harus mengupdate wajib_hadir_hanya_mengajar true');
+  assert(adminConfigContent.includes("wajib_hadir_hanya_mengajar: false"), 'AdminConfigView harus mengupdate wajib_hadir_hanya_mengajar false');
+  pass('1.3: Save handler AdminConfigView memperbarui pengaturan guru secara mengikat');
 } catch (e) {
-  fail('1.3: AdminConfigView masih melakukan bulk update pada data_guru', e);
+  fail('1.3: AdminConfigView belum mengupdate wajib_hadir_hanya_mengajar pada data_guru', e);
 }
 
 // Test 1.4: AdminConfigView tetap memelihara komentar resiliensi schema cache
@@ -78,37 +79,34 @@ try {
 }
 
 // -----------------------------------------------------------------------------
-// BAGIAN 2: AdminDataView (Tambah & Edit Data Guru & Card Rendering)
+// BAGIAN 2: AdminDataView: Bersih dari Kebijakan Kehadiran Guru (R1)
 // -----------------------------------------------------------------------------
-console.log('\n--- [Bagian 2] AdminDataView: Pengaturan Kehadiran Langsung pada Data Guru ---');
+console.log('\n--- [Bagian 2] AdminDataView: Kebijakan Kehadiran Bersih dari Master Data Bagian Guru (R1) ---');
 
 const adminDataContent = fs.readFileSync(adminDataPath, 'utf8');
 
-// Test 2.1: Tambah Guru Baru menyertakan pilihan Kewajiban Kehadiran
+// Test 2.1: Tambah Guru Baru bersih dari pilihan Kewajiban Kehadiran
 try {
-  assert(adminDataContent.includes('id="swal-aturan-kehadiran"'), 'Modal Tambah Guru Baru memiliki input id swal-aturan-kehadiran');
-  assert(adminDataContent.includes('Wajib Hadir Setiap Hari (Semua Hari)'), 'Modal Tambah Guru Baru memiliki opsi Wajib Hadir Setiap Hari');
-  assert(adminDataContent.includes('Hanya Hadir Saat Ada Jadwal KBM / Jam Kerja'), 'Modal Tambah Guru Baru memiliki opsi Hanya Hadir Saat Ada Jadwal KBM');
-  pass('2.1: Modal Tambah Guru Baru menyertakan dropdown opsi aturan kehadiran');
+  assert(!adminDataContent.includes('id="swal-aturan-kehadiran"'), 'Modal Tambah Guru Baru tidak boleh memiliki input id swal-aturan-kehadiran');
+  pass('2.1: Modal Tambah Guru Baru bersih dari opsi aturan kehadiran');
 } catch (e) {
-  fail('2.1: Modal Tambah Guru Baru belum menyertakan opsi aturan kehadiran', e);
+  fail('2.1: Modal Tambah Guru Baru masih menyertakan opsi aturan kehadiran', e);
 }
 
-// Test 2.2: Edit Data Guru menyertakan pilihan Kewajiban Kehadiran
+// Test 2.2: Edit Data Guru bersih dari pilihan Kewajiban Kehadiran
 try {
-  assert(adminDataContent.includes('id="swal-edit-aturan-kehadiran"'), 'Modal Edit Data Guru memiliki input id swal-edit-aturan-kehadiran');
-  assert(adminDataContent.includes('wajib_hadir_hanya_mengajar'), 'Modal Edit Data Guru mengikat nilai wajib_hadir_hanya_mengajar');
-  pass('2.2: Modal Edit Data Guru menyertakan dropdown opsi aturan kehadiran sesuai data tersimpan');
+  assert(!adminDataContent.includes('id="swal-edit-aturan-kehadiran"'), 'Modal Edit Data Guru tidak boleh memiliki input id swal-edit-aturan-kehadiran');
+  pass('2.2: Modal Edit Data Guru bersih dari opsi aturan kehadiran');
 } catch (e) {
-  fail('2.2: Modal Edit Data Guru belum menyertakan opsi aturan kehadiran', e);
+  fail('2.2: Modal Edit Data Guru masih menyertakan opsi aturan kehadiran', e);
 }
 
-// Test 2.3: Badge kehadiran dirender pada kartu Data Guru
+// Test 2.3: Badge kehadiran bersih dari kartu Data Guru
 try {
-  assert(adminDataContent.includes('Hanya Hari KBM') && adminDataContent.includes('Wajib Setiap Hari'), 'Kartu Data Guru menampilkan badge Hanya Hari KBM / Wajib Setiap Hari');
-  pass('2.3: Kartu Data Guru menampilkan badge status kewajiban kehadiran yang jelas');
+  assert(!adminDataContent.includes('Hanya Hari KBM') && !adminDataContent.includes('Wajib Setiap Hari'), 'Kartu Data Guru tidak boleh menampilkan badge Hanya Hari KBM / Wajib Setiap Hari');
+  pass('2.3: Kartu Data Guru bersih dari badge status kewajiban kehadiran');
 } catch (e) {
-  fail('2.3: Kartu Data Guru belum menampilkan badge kewajiban kehadiran', e);
+  fail('2.3: Kartu Data Guru masih menampilkan badge kewajiban kehadiran', e);
 }
 
 // Test 2.4: AdminDataView memancarkan event sinkronisasi saat menambah atau mengedit guru
@@ -144,6 +142,39 @@ try {
   pass('3.2: attendanceAlpa.ts memeriksa status kehadiran eksplisit personil');
 } catch (e) {
   fail('3.2: attendanceAlpa.ts belum memeriksa status eksplisit personil', e);
+}
+
+// Test 3.3: resolveTeacherAttendancePolicy kebal terhadap eksploitasi TU atau guru non-KBM
+try {
+  const tuPolicy = resolveTeacherAttendancePolicy({
+    teacher: { role: 'tatausaha', wajib_hadir_hanya_mengajar: true },
+    weeklySchedules: [],
+  });
+  assert.strictEqual(tuPolicy.isNonKbmOrTu, true, 'TU staff harus teridentifikasi isNonKbmOrTu = true');
+  assert.strictEqual(tuPolicy.isTeacherExempt, false, 'TU staff tidak boleh isTeacherExempt = true meskipun wajib_hadir_hanya_mengajar: true');
+  assert.strictEqual(tuPolicy.aturanKehadiran, 'Semua_Hari', 'Aturan kehadiran TU staff harus Semua_Hari');
+
+  const zeroKbmPolicy = resolveTeacherAttendancePolicy({
+    teacher: { nama_guru: 'Guru Tanpa KBM', wajib_hadir_hanya_mengajar: true },
+    weeklySchedules: [],
+    totalTeacherKbmCount: 0,
+  });
+  assert.strictEqual(zeroKbmPolicy.isNonKbmOrTu, true, 'Guru 0-KBM harus teridentifikasi isNonKbmOrTu = true');
+  assert.strictEqual(zeroKbmPolicy.isTeacherExempt, false, 'Guru 0-KBM tidak boleh isTeacherExempt = true meskipun wajib_hadir_hanya_mengajar: true');
+  assert.strictEqual(zeroKbmPolicy.aturanKehadiran, 'Semua_Hari', 'Aturan kehadiran guru 0-KBM harus Semua_Hari');
+
+  const kbmPolicy = resolveTeacherAttendancePolicy({
+    teacher: { id: 'g-1', nama_guru: 'Guru KBM', wajib_hadir_hanya_mengajar: true },
+    weeklySchedules: [{ guru_id: 'g-1', mata_pelajaran: 'Matematika' }],
+    totalTeacherKbmCount: 4,
+  });
+  assert.strictEqual(kbmPolicy.isNonKbmOrTu, false, 'Guru KBM aktif isNonKbmOrTu = false');
+  assert.strictEqual(kbmPolicy.isTeacherExempt, true, 'Guru KBM aktif dengan flag true harus isTeacherExempt = true');
+  assert.strictEqual(kbmPolicy.aturanKehadiran, 'Hari_Mengajar_Saja', 'Aturan kehadiran guru KBM aktif harus Hari_Mengajar_Saja');
+
+  pass('3.3: resolveTeacherAttendancePolicy memprioritaskan isNonKbmOrTu di atas explicitSetting');
+} catch (e) {
+  fail('3.3: resolveTeacherAttendancePolicy gagal melindungi TU atau 0-KBM dari false exemption', e);
 }
 
 console.log('\n========================================================================');

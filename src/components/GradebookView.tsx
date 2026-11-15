@@ -12,7 +12,7 @@ import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RaporView from './RaporView';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { filterStudentsBySubject } from '@/lib/agamaFilter';
-import { parseLegacyOrModernAttendance } from '@/lib/workflow';
+import { parseLegacyOrModernAttendance, resolveCanonicalClass } from '@/lib/workflow';
 
 export interface CapaianDeskripsiResult {
   nilaiRapor: number | null;
@@ -450,7 +450,7 @@ export default function GradebookView({
     const formattedMapels = matched.map(m => ({
       id: m.id,
       nama_mapel: m.nama_mapel,
-      kelas: m.kelas || undefined,
+      kelas: resolveCanonicalClass(m.kelas, m.nama_mapel, fallbackClasses) || m.kelas || undefined,
     }));
     setMapelList(formattedMapels);
 
@@ -1068,10 +1068,22 @@ export default function GradebookView({
           }
         } catch (_) {}
 
+        let customClasses: string[] = [];
+        try {
+          if (typeof window !== 'undefined' && sekolahId) {
+            const raw = localStorage.getItem(`sipjam_custom_classes_${sekolahId}`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (Array.isArray(parsed)) customClasses = parsed;
+            }
+          }
+        } catch (_) {}
+
         const combinedClassList = [
           ...(sData || []).map((s: any) => s.kelas),
           ...(wData || []).map((w: any) => w.kelas),
-          ...dkData.map((k: any) => k.nama_kelas || k.kelas)
+          ...dkData.map((k: any) => k.nama_kelas || k.kelas),
+          ...customClasses
         ].filter(Boolean);
 
         if (combinedClassList.length > 0) {
@@ -1086,7 +1098,8 @@ export default function GradebookView({
           gmData.forEach((g: any) => {
             const m = g.nama_mapel || g.mata_pelajaran;
             if (!m || isInvalidMapel(m)) return;
-            const k = g.kelas || '';
+            const rawK = g.kelas || '';
+            const k = resolveCanonicalClass(rawK, m, masterClasses);
             const key = `${g.nama_guru || ''}__${m}__${k}`.toLowerCase();
             poolMap.set(key, {
               id: g.id,
@@ -1103,7 +1116,8 @@ export default function GradebookView({
           jmData.forEach((j: any) => {
             const m = j.mata_pelajaran || j.mapel;
             if (!m || isInvalidMapel(m)) return;
-            const k = j.kelas || '';
+            const rawK = j.kelas || '';
+            const k = resolveCanonicalClass(rawK, m, masterClasses);
             const key = `${j.nama_guru || ''}__${m}__${k}`.toLowerCase();
             if (!poolMap.has(key)) {
               poolMap.set(key, {

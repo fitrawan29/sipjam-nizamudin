@@ -403,13 +403,14 @@ export async function evaluateAndApplyAutoAlpa(
     const isTu = policy.isTu;
     const cleanName = (guru.nama_guru || '').split(',')[0].trim().toLowerCase();
     const hasAnyWeeklyKbm = policy.hasAnyWeeklyKbm;
-    const isNonKbmOrTu = policy.isNonKbmOrTu;
+    const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
 
     // Guru wajib_hadir_hanya_mengajar / exempt: cek apakah ada jadwal hari ini atau tugas piket
     const hasExplicitTeacherSetting = guru.wajib_hadir_hanya_mengajar !== null && guru.wajib_hadir_hanya_mengajar !== undefined;
+    void hasExplicitTeacherSetting;
 
     // const isTeacherExempt = Boolean(guru.wajib_hadir_hanya_mengajar)
-    const isTeacherExempt = policy.isTeacherExempt;
+    const isTeacherExempt = !isNonKbmOrTu && policy.isTeacherExempt;
 
     const hasTeachingToday = (allJadwalToday || []).some((j: any) => {
       if (guru.sekolah_id && j.sekolah_id && j.sekolah_id !== guru.sekolah_id) return false;

@@ -873,7 +873,7 @@ export default function AdminVerifView({
         const isNonKbmOrTu = isTu || totalTeacherSchedules === 0;
 
         // Check if teacher is in category "wajib hadir pada jadwal KBM"
-        const isTeacherExempt = resolveTeacherAttendancePolicy({
+        const isTeacherExempt = !isNonKbmOrTu && resolveTeacherAttendancePolicy({
           teacher: t,
           linkedUser,
           totalTeacherKbmCount: totalTeacherSchedules,
