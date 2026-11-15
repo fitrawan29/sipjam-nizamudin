@@ -743,17 +743,17 @@ export default function RekapJurnalView({
                 kelas: sched.kelas || '-',
                 mapel: sched.mata_pelajaran || sched.mapel || '-',
                 jam_ke: isSchedHanyaKbm ? '-' : (sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-')),
-                materi: isExcused ? leaveType! : (isSchedHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas'),
-                materi_pembelajaran: isExcused ? leaveType! : (isSchedHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas'),
-                kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : (isSchedHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas'),
-                kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : (isSchedHanyaKbm ? 'Wajib Hadir KBM' : 'tidak masuk kelas'),
-                keterangan: isExcused ? leaveType! : (isSchedHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas'),
-                status_verifikasi: isExcused ? leaveType! : (isSchedHanyaKbm ? 'Wajib Hadir KBM' : 'Tidak Masuk Kelas'),
+                materi: isExcused ? leaveType! : 'tidak masuk kelas',
+                materi_pembelajaran: isExcused ? leaveType! : 'tidak masuk kelas',
+                kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : 'tidak masuk kelas',
+                kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
+                keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
+                status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
                 catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : undefined,
-                catatan_refleksi: isExcused ? `Presensi ${leaveType}` : (isSchedHanyaKbm ? 'Wajib Hadir KBM' : 'tidak masuk kelas'),
+                catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
                 tujuan_pembelajaran: '-',
                 kktp: '-',
-                konten: isExcused ? leaveType! : (isSchedHanyaKbm ? 'Wajib Hadir KBM' : 'tidak masuk kelas'),
+                konten: isExcused ? leaveType! : 'tidak masuk kelas',
                 lokasi_kbm: resolvedSynthLokasi,
                 kehadiran_murid: '-',
                 foto_kegiatan: isExcused ? leaveProof : '-',
@@ -763,7 +763,7 @@ export default function RekapJurnalView({
           }
 
           // R3: For personal mode, if teacher has NO KBM schedules today, synthesize unsubmitted Jurnal Kegiatan
-          const isCurrUserHanyaKbm = checkIsHanyaKbm(user?.nama, user?.username || user?.nip, user?.id);
+          const isCurrUserHanyaKbm = isHanyaKbmUser || checkIsHanyaKbm(user?.nama, user?.username || user?.nip, user?.id);
           if (activeMode === 'pribadi' && !activeKelas && !mapel && user?.nama && teacherSchedulesToday.length === 0 && !isCurrUserHanyaKbm) {
             const hasAnyJournal = combined.some(j =>
               j.tanggal === dateStr &&
@@ -1270,7 +1270,12 @@ export default function RekapJurnalView({
 
       // Teachers who only attend during KBM must not see empty non-teaching day placeholders
       // AST invariant: j.mapel === 'Jurnal Kegiatan' || j.keterangan === 'Jurnal Kegiatan' || j.keterangan === 'tidak melaksanakan kegiatan apapun'
-      if (tabMode === 'pribadi' && isHanyaKbmUser) {
+      const isTeacherHanyaKbm = isHanyaKbmUser || checkIsHanyaKbm(user?.nama, user?.username || user?.nip, user?.id);
+      const isRowHanyaKbm = checkIsHanyaKbm(j.nama_guru, j.nip, j.user_id);
+      if (isRowHanyaKbm && (j.mapel === 'Jurnal Kegiatan' || j.keterangan === 'Jurnal Kegiatan' || j.keterangan === 'tidak melaksanakan kegiatan apapun' || j.id?.startsWith('unfilled-kegiatan-'))) {
+        return false;
+      }
+      if ((tabMode === 'pribadi' && isHanyaKbmUser) || (tabMode === 'pribadi' && isTeacherHanyaKbm)) {
         const mySchedules = (allWeeklySchedules || []).filter(s =>
           isTeacherRecordMatch(
             s,
@@ -1600,7 +1605,7 @@ export default function RekapJurnalView({
                 <span><strong>{formatPeriodHeader(bulan, startDate, endDate)}</strong></span>
                 {kelas && <span>Kelas: <strong>{kelas}</strong></span>}
                 {mapel && <span>Mapel: <strong>{mapel}</strong></span>}
-                {tabMode === 'pribadi' && isHanyaKbmUser && (
+                {tabMode === 'pribadi' && (isHanyaKbmUser || checkIsHanyaKbm(user?.nama, user?.username || user?.nip, user?.id)) && (
                   <span className="font-bold text-blue-700 dark:text-blue-300 print:text-black">
                     Kewajiban Kehadiran: <strong>Wajib Hadir pada Jam KBM Saja</strong>
                   </span>
@@ -1695,9 +1700,9 @@ export default function RekapJurnalView({
                                   : isDinasLuar
                                   ? 'Dinas Luar'
                                   : isTidakMasukKelas
-                                  ? 'Wajib Hadir KBM (tidak masuk kelas)'
+                                  ? 'tidak masuk kelas'
                                   : isTidakKegiatan
-                                  ? 'Wajib Hadir KBM'
+                                  ? 'tidak melaksanakan kegiatan apapun'
                                   : 'Hadir KBM')
                               : (isSakit
                                   ? 'Sakit'
@@ -1943,7 +1948,7 @@ export default function RekapJurnalView({
 
                                 {/* 3. Materi/Konten */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top font-medium whitespace-pre-wrap">
-                                  {isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : (j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-')))}
+                                  {isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : (j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : '-')))}
                                 </td>
 
                                 {/* 4. Kelas/JP */}
@@ -2032,7 +2037,7 @@ export default function RekapJurnalView({
                                 {/* 8. Keterangan */}
                                 <td className="px-2 py-1.5 print:p-1.5 border border-gray-200 dark:border-gray-700 print:border-black align-top whitespace-pre-wrap italic">
                                   <div>
-                                    {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.keterangan || '-')))}
+                                    {j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.keterangan || '-')))}
                                   </div>
                                   {j.status_verifikasi === 'Ditolak' && (
                                     <div className="mt-1.5 p-1.5 bg-red-50 dark:bg-red-950/40 rounded border border-red-200 dark:border-red-800 text-[9px] text-red-700 dark:text-red-300 not-italic">
@@ -2147,10 +2152,10 @@ export default function RekapJurnalView({
                         const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                         const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
                         const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
-                        const col6 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? (isRowHanyaKbm ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isRowHanyaKbm ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : ((j.konten && j.konten !== '-') ? j.konten : '-')));
+                        const col6 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isRowHanyaKbm ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi && j.materi !== '-' ? j.materi : ((j.konten && j.konten !== '-') ? j.konten : '-')));
                         const col7 = j.foto_kegiatan || j.link_bukti_foto || '-';
                         const col8 = isRowHanyaKbm
-                          ? (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'Hadir KBM')
+                          ? (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : 'Hadir KBM')
                           : (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.keterangan || (j.status_verifikasi ? `Hadir (${j.status_verifikasi})` : 'Hadir')));
 
                         csvRows.push([
@@ -2190,7 +2195,7 @@ export default function RekapJurnalView({
                         const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                         const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
                         const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
-                        const col3 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi || '-')));
+                        const col3 = isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : ((j.konten && j.konten !== '-') ? j.konten : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : (j.materi || '-')));
                         const col4 = j.kelas || '-';
                         const col5 = j.mapel || '-';
                         const keadaan = parseKeadaanSiswaCounts(j);
@@ -2201,9 +2206,9 @@ export default function RekapJurnalView({
                         const col10 = String(keadaan.alpa);
                         const col11 = resolveEntryLokasiKbm(j);
                         const col12 = j.foto_kegiatan || j.link_bukti_foto || '-';
-                        const col13 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? (isHanyaKbmUser ? 'Wajib Hadir KBM (tidak masuk kelas)' : 'tidak masuk kelas') : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-'));
+                        const col13 = isSakit ? 'Presensi Sakit' : isIzin ? 'Presensi Izin' : isDinasLuar ? 'Presensi Dinas Luar' : isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.catatan_refleksi || j.refleksi || j.keterangan || '-'));
                         const status = isHanyaKbmUser
-                          ? (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Wajib Hadir KBM' : 'Hadir KBM')
+                          ? (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Tidak Masuk Kelas' : 'Hadir KBM')
                           : (isSakit ? 'Sakit' : isIzin ? 'Izin' : isDinasLuar ? 'Dinas Luar' : isTidakMasukKelas ? 'Tidak Masuk Kelas' : isTidakKegiatan ? 'tidak melaksanakan kegiatan apapun' : (j.status_verifikasi || 'Menunggu'));
 
                         csvRows.push([
@@ -2333,8 +2338,8 @@ export default function RekapJurnalView({
                       : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
                   }`}>
                     {checkIsHanyaKbm(selectedJurnal.nama_guru, undefined, selectedJurnal.user_id)
-                      ? (selectedJurnal.status_verifikasi === 'Tidak Masuk Kelas' || selectedJurnal.keterangan === 'Tidak Masuk Kelas'
-                          ? 'Wajib Hadir KBM'
+                      ? (selectedJurnal.status_verifikasi === 'Tidak Masuk Kelas' || selectedJurnal.keterangan === 'Tidak Masuk Kelas' || selectedJurnal.keterangan?.toLowerCase() === 'tidak masuk kelas'
+                          ? 'Tidak Masuk Kelas'
                           : (selectedJurnal.status_verifikasi === 'Sakit' || selectedJurnal.status_verifikasi === 'Izin' || selectedJurnal.status_verifikasi === 'Dinas Luar' ? selectedJurnal.status_verifikasi : 'Hadir KBM'))
                       : (selectedJurnal.status_verifikasi || 'Menunggu')}
                   </span>

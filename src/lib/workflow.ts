@@ -146,7 +146,11 @@ export function resolveTeacherAttendancePolicy(params: {
           isTeacherRecordMatch(j, teacher, linkedUser, { allowSingleWordFirstToken: true })
       );
   const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
-  const explicitSetting = parseExplicitBooleanFlag(teacher?.wajib_hadir_hanya_mengajar);
+  const explicitSetting = parseExplicitBooleanFlag(
+    teacher?.wajib_hadir_hanya_mengajar ??
+    linkedUser?.wajib_hadir_hanya_mengajar ??
+    (linkedUser as any)?.wajibHadirHanyaMengajar
+  );
 
   const idSet = new Set(
     [teacher?.id, teacher?.user_id, linkedUser?.id]
@@ -154,7 +158,7 @@ export function resolveTeacherAttendancePolicy(params: {
       .map(v => String(v).trim())
   );
   const identSet = new Set(
-    [teacher?.nip, teacher?.username, linkedUser?.username]
+    [teacher?.nip, teacher?.username, linkedUser?.username, teacher?.nip_guru, teacher?.guru_nip]
       .map(v => String(v || '').trim().toLowerCase())
       .filter(v => v && v !== '-')
   );
@@ -169,7 +173,11 @@ export function resolveTeacherAttendancePolicy(params: {
     if (idSet.has(item)) return true;
     if (identSet.has(item.toLowerCase())) return true;
     const normItem = normalizeTeacherIdentityName(item);
-    return Boolean(normItem && normNames.has(normItem));
+    if (normItem && (normNames.has(normItem) || identSet.has(normItem))) return true;
+    for (const n of normNames) {
+      if (isTeacherNameEquivalent(item, n, true)) return true;
+    }
+    return false;
   });
 
   let isTeacherExempt = false;
@@ -281,6 +289,13 @@ export function isTeacherNameEquivalent(
       }
       if (!found) return false;
     }
+    return true;
+  }
+
+  // Prefix multi-word matching (e.g. "Ade Fitrawan" vs "Ade Fitrawan Ibrahim")
+  const shorter = tA.length <= tB.length ? tA : tB;
+  const longer = tA.length <= tB.length ? tB : tA;
+  if (shorter.length >= 2 && shorter.every((tok, i) => tok === longer[i])) {
     return true;
   }
 
