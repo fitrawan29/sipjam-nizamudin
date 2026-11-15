@@ -424,8 +424,8 @@ export default function AdminConfigView({
     };
 
     const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
-    // Strictly restrict exemption to teachers with actual KBM hours (non-TU and KBM count > 0)
-    const validExemptTeachers = guruList.filter(t => !isTuStaff(t) && getTeacherKbmCount(t, jadwalList) > 0);
+    // Restrict exemption to non-TU staff, preserving admin selection even if timetable hasn't been uploaded yet
+    const validExemptTeachers = guruList.filter(t => !isTuStaff(t));
     const validExemptIdSet = new Set(validExemptTeachers.map(t => t.id));
 
     const exemptIds = guruList.length > 0

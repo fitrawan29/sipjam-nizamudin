@@ -148,7 +148,7 @@ export default function AdminRekapView({
   const [endDate, setEndDate] = useState('');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [rekapData, setRekapData] = useState<{presensi: any[], jurnal: any[], piket: any[]} | null>(null);
+  const [rekapData, setRekapData] = useState<{presensi: any[], jurnal: any[], piket: any[], schoolWorkdays?: number} | null>(null);
 
   useEffect(() => {
     tarikDataRekap(false);
@@ -805,11 +805,11 @@ export default function AdminRekapView({
             if (policy.isTeacherExempt) {
               const teacherDays = new Set<string>(
                 (allSchoolJadwal || [])
-                  .filter((s: any) => s?.hari && isTeacherRecordMatch(s, matchedEntry.teacher, matchedEntry.linkedUser))
+                  .filter((s: any) => s?.hari && isTeacherRecordMatch(s, matchedEntry.teacher, matchedEntry.linkedUser, { allowSingleWordFirstToken: true }))
                   .map((s: any) => String(s.hari).trim().toLowerCase())
               );
               const teacherPiketDays = [
-                ...(penugasanPiketRows || []).filter((pk: any) => pk?.hari && isTeacherRecordMatch(pk, matchedEntry.teacher, matchedEntry.linkedUser)),
+                ...(penugasanPiketRows || []).filter((pk: any) => pk?.hari && isTeacherRecordMatch(pk, matchedEntry.teacher, matchedEntry.linkedUser, { allowSingleWordFirstToken: true })),
                 ...(jadwalPiketRows || []).filter((jp: any) => jp?.hari && (
                   isGuruDiPiket(jp.daftar_guru, matchedEntry.teacher?.nama_guru || '') ||
                   Boolean(matchedEntry.linkedUser?.nama && isGuruDiPiket(jp.daftar_guru, matchedEntry.linkedUser.nama))
@@ -818,6 +818,8 @@ export default function AdminRekapView({
               teacherPiketDays.forEach(d => teacherDays.add(d));
               if (teacherDays.size > 0) {
                 totalHariKerja = countWorkdays(startDateStr, endDateStr, hariSekolah, liburDates, teacherDays);
+              } else {
+                totalHariKerja = 0;
               }
             }
           }
@@ -846,7 +848,7 @@ export default function AdminRekapView({
         .map(k => ({ nama: k, total: pkMap[k] }))
         .sort((a, b) => b.total - a.total);
 
-      setRekapData({ presensi: pArr, jurnal: jArr, piket: piketArr });
+      setRekapData({ presensi: pArr, jurnal: jArr, piket: piketArr, schoolWorkdays });
     } catch (error) {
       console.error('Rekap load error:', error);
     } finally {
@@ -871,7 +873,7 @@ export default function AdminRekapView({
   const totalHadirSemua = rekapData?.presensi?.reduce((acc, curr) => acc + (curr.hadir || 0), 0) || 0;
   const totalJurnalSemua = rekapData?.jurnal?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
   const totalPiketSemua = rekapData?.piket?.reduce((acc, curr) => acc + (curr.total || 0), 0) || 0;
-  const totalHariKerjaBadge = rekapData?.presensi?.[0]?.totalWajib ?? 0;
+  const totalHariKerjaBadge = rekapData?.schoolWorkdays ?? rekapData?.presensi?.[0]?.totalWajib ?? 0;
 
   const totalDinasSemua = useMemo(() => {
     if (!rekapData?.presensi) return 0;

@@ -134,7 +134,7 @@ export function resolveTeacherAttendancePolicy(params: {
   guruHanyaMengajarList?: string[];
   preferLegacyListWhenGlobalKbm?: boolean;
 }): TeacherAttendancePolicyResult {
-  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, guruHanyaMengajarList = [], preferLegacyListWhenGlobalKbm = false } = params;
+  const { teacher, linkedUser, weeklySchedules, totalTeacherKbmCount, aturanGlobal, guruHanyaMengajarList = [], preferLegacyListWhenGlobalKbm = false } = params;
   const isTu = isTuAccount(teacher, linkedUser?.role);
   const hasAnyWeeklyKbm = isTu
     ? false
@@ -181,16 +181,20 @@ export function resolveTeacherAttendancePolicy(params: {
   });
 
   let isTeacherExempt = false;
-  if (isNonKbmOrTu) {
+  if (isTu) {
     isTeacherExempt = false;
-  } else if (preferLegacyListWhenGlobalKbm && isInLegacyList) {
-    isTeacherExempt = true;
   } else if (explicitSetting === false) {
     isTeacherExempt = false;
   } else if (explicitSetting === true) {
     isTeacherExempt = true;
+  } else if (isNonKbmOrTu) {
+    isTeacherExempt = false;
+  } else if (preferLegacyListWhenGlobalKbm && isInLegacyList) {
+    isTeacherExempt = true;
   } else if (isInLegacyList) {
     isTeacherExempt = true;
+  } else {
+    isTeacherExempt = false;
   }
 
   return {
@@ -2107,12 +2111,14 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       aturanGlobal: aturanKehadiran,
       guruHanyaMengajarList,
     });
-    if (isNonKbmOrTu) {
+    if (isTeacherTu) {
       isTeacherExempt = false;
     } else if (explicitTeacherSetting === false) {
       isTeacherExempt = false;
     } else if (explicitTeacherSetting === true) {
       isTeacherExempt = true;
+    } else if (isNonKbmOrTu) {
+      isTeacherExempt = false;
     } else {
       isTeacherExempt = policy.isTeacherExempt;
     }

@@ -465,7 +465,7 @@ export default function HomeViewAdmin({
         const isNonKbmOrTu = isTu || !hasAnyWeeklyKbm;
         // AST preservation for regression tests: aturanGlobal === 'Hari_Mengajar_Saja' & guruHanyaMengajarList.includes
         void (aturanGlobal === 'Hari_Mengajar_Saja' && guruHanyaMengajarList.includes(teacher.id));
-        const isTeacherExempt = !isNonKbmOrTu && policy.isTeacherExempt;
+        const isTeacherExempt = policy.isTeacherExempt;
         const activeTargetCount = targetClasses.filter((jk: any) => !jk.isBlocked).length;
         const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;
 
@@ -479,11 +479,15 @@ export default function HomeViewAdmin({
             Boolean(linkedUser?.nama && isGuruDiPiket(piketSchedule.daftar_guru, linkedUser.nama))
           : false;
         const isAssignedPiket = inPenugasan || inJadwalPiket;
-        const isPiket = !isSchoolDayOff && isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
-        let piketStatus = isSchoolDayOff ? 'Libur' : (isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas');
-        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = (isSchoolDayOff || (isExemptNonTeaching && isAssignedPiket)) ? 'blue' : 'gray';
+        const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
+        let piketStatus = isExemptNonTeaching && isAssignedPiket ? 'Bebas Piket' : 'Bukan Petugas';
+        let piketColor: 'green' | 'rose' | 'gray' | 'blue' = isExemptNonTeaching && isAssignedPiket ? 'blue' : 'gray';
+        if (isSchoolDayOff) {
+          piketStatus = 'Libur';
+          piketColor = 'blue';
+        }
 
-        if (isPiket) {
+        if (isPiket && !isSchoolDayOff) {
           const hasReport = piketReports.some((lp: any) => 
             isTeacherRecordMatch(lp, teacher, linkedUser, { allowSingleWordFirstToken: true })
           );
@@ -698,8 +702,11 @@ export default function HomeViewAdmin({
             jurnalStatus = isSchoolDayOff ? 'Libur' : 'Bebas KBM';
             jurnalColor = isSchoolDayOff ? 'blue' : 'gray';
           }
-        } else if (isBlokToday && !isSchoolDayOff) {
-          if (isExemptNonTeaching) {
+        } else if (isBlokToday) {
+          if (isSchoolDayOff) {
+            jurnalStatus = 'Libur';
+            jurnalColor = 'blue';
+          } else if (isExemptNonTeaching) {
             jurnalStatus = 'Bebas KBM';
             jurnalColor = 'gray';
           } else if (hasTidakMelaksanakanKegiatan) {
