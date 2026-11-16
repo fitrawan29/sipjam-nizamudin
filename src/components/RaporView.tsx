@@ -11,11 +11,14 @@ import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/d
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { getSemesterDateRange } from '@/lib/workflow';
+import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 
 interface RaporViewProps {
   user: any;
   assignedKelas: string | null;
   statusKepalaSekolah?: string;
+  isKepalaSekolah?: boolean;
 }
 
 interface StudentItem {
@@ -40,10 +43,11 @@ interface WaliKelasInfo {
   nip: string | null;
 }
 
-export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: RaporViewProps) {
+export default function RaporView({ user, assignedKelas, statusKepalaSekolah, isKepalaSekolah: propsIsKepalaSekolah }: RaporViewProps) {
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const isSuperadmin = user?.role === 'Superadmin' || user?.role === 'superadmin';
   const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+  const isKepalaSekolah = Boolean(propsIsKepalaSekolah ?? checkIsKepalaSekolah(user));
   const sekolahId = user?.sekolah_id || null;
   const effectiveStatus = statusKepalaSekolah || user?.status_kepala_sekolah || user?.statusKepalaSekolah || (typeof window !== 'undefined' && (() => { try { const s = localStorage.getItem('sipjam_config_sync'); if (s) return JSON.parse(s)?.config?.status_kepala_sekolah; } catch {} })()) || 'Definitif';
 
@@ -164,10 +168,10 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
 
   // Synchronize non-admin homeroom teacher's selectedKelas with assignedKelas
   useEffect(() => {
-    if (!isAdmin && !isTataUsaha && assignedKelas && selectedKelas !== assignedKelas) {
+    if (!isAdmin && !isTataUsaha && !isKepalaSekolah && assignedKelas && selectedKelas !== assignedKelas) {
       setSelectedKelas(assignedKelas);
     }
-  }, [isAdmin, isTataUsaha, assignedKelas, selectedKelas]);
+  }, [isAdmin, isTataUsaha, isKepalaSekolah, assignedKelas, selectedKelas]);
 
   // Fetch available classes (all active classes in school for Admin)
   useEffect(() => {
@@ -1130,7 +1134,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
               <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                 E-Rapor SMA (Kurikulum Deep Learning)
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
-                  {isAdmin || isSuperadmin ? 'Administrator' : 'Wali Kelas'}
+                  {isAdmin || isSuperadmin ? 'Administrator' : isKepalaSekolah ? formatKepalaSekolahLabel(effectiveStatus) : isTataUsaha ? 'Tata Usaha' : 'Wali Kelas'}
                 </span>
               </h1>
               <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -1169,17 +1173,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
             {/* Kelas selector */}
             <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
               <span className="font-semibold text-gray-600 dark:text-gray-300">Kelas:</span>
-              {isAdmin || isSuperadmin ? (
-                <select
-                  value={selectedKelas}
-                  onChange={(e) => setSelectedKelas(e.target.value)}
-                  className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
-                >
-                  {kelasList.map(k => (
-                    <option key={k} value={k} className="dark:bg-gray-800">{k}</option>
-                  ))}
-                </select>
-              ) : isTataUsaha ? (
+              {isAdmin || isSuperadmin || isTataUsaha || isKepalaSekolah ? (
                 <select
                   value={selectedKelas}
                   onChange={(e) => setSelectedKelas(e.target.value)}

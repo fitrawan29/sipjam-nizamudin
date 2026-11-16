@@ -10,6 +10,7 @@ import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/d
 import { getGradebookDraftKey, saveGradebookDraft, loadGradebookDraft, clearGradebookDraft } from '@/utils/draftStorage';
 import ClayTabs, { TabItem } from '@/components/ClayTabs';
 import RaporView from './RaporView';
+import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { filterStudentsBySubject } from '@/lib/agamaFilter';
 import { parseLegacyOrModernAttendance, resolveCanonicalClass, getSemesterDateRange } from '@/lib/workflow';
@@ -290,14 +291,16 @@ export default function GradebookView({
   initialTab = 'gradebook',
   assignedKelas,
   isWaliKelas: propsIsWaliKelas,
-  isKepalaSekolah: _isKepalaSekolah,
+  isKepalaSekolah: propsIsKepalaSekolah,
   statusKepalaSekolah
 }: GradebookViewProps) {
   // Mode & Tenant Resolution
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const isSuperadmin = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'superadmin';
   const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+  const isKepalaSekolah = Boolean(propsIsKepalaSekolah ?? checkIsKepalaSekolah(user));
   const canSelectAllTeachers = isAdmin || isTataUsaha;
+  const canAccessAllTeachers = canSelectAllTeachers || isKepalaSekolah;
   const isWaliKelas = Boolean(
     propsIsWaliKelas ?? (
       assignedKelas ||
@@ -307,8 +310,8 @@ export default function GradebookView({
       user?.is_wali_kelas === true
     )
   );
-  const isPureGuruMapel = !isAdmin && !isSuperadmin && !isTataUsaha && !isWaliKelas;
-  const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas || isTataUsaha;
+  const isPureGuruMapel = !isAdmin && !isSuperadmin && !isTataUsaha && !isKepalaSekolah && !isWaliKelas;
+  const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas || isTataUsaha || isKepalaSekolah;
 
   // Cluster 3 Active Tab ('gradebook' | 'rapor')
   const [activeTab, setActiveTab] = useState<'gradebook' | 'rapor'>(initialTab);
@@ -341,7 +344,7 @@ export default function GradebookView({
   const [syncedSemester, setSyncedSemester] = useState<string>('');
 
   // Active Filters
-  const [selectedGuru, setSelectedGuru] = useState<string>(canSelectAllTeachers ? '' : (user?.nama || ''));
+  const [selectedGuru, setSelectedGuru] = useState<string>(canAccessAllTeachers ? '' : (user?.nama || ''));
   const [selectedMapel, setSelectedMapel] = useState<string>('');
   const [selectedKelas, setSelectedKelas] = useState<string>('');
   const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>(() => {
@@ -1277,7 +1280,7 @@ export default function GradebookView({
         let masterClasses: string[] = [];
 
         // Fetch teachers
-        if (canSelectAllTeachers) {
+        if (canAccessAllTeachers) {
           let gQuery = supabase
             .from('data_guru')
             .select('id, user_id, nama_guru, nip, mata_pelajaran');
@@ -1305,7 +1308,7 @@ export default function GradebookView({
 
         // Fetch guru_mapel
         let gmQuery = supabase.from('guru_mapel').select('*');
-        if (!canSelectAllTeachers) {
+        if (!canAccessAllTeachers) {
           if (user?.username && user?.nama) {
             gmQuery = gmQuery.or(`nip.eq.${user.username},nama_guru.ilike.%${user.nama}%`);
           } else if (user?.username) {
@@ -1319,7 +1322,7 @@ export default function GradebookView({
 
         // Fetch jadwal_pelajaran
         let jmQuery = supabase.from('jadwal_pelajaran').select('*');
-        if (!canSelectAllTeachers && user?.nama) {
+        if (!canAccessAllTeachers && user?.nama) {
           jmQuery = jmQuery.ilike('nama_guru', `%${user.nama}%`);
         }
         if (sekolahId) jmQuery = jmQuery.eq('sekolah_id', sekolahId);
@@ -1452,7 +1455,7 @@ export default function GradebookView({
     };
 
     fetchMasterAssignments();
-  }, [canSelectAllTeachers, user, sekolahId, syncTeacherAssignments]);
+  }, [canAccessAllTeachers, user, sekolahId, syncTeacherAssignments]);
 
   // Verify if current user is the assigned teacher (Guru Pengampu) for selectedMapel & selectedKelas
   useEffect(() => {
@@ -3195,7 +3198,7 @@ export default function GradebookView({
         {/* FILTER CONTROLS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-5 mt-5 border-t border-gray-100 dark:border-gray-700">
           {/* Guru Filter (Admin & TU Mode) */}
-          {canSelectAllTeachers ? (
+          {canAccessAllTeachers ? (
             <div>
               <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
                 Guru Pengampu
@@ -6112,7 +6115,7 @@ export default function GradebookView({
       {/* Sub-Tab 2: Rapor Kelas Binaan (In-Memory Keep-Alive + RBAC) */}
       <div className={activeTab === 'rapor' ? 'block' : 'hidden'}>
         {canAccessRapor ? (
-          <RaporView user={user} assignedKelas={assignedKelas || null} statusKepalaSekolah={statusKepalaSekolah} />
+          <RaporView user={user} assignedKelas={assignedKelas || null} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
         ) : (
           <AccessDeniedCard
             title="Akses Terblokir"

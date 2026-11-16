@@ -748,8 +748,11 @@ export default function AppScreen({
 
       // Defense-in-depth sub-tab RBAC check
       const rbacCheck = evaluateTabRBAC(targetId, targetTab || '', {
-        role: isBk ? 'bk' : (isTataUsaha ? 'tata_usaha' : user?.role),
+        role: isBk ? 'bk' : (isTataUsaha ? 'tata_usaha' : (isKepalaSekolah ? 'kepalasekolah' : user?.role)),
         isWaliKelas,
+        is_kepala_sekolah: isKepalaSekolah,
+        isKepalaSekolah,
+        statusKepalaSekolah,
         mata_pelajaran: user?.mata_pelajaran,
         isBk
       });
@@ -850,7 +853,7 @@ export default function AppScreen({
     { id: 'view-analitik', icon: 'fa-chart-pie', label: 'Analitik' },
     { id: 'view-rekap-siswa', icon: 'fa-users-viewfinder', label: 'Presensi Siswa' },
     { id: 'view-jurnal-kelas', icon: 'fa-chalkboard-user', label: 'Jurnal Kelas' },
-    ...(isWaliKelas ? [{ id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor' }] : []),
+    { id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor' },
     { id: 'view-guru-presensi', icon: 'fa-right-to-bracket', label: 'Presensi Guru' },
     { id: 'view-guru-jurnal', icon: 'fa-book-journal-whills', label: 'Jurnal Pembelajaran' },
     ...(isPiketHariIni ? [{ id: 'view-piket', icon: 'fa-shield-halved', label: 'Modul Piket' }] : []),
@@ -1423,9 +1426,9 @@ export default function AppScreen({
               )}
               {currentView === 'view-rapor' && (
                 isTataUsaha ? (
-                  <RaporView user={user} assignedKelas={assignedKelas} />
-                ) : isAdmin || isSuperadmin || isWaliKelas ? (
-                  <RaporView user={user} assignedKelas={assignedKelas} />
+                  <RaporView user={user} assignedKelas={assignedKelas} statusKepalaSekolah={statusKepalaSekolah} />
+                ) : isAdmin || isSuperadmin || isWaliKelas || isKepalaSekolah ? (
+                  <RaporView user={user} assignedKelas={assignedKelas} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
                     <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">

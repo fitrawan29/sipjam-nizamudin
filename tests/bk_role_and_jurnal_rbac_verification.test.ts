@@ -405,7 +405,9 @@ async function runTests() {
 
   // Kepala Sekolah
   const kepsekMenus = getConsolidatedMenuItems({ role: 'kepalasekolah', isKepalaSekolah: true });
-  recordAssert(kepsekMenus.length === 7, 'T9.6', 'Kepala Sekolah menus remain strictly 7 items');
+  recordAssert(kepsekMenus.length === 9, 'T9.6', 'Kepala Sekolah menus contain 9 items including Asesmen & Rapor');
+  recordAssert(kepsekMenus.some(m => m.id === 'view-gradebook'), 'T9.6.asesmen', 'Kepala Sekolah retains Asesmen');
+  recordAssert(kepsekMenus.some(m => m.id === 'view-rapor'), 'T9.6.rapor', 'Kepala Sekolah retains Rapor');
 
   // Preserved GuruJurnal.tsx and workflow.ts
   const guruJurnalContent = fs.readFileSync(path.join(process.cwd(), 'src/components/GuruJurnal.tsx'), 'utf-8');

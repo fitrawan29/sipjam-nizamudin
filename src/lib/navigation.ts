@@ -156,6 +156,8 @@ export function getConsolidatedMenuItems(params: {
       { id: 'view-rekap-siswa', icon: 'fa-users', label: 'Monitoring Kesiswaan' },
       { id: 'view-guru-presensi', icon: 'fa-clock', label: 'Presensi Guru', dataTour: 'view-guru-presensi view-history' },
       { id: 'view-guru-jurnal', icon: 'fa-book-open', label: 'Jurnal Pembelajaran', dataTour: 'view-guru-jurnal view-guru-rekap-jurnal view-jurnal-kelas' },
+      { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen', dataTour: 'view-gradebook' },
+      { id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor', dataTour: 'view-rapor' },
       { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' }
     ];
   }
@@ -319,9 +321,9 @@ export function evaluateTabRBAC(
   }
 
   // Cluster 3: Asesmen & Rapor
-  if (viewId === 'view-gradebook' && tabId === 'rapor') {
-    if (!isWali && !isAdmin && !isTataUsaha) {
-      return { allowed: false, fallbackTab: 'gradebook', reason: 'Halaman Rapor secara eksklusif hanya dapat diakses oleh Wali Kelas, Administrator, dan Tata Usaha.' };
+  if ((viewId === 'view-gradebook' || effectiveView === 'view-gradebook') && (tabId === 'rapor' || effectiveTab === 'rapor')) {
+    if (!isWali && !isAdmin && !isTataUsaha && !isKepalaSekolah) {
+      return { allowed: false, fallbackTab: 'gradebook', reason: 'Halaman Rapor secara eksklusif hanya dapat diakses oleh Wali Kelas, Administrator, Tata Usaha, dan Kepala Sekolah.' };
     }
   }
 
