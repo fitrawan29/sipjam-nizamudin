@@ -608,8 +608,8 @@ export default function HomeViewAdmin({
         ) || presensiList.find((p: any) =>
           isTeacherRecordMatch(p, teacher, linkedUser, { allowSingleWordFirstToken: true }) && p.tipe_absen === 'Pulang'
         );
-        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : (isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang';
-        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' | 'rose' = (isSchoolDayOff || (isFreeFromPresence && !pDatang)) ? 'blue' : 'gray';
+        let presensiPulangStatus = isSchoolDayOff ? 'Libur' : isFreeFromPresence ? 'Bebas Hadir' : 'Belum Pulang';
+        let presensiPulangColor: 'green' | 'gray' | 'amber' | 'blue' | 'rose' = (isSchoolDayOff || isFreeFromPresence) ? 'blue' : 'gray';
         let pulangTime = '';
 
         if (pPulang) {
@@ -798,7 +798,7 @@ export default function HomeViewAdmin({
         }
 
         // 6. Aggregate: Tugas Lengkap?
-        const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);
+        const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty);
         const datangDone = isLiburOrExempt || isIzinSakit || (presensiDatangStatus !== 'Belum Datang' && presensiDatangStatus !== 'Ditolak' && presensiDatangStatus !== 'Alpa');
         const pulangDone = isLiburOrExempt || isIzinSakit || (presensiPulangStatus.startsWith('Pulang ['));
         const piketDone = isLiburOrExempt || !isPiket || piketStatus === 'Sudah Lapor' || isIzinSakit;
@@ -843,7 +843,7 @@ export default function HomeViewAdmin({
           : '';
         const keteranganLibur = isSchoolDayOff
           ? holidayKeterangan
-          : (isFreeFromPresence && !pDatang)
+          : isFreeFromPresence
             ? 'Tidak ada jadwal mengajar'
             : (leaveDetail && leaveDetail.toLowerCase() !== presensiDatangStatus.toLowerCase())
               ? leaveDetail

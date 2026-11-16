@@ -2256,9 +2256,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     }
 
     // 3. Cek Piket Hari Ini (case-insensitive matching)
-    // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket saat sistem blok aktif jika tidak ada jadwal hari ini
+    // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket jika tidak ada jadwal hari ini
     const isExemptAndNoSchedule = isTeacherExempt && state.jadwalKBM.length === 0;
-    if (!(state.isBlok && isExemptAndNoSchedule)) {
+    if (!isExemptAndNoSchedule) {
       // Check penugasan_piket directly
       let penugasanQuery = supabase
         .from('penugasan_piket')
@@ -2451,7 +2451,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.departureState = state.presensiPulang?.jenis_presensi || null;
     }
 
-    const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || state.isPiket;
+    const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || (state.isPiket && !isExemptAndNoSchedule);
 
     // Evaluasi kewajiban kehadiran & penentuan Alpa
     if (!state.presensiDatang) {

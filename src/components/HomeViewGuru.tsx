@@ -435,7 +435,12 @@ export default function HomeViewGuru({
       return steps;
     }
 
-    if (dailyState.isNonTeachingDay) { // dailyState.isNonTeachingDay && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja'
+    const isExemptNonTeachingDay = Boolean(
+      dailyState.isNonTeachingDay || 
+      (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))
+    );
+
+    if (isExemptNonTeachingDay) { // dailyState.isNonTeachingDay && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja'
       if (!dailyState.presensiDatang) {
         steps.push({ label: 'Bebas Presensi', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran)', icon: 'fa-calendar-check' });
         return steps;
@@ -556,6 +561,8 @@ export default function HomeViewGuru({
       } else {
         steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket' });
       }
+    } else if (isExemptNonTeachingDay) {
+      steps.push({ label: 'Bebas Pulang', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Pulang)', icon: 'fa-calendar-check' });
     } else if (dailyState.canPresensiPulang) {
       if (isBeforePulang) {
         steps.push({
@@ -618,7 +625,8 @@ export default function HomeViewGuru({
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
-    if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
+    if ((dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
+    if ((dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) && dailyState.presensiDatang && !dailyState.presensiPulang) return { text: 'Kehadiran sukarela tercatat. Anda bebas pulang kapan saja tanpa kewajiban jurnal/piket.', color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
     if (dailyState.isAlpa && dailyState.presensiDatang) return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang dan pulang).', color: 'text-red-600 dark:text-red-400' };
     // Rejection messages take high priority — teacher must know to re-submit
@@ -1145,7 +1153,7 @@ export default function HomeViewGuru({
                   </button>
                 </div>
               </div>
-            ) : dailyState?.isNonTeachingDay ? (
+            ) : (dailyState?.isNonTeachingDay || (dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0))) ? (
               <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
                 <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
                   <i className="fa-solid fa-calendar-check"></i>

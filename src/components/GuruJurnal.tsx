@@ -871,7 +871,9 @@ export default function GuruJurnal({
             kbmSubMode !== 'absensi' &&
             !kelas &&
             !mapel &&
-            (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu || !dailyState?.isNonTeachingDay)
+            !dailyState?.isNonTeachingDay &&
+            !(dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0)) &&
+            (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu)
           ) {
             setTipeJurnal('Jurnal Kegiatan');
           }
