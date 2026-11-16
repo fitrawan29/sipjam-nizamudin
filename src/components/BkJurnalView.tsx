@@ -9,6 +9,7 @@ import CameraSelfieCapture from './CameraSelfieCapture';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimeStr } from '@/lib/wita';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl, isGoogleDriveUrl } from '@/lib/imageUrl';
+import { generateCsvString, triggerCsvDownload } from '@/lib/csvExport';
 
 export interface BkJurnalViewProps {
   user: any;
@@ -37,6 +38,7 @@ export interface JurnalBkEntry {
   tindak_lanjut: string;
   status: 'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus';
   link_dokumen?: string | null;
+  detail_layanan?: Record<string, string> | null;
   status_verifikasi?: 'Menunggu' | 'Disetujui' | 'Ditolak' | 'Dispensasi' | 'Diverifikasi' | string;
   catatan_admin?: string | null;
   alasan_penolakan?: string | null;
@@ -52,6 +54,142 @@ export interface SiswaOption {
   gender?: string;
 }
 
+export interface DynamicFieldDef {
+  key: string;
+  label: string;
+  placeholder: string;
+  type: 'text' | 'textarea' | 'select';
+  options?: string[];
+  required?: boolean;
+}
+
+export const BK_SERVICE_CONFIGS: Record<string, {
+  name: string;
+  description: string;
+  defaultBidang: 'Pribadi' | 'Sosial' | 'Belajar' | 'Karir';
+  fields: DynamicFieldDef[];
+}> = {
+  'Layanan Orientasi': {
+    name: 'Layanan Orientasi',
+    description: 'Pengenalan lingkungan sekolah, fasilitas, aturan, dan staf bagi siswa baru/adaptasi.',
+    defaultBidang: 'Sosial',
+    fields: [
+      { key: 'sasaran_orientasi', label: 'Sasaran Orientasi', placeholder: 'Contoh: Siswa Baru Kelas VII / Siswa Pindahan', type: 'text', required: true },
+      { key: 'materi_orientasi', label: 'Materi / Topik Orientasi', placeholder: 'Contoh: Tata Tertib Sekolah, Fasilitas Belajar, Program BK', type: 'text', required: true },
+      { key: 'pihak_terlibat', label: 'Pihak / Narasumber yang Dilibatkan', placeholder: 'Contoh: Kepala Sekolah, Wali Kelas, OSIS', type: 'text' }
+    ]
+  },
+  'Layanan Informasi': {
+    name: 'Layanan Informasi',
+    description: 'Pemberian pemahaman dan data penting (pendidikan lanjutan, karier, beasiswa, pergaulan).',
+    defaultBidang: 'Karir',
+    fields: [
+      { key: 'topik_informasi', label: 'Topik / Pokok Informasi', placeholder: 'Contoh: Jalur Masuk Perguruan Tinggi, Beasiswa, Bahaya Bullying', type: 'text', required: true },
+      { key: 'media_layanan', label: 'Media / Format Penyampaian', placeholder: 'Contoh: Slide Presentasi, Brosur, Diskusi Klasikal', type: 'text' }
+    ]
+  },
+  'Layanan Pembelajaran': {
+    name: 'Layanan Pembelajaran',
+    description: 'Pengembangan sikap, kebiasaan belajar efektif, dan mengatasi kesulitan belajar.',
+    defaultBidang: 'Belajar',
+    fields: [
+      { key: 'kesulitan_belajar', label: 'Fokus Masalah / Kebiasaan Belajar', placeholder: 'Contoh: Kesulitan Konsentrasi, Manajemen Waktu, Motivasi Rendah', type: 'text', required: true },
+      { key: 'mapel_terkait', label: 'Mata Pelajaran Terkait (Opsional)', placeholder: 'Contoh: Matematika, Bahasa Inggris', type: 'text' },
+      { key: 'strategi_solusi', label: 'Strategi / Teknik Belajar yang Dilatih', placeholder: 'Contoh: Jadwal Belajar Terstruktur, Teknik Pomodoro', type: 'text' }
+    ]
+  },
+  'Layanan Penempatan dan Penyaluran': {
+    name: 'Layanan Penempatan dan Penyaluran',
+    description: 'Penempatan siswa sesuai bakat dan kemampuan (kelas, peminatan, ekstrakurikuler, karier).',
+    defaultBidang: 'Karir',
+    fields: [
+      { key: 'jenis_penempatan', label: 'Jenis Penempatan / Penyaluran', placeholder: 'Contoh: Peminatan IPA/IPS, Ekstrakurikuler Robotik, Posisi Duduk', type: 'text', required: true },
+      { key: 'potensi_minat', label: 'Potensi / Minat yang Teridentifikasi', placeholder: 'Contoh: Bakat Logika-Matematis, Minat Olahraga', type: 'text' },
+      { key: 'rekomendasi_penempatan', label: 'Rekomendasi Penempatan Final', placeholder: 'Contoh: Disalurkan ke Ekskul Pramuka & Kelas Peminatan Terfokus', type: 'text', required: true }
+    ]
+  },
+  'Layanan Penguasaan Konten': {
+    name: 'Layanan Penguasaan Konten',
+    description: 'Penguasaan keterampilan/kompetensi tertentu (komunikasi asertif, manajemen emosi, etika).',
+    defaultBidang: 'Pribadi',
+    fields: [
+      { key: 'konten_kompetensi', label: 'Kompetensi / Konten yang Dilatihkan', placeholder: 'Contoh: Keterampilan Asertif, Manajemen Stres, Etika Bermedsos', type: 'text', required: true },
+      { key: 'metode_latihan', label: 'Metode Pelatihan / Latihan', placeholder: 'Contoh: Bermain Peran (Role Play), Simulasi, Lembar Kerja', type: 'text' }
+    ]
+  },
+  'Layanan Konseling Perorangan (Individual)': {
+    name: 'Layanan Konseling Perorangan (Individual)',
+    description: 'Bantuan tatap muka intensif dan rahasia antara guru BK dan siswa untuk mengatasi masalah pribadi.',
+    defaultBidang: 'Pribadi',
+    fields: [
+      { key: 'gejala_masalah', label: 'Gejala / Pokok Masalah Siswa', placeholder: 'Contoh: Kecemasan Berlebih, Konflik Keluarga, Penurunan Emosi', type: 'text', required: true },
+      { key: 'pendekatan_konseling', label: 'Pendekatan / Teknik Konseling', placeholder: 'Contoh: Cognitive Behavior Therapy (CBT), Person-Centered', type: 'text' },
+      { key: 'komitmen_konseli', label: 'Komitmen / Kontrak Konseli', placeholder: 'Contoh: Berkomitmen tidur tepat waktu dan berkonsultasi mingguan', type: 'text' }
+    ]
+  },
+  'Layanan Bimbingan Kelompok': {
+    name: 'Layanan Bimbingan Kelompok',
+    description: 'Dinamika kelompok kecil (6-10 siswa) membahas topik umum preventif dan pengembangan diri.',
+    defaultBidang: 'Sosial',
+    fields: [
+      { key: 'topik_kelompok', label: 'Topik Bahasan Kelompok', placeholder: 'Contoh: Membangun Percaya Diri di Depan Umum, Solidaritas Kelas', type: 'text', required: true },
+      { key: 'daftar_anggota', label: 'Anggota Kelompok / Jumlah Peserta', placeholder: 'Contoh: 8 Siswa Perwakilan Kelas 8A', type: 'text' },
+      { key: 'dinamika_kelompok', label: 'Catatan Dinamika & Partisipasi Kelompok', placeholder: 'Contoh: Semua anggota aktif mengemukakan pendapat secara terbuka', type: 'text' }
+    ]
+  },
+  'Layanan Konseling Kelompok': {
+    name: 'Layanan Konseling Kelompok',
+    description: 'Dinamika kelompok untuk pemecahan masalah pribadi bersama dalam suasana saling percaya.',
+    defaultBidang: 'Pribadi',
+    fields: [
+      { key: 'fokus_masalah_kelompok', label: 'Masalah Bersama yang Dibahas', placeholder: 'Contoh: Mengatasi Rasa Takut Gagal dalam Ujian Sekolah', type: 'text', required: true },
+      { key: 'keterbukaan_anggota', label: 'Tingkat Keterbukaan & Kerahasiaan', placeholder: 'Contoh: Disepakati janji kerahasiaan bersama antar anggota', type: 'text' },
+      { key: 'solusi_kelompok', label: 'Kesepakatan Solusi Bersama', placeholder: 'Contoh: Saling memberi umpan balik dan pendampingan sebaya', type: 'text' }
+    ]
+  },
+  'Layanan Konsultasi': {
+    name: 'Layanan Konsultasi',
+    description: 'Konsultasi pihak ketiga (orang tua / guru mata pelajaran) kepada guru BK terkait siswa.',
+    defaultBidang: 'Pribadi',
+    fields: [
+      { key: 'pihak_konsulti', label: 'Pihak yang Berkonsultasi (Konsulti)', placeholder: 'Contoh: Orang Tua / Wali Siswa, Guru Matematika, Wali Kelas', type: 'text', required: true },
+      { key: 'nama_konsulti', label: 'Nama Lengkap Konsulti & Kontak', placeholder: 'Contoh: Ibu Rina (Orang Tua Siswa) / No. HP: 0812xxxx', type: 'text' },
+      { key: 'arahan_rekomendasi', label: 'Arahan / Saran bagi Konsulti', placeholder: 'Contoh: Mengurangi screen time di rumah dan memberi apresiasi bertahap', type: 'text', required: true }
+    ]
+  },
+  'Layanan Mediasi': {
+    name: 'Layanan Mediasi',
+    description: 'Guru BK bertindak sebagai penengah untuk menyelesaikan konflik antar siswa atau pihak lain.',
+    defaultBidang: 'Sosial',
+    fields: [
+      { key: 'pihak_berkonflik', label: 'Pihak-Pihak yang Berselisih', placeholder: 'Contoh: Siswa A (Kelas 7B) dan Siswa B (Kelas 7C)', type: 'text', required: true },
+      { key: 'akar_konflik', label: 'Akar Permasalahan / Pemicu Konflik', placeholder: 'Contoh: Kesalahpahaman perkataan di grup percakapan online', type: 'text', required: true },
+      { key: 'kesepakatan_damai', label: 'Poin-Poin Kesepakatan Damai', placeholder: 'Contoh: Saling memaafkan, menghapus postingan, berjabat tangan', type: 'text', required: true }
+    ]
+  },
+  'Layanan Advokasi': {
+    name: 'Layanan Advokasi',
+    description: 'Upaya guru BK melindungi hak-hak siswa yang terlanggar atau terhambat perkembangannya.',
+    defaultBidang: 'Pribadi',
+    fields: [
+      { key: 'hak_terancam', label: 'Bentuk Hak Siswa yang Memerlukan Pembelaan', placeholder: 'Contoh: Hak Mengikuti Ujian yang Tertahan Masalah Administrasi', type: 'text', required: true },
+      { key: 'pihak_terkait_advokasi', label: 'Pihak Terkait / Lembaga yang Dihubungi', placeholder: 'Contoh: Bagian Keuangan Sekolah, Komite Sekolah', type: 'text' },
+      { key: 'tindakan_advokasi', label: 'Langkah Advokasi yang Dilakukan Guru BK', placeholder: 'Contoh: Mengajukan rekomendasi dispensasi resmi dengan jaminan BK', type: 'text', required: true }
+    ]
+  }
+};
+
+export function getCanonicalServiceName(layanan: string): string {
+  if (!layanan) return '';
+  const trimmed = layanan.trim();
+  if (trimmed === 'Konseling Individual') return 'Layanan Konseling Perorangan (Individual)';
+  if (trimmed === 'Konseling Kelompok') return 'Layanan Konseling Kelompok';
+  if (trimmed === 'Bimbingan Kelompok') return 'Layanan Bimbingan Kelompok';
+  if (trimmed === 'Konsultasi') return 'Layanan Konsultasi';
+  if (trimmed === 'Mediasi') return 'Layanan Mediasi';
+  return trimmed;
+}
+
 const BIDANG_BIMBINGAN_OPTIONS: Array<'Pribadi' | 'Sosial' | 'Belajar' | 'Karir'> = [
   'Pribadi',
   'Sosial',
@@ -60,6 +198,17 @@ const BIDANG_BIMBINGAN_OPTIONS: Array<'Pribadi' | 'Sosial' | 'Belajar' | 'Karir'
 ];
 
 const JENIS_LAYANAN_OPTIONS = [
+  'Layanan Orientasi',
+  'Layanan Informasi',
+  'Layanan Pembelajaran',
+  'Layanan Penempatan dan Penyaluran',
+  'Layanan Penguasaan Konten',
+  'Layanan Konseling Perorangan (Individual)',
+  'Layanan Bimbingan Kelompok',
+  'Layanan Konseling Kelompok',
+  'Layanan Konsultasi',
+  'Layanan Mediasi',
+  'Layanan Advokasi',
   'Konseling Individual',
   'Konseling Kelompok',
   'Bimbingan Kelompok',
@@ -119,6 +268,7 @@ export default function BkJurnalView({
     bidang_bimbingan: 'Pribadi' | 'Sosial' | 'Belajar' | 'Karir';
     jenis_layanan: string;
     tempat_layanan: string;
+    detail_layanan: Record<string, string>;
     catatan: string;
     tindak_lanjut: string;
     status: 'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus';
@@ -131,13 +281,19 @@ export default function BkJurnalView({
     tanggal: todayStr,
     waktu: nowTimeStr,
     bidang_bimbingan: 'Pribadi',
-    jenis_layanan: 'Konseling Individual',
+    jenis_layanan: 'Layanan Konseling Perorangan (Individual)',
     tempat_layanan: 'Ruang BK',
+    detail_layanan: {},
     catatan: '',
     tindak_lanjut: '',
     status: 'Dalam Penanganan',
     link_dokumen: ''
   });
+
+  // Active dynamic service config
+  const activeServiceConfig = useMemo(() => {
+    return BK_SERVICE_CONFIGS[formData.jenis_layanan] || BK_SERVICE_CONFIGS[getCanonicalServiceName(formData.jenis_layanan)];
+  }, [formData.jenis_layanan]);
 
   // Documentation States (Live Camera & File Upload)
   const [docMode, setDocMode] = useState<'none' | 'camera' | 'upload'>('none');
@@ -243,7 +399,8 @@ export default function BkJurnalView({
   // Auto-save form draft
   useEffect(() => {
     if (isReadOnly || editingId || typeof window === 'undefined') return;
-    const isTouched = formData.nama_siswa || formData.catatan || formData.tindak_lanjut;
+    const hasDetail = formData.detail_layanan && Object.values(formData.detail_layanan).some(v => v && String(v).trim());
+    const isTouched = formData.nama_siswa || formData.catatan || formData.tindak_lanjut || hasDetail;
     if (isTouched) {
       localStorage.setItem(draftKey, JSON.stringify(formData));
     }
@@ -302,6 +459,76 @@ export default function BkJurnalView({
     });
   }, [entries, filterStartDate, filterEndDate, filterBidang, filterStatus, filterCounselor, filterSearch]);
 
+  // Export Filtered Entries to CSV
+  const handleExportCsv = useCallback(() => {
+    if (filteredEntries.length === 0) {
+      Swal.fire({
+        icon: 'info',
+        title: 'Tidak Ada Data',
+        text: 'Tidak ada data jurnal BK yang sesuai dengan filter aktif untuk diekspor.'
+      });
+      return;
+    }
+
+    const headers = [
+      'No',
+      'Tanggal',
+      'Waktu',
+      'Nama Siswa',
+      'NISN',
+      'Kelas',
+      'Bidang Bimbingan',
+      'Jenis Layanan',
+      'Sasaran',
+      'Tempat Layanan',
+      'Detail Layanan',
+      'Catatan Kasus',
+      'Rencana Tindak Lanjut',
+      'Status',
+      'Status Verifikasi',
+      'Guru BK',
+      'Dokumentasi'
+    ];
+
+    const rows = filteredEntries.map((e, idx) => {
+      let detailStr = '';
+      if (e.detail_layanan && typeof e.detail_layanan === 'object') {
+        detailStr = Object.entries(e.detail_layanan)
+          .filter(([_, v]) => Boolean(v && String(v).trim()))
+          .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
+          .join('; ');
+      }
+
+      return [
+        idx + 1,
+        e.tanggal || '',
+        e.waktu || '',
+        e.nama_siswa || '',
+        e.nisn ? `'${e.nisn}` : '',
+        e.kelas || '',
+        e.bidang_bimbingan || '',
+        e.jenis_layanan || '',
+        e.sasaran || (e.jenis_layanan.toLowerCase().includes('kelompok') ? 'Kelompok' : 'Individu'),
+        e.tempat_layanan || 'Ruang BK',
+        detailStr,
+        e.catatan || '',
+        e.tindak_lanjut || '',
+        e.status || '',
+        e.status_verifikasi || 'Menunggu',
+        e.nama_guru || '',
+        e.link_dokumen || ''
+      ];
+    });
+
+    const csvContent = generateCsvString(headers, rows);
+    const filename =
+      filterStartDate || filterEndDate
+        ? `Jurnal_BK_${filterStartDate || 'Awal'}_sd_${filterEndDate || 'Akhir'}.csv`
+        : 'Jurnal_BK_Semua_Periode.csv';
+
+    triggerCsvDownload(filename, csvContent);
+  }, [filteredEntries, filterStartDate, filterEndDate]);
+
   // Handle student select
   const handleSelectStudent = (s: SiswaOption) => {
     setFormData(prev => ({
@@ -336,8 +563,9 @@ export default function BkJurnalView({
       tanggal: todayStr,
       waktu: nowTimeStr,
       bidang_bimbingan: 'Pribadi',
-      jenis_layanan: 'Konseling Individual',
+      jenis_layanan: 'Layanan Konseling Perorangan (Individual)',
       tempat_layanan: 'Ruang BK',
+      detail_layanan: {},
       catatan: '',
       tindak_lanjut: '',
       status: 'Dalam Penanganan',
@@ -487,6 +715,7 @@ export default function BkJurnalView({
       jenis_layanan: formData.jenis_layanan,
       sasaran: formData.jenis_layanan.toLowerCase().includes('kelompok') ? 'Kelompok' : 'Individu',
       tempat_layanan: formData.tempat_layanan || 'Ruang BK',
+      detail_layanan: formData.detail_layanan || {},
       catatan: formData.catatan.trim(),
       tindak_lanjut: formData.tindak_lanjut.trim(),
       status: formData.status,
@@ -500,18 +729,24 @@ export default function BkJurnalView({
       ? { status_verifikasi: 'Menunggu' as const, catatan_admin: null, alasan_penolakan: null }
       : {};
     const payloadWithVerif = { ...recordPayload, ...verifPayload };
-    const isMissingVerifCol = (err: any) => {
+    const isMissingOptionalCol = (err: any) => {
       if (!err) return false;
       const code = String(err.code || '');
       const msg = String(err.message || '').toLowerCase();
       return (
         code === 'PGRST204' ||
         code === '42703' ||
+        msg.includes('detail_layanan') ||
         msg.includes('status_verifikasi') ||
         msg.includes('catatan_admin') ||
         msg.includes('alasan_penolakan')
       );
     };
+
+    const recordPayloadNoDetail = { ...recordPayload };
+    delete recordPayloadNoDetail.detail_layanan;
+    const payloadWithVerifNoDetail = { ...payloadWithVerif };
+    delete payloadWithVerifNoDetail.detail_layanan;
 
     try {
       if (editingId) {
@@ -521,11 +756,17 @@ export default function BkJurnalView({
           .update(payloadWithVerif)
           .eq('id', editingId);
 
-        if (error && isMissingVerifCol(error)) {
-          const retryRes = await supabase
+        if (error && isMissingOptionalCol(error)) {
+          let retryRes = await supabase
             .from('jurnal_bk')
-            .update(recordPayload)
+            .update(payloadWithVerifNoDetail)
             .eq('id', editingId);
+          if (retryRes.error && isMissingOptionalCol(retryRes.error)) {
+            retryRes = await supabase
+              .from('jurnal_bk')
+              .update(recordPayloadNoDetail)
+              .eq('id', editingId);
+          }
           error = retryRes.error;
         }
 
@@ -573,13 +814,18 @@ export default function BkJurnalView({
         };
 
         let { error } = await supabase.from('jurnal_bk').insert([insertRecord]);
-        if (error && isMissingVerifCol(error)) {
-          const fallbackInsertRecord: JurnalBkEntry = {
-            ...(recordPayload as JurnalBkEntry),
-            id: newId,
-            created_at: nowIso
-          };
-          const retryRes = await supabase.from('jurnal_bk').insert([fallbackInsertRecord]);
+        if (error && isMissingOptionalCol(error)) {
+          const fallbackWithVerif: any = { ...insertRecord };
+          delete fallbackWithVerif.detail_layanan;
+          let retryRes = await supabase.from('jurnal_bk').insert([fallbackWithVerif]);
+          if (retryRes.error && isMissingOptionalCol(retryRes.error)) {
+            const fallbackRecordPayload: any = {
+              ...recordPayloadNoDetail,
+              id: newId,
+              created_at: nowIso
+            };
+            retryRes = await supabase.from('jurnal_bk').insert([fallbackRecordPayload]);
+          }
           error = retryRes.error;
         }
         const savedLocallyOnly = Boolean(error && isSchemaCacheOrMissingTableError(error));
@@ -639,6 +885,7 @@ export default function BkJurnalView({
       bidang_bimbingan: entry.bidang_bimbingan,
       jenis_layanan: entry.jenis_layanan,
       tempat_layanan: entry.tempat_layanan || 'Ruang BK',
+      detail_layanan: entry.detail_layanan && typeof entry.detail_layanan === 'object' ? { ...entry.detail_layanan } : {},
       catatan: entry.catatan,
       tindak_lanjut: entry.tindak_lanjut,
       status: entry.status,
@@ -992,7 +1239,15 @@ export default function BkJurnalView({
                 </label>
                 <select
                   value={formData.jenis_layanan}
-                  onChange={e => setFormData(prev => ({ ...prev, jenis_layanan: e.target.value }))}
+                  onChange={e => {
+                    const selected = e.target.value;
+                    const cfg = BK_SERVICE_CONFIGS[selected] || BK_SERVICE_CONFIGS[getCanonicalServiceName(selected)];
+                    setFormData(prev => ({
+                      ...prev,
+                      jenis_layanan: selected,
+                      bidang_bimbingan: cfg?.defaultBidang || prev.bidang_bimbingan
+                    }));
+                  }}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
                 >
                   {JENIS_LAYANAN_OPTIONS.map(j => (
@@ -1032,6 +1287,58 @@ export default function BkJurnalView({
                 </select>
               </div>
             </div>
+
+            {/* Dynamic Fields for 11 BK Services */}
+            {activeServiceConfig && activeServiceConfig.fields.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-1.5">
+                  <label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                    <i className="fa-solid fa-sliders text-rose-600"></i>
+                    <span>Detail Khusus Layanan: {activeServiceConfig.name}</span>
+                  </label>
+                  <span className="text-[10px] text-gray-500 italic hidden sm:inline">
+                    {activeServiceConfig.description}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
+                  {activeServiceConfig.fields.map(f => (
+                    <div
+                      key={f.key}
+                      className={
+                        f.key === 'dinamika_kelompok' ||
+                        f.key === 'komitmen_konseli' ||
+                        f.key === 'solusi_kelompok' ||
+                        f.key === 'tindakan_advokasi' ||
+                        f.key === 'kesepakatan_damai' ||
+                        f.key === 'arahan_rekomendasi'
+                          ? 'sm:col-span-2 lg:col-span-3'
+                          : ''
+                      }
+                    >
+                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                        {f.label} {f.required && <span className="text-red-500">*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.detail_layanan?.[f.key] || ''}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setFormData(prev => ({
+                            ...prev,
+                            detail_layanan: {
+                              ...(prev.detail_layanan || {}),
+                              [f.key]: val
+                            }
+                          }));
+                        }}
+                        placeholder={f.placeholder}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Catatan Kasus & Permasalahan */}
             <div>
@@ -1348,7 +1655,7 @@ export default function BkJurnalView({
 
             {/* Date Range Row */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold text-gray-500">Rentang Tanggal:</span>
                 <input
                   type="date"
@@ -1363,19 +1670,68 @@ export default function BkJurnalView({
                   onChange={e => setFilterEndDate(e.target.value)}
                   className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
                 />
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = getWitaDateStr();
+                      setFilterStartDate(today);
+                      setFilterEndDate(today);
+                    }}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition"
+                  >
+                    Hari Ini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = getWitaDateStr();
+                      const [year, month] = today.split('-');
+                      const startOfMonth = `${year}-${month}-01`;
+                      const lastDay = new Date(Number(year), Number(month), 0).getDate();
+                      const endOfMonth = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+                      setFilterStartDate(startOfMonth);
+                      setFilterEndDate(endOfMonth);
+                    }}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition"
+                  >
+                    Bulan Ini
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterStartDate('');
+                      setFilterEndDate('');
+                    }}
+                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition"
+                  >
+                    Semua
+                  </button>
+                </div>
                 {(filterStartDate || filterEndDate) && (
                   <button
                     type="button"
                     onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
-                    className="text-[11px] text-rose-600 hover:underline font-semibold"
+                    className="text-[11px] text-rose-600 hover:underline font-semibold ml-1"
                   >
                     Reset Tanggal
                   </button>
                 )}
               </div>
 
-              <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                Menampilkan <strong>{filteredEntries.length}</strong> dari <strong>{entries.length}</strong> entri
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleExportCsv}
+                  className="btn-click inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 text-xs font-bold transition shadow-xs"
+                  title="Unduh data sesuai filter aktif ke format CSV / Excel"
+                >
+                  <i className="fa-solid fa-file-excel text-emerald-600"></i>
+                  <span>Ekspor CSV</span>
+                </button>
+                <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                  Menampilkan <strong>{filteredEntries.length}</strong> dari <strong>{entries.length}</strong> entri
+                </div>
               </div>
             </div>
           </div>
@@ -1447,6 +1803,23 @@ export default function BkJurnalView({
                           <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[11px] line-clamp-3 hover:line-clamp-none">
                             {item.catatan}
                           </p>
+                          {item.detail_layanan && typeof item.detail_layanan === 'object' && Object.keys(item.detail_layanan).length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {Object.entries(item.detail_layanan)
+                                .filter(([_, v]) => Boolean(v && String(v).trim()))
+                                .map(([k, v]) => (
+                                  <span
+                                    key={k}
+                                    className="inline-block px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] text-gray-600 dark:text-gray-300 font-mono"
+                                  >
+                                    <span className="font-semibold text-gray-700 dark:text-gray-200">
+                                      {k.replace(/_/g, ' ')}:
+                                    </span>{' '}
+                                    {String(v)}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 align-top max-w-xs">
                           <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[11px] line-clamp-3 hover:line-clamp-none">
@@ -1532,22 +1905,60 @@ export default function BkJurnalView({
       {activeTab === 'cetak' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs no-print">
-            <div>
-              <h4 className="font-bold text-xs text-gray-900 dark:text-white">
-                Pratinjau Cetak Laporan Bimbingan Konseling
-              </h4>
-              <p className="text-[11px] text-gray-500">
-                Dokumen resmi rekapitulasi layanan BK sekolah untuk arsip dan pengesahan Kepala Sekolah.
-              </p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div>
+                <h4 className="font-bold text-xs text-gray-900 dark:text-white">
+                  Pratinjau Cetak Laporan Bimbingan Konseling
+                </h4>
+                <p className="text-[11px] text-gray-500">
+                  Dokumen resmi rekapitulasi layanan BK sekolah untuk arsip dan pengesahan Kepala Sekolah.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-[11px] font-semibold text-gray-500">Periode:</span>
+                <input
+                  type="date"
+                  value={filterStartDate}
+                  onChange={e => setFilterStartDate(e.target.value)}
+                  className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                />
+                <span className="text-gray-400">-</span>
+                <input
+                  type="date"
+                  value={filterEndDate}
+                  onChange={e => setFilterEndDate(e.target.value)}
+                  className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                />
+                {(filterStartDate || filterEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
+                    className="text-[10px] text-rose-600 hover:underline font-semibold"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => triggerPrintWithGps()}
-              className="clay-btn px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
-            >
-              <i className="fa-solid fa-print"></i>
-              <span>Cetak Sekarang</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                className="clay-btn px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                title="Ekspor data jurnal BK ke format CSV / Excel"
+              >
+                <i className="fa-solid fa-file-excel"></i>
+                <span>Ekspor CSV</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => triggerPrintWithGps()}
+                className="clay-btn px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <i className="fa-solid fa-print"></i>
+                <span>Cetak Sekarang</span>
+              </button>
+            </div>
           </div>
 
           {/* Printable Layout Container */}
