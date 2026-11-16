@@ -4427,7 +4427,7 @@ export default function GradebookView({
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
                     {/* Upper Category Row */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100/70 dark:bg-gray-800/80">
+                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
                         Identitas Siswa
                       </th>
                       <th className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300">
@@ -4452,10 +4452,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
-                      <th className="py-2 px-2.5 w-10 text-center">#</th>
-                      <th className="py-2 px-2.5 w-24">NISN</th>
-                      <th className="py-2 px-3 min-w-[180px]">Nama Siswa</th>
-                      <th className="py-2 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                      <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
 
                       {/* Diagnostik Column */}
                       {diagnostikCol && (
@@ -4590,17 +4590,17 @@ export default function GradebookView({
                       return (
                         <tr
                           key={student.nisn}
-                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
+                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors group"
                         >
                           {/* Student Info */}
-                          <td className="py-2 px-2.5 text-center text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300">
+                          <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 text-center text-gray-500 font-medium w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="py-2 px-3 font-semibold text-gray-900 dark:text-white">
-                            {student.nama_siswa}
+                          <td className="sticky left-[136px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-3 font-semibold text-gray-900 dark:text-white w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                            <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
+                          <td className="sticky left-[336px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -4750,7 +4750,7 @@ export default function GradebookView({
                   {/* Table Footer: Class Average */}
                   <tfoot className="bg-gray-100/90 dark:bg-gray-900 font-extrabold border-t-2 border-gray-300 dark:border-gray-700 text-gray-800 dark:text-gray-200">
                     <tr>
-                      <td colSpan={4} className="py-2.5 px-3 text-right border-r border-gray-200 dark:border-gray-700">
+                      <td colSpan={4} className="sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 py-2.5 px-3 text-right border-r border-gray-200 dark:border-gray-700">
                         Rata-rata Kelas:
                       </td>
                       {diagnostikCol && (
@@ -4884,7 +4884,7 @@ export default function GradebookView({
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
                     {/* Upper Category Row */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100/70 dark:bg-gray-800/80">
+                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
                         Identitas Siswa
                       </th>
                       <th
@@ -4911,10 +4911,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
-                      <th className="py-2 px-2.5 w-10 text-center">#</th>
-                      <th className="py-2 px-2.5 w-24">NISN</th>
-                      <th className="py-2 px-3 min-w-[180px]">Nama Siswa</th>
-                      <th className="py-2 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                      <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
 
                       {/* Header per TP - Formatif */}
                       {tpList.map(tp => (
@@ -4978,16 +4978,16 @@ export default function GradebookView({
                       return (
                         <tr
                           key={student.nisn}
-                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
+                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors group"
                         >
-                          <td className="py-2.5 px-2.5 text-center text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300">
+                          <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-2.5 text-center text-gray-500 font-medium w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white">
-                            {student.nama_siswa}
+                          <td className="sticky left-[136px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-3 font-semibold text-gray-900 dark:text-white w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                            <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="py-2.5 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
+                          <td className="sticky left-[336px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -5215,7 +5215,7 @@ export default function GradebookView({
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
                     {/* Category Header Row */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100/70 dark:bg-gray-800/80">
+                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
                         Identitas Siswa
                       </th>
                       <th colSpan={16} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-teal-50/70 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300">
@@ -5228,10 +5228,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
-                      <th className="py-2 px-2.5 w-10 text-center">#</th>
-                      <th className="py-2 px-2.5 w-24">NISN</th>
-                      <th className="py-2 px-3 min-w-[180px]">Nama Siswa</th>
-                      <th className="py-2 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                      <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
 
                       {/* 16 Session Columns */}
                       {sessions.map(sess => (
@@ -5305,16 +5305,16 @@ export default function GradebookView({
                       return (
                         <tr
                           key={student.nisn}
-                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors"
+                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors group"
                         >
-                          <td className="py-2 px-2.5 text-center text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300">
+                          <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 text-center text-gray-500 font-medium w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="py-2 px-3 font-semibold text-gray-900 dark:text-white">
-                            {student.nama_siswa}
+                          <td className="sticky left-[136px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-3 font-semibold text-gray-900 dark:text-white w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                            <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
+                          <td className="sticky left-[336px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -5383,10 +5383,10 @@ export default function GradebookView({
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md">
                     <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-[11px]">
-                      <th className="py-2.5 px-2.5 w-10 text-center">#</th>
-                      <th className="py-2.5 px-2.5 w-24">NISN</th>
-                      <th className="py-2.5 px-3 min-w-[180px]">Nama Siswa</th>
-                      <th className="py-2.5 px-2 w-12 text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                      <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 py-2.5 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-gray-50 dark:bg-gray-900 py-2.5 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-gray-50 dark:bg-gray-900 py-2.5 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-gray-50 dark:bg-gray-900 py-2.5 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
                       <th className="py-2.5 px-3 text-center text-emerald-700 dark:text-emerald-300 border-r border-gray-200 dark:border-gray-700">Hadir</th>
                       <th className="py-2.5 px-3 text-center text-blue-700 dark:text-blue-300 border-r border-gray-200 dark:border-gray-700">Sakit</th>
                       <th className="py-2.5 px-3 text-center text-amber-700 dark:text-amber-300 border-r border-gray-200 dark:border-gray-700">Izin</th>
@@ -5401,11 +5401,13 @@ export default function GradebookView({
                     {filteredStudents.map((student, idx) => {
                       const dStat = dailyClassAttendance[student.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0, total: 0, percentage: 100 };
                       return (
-                        <tr key={student.nisn} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
-                          <td className="py-2.5 px-2.5 text-center text-gray-500 font-medium">{idx + 1}</td>
-                          <td className="py-2.5 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300">{student.nisn}</td>
-                          <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white">{student.nama_siswa}</td>
-                          <td className="py-2.5 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">{student.gender || '-'}</td>
+                        <tr key={student.nisn} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 group">
+                          <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-2.5 text-center text-gray-500 font-medium w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
+                          <td className="sticky left-[136px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-3 font-semibold text-gray-900 dark:text-white w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                            <span className="truncate block">{student.nama_siswa}</span>
+                          </td>
+                          <td className="sticky left-[336px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2.5 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] max-w-[48px]">{student.gender || '-'}</td>
                           <td className="py-2.5 px-3 text-center font-bold text-emerald-700 dark:text-emerald-400 border-r border-gray-200 dark:border-gray-700">{dStat.hadir}</td>
                           <td className="py-2.5 px-3 text-center font-bold text-blue-700 dark:text-blue-400 border-r border-gray-200 dark:border-gray-700">{dStat.sakit}</td>
                           <td className="py-2.5 px-3 text-center font-bold text-amber-700 dark:text-amber-400 border-r border-gray-200 dark:border-gray-700">{dStat.izin}</td>

@@ -3,16 +3,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Swal from 'sweetalert2';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
-import { PrintHeader } from './PrintHeader';
+import { PrintHeader, PrintSignature } from './PrintHeader';
 import { triggerPrintWithGps } from '@/utils/printWithGps';
 import CameraSelfieCapture from './CameraSelfieCapture';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimeStr } from '@/lib/wita';
+import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl, isGoogleDriveUrl } from '@/lib/imageUrl';
 
 export interface BkJurnalViewProps {
   user: any;
   isReadOnly?: boolean;
   initialTab?: string;
+  statusKepalaSekolah?: string;
 }
 
 export interface JurnalBkEntry {
@@ -78,7 +80,8 @@ const STATUS_OPTIONS: Array<'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus'
 export default function BkJurnalView({
   user,
   isReadOnly = false,
-  initialTab = 'riwayat'
+  initialTab = 'riwayat',
+  statusKepalaSekolah
 }: BkJurnalViewProps) {
   const sekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
   const userId = user?.id || '';
@@ -751,7 +754,7 @@ export default function BkJurnalView({
       )}
 
       {/* Header Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-pink-50 to-indigo-50 dark:from-rose-950/40 dark:via-pink-950/30 dark:to-indigo-950/20 border-2 border-rose-200/80 dark:border-rose-800/60 shadow-xs flex flex-wrap items-center justify-between gap-3">
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-pink-50 to-indigo-50 dark:from-rose-950/40 dark:via-pink-950/30 dark:to-indigo-950/20 border-2 border-rose-200/80 dark:border-rose-800/60 shadow-xs flex flex-wrap items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
             <i className="fa-solid fa-heart-pulse text-lg"></i>
@@ -1528,7 +1531,7 @@ export default function BkJurnalView({
       {/* TAB 3: CETAK DOKUMEN RESMI */}
       {activeTab === 'cetak' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs">
+          <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs no-print">
             <div>
               <h4 className="font-bold text-xs text-gray-900 dark:text-white">
                 Pratinjau Cetak Laporan Bimbingan Konseling
@@ -1549,15 +1552,23 @@ export default function BkJurnalView({
 
           {/* Printable Layout Container */}
           <div className="bg-white text-black p-8 rounded-2xl shadow-sm border border-gray-300 print:border-none print:shadow-none print:p-0">
-            <PrintHeader user={user} sekolahId={sekolahId} />
+            <PrintHeader user={user} sekolahId={user?.sekolah_id || sekolahId} />
 
-            <div className="text-center my-4">
-              <h2 className="text-base font-bold uppercase tracking-wider underline">
+            {/* Document Print Subheader */}
+            <div className="text-center my-3 print:my-2">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
                 JURNAL KEGIATAN BIMBINGAN DAN KONSELING (BK)
-              </h2>
-              <p className="text-xs text-gray-600 mt-0.5">
-                Tahun Ajaran Aktif &bull; Sesi Bimbingan Siswa Bebas Rombel
-              </p>
+              </h3>
+              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+                <span>Guru BK: <strong>{filterCounselor !== 'all' ? filterCounselor : counselorName}</strong></span>
+                {filterStartDate || filterEndDate ? (
+                  <span>Periode: <strong>{filterStartDate || '...'} s/d {filterEndDate || '...'}</strong></span>
+                ) : (
+                  <span>Periode: <strong>Semua Periode</strong></span>
+                )}
+                {filterBidang !== 'all' && <span>Bidang: <strong>{filterBidang}</strong></span>}
+                {filterStatus !== 'all' && <span>Status: <strong>{filterStatus}</strong></span>}
+              </div>
             </div>
 
             <table className="w-full text-left border-collapse border border-black text-xs my-4">
@@ -1570,6 +1581,7 @@ export default function BkJurnalView({
                   <th className="border border-black p-2">Catatan Kasus / Bimbingan</th>
                   <th className="border border-black p-2">Rencana Tindak Lanjut</th>
                   <th className="border border-black p-2 w-24">Status</th>
+                  <th className="border border-black p-2 w-24 text-center">Dokumentasi</th>
                   <th className="border border-black p-2 w-28">Guru BK</th>
                 </tr>
               </thead>
@@ -1593,12 +1605,53 @@ export default function BkJurnalView({
                     <td className="border border-black p-2 text-[11px] leading-tight">{e.catatan}</td>
                     <td className="border border-black p-2 text-[11px] leading-tight">{e.tindak_lanjut}</td>
                     <td className="border border-black p-2 text-center text-[10px] font-bold">{e.status}</td>
+                    <td className="border border-black p-1 text-center align-middle">
+                      {(() => {
+                        const docUrl = e.link_dokumen?.trim();
+                        if (!docUrl || docUrl === '-') {
+                          return <span className="text-gray-400 text-[10px] italic">-</span>;
+                        }
+                        const isImg = docUrl.startsWith('data:image') ||
+                          /\.(jpg|jpeg|png|webp|gif|bmp)($|\?)/i.test(docUrl) ||
+                          isGoogleDriveUrl(docUrl);
+
+                        if (isImg) {
+                          const thumb = getGoogleDriveThumbnailUrl(docUrl, 400) || transformGoogleDriveUrl(docUrl);
+                          return (
+                            <div className="flex flex-col items-center justify-center">
+                              <img
+                                src={thumb}
+                                alt={`Dokumentasi ${e.nama_siswa}`}
+                                loading="eager"
+                                referrerPolicy="no-referrer"
+                                className="w-16 h-16 object-cover rounded border border-gray-300 mx-auto bg-white print:w-16 print:h-16 print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                onError={(ev) => {
+                                  const target = ev.target as HTMLImageElement;
+                                  if (target.src !== transformGoogleDriveUrl(docUrl)) {
+                                    target.src = transformGoogleDriveUrl(docUrl);
+                                  } else {
+                                    target.style.display = 'none';
+                                  }
+                                }}
+                              />
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="text-[9px] text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
+                            <i className="fa-solid fa-file-lines text-xs block mb-0.5 text-gray-500"></i>
+                            <span>{docUrl.replace(/^file:/, '')}</span>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="border border-black p-2 text-[10px]">{e.nama_guru}</td>
                   </tr>
                 ))}
                 {filteredEntries.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-4 text-center text-xs italic">
+                    <td colSpan={9} className="p-4 text-center text-xs italic">
                       Tidak ada entri data bimbingan konseling pada periode ini.
                     </td>
                   </tr>
@@ -1607,23 +1660,15 @@ export default function BkJurnalView({
             </table>
 
             {/* Signature Block */}
-            <div className="mt-8 pt-4 flex items-center justify-between text-xs break-inside-avoid">
-              <div className="text-center w-64">
-                <p>Mengetahui,</p>
-                <p className="font-bold">Kepala Sekolah</p>
-                <div className="h-20"></div>
-                <p className="font-bold underline">___________________________</p>
-                <p className="text-[11px]">NIP. ........................................</p>
-              </div>
-
-              <div className="text-center w-64">
-                <p>Kota/Kabupaten, {todayStr}</p>
-                <p className="font-bold">Guru Bimbingan Konseling (BK)</p>
-                <div className="h-20"></div>
-                <p className="font-bold underline">{counselorName}</p>
-                <p className="text-[11px]">NIP. {user?.nip || '........................................'}</p>
-              </div>
-            </div>
+            <PrintSignature
+              leftTitle="Mengetahui,"
+              leftSubtitle="Guru Bimbingan Konseling (BK)"
+              leftName={filterCounselor !== 'all' ? filterCounselor : counselorName}
+              leftNip={user?.nip || '-'}
+              user={user ? { ...user, role: 'bk' } : { role: 'bk' }}
+              sekolahId={user?.sekolah_id || sekolahId}
+              statusKepalaSekolah={statusKepalaSekolah}
+            />
           </div>
         </div>
       )}
