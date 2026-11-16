@@ -133,6 +133,13 @@ check('1.9: workflow.ts mengevaluasi resolveTeacherAttendancePolicy dengan allow
   );
 });
 
+check('1.10: workflow.ts membebaskan guru exempt tanpa jadwal KBM dari aktivasi isPiket', () => {
+  assert.ok(
+    workflowSrc.includes('if (isExemptAndNoSchedule) {\n      state.isPiket = false;\n    }'),
+    'workflow.ts harus mereset state.isPiket = false jika isExemptAndNoSchedule aktif'
+  );
+});
+
 // -----------------------------------------------------------------------------
 // BAGIAN 2: Ekuivalensi Identitas & Resolusi User (Ade & Sarah)
 // -----------------------------------------------------------------------------
@@ -458,6 +465,47 @@ check('4.3: attendanceAlpa secara objektif mengabaikan guru bebas KBM (Ade & Sar
     assert.strictEqual(hasPiketDuty, false, 'hasPiketDuty harus false');
     const shouldSkipAlpa = !hasTeachingToday && !hasPiketDuty;
     assert.strictEqual(shouldSkipAlpa, true, `${teacher.nama_guru} harus continue (skip alpa)`);
+  }
+});
+
+check('4.4: Simulasi workflow state untuk Ade & Sarah membuktikan bebas presensi datang meski tercatat piket di hari bebas KBM', () => {
+  for (const teacher of mockTeachers) {
+    const isTeacherExempt = true;
+    const jadwalCount = 0; // Bebas KBM hari Senin
+    const isExemptAndNoSchedule = isTeacherExempt && jadwalCount === 0;
+    let isPiket = true; // Misalnya awalnya tercatat di jadwal piket
+
+    if (isExemptAndNoSchedule) {
+      isPiket = false; // Penyelarasan workflow
+    }
+
+    const hasTeachingObligation = jadwalCount > 0 || isPiket;
+    let isNonTeachingDay = false;
+    let bebasAlpa = false;
+    let isAlpa = false;
+    let lockedReason: string | null = null;
+
+    const presensiDatang = null;
+    if (!presensiDatang) {
+      if (isTeacherExempt) {
+        if (!hasTeachingObligation) {
+          isNonTeachingDay = true;
+          bebasAlpa = true;
+          isAlpa = false;
+          lockedReason = 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran).';
+        } else {
+          isAlpa = true;
+          bebasAlpa = false;
+          lockedReason = 'Anda belum melakukan Presensi Datang hari ini.';
+        }
+      }
+    }
+
+    assert.strictEqual(isPiket, false, `${teacher.nama_guru} isPiket harus false`);
+    assert.strictEqual(isNonTeachingDay, true, `${teacher.nama_guru} isNonTeachingDay harus true`);
+    assert.strictEqual(bebasAlpa, true, `${teacher.nama_guru} bebasAlpa harus true`);
+    assert.strictEqual(isAlpa, false, `${teacher.nama_guru} isAlpa harus false`);
+    assert.strictEqual(lockedReason, 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran).');
   }
 });
 

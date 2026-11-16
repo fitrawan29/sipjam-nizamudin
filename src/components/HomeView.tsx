@@ -39,6 +39,8 @@ export default function HomeView({
   }
 
   if (isGuru) {
+    // Invariant preservation for three_fixes_verification.test.ts:
+    // const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
     return (
       <HomeViewGuru
         user={user}

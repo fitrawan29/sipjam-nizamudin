@@ -2309,6 +2309,10 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       }
     }
 
+    if (isExemptAndNoSchedule) {
+      state.isPiket = false;
+    }
+
     const teacherIdentityProfile = {
       id: teacherDataGuruId,
       user_id: userId,
