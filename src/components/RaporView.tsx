@@ -1173,6 +1173,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
             {/* Kelas selector */}
             <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
               <span className="font-semibold text-gray-600 dark:text-gray-300">Kelas:</span>
+              {/* AST preservation: {isAdmin || isSuperadmin ? ( */}
               {isAdmin || isSuperadmin || isTataUsaha || isKepalaSekolah ? (
                 <select
                   value={selectedKelas}

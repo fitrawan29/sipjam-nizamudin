@@ -1426,8 +1426,9 @@ export default function AppScreen({
               )}
               {currentView === 'view-rapor' && (
                 isTataUsaha ? (
-                  <RaporView user={user} assignedKelas={assignedKelas} statusKepalaSekolah={statusKepalaSekolah} />
+                  <RaporView user={user} assignedKelas={assignedKelas} />
                 ) : isAdmin || isSuperadmin || isWaliKelas || isKepalaSekolah ? (
+                  /* AST preservation: isAdmin || isSuperadmin || isWaliKelas ? ( */
                   <RaporView user={user} assignedKelas={assignedKelas} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
                 ) : (
                   <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">

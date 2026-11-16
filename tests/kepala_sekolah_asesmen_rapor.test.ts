@@ -63,8 +63,10 @@ async function runTests() {
   // Test 1.5: Role variations (Plt and Plh Kepala Sekolah)
   const pltMenus = getConsolidatedMenuItems({ role: 'pltkepalasekolah' });
   const plhMenus = getConsolidatedMenuItems({ role: 'plhkepalasekolah' });
+  const kepsekShorthandMenus = getConsolidatedMenuItems({ role: 'kepsek' });
   check('1.5: Plt Kepala Sekolah includes Asesmen and Rapor', pltMenus.some(m => m.id === 'view-gradebook') && pltMenus.some(m => m.id === 'view-rapor'));
   check('1.6: Plh Kepala Sekolah includes Asesmen and Rapor', plhMenus.some(m => m.id === 'view-gradebook') && plhMenus.some(m => m.id === 'view-rapor'));
+  check('1.7: Shorthand role "kepsek" includes Asesmen and Rapor', kepsekShorthandMenus.some(m => m.id === 'view-gradebook') && kepsekShorthandMenus.some(m => m.id === 'view-rapor'));
 
   // --------------------------------------------------------------------------
   // Suite 2: Route & Sub-Tab RBAC Permissions (R2)
@@ -94,6 +96,14 @@ async function runTests() {
   // Test 2.6: Non-kepsek regular teacher without wali role is still blocked from rapor
   const rbacRegularTeacher = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'guru', isWaliKelas: false, isKepalaSekolah: false });
   check('2.6: Non-wali, non-kepsek regular teacher is strictly blocked from rapor subtab', !rbacRegularTeacher.allowed);
+
+  // Test 2.7: Role "kepsek" shorthand allows rapor subtab
+  const rbacKepsekRole = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'kepsek' });
+  check('2.7: evaluateTabRBAC allows shorthand role "kepsek" without explicit flag', rbacKepsekRole.allowed);
+
+  // Test 2.8: Unpopulated role with status_kepala_sekolah allows rapor subtab
+  const rbacStatusKepsek = evaluateTabRBAC('view-gradebook', 'rapor', { role: 'guru', status_kepala_sekolah: 'Definitif' });
+  check('2.8: evaluateTabRBAC recognizes status_kepala_sekolah property', rbacStatusKepsek.allowed);
 
   // --------------------------------------------------------------------------
   // Suite 3: Canonical Route Resolution Invariants
