@@ -275,7 +275,7 @@ export async function evaluateAndApplyAutoAlpa(
   // Guard: skip Sabtu jika sekolah 5 hari kerja, dan load daftar kebijakan perorangan guru
   let pengaturanQuery = supabase
     .from('pengaturan')
-    .select('key, value, guru_hanya_mengajar, sekolah_id');
+    .select('*');
   if (sekolahId) {
     pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
   }

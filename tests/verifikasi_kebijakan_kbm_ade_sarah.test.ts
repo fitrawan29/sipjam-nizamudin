@@ -140,6 +140,18 @@ check('1.10: workflow.ts membebaskan guru exempt tanpa jadwal KBM dari aktivasi 
   );
 });
 
+check('1.11: Query pengaturan tahan terhadap ketiadaan kolom guru_hanya_mengajar (menggunakan select("*"))', () => {
+  assert.ok(!homeAdminSrc.includes("select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar')"), 'HomeViewAdmin tidak boleh query kolom guru_hanya_mengajar');
+  assert.ok(homeAdminSrc.includes("supabase.from('pengaturan').select('*')"), 'HomeViewAdmin harus select * dari pengaturan');
+  assert.ok(!adminRekapSrc.includes("select('key, value, guru_hanya_mengajar')"), 'AdminRekapView tidak boleh query kolom guru_hanya_mengajar');
+  assert.ok(!alpaSrc.includes("select('key, value, guru_hanya_mengajar, sekolah_id')"), 'attendanceAlpa tidak boleh query kolom guru_hanya_mengajar');
+});
+
+check('1.12: workflow.ts query data_guru aman tanpa asumsi kolom data_guru.user_id ada di DB', () => {
+  assert.ok(!workflowSrc.includes('tQ.or(`user_id.eq.${userId},nama_guru.eq."${cleanTeacherName}"`)'), 'workflow.ts tidak boleh query data_guru.user_id');
+  assert.ok(workflowSrc.includes('tQ.or(`nama_guru.eq."${cleanTeacherName}",nip.eq."${username}"`)'), 'workflow.ts harus query nama_guru dan nip');
+});
+
 // -----------------------------------------------------------------------------
 // BAGIAN 2: Ekuivalensi Identitas & Resolusi User (Ade & Sarah)
 // -----------------------------------------------------------------------------

@@ -2013,12 +2013,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       if (sekolahId) {
         tQ = tQ.eq('sekolah_id', sekolahId);
       }
-      if (userId) {
-        tQ = tQ.or(`user_id.eq.${userId},nama_guru.eq."${cleanTeacherName}"`);
-      } else if (username) {
+      if (cleanTeacherName && username) {
         tQ = tQ.or(`nama_guru.eq."${cleanTeacherName}",nip.eq."${username}"`);
-      } else {
+      } else if (cleanTeacherName) {
         tQ = tQ.eq('nama_guru', cleanTeacherName);
+      } else if (username) {
+        tQ = tQ.eq('nip', username);
       }
       const { data: tDataRaw, error: tErrQuery } = await tQ;
       let tData = tDataRaw;
@@ -2027,14 +2027,13 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         if (sekolahId) fbTQ = fbTQ.eq('sekolah_id', sekolahId);
         const fbRes = await fbTQ;
         const allSchoolTeachers = Array.isArray(fbRes.data) ? fbRes.data : [];
-        tData = allSchoolTeachers.filter((teacher: any) =>
-          isTeacherRecordMatch(
-            { user_id: userId, nama_guru: namaGuru, nip: username, username },
-            teacher,
-            { id: userId, nama: namaGuru, username },
-            { allowSingleWordFirstToken: true }
-          )
-        );
+        tData = allSchoolTeachers.filter((teacher: any) => {
+          if (username && teacher.nip && String(teacher.nip).trim().toLowerCase() === String(username).trim().toLowerCase()) return true;
+          if (teacher.nama_guru && isTeacherNameEquivalent(teacher.nama_guru, cleanTeacherName || namaGuru, false)) return true;
+          if (userId && teacher.user_id && String(teacher.user_id) === String(userId)) return true;
+          if (teacher.nama_guru && isTeacherNameEquivalent(teacher.nama_guru, cleanTeacherName || namaGuru, true)) return true;
+          return false;
+        });
       }
       if (tData && tData.length > 0) {
         for (const teacher of tData) {

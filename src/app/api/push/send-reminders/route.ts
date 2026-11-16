@@ -55,7 +55,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     if (!teachers || teachers.length === 0) continue;
 
     // Query school exempt teachers list from pengaturan (pure per-person policy)
-    let pengaturanQuery = supabase.from('pengaturan').select('key, value, guru_hanya_mengajar');
+    let pengaturanQuery = supabase.from('pengaturan').select('*');
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       pengaturanQuery = pengaturanQuery.eq('sekolah_id', sekolahId);
     }

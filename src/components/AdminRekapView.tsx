@@ -362,7 +362,7 @@ export default function AdminRekapView({
         calLiburQ = calLiburQ.or(`sekolah_id.eq.${user.sekolah_id},sekolah_id.is.null,sekolah_id.eq.00000000-0000-0000-0000-000000000000`);
       }
 
-      let cfgQ = supabase.from('pengaturan').select('key, value, guru_hanya_mengajar');
+      let cfgQ = supabase.from('pengaturan').select('*');
       let jdwlQ = supabase.from('jadwal_pelajaran').select('*');
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('tipe_petugas', 'Guru');
       let jadwalPiketQ = supabase.from('jadwal_piket').select('*');

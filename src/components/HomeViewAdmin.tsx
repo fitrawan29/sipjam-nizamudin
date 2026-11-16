@@ -174,7 +174,7 @@ export default function HomeViewAdmin({
       let piketLaporanQ = supabase.from('laporan_piket').select('*').eq('tanggal', todayStr);
       let penugasanPiketQ = supabase.from('penugasan_piket').select('*').eq('hari', dayName).eq('tipe_petugas', 'Guru');
       let kalenderQ = supabase.from('kalender_pendidikan').select('*');
-      let pengaturanQ = supabase.from('pengaturan').select('key, value, aturan_kehadiran_guru, guru_hanya_mengajar');
+      let pengaturanQ = supabase.from('pengaturan').select('*');
       let blokQ = supabase.from('sistem_blok').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', todayStr).order('created_at', { ascending: false });
       let jurnalBkQ = supabase.from('jurnal_bk').select('*').eq('tanggal', todayStr);
       let usersQ = supabase.from('users').select('id, nama, username, role, sekolah_id');
