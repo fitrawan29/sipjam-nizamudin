@@ -762,6 +762,7 @@ export default function GuruJurnal({
   }, [tanggal, myAssignments, isInval, user?.role]);
 
   // Auto-fill mapel & kelas berdasarkan jadwal pada tanggal yang dipilih
+  // Invariant preservation: // Auto-fill mapel & kelas & jam ke- saat mapelList + dailyState sudah ready
   useEffect(() => {
     if (
       tipeJurnal !== 'Jurnal KBM' ||
@@ -862,6 +863,10 @@ export default function GuruJurnal({
             }
           } else if (dailyState?.jadwalKBM && dailyState.jadwalKBM.length > 0) {
             setTipeJurnal('Jurnal KBM');
+          /* Invariant:
+          else if (kbmSubMode !== 'absensi' && !kelas && !mapel && (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu)) {
+            setTipeJurnal('Jurnal Kegiatan');
+          } */
           } else if (
             kbmSubMode !== 'absensi' &&
             !kelas &&

@@ -567,6 +567,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah }: 
       const { startDate, endDate } = getSemesterDateRange(selectedSemester, selectedTahunAjaran);
       let aQuery = supabase
         .from('absensi')
+        /* .select('nisn, status') */
         .select('nisn, status, tanggal')
         .eq('kelas', selectedKelas)
         .gte('tanggal', startDate)

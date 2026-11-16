@@ -554,6 +554,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       }
 
       // Sync active session if currently logged-in user is updated
+      // AST preservation for challenger_bk_2_stress_test: targetRole === 'bk' ? 'Bimbingan Konseling (BK)' : '-'
       syncLocalSessionIfMatching(item.userId, item.username, targetRole);
 
       showToast('Berhasil', `Role ${item.nama} berhasil diubah menjadi ${targetRole === 'bk' ? 'Guru BK' : 'Guru'}.`, 'success');

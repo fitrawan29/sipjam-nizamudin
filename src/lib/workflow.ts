@@ -186,16 +186,24 @@ export function resolveTeacherAttendancePolicy(params: {
     return false;
   });
 
+  const isKepsek =
+    (teacher?.nama_guru || '').toLowerCase().includes('kepala sekolah') ||
+    (teacher?.nama || '').toLowerCase().includes('kepala sekolah') ||
+    (linkedUser?.role || '').toLowerCase().includes('kepala') ||
+    String(teacher?.id || '').toLowerCase().includes('kepsek');
+
   let isTeacherExempt = false;
   if (isTu) {
+    isTeacherExempt = false;
+  } else if (isKepsek && explicitSetting === true) {
+    isTeacherExempt = true;
+  } else if (isNonKbmOrTu) {
     isTeacherExempt = false;
   } else if (preferLegacyListWhenGlobalKbm && isInLegacyList) {
     isTeacherExempt = true;
   } else if (explicitSetting === true) {
     isTeacherExempt = true;
   } else if (explicitSetting === false) {
-    isTeacherExempt = false;
-  } else if (isNonKbmOrTu) {
     isTeacherExempt = false;
   } else if (isInLegacyList) {
     isTeacherExempt = true;
