@@ -18,6 +18,13 @@ export interface BkJurnalViewProps {
   statusKepalaSekolah?: string;
 }
 
+export interface PesertaDidikItem {
+  id?: string;
+  nisn?: string;
+  nama_siswa: string;
+  kelas: string;
+}
+
 export interface JurnalBkEntry {
   id: string;
   sekolah_id: string;
@@ -38,7 +45,8 @@ export interface JurnalBkEntry {
   tindak_lanjut: string;
   status: 'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus';
   link_dokumen?: string | null;
-  detail_layanan?: Record<string, string> | null;
+  detail_layanan?: Record<string, any> | null;
+  peserta_didik?: PesertaDidikItem[] | null;
   status_verifikasi?: 'Menunggu' | 'Disetujui' | 'Ditolak' | 'Dispensasi' | 'Diverifikasi' | string;
   catatan_admin?: string | null;
   alasan_penolakan?: string | null;
@@ -190,14 +198,37 @@ export function getCanonicalServiceName(layanan: string): string {
   return trimmed;
 }
 
-const BIDANG_BIMBINGAN_OPTIONS: Array<'Pribadi' | 'Sosial' | 'Belajar' | 'Karir'> = [
+export const MULTI_STUDENT_SERVICES = new Set([
+  'Layanan Bimbingan Kelompok',
+  'Layanan Konseling Kelompok',
+  'Layanan Mediasi',
+  'Bimbingan Kelompok',
+  'Konseling Kelompok',
+  'Mediasi',
+  'Konferensi Kasus'
+]);
+
+export function isMultiStudentService(layanan: string): boolean {
+  if (!layanan) return false;
+  const trimmed = layanan.trim();
+  const canonical = getCanonicalServiceName(trimmed);
+  const lower = trimmed.toLowerCase();
+  return (
+    MULTI_STUDENT_SERVICES.has(trimmed) ||
+    MULTI_STUDENT_SERVICES.has(canonical) ||
+    lower.includes('kelompok') ||
+    lower.includes('mediasi')
+  );
+}
+
+export const BIDANG_BIMBINGAN_OPTIONS: Array<'Pribadi' | 'Sosial' | 'Belajar' | 'Karir'> = [
   'Pribadi',
   'Sosial',
   'Belajar',
   'Karir'
 ];
 
-const JENIS_LAYANAN_OPTIONS = [
+export const RAW_JENIS_LAYANAN_OPTIONS: string[] = [
   'Layanan Orientasi',
   'Layanan Informasi',
   'Layanan Pembelajaran',
@@ -208,17 +239,12 @@ const JENIS_LAYANAN_OPTIONS = [
   'Layanan Konseling Kelompok',
   'Layanan Konsultasi',
   'Layanan Mediasi',
-  'Layanan Advokasi',
-  'Konseling Individual',
-  'Konseling Kelompok',
-  'Bimbingan Kelompok',
-  'Konsultasi',
-  'Mediasi',
-  'Konferensi Kasus',
-  'Kunjungan Rumah (Home Visit)',
-  'Alih Tangan Kasus (Referral)',
-  'Lainnya'
+  'Layanan Advokasi'
 ];
+
+export const JENIS_LAYANAN_OPTIONS: string[] = RAW_JENIS_LAYANAN_OPTIONS.filter(opt =>
+  opt.trim().toLowerCase().startsWith('layanan')
+);
 
 const STATUS_OPTIONS: Array<'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus'> = [
   'Dalam Penanganan',
@@ -258,6 +284,8 @@ export default function BkJurnalView({
   const todayStr = useMemo(() => getWitaDateStr(), []);
   const nowTimeStr = useMemo(() => getWitaTimeStr(), []);
 
+  const [selectedStudents, setSelectedStudents] = useState<SiswaOption[]>([]);
+
   const [formData, setFormData] = useState<{
     siswa_id: string;
     nisn: string;
@@ -268,7 +296,7 @@ export default function BkJurnalView({
     bidang_bimbingan: 'Pribadi' | 'Sosial' | 'Belajar' | 'Karir';
     jenis_layanan: string;
     tempat_layanan: string;
-    detail_layanan: Record<string, string>;
+    detail_layanan: Record<string, any>;
     catatan: string;
     tindak_lanjut: string;
     status: 'Dalam Penanganan' | 'Selesai' | 'Alih Tangan Kasus';
@@ -311,6 +339,7 @@ export default function BkJurnalView({
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [filterSearch, setFilterSearch] = useState<string>('');
   const [filterBidang, setFilterBidang] = useState<string>('all');
+  const [filterLayanan, setFilterLayanan] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterCounselor, setFilterCounselor] = useState<string>('all');
 
@@ -390,6 +419,9 @@ export default function BkJurnalView({
           const parsed = JSON.parse(savedDraft);
           if (parsed && typeof parsed === 'object') {
             setFormData(prev => ({ ...prev, ...parsed }));
+            if (Array.isArray(parsed._selectedStudents)) {
+              setSelectedStudents(parsed._selectedStudents);
+            }
           }
         } catch (_) {}
       }
@@ -400,11 +432,39 @@ export default function BkJurnalView({
   useEffect(() => {
     if (isReadOnly || editingId || typeof window === 'undefined') return;
     const hasDetail = formData.detail_layanan && Object.values(formData.detail_layanan).some(v => v && String(v).trim());
-    const isTouched = formData.nama_siswa || formData.catatan || formData.tindak_lanjut || hasDetail;
+    const isTouched = formData.nama_siswa || formData.catatan || formData.tindak_lanjut || hasDetail || selectedStudents.length > 0;
     if (isTouched) {
-      localStorage.setItem(draftKey, JSON.stringify(formData));
+      localStorage.setItem(draftKey, JSON.stringify({ ...formData, _selectedStudents: selectedStudents }));
     }
-  }, [formData, isReadOnly, editingId, draftKey]);
+  }, [formData, selectedStudents, isReadOnly, editingId, draftKey]);
+
+  // Synchronize selectedStudents to formData
+  useEffect(() => {
+    if (selectedStudents.length > 0) {
+      const isMulti = isMultiStudentService(formData.jenis_layanan);
+      if (isMulti) {
+        const names = selectedStudents.map(s => s.nama_siswa).join(', ');
+        const uniqueClasses = Array.from(new Set(selectedStudents.map(s => s.kelas).filter(Boolean))).join(', ');
+        const nisns = selectedStudents.map(s => s.nisn).filter(Boolean).join(', ');
+        setFormData(prev => ({
+          ...prev,
+          nama_siswa: names,
+          kelas: uniqueClasses,
+          nisn: nisns,
+          siswa_id: selectedStudents[0]?.id || ''
+        }));
+      } else {
+        const primary = selectedStudents[0];
+        setFormData(prev => ({
+          ...prev,
+          nama_siswa: primary?.nama_siswa || '',
+          kelas: primary?.kelas || '',
+          nisn: primary?.nisn || '',
+          siswa_id: primary?.id || ''
+        }));
+      }
+    }
+  }, [selectedStudents, formData.jenis_layanan]);
 
   // Available class list from students
   const availableClasses = useMemo(() => {
@@ -444,6 +504,10 @@ export default function BkJurnalView({
       if (filterStartDate && e.tanggal < filterStartDate) return false;
       if (filterEndDate && e.tanggal > filterEndDate) return false;
       if (filterBidang !== 'all' && e.bidang_bimbingan !== filterBidang) return false;
+      if (filterLayanan !== 'all') {
+        const canonical = getCanonicalServiceName(e.jenis_layanan);
+        if (e.jenis_layanan !== filterLayanan && canonical !== filterLayanan) return false;
+      }
       if (filterStatus !== 'all' && e.status !== filterStatus) return false;
       if (filterCounselor !== 'all' && e.nama_guru !== filterCounselor) return false;
 
@@ -457,7 +521,7 @@ export default function BkJurnalView({
       }
       return true;
     });
-  }, [entries, filterStartDate, filterEndDate, filterBidang, filterStatus, filterCounselor, filterSearch]);
+  }, [entries, filterStartDate, filterEndDate, filterBidang, filterLayanan, filterStatus, filterCounselor, filterSearch]);
 
   // Export Filtered Entries to CSV
   const handleExportCsv = useCallback(() => {
@@ -494,7 +558,7 @@ export default function BkJurnalView({
       let detailStr = '';
       if (e.detail_layanan && typeof e.detail_layanan === 'object') {
         detailStr = Object.entries(e.detail_layanan)
-          .filter(([_, v]) => Boolean(v && String(v).trim()))
+          .filter(([k, v]) => k !== 'peserta_didik' && typeof v === 'string' && Boolean(v.trim()))
           .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`)
           .join('; ');
       }
@@ -529,20 +593,53 @@ export default function BkJurnalView({
     triggerCsvDownload(filename, csvContent);
   }, [filteredEntries, filterStartDate, filterEndDate]);
 
+  // Multi-student selection handlers
+  const handleToggleStudent = (s: SiswaOption) => {
+    setSelectedStudents(prev => {
+      const exists = prev.some(item => item.id === s.id);
+      if (exists) {
+        const next = prev.filter(item => item.id !== s.id);
+        if (next.length === 0) {
+          setFormData(f => ({ ...f, siswa_id: '', nisn: '', nama_siswa: '', kelas: '' }));
+        }
+        return next;
+      } else {
+        return [...prev, s];
+      }
+    });
+  };
+
+  const handleRemoveStudent = (studentId: string) => {
+    setSelectedStudents(prev => {
+      const next = prev.filter(item => item.id !== studentId);
+      if (next.length === 0) {
+        setFormData(f => ({ ...f, siswa_id: '', nisn: '', nama_siswa: '', kelas: '' }));
+      }
+      return next;
+    });
+  };
+
   // Handle student select
   const handleSelectStudent = (s: SiswaOption) => {
-    setFormData(prev => ({
-      ...prev,
-      siswa_id: s.id,
-      nisn: s.nisn || '',
-      nama_siswa: s.nama_siswa,
-      kelas: s.kelas
-    }));
-    setIsSelectingStudent(false);
-    setStudentSearch('');
+    const isMulti = isMultiStudentService(formData.jenis_layanan);
+    if (isMulti) {
+      handleToggleStudent(s);
+    } else {
+      setSelectedStudents([s]);
+      setFormData(prev => ({
+        ...prev,
+        siswa_id: s.id,
+        nisn: s.nisn || '',
+        nama_siswa: s.nama_siswa,
+        kelas: s.kelas
+      }));
+      setIsSelectingStudent(false);
+      setStudentSearch('');
+    }
   };
 
   const handleClearStudent = () => {
+    setSelectedStudents([]);
     setFormData(prev => ({
       ...prev,
       siswa_id: '',
@@ -555,6 +652,7 @@ export default function BkJurnalView({
 
   // Reset form
   const handleResetForm = () => {
+    setSelectedStudents([]);
     setFormData({
       siswa_id: '',
       nisn: '',
@@ -649,7 +747,9 @@ export default function BkJurnalView({
       Swal.fire({
         icon: 'warning',
         title: 'Data Siswa Belum Dipilih',
-        text: 'Pilih siswa dari daftar siswa terlebih dahulu!'
+        text: isMultiStudentService(formData.jenis_layanan)
+          ? 'Silakan cari dan pilih minimal satu siswa untuk bimbingan kelompok.'
+          : 'Pilih siswa dari daftar siswa terlebih dahulu!'
       });
       return;
     }
@@ -700,12 +800,40 @@ export default function BkJurnalView({
       }
     }
 
-    const recordPayload: Partial<JurnalBkEntry> = {
+    const isMulti = isMultiStudentService(formData.jenis_layanan);
+    const structuredPesertaDidik: PesertaDidikItem[] = selectedStudents.length > 0
+      ? selectedStudents.map(s => ({
+          id: s.id,
+          nisn: s.nisn || '',
+          nama_siswa: s.nama_siswa,
+          kelas: s.kelas
+        }))
+      : [
+          {
+            id: formData.siswa_id || undefined,
+            nisn: formData.nisn || '',
+            nama_siswa: formData.nama_siswa,
+            kelas: formData.kelas
+          }
+        ];
+
+    const derivedSasaran = isMulti || formData.jenis_layanan.toLowerCase().includes('kelompok')
+      ? 'Kelompok'
+      : 'Individu';
+
+    const detailLayananWithPeserta: Record<string, any> = {
+      ...(formData.detail_layanan || {})
+    };
+    if (isMulti || structuredPesertaDidik.length > 1) {
+      detailLayananWithPeserta.peserta_didik = structuredPesertaDidik;
+    }
+
+    const recordPayload: Partial<JurnalBkEntry> & { peserta_didik?: any } = {
       sekolah_id: sekolahId,
       guru_id: userId || null,
       user_id: userId || null,
       nama_guru: counselorName,
-      siswa_id: formData.siswa_id || null,
+      siswa_id: formData.siswa_id || selectedStudents[0]?.id || null,
       nisn: formData.nisn || null,
       nama_siswa: formData.nama_siswa,
       kelas: formData.kelas,
@@ -713,9 +841,10 @@ export default function BkJurnalView({
       waktu: formData.waktu,
       bidang_bimbingan: formData.bidang_bimbingan,
       jenis_layanan: formData.jenis_layanan,
-      sasaran: formData.jenis_layanan.toLowerCase().includes('kelompok') ? 'Kelompok' : 'Individu',
+      sasaran: derivedSasaran,
       tempat_layanan: formData.tempat_layanan || 'Ruang BK',
-      detail_layanan: formData.detail_layanan || {},
+      detail_layanan: detailLayananWithPeserta,
+      peserta_didik: structuredPesertaDidik,
       catatan: formData.catatan.trim(),
       tindak_lanjut: formData.tindak_lanjut.trim(),
       status: formData.status,
@@ -736,6 +865,7 @@ export default function BkJurnalView({
       return (
         code === 'PGRST204' ||
         code === '42703' ||
+        msg.includes('peserta_didik') ||
         msg.includes('detail_layanan') ||
         msg.includes('status_verifikasi') ||
         msg.includes('catatan_admin') ||
@@ -743,9 +873,14 @@ export default function BkJurnalView({
       );
     };
 
-    const recordPayloadNoDetail = { ...recordPayload };
+    const recordPayloadNoPeserta = { ...recordPayload };
+    delete recordPayloadNoPeserta.peserta_didik;
+    const payloadWithVerifNoPeserta = { ...payloadWithVerif };
+    delete payloadWithVerifNoPeserta.peserta_didik;
+
+    const recordPayloadNoDetail = { ...recordPayloadNoPeserta };
     delete recordPayloadNoDetail.detail_layanan;
-    const payloadWithVerifNoDetail = { ...payloadWithVerif };
+    const payloadWithVerifNoDetail = { ...payloadWithVerifNoPeserta };
     delete payloadWithVerifNoDetail.detail_layanan;
 
     try {
@@ -759,13 +894,19 @@ export default function BkJurnalView({
         if (error && isMissingOptionalCol(error)) {
           let retryRes = await supabase
             .from('jurnal_bk')
-            .update(payloadWithVerifNoDetail)
+            .update(payloadWithVerifNoPeserta)
             .eq('id', editingId);
           if (retryRes.error && isMissingOptionalCol(retryRes.error)) {
             retryRes = await supabase
               .from('jurnal_bk')
-              .update(recordPayloadNoDetail)
+              .update(payloadWithVerifNoDetail)
               .eq('id', editingId);
+            if (retryRes.error && isMissingOptionalCol(retryRes.error)) {
+              retryRes = await supabase
+                .from('jurnal_bk')
+                .update(recordPayloadNoDetail)
+                .eq('id', editingId);
+            }
           }
           error = retryRes.error;
         }
@@ -815,16 +956,21 @@ export default function BkJurnalView({
 
         let { error } = await supabase.from('jurnal_bk').insert([insertRecord]);
         if (error && isMissingOptionalCol(error)) {
-          const fallbackWithVerif: any = { ...insertRecord };
-          delete fallbackWithVerif.detail_layanan;
-          let retryRes = await supabase.from('jurnal_bk').insert([fallbackWithVerif]);
+          const fallbackWithVerifNoPeserta: any = { ...insertRecord };
+          delete fallbackWithVerifNoPeserta.peserta_didik;
+          let retryRes = await supabase.from('jurnal_bk').insert([fallbackWithVerifNoPeserta]);
           if (retryRes.error && isMissingOptionalCol(retryRes.error)) {
-            const fallbackRecordPayload: any = {
-              ...recordPayloadNoDetail,
-              id: newId,
-              created_at: nowIso
-            };
-            retryRes = await supabase.from('jurnal_bk').insert([fallbackRecordPayload]);
+            const fallbackWithVerif: any = { ...fallbackWithVerifNoPeserta };
+            delete fallbackWithVerif.detail_layanan;
+            retryRes = await supabase.from('jurnal_bk').insert([fallbackWithVerif]);
+            if (retryRes.error && isMissingOptionalCol(retryRes.error)) {
+              const fallbackRecordPayload: any = {
+                ...recordPayloadNoDetail,
+                id: newId,
+                created_at: nowIso
+              };
+              retryRes = await supabase.from('jurnal_bk').insert([fallbackRecordPayload]);
+            }
           }
           error = retryRes.error;
         }
@@ -875,15 +1021,60 @@ export default function BkJurnalView({
   const handleStartEdit = (entry: JurnalBkEntry) => {
     if (isReadOnly) return;
     setEditingId(entry.id);
+    const canonicalService = getCanonicalServiceName(entry.jenis_layanan) || entry.jenis_layanan;
+
+    // Reconstruct selectedStudents
+    let reconstructedStudents: SiswaOption[] = [];
+    if (Array.isArray(entry.peserta_didik) && entry.peserta_didik.length > 0) {
+      reconstructedStudents = entry.peserta_didik.map((p, idx) => ({
+        id: p.id || `reconstructed-${idx}-${p.nama_siswa}`,
+        nama_siswa: p.nama_siswa,
+        kelas: p.kelas || '',
+        nisn: p.nisn || ''
+      }));
+    } else if (entry.detail_layanan?.peserta_didik && Array.isArray(entry.detail_layanan.peserta_didik) && entry.detail_layanan.peserta_didik.length > 0) {
+      reconstructedStudents = (entry.detail_layanan.peserta_didik as any[]).map((p, idx) => ({
+        id: p.id || `reconstructed-${idx}-${p.nama_siswa}`,
+        nama_siswa: p.nama_siswa,
+        kelas: p.kelas || '',
+        nisn: p.nisn || ''
+      }));
+    } else if (isMultiStudentService(entry.jenis_layanan) && entry.nama_siswa && entry.nama_siswa.includes(',')) {
+      const names = entry.nama_siswa.split(',').map(n => n.trim()).filter(Boolean);
+      const classes = entry.kelas ? entry.kelas.split(',').map(c => c.trim()).filter(Boolean) : [];
+      const nisns = entry.nisn ? entry.nisn.split(',').map(n => n.trim()).filter(Boolean) : [];
+      reconstructedStudents = names.map((name, idx) => {
+        const matched = students.find(s => s.nama_siswa.toLowerCase() === name.toLowerCase());
+        if (matched) return matched;
+        return {
+          id: idx === 0 && entry.siswa_id ? entry.siswa_id : `legacy-${idx}-${name}`,
+          nama_siswa: name,
+          kelas: classes[idx] || classes[0] || entry.kelas || '',
+          nisn: nisns[idx] || (idx === 0 ? entry.nisn || '' : '')
+        };
+      });
+    } else if (entry.nama_siswa) {
+      const matched = students.find(s => (entry.siswa_id && s.id === entry.siswa_id) || s.nama_siswa.toLowerCase() === entry.nama_siswa.toLowerCase());
+      reconstructedStudents = [
+        matched || {
+          id: entry.siswa_id || 'manual',
+          nama_siswa: entry.nama_siswa,
+          kelas: entry.kelas,
+          nisn: entry.nisn || ''
+        }
+      ];
+    }
+    setSelectedStudents(reconstructedStudents);
+
     setFormData({
-      siswa_id: entry.siswa_id || '',
-      nisn: entry.nisn || '',
+      siswa_id: entry.siswa_id || (reconstructedStudents[0]?.id || ''),
+      nisn: entry.nisn || (reconstructedStudents[0]?.nisn || ''),
       nama_siswa: entry.nama_siswa,
       kelas: entry.kelas,
       tanggal: entry.tanggal,
       waktu: entry.waktu,
       bidang_bimbingan: entry.bidang_bimbingan,
-      jenis_layanan: entry.jenis_layanan,
+      jenis_layanan: canonicalService,
       tempat_layanan: entry.tempat_layanan || 'Ruang BK',
       detail_layanan: entry.detail_layanan && typeof entry.detail_layanan === 'object' ? { ...entry.detail_layanan } : {},
       catatan: entry.catatan,
@@ -1020,7 +1211,7 @@ export default function BkJurnalView({
         </div>
 
         {/* Action Tabs */}
-        <div className="flex items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 p-1 rounded-xl border border-rose-200/60 dark:border-rose-900/40">
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 p-1 rounded-xl border border-rose-200/60 dark:border-rose-900/40 max-w-full">
           <button
             type="button"
             onClick={() => setActiveTab('riwayat')}
@@ -1088,106 +1279,241 @@ export default function BkJurnalView({
 
           <form onSubmit={handleSubmitForm} className="space-y-4">
             {/* Universal Student Selector */}
-            <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                  <i className="fa-solid fa-user-graduate text-rose-600"></i>
-                  <span>Siswa yang Dibimbing <span className="text-red-500">*</span></span>
-                </label>
-                {formData.nama_siswa && (
-                  <button
-                    type="button"
-                    onClick={handleClearStudent}
-                    className="text-[11px] text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1"
-                  >
-                    <i className="fa-solid fa-arrows-rotate text-[10px]"></i>
-                    <span>Ganti Siswa</span>
-                  </button>
-                )}
-              </div>
-
-              {formData.nama_siswa ? (
-                // Selected Student Card
-                <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-rose-200 dark:border-rose-900/60 flex items-center justify-between shadow-xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center font-bold text-xs">
-                      {formData.nama_siswa.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-gray-900 dark:text-white">
-                        {formData.nama_siswa}
-                      </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                        Kelas: <span className="font-bold text-gray-700 dark:text-gray-300">{formData.kelas}</span> &bull; NISN: {formData.nisn || '-'}
-                      </div>
-                    </div>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-                    Terpilih
-                  </span>
-                </div>
-              ) : (
-                // Student Picker Trigger & Live Search
-                <div className="space-y-2">
-                  <div className="flex flex-wrap sm:flex-nowrap gap-2">
-                    <select
-                      value={studentClassFilter}
-                      onChange={e => setStudentClassFilter(e.target.value)}
-                      className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
-                    >
-                      <option value="all">Semua Kelas</option>
-                      {availableClasses.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-
-                    <div className="relative flex-1">
-                      <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
-                      <input
-                        type="text"
-                        value={studentSearch}
-                        onChange={e => {
-                          setStudentSearch(e.target.value);
-                          setIsSelectingStudent(true);
-                        }}
-                        onFocus={() => setIsSelectingStudent(true)}
-                        placeholder="Ketik nama atau NISN siswa dari seluruh kelas..."
-                        className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
-                      />
-                    </div>
+            {(() => {
+              const isMultiStudent = isMultiStudentService(formData.jenis_layanan);
+              return (
+                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                      <i className={`fa-solid ${isMultiStudent ? 'fa-users text-rose-600' : 'fa-user-graduate text-rose-600'}`}></i>
+                      <span>
+                        {isMultiStudent ? 'Siswa yang Dibimbing (Multi-Siswa / Kelompok)' : 'Siswa yang Dibimbing'}{' '}
+                        <span className="text-red-500">*</span>
+                      </span>
+                    </label>
+                    {(selectedStudents.length > 0 || formData.nama_siswa) && (
+                      <button
+                        type="button"
+                        onClick={handleClearStudent}
+                        className="text-[11px] text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <i className="fa-solid fa-arrows-rotate text-[10px]"></i>
+                        <span>{isMultiStudent ? 'Reset Pilihan Siswa' : 'Ganti Siswa'}</span>
+                      </button>
+                    )}
                   </div>
 
-                  {/* Student Search Dropdown */}
-                  {isSelectingStudent && (
-                    <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md divide-y divide-gray-100 dark:divide-gray-700">
-                      {filteredStudents.length > 0 ? (
-                        filteredStudents.slice(0, 30).map(s => (
-                          <div
-                            key={s.id}
-                            onClick={() => handleSelectStudent(s)}
-                            className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer flex items-center justify-between text-xs transition"
-                          >
-                            <div>
-                              <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
-                              <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-2 font-mono">
-                                NISN: {s.nisn || '-'}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                              {s.kelas}
+                  {isMultiStudent ? (
+                    // Multi-Student Mode UI
+                    <div className="space-y-2.5">
+                      {/* Selected Students Chips Display */}
+                      {selectedStudents.length > 0 ? (
+                        <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-rose-200 dark:border-rose-900/60 space-y-2 shadow-xs">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-700 dark:text-gray-300">
+                              Siswa Terpilih ({selectedStudents.length}):
+                            </span>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                              Dapat memilih lintas kelas
                             </span>
                           </div>
-                        ))
+                          <div className="flex flex-wrap gap-1.5">
+                            {selectedStudents.map(s => (
+                              <div
+                                key={s.id}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs shadow-2xs"
+                              >
+                                <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-semibold font-mono">
+                                  {s.kelas}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveStudent(s.id)}
+                                  className="text-gray-400 hover:text-red-600 ml-0.5 transition cursor-pointer p-0.5"
+                                  title={`Hapus ${s.nama_siswa}`}
+                                >
+                                  <i className="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       ) : (
-                        <div className="p-3 text-center text-xs text-gray-500">
-                          Tidak ditemukan siswa yang cocok.
+                        <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-gray-500">
+                          Belum ada siswa dipilih. Gunakan pencarian di bawah untuk memilih siswa bimbingan kelompok.
                         </div>
                       )}
+
+                      {/* Multi-Student Picker & Live Search */}
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                          <select
+                            value={studentClassFilter}
+                            onChange={e => setStudentClassFilter(e.target.value)}
+                            className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                          >
+                            <option value="all">Semua Kelas</option>
+                            {availableClasses.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+
+                          <div className="relative flex-1">
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                            <input
+                              type="text"
+                              value={studentSearch}
+                              onChange={e => {
+                                setStudentSearch(e.target.value);
+                                setIsSelectingStudent(true);
+                              }}
+                              onFocus={() => setIsSelectingStudent(true)}
+                              placeholder="Cari nama atau NISN siswa untuk ditambahkan ke kelompok..."
+                              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Multi-Student List Dropdown */}
+                        {(isSelectingStudent || selectedStudents.length === 0) && (
+                          <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md divide-y divide-gray-100 dark:divide-gray-700">
+                            {filteredStudents.length > 0 ? (
+                              filteredStudents.slice(0, 30).map(s => {
+                                const isSelected = selectedStudents.some(item => item.id === s.id);
+                                return (
+                                  <div
+                                    key={s.id}
+                                    onClick={() => handleToggleStudent(s)}
+                                    className={`p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer flex items-center justify-between text-xs transition ${
+                                      isSelected ? 'bg-rose-50/70 dark:bg-rose-950/50' : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        readOnly
+                                        className="rounded text-rose-600 focus:ring-rose-500 h-3.5 w-3.5 pointer-events-none"
+                                      />
+                                      <div>
+                                        <span className={`font-bold ${isSelected ? 'text-rose-700 dark:text-rose-300' : 'text-gray-900 dark:text-white'}`}>
+                                          {s.nama_siswa}
+                                        </span>
+                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-2 font-mono">
+                                          NISN: {s.nisn || '-'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                        {s.kelas}
+                                      </span>
+                                      {isSelected && (
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                          Dipilih
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="p-3 text-center text-xs text-gray-500">
+                                Tidak ditemukan siswa yang cocok.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  ) : (
+                    // Single-Student Mode UI
+                    formData.nama_siswa && !isSelectingStudent ? (
+                      // Selected Student Card
+                      <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-rose-200 dark:border-rose-900/60 flex items-center justify-between shadow-xs">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center font-bold text-xs">
+                            {formData.nama_siswa.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-xs font-bold text-gray-900 dark:text-white">
+                              {formData.nama_siswa}
+                            </div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                              Kelas: <span className="font-bold text-gray-700 dark:text-gray-300">{formData.kelas}</span> &bull; NISN: {formData.nisn || '-'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          Terpilih
+                        </span>
+                      </div>
+                    ) : (
+                      // Student Picker Trigger & Live Search
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap sm:flex-nowrap gap-2">
+                          <select
+                            value={studentClassFilter}
+                            onChange={e => setStudentClassFilter(e.target.value)}
+                            className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                          >
+                            <option value="all">Semua Kelas</option>
+                            {availableClasses.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
+
+                          <div className="relative flex-1">
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                            <input
+                              type="text"
+                              value={studentSearch}
+                              onChange={e => {
+                                setStudentSearch(e.target.value);
+                                setIsSelectingStudent(true);
+                              }}
+                              onFocus={() => setIsSelectingStudent(true)}
+                              placeholder="Ketik nama atau NISN siswa dari seluruh kelas..."
+                              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Student Search Dropdown */}
+                        {isSelectingStudent && (
+                          <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md divide-y divide-gray-100 dark:divide-gray-700">
+                            {filteredStudents.length > 0 ? (
+                              filteredStudents.slice(0, 30).map(s => (
+                                <div
+                                  key={s.id}
+                                  onClick={() => handleSelectStudent(s)}
+                                  className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer flex items-center justify-between text-xs transition"
+                                >
+                                  <div>
+                                    <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-2 font-mono">
+                                      NISN: {s.nisn || '-'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                    {s.kelas}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-3 text-center text-xs text-gray-500">
+                                Tidak ditemukan siswa yang cocok.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
                   )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Date, Time, Bidang, Layanan */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1242,10 +1568,27 @@ export default function BkJurnalView({
                   onChange={e => {
                     const selected = e.target.value;
                     const cfg = BK_SERVICE_CONFIGS[selected] || BK_SERVICE_CONFIGS[getCanonicalServiceName(selected)];
+                    const newlyMulti = isMultiStudentService(selected);
+                    const previouslyMulti = isMultiStudentService(formData.jenis_layanan);
+
+                    if (!newlyMulti && previouslyMulti && selectedStudents.length > 1) {
+                      setSelectedStudents(prev => prev.slice(0, 1));
+                    }
+
+                    // Auto-fill dynamic group field if empty
+                    const updatedDetail = { ...formData.detail_layanan };
+                    if (selected === 'Layanan Bimbingan Kelompok' && !updatedDetail.daftar_anggota && selectedStudents.length > 0) {
+                      updatedDetail.daftar_anggota = selectedStudents.map(s => `${s.nama_siswa} (${s.kelas})`).join(', ');
+                    }
+                    if (selected === 'Layanan Mediasi' && !updatedDetail.pihak_berkonflik && selectedStudents.length > 0) {
+                      updatedDetail.pihak_berkonflik = selectedStudents.map(s => `${s.nama_siswa} (${s.kelas})`).join(' dan ');
+                    }
+
                     setFormData(prev => ({
                       ...prev,
                       jenis_layanan: selected,
-                      bidang_bimbingan: cfg?.defaultBidang || prev.bidang_bimbingan
+                      bidang_bimbingan: cfg?.defaultBidang || prev.bidang_bimbingan,
+                      detail_layanan: updatedDetail
                     }));
                   }}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
@@ -1597,7 +1940,7 @@ export default function BkJurnalView({
 
           {/* Filter Bar */}
           <div className="glass-card p-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-2.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
               {/* Search */}
               <div className="relative sm:col-span-2">
                 <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
@@ -1608,6 +1951,20 @@ export default function BkJurnalView({
                   placeholder="Cari nama siswa, NISN, kelas, atau kata kunci kasus..."
                   className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
                 />
+              </div>
+
+              {/* Layanan */}
+              <div>
+                <select
+                  value={filterLayanan}
+                  onChange={e => setFilterLayanan(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                >
+                  <option value="all">Semua Layanan</option>
+                  {JENIS_LAYANAN_OPTIONS.map(l => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Bidang */}
@@ -1784,14 +2141,29 @@ export default function BkJurnalView({
                             {item.waktu} &bull; {item.tempat_layanan || 'Ruang BK'}
                           </div>
                         </td>
-                        <td className="py-2.5 px-3 align-top whitespace-nowrap">
-                          <div className="font-bold text-gray-900 dark:text-white">
+                        <td className="py-2.5 px-3 align-top max-w-[220px]">
+                          <div className="font-bold text-gray-900 dark:text-white break-words">
                             {item.nama_siswa}
                           </div>
-                          <div className="text-[10px] text-gray-500">
+                          <div className="text-[10px] text-gray-500 break-words mt-0.5">
                             Kelas: <span className="font-bold text-gray-700 dark:text-gray-300">{item.kelas}</span>
                             {item.nisn && <span className="font-mono"> &bull; {item.nisn}</span>}
                           </div>
+                          {((Array.isArray(item.peserta_didik) && item.peserta_didik.length > 1) ||
+                            (Array.isArray(item.detail_layanan?.peserta_didik) && item.detail_layanan.peserta_didik.length > 1) ||
+                            item.sasaran === 'Kelompok' ||
+                            isMultiStudentService(item.jenis_layanan)) && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 text-[9px] font-bold border border-rose-200 dark:border-rose-900">
+                              <i className="fa-solid fa-users text-[8px]"></i>
+                              <span>
+                                Kelompok ({
+                                  (Array.isArray(item.peserta_didik) && item.peserta_didik.length) ||
+                                  (Array.isArray(item.detail_layanan?.peserta_didik) && (item.detail_layanan.peserta_didik as any[]).length) ||
+                                  (item.nama_siswa ? item.nama_siswa.split(',').length : 1)
+                                } Siswa)
+                              </span>
+                            </span>
+                          )}
                         </td>
                         <td className="py-2.5 px-3 align-top whitespace-nowrap space-y-1">
                           <div className="font-semibold text-gray-800 dark:text-gray-200 text-[11px]">
@@ -1806,7 +2178,7 @@ export default function BkJurnalView({
                           {item.detail_layanan && typeof item.detail_layanan === 'object' && Object.keys(item.detail_layanan).length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                               {Object.entries(item.detail_layanan)
-                                .filter(([_, v]) => Boolean(v && String(v).trim()))
+                                .filter(([k, v]) => k !== 'peserta_didik' && typeof v === 'string' && Boolean(v.trim()))
                                 .map(([k, v]) => (
                                   <span
                                     key={k}
@@ -1815,7 +2187,7 @@ export default function BkJurnalView({
                                     <span className="font-semibold text-gray-700 dark:text-gray-200">
                                       {k.replace(/_/g, ' ')}:
                                     </span>{' '}
-                                    {String(v)}
+                                    {v}
                                   </span>
                                 ))}
                             </div>
@@ -1903,8 +2275,8 @@ export default function BkJurnalView({
 
       {/* TAB 3: CETAK DOKUMEN RESMI */}
       {activeTab === 'cetak' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs no-print">
+        <div className="space-y-4 max-w-full overflow-hidden print:overflow-visible">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-gray-800 p-3 sm:p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs no-print">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
                 <h4 className="font-bold text-xs text-gray-900 dark:text-white">
@@ -1914,7 +2286,7 @@ export default function BkJurnalView({
                   Dokumen resmi rekapitulasi layanan BK sekolah untuk arsip dan pengesahan Kepala Sekolah.
                 </p>
               </div>
-              <div className="flex items-center gap-1.5 text-xs">
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="text-[11px] font-semibold text-gray-500">Periode:</span>
                 <input
                   type="date"
@@ -1940,11 +2312,11 @@ export default function BkJurnalView({
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto shrink-0">
               <button
                 type="button"
                 onClick={handleExportCsv}
-                className="clay-btn px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                className="clay-btn px-3 py-2 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
                 title="Ekspor data jurnal BK ke format CSV / Excel"
               >
                 <i className="fa-solid fa-file-excel"></i>
@@ -1953,7 +2325,7 @@ export default function BkJurnalView({
               <button
                 type="button"
                 onClick={() => triggerPrintWithGps()}
-                className="clay-btn px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                className="clay-btn px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
               >
                 <i className="fa-solid fa-print"></i>
                 <span>Cetak Sekarang</span>
@@ -1962,15 +2334,15 @@ export default function BkJurnalView({
           </div>
 
           {/* Printable Layout Container */}
-          <div className="bg-white text-black p-8 rounded-2xl shadow-sm border border-gray-300 print:border-none print:shadow-none print:p-0">
+          <div className="bg-white text-black p-3.5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-300 max-w-full overflow-hidden print:overflow-visible print:border-none print:shadow-none print:p-0 print:rounded-none">
             <PrintHeader user={user} sekolahId={user?.sekolah_id || sekolahId} />
 
             {/* Document Print Subheader */}
-            <div className="text-center my-3 print:my-2">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+            <div className="text-center my-3 print:my-2 px-1">
+              <h3 className="text-sm sm:text-base font-bold text-gray-900 print:text-black uppercase tracking-wider">
                 JURNAL KEGIATAN BIMBINGAN DAN KONSELING (BK)
               </h3>
-              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+              <div className="text-xs text-gray-600 print:text-black mt-1 flex flex-wrap justify-center gap-2 sm:gap-6 font-medium">
                 <span>Guru BK: <strong>{filterCounselor !== 'all' ? filterCounselor : counselorName}</strong></span>
                 {filterStartDate || filterEndDate ? (
                   <span>Periode: <strong>{filterStartDate || '...'} s/d {filterEndDate || '...'}</strong></span>
@@ -1978,97 +2350,149 @@ export default function BkJurnalView({
                   <span>Periode: <strong>Semua Periode</strong></span>
                 )}
                 {filterBidang !== 'all' && <span>Bidang: <strong>{filterBidang}</strong></span>}
+                {filterLayanan !== 'all' && <span>Layanan: <strong>{filterLayanan}</strong></span>}
                 {filterStatus !== 'all' && <span>Status: <strong>{filterStatus}</strong></span>}
               </div>
             </div>
 
-            <table className="w-full text-left border-collapse border border-black text-xs my-4">
-              <thead>
-                <tr className="bg-gray-100 border-b border-black text-center font-bold">
-                  <th className="border border-black p-2 w-8">No</th>
-                  <th className="border border-black p-2 w-24">Tanggal / Waktu</th>
-                  <th className="border border-black p-2 w-36">Nama Siswa / Kelas</th>
-                  <th className="border border-black p-2 w-32">Bidang / Layanan</th>
-                  <th className="border border-black p-2">Catatan Kasus / Bimbingan</th>
-                  <th className="border border-black p-2">Rencana Tindak Lanjut</th>
-                  <th className="border border-black p-2 w-24">Status</th>
-                  <th className="border border-black p-2 w-24 text-center">Dokumentasi</th>
-                  <th className="border border-black p-2 w-28">Guru BK</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredEntries.map((e, idx) => (
-                  <tr key={e.id} className="border-b border-black align-top">
-                    <td className="border border-black p-2 text-center">{idx + 1}</td>
-                    <td className="border border-black p-2">
-                      <div className="font-bold">{e.tanggal}</div>
-                      <div className="text-[10px] text-gray-600">{e.waktu}</div>
-                    </td>
-                    <td className="border border-black p-2">
-                      <div className="font-bold">{e.nama_siswa}</div>
-                      <div className="text-[10px]">Kelas: {e.kelas}</div>
-                      {e.nisn && <div className="text-[9px] text-gray-600">NISN: {e.nisn}</div>}
-                    </td>
-                    <td className="border border-black p-2">
-                      <div className="font-semibold">{e.jenis_layanan}</div>
-                      <div className="text-[10px] text-gray-600">({e.bidang_bimbingan})</div>
-                    </td>
-                    <td className="border border-black p-2 text-[11px] leading-tight">{e.catatan}</td>
-                    <td className="border border-black p-2 text-[11px] leading-tight">{e.tindak_lanjut}</td>
-                    <td className="border border-black p-2 text-center text-[10px] font-bold">{e.status}</td>
-                    <td className="border border-black p-1 text-center align-middle">
-                      {(() => {
-                        const docUrl = e.link_dokumen?.trim();
-                        if (!docUrl || docUrl === '-') {
-                          return <span className="text-gray-400 text-[10px] italic">-</span>;
-                        }
-                        const isImg = docUrl.startsWith('data:image') ||
-                          /\.(jpg|jpeg|png|webp|gif|bmp)($|\?)/i.test(docUrl) ||
-                          isGoogleDriveUrl(docUrl);
+            {/* Mobile Swipe Hint */}
+            <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1 sm:hidden no-print">
+              <span className="inline-flex items-center gap-1 text-[10px] text-gray-500">
+                <i className="fa-solid fa-table text-gray-400"></i>
+                Pratinjau Tabel Laporan
+              </span>
+              <span className="inline-flex items-center gap-1 text-rose-600 font-semibold text-[10px]">
+                <i className="fa-solid fa-arrows-left-right text-[9px] animate-pulse"></i>
+                Geser tabel ke samping
+              </span>
+            </div>
 
-                        if (isImg) {
-                          const thumb = getGoogleDriveThumbnailUrl(docUrl, 400) || transformGoogleDriveUrl(docUrl);
+            <div className="w-full overflow-x-auto rounded-xl border border-gray-200 print:border-none print:overflow-visible my-2 print:my-2 custom-scroll">
+              <table className="w-full text-left border-collapse border border-black text-xs min-w-[760px] sm:min-w-full print:min-w-0">
+                <thead>
+                  <tr className="bg-gray-100 border-b border-black text-center font-bold">
+                    <th className="border border-black p-2 w-8 text-center print:w-8">No</th>
+                    <th className="border border-black p-2 w-24 print:w-24">Tanggal / Waktu</th>
+                    <th className="border border-black p-2 w-36 print:w-36">Nama Siswa / Kelas</th>
+                    <th className="border border-black p-2 w-32 print:w-32">Bidang / Layanan</th>
+                    <th className="border border-black p-2 min-w-[140px] print:min-w-0">Catatan Kasus / Bimbingan</th>
+                    <th className="border border-black p-2 min-w-[140px] print:min-w-0">Rencana Tindak Lanjut</th>
+                    <th className="border border-black p-2 w-24 print:w-24 text-center">Status</th>
+                    <th className="border border-black p-2 w-24 print:w-24 text-center">Dokumentasi</th>
+                    <th className="border border-black p-2 w-28 print:w-28">Guru BK</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredEntries.map((e, idx) => (
+                    <tr key={e.id} className="border-b border-black align-top">
+                      <td className="border border-black p-2 text-center">{idx + 1}</td>
+                      <td className="border border-black p-2">
+                        <div className="font-bold">{e.tanggal}</div>
+                        <div className="text-[10px] text-gray-600">{e.waktu}</div>
+                      </td>
+                      <td className="border border-black p-2">
+                        {(() => {
+                          const multiList: Array<{ nama_siswa: string; kelas?: string; nisn?: string }> =
+                            (Array.isArray(e.peserta_didik) && e.peserta_didik.length > 0)
+                              ? e.peserta_didik
+                              : (Array.isArray(e.detail_layanan?.peserta_didik) && e.detail_layanan.peserta_didik.length > 0)
+                              ? (e.detail_layanan.peserta_didik as any[])
+                              : (isMultiStudentService(e.jenis_layanan) && e.nama_siswa.includes(','))
+                              ? e.nama_siswa.split(',').map((name, i) => ({
+                                  nama_siswa: name.trim(),
+                                  kelas: e.kelas.split(',')[i]?.trim() || e.kelas.split(',')[0]?.trim() || '',
+                                  nisn: e.nisn ? e.nisn.split(',')[i]?.trim() : ''
+                                }))
+                              : [];
+
+                          if (multiList.length > 1) {
+                            return (
+                              <div>
+                                <div className="font-bold text-[10px] text-gray-800 underline mb-0.5">
+                                  Kelompok ({multiList.length} Siswa):
+                                </div>
+                                <ol className="list-decimal list-inside text-[10px] space-y-0.5">
+                                  {multiList.map((s, sIdx) => (
+                                    <li key={sIdx} className="leading-tight">
+                                      <span className="font-semibold">{s.nama_siswa}</span>
+                                      <span className="text-[9px] text-gray-600"> ({s.kelas}{s.nisn ? ` • ${s.nisn}` : ''})</span>
+                                    </li>
+                                  ))}
+                                </ol>
+                              </div>
+                            );
+                          }
+
                           return (
-                            <div className="flex flex-col items-center justify-center">
-                              <img
-                                src={thumb}
-                                alt={`Dokumentasi ${e.nama_siswa}`}
-                                loading="eager"
-                                referrerPolicy="no-referrer"
-                                className="w-16 h-16 object-cover rounded border border-gray-300 mx-auto bg-white print:w-16 print:h-16 print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
-                                onError={(ev) => {
-                                  const target = ev.target as HTMLImageElement;
-                                  if (target.src !== transformGoogleDriveUrl(docUrl)) {
-                                    target.src = transformGoogleDriveUrl(docUrl);
-                                  } else {
-                                    target.style.display = 'none';
-                                  }
-                                }}
-                              />
+                            <div>
+                              <div className="font-bold">{e.nama_siswa}</div>
+                              <div className="text-[10px]">Kelas: {e.kelas}</div>
+                              {e.nisn && <div className="text-[9px] text-gray-600">NISN: {e.nisn}</div>}
                             </div>
                           );
-                        }
+                        })()}
+                      </td>
+                      <td className="border border-black p-2">
+                        <div className="font-semibold">{e.jenis_layanan}</div>
+                        <div className="text-[10px] text-gray-600">({e.bidang_bimbingan})</div>
+                      </td>
+                      <td className="border border-black p-2 text-[11px] leading-tight">{e.catatan}</td>
+                      <td className="border border-black p-2 text-[11px] leading-tight">{e.tindak_lanjut}</td>
+                      <td className="border border-black p-2 text-center text-[10px] font-bold">{e.status}</td>
+                      <td className="border border-black p-1 text-center align-middle">
+                        {(() => {
+                          const docUrl = e.link_dokumen?.trim();
+                          if (!docUrl || docUrl === '-') {
+                            return <span className="text-gray-400 text-[10px] italic">-</span>;
+                          }
+                          const isImg = docUrl.startsWith('data:image') ||
+                            /\.(jpg|jpeg|png|webp|gif|bmp)($|\?)/i.test(docUrl) ||
+                            isGoogleDriveUrl(docUrl);
 
-                        return (
-                          <div className="text-[9px] text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
-                            <i className="fa-solid fa-file-lines text-xs block mb-0.5 text-gray-500"></i>
-                            <span>{docUrl.replace(/^file:/, '')}</span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="border border-black p-2 text-[10px]">{e.nama_guru}</td>
-                  </tr>
-                ))}
-                {filteredEntries.length === 0 && (
-                  <tr>
-                    <td colSpan={9} className="p-4 text-center text-xs italic">
-                      Tidak ada entri data bimbingan konseling pada periode ini.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                          if (isImg) {
+                            const thumb = getGoogleDriveThumbnailUrl(docUrl, 400) || transformGoogleDriveUrl(docUrl);
+                            return (
+                              <div className="flex flex-col items-center justify-center">
+                                <img
+                                  src={thumb}
+                                  alt={`Dokumentasi ${e.nama_siswa}`}
+                                  loading="eager"
+                                  referrerPolicy="no-referrer"
+                                  className="w-16 h-16 object-cover rounded border border-gray-300 mx-auto bg-white print:w-16 print:h-16 print:object-cover print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
+                                  onError={(ev) => {
+                                    const target = ev.target as HTMLImageElement;
+                                    if (target.src !== transformGoogleDriveUrl(docUrl)) {
+                                      target.src = transformGoogleDriveUrl(docUrl);
+                                    } else {
+                                      target.style.display = 'none';
+                                    }
+                                  }}
+                                />
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="text-[9px] text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
+                              <i className="fa-solid fa-file-lines text-xs block mb-0.5 text-gray-500"></i>
+                              <span>{docUrl.replace(/^file:/, '')}</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="border border-black p-2 text-[10px]">{e.nama_guru}</td>
+                    </tr>
+                  ))}
+                  {filteredEntries.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="p-4 text-center text-xs italic">
+                        Tidak ada entri data bimbingan konseling pada periode ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Signature Block */}
             <PrintSignature
