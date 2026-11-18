@@ -69,10 +69,14 @@ export async function POST(req: NextRequest) {
     const durasi_hari = typeof body.durasi_hari === 'number' ? Math.max(1, body.durasi_hari) : (body.durasi_hari ? Math.max(1, parseInt(String(body.durasi_hari), 10) || 1) : 1);
     const tanggal_mulai = body.tanggal_mulai || getWitaDateStr();
     const tanggal_selesai = body.tanggal_selesai || getWitaDateStr();
+    
+    // Updated logic for special statuses
     const isSakit = detail_izin === 'Sakit' || jenis_presensi === 'Sakit' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('sakit'));
     const isIzin = !isTerlambat && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('izin')) || (typeof jenis_presensi === 'string' && jenis_presensi.toLowerCase().includes('izin') && !jenis_presensi.toLowerCase().includes('terlambat')));
-    const isLeave = isSakit || isIzin;
-    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || isIzin) && durasi_hari > 3);
+    const isDinasLuar = jenis_presensi === 'Dinas Luar' || detail_izin === 'Dinas Luar' || (typeof detail_izin === 'string' && detail_izin.toLowerCase().includes('dinas luar'));
+    
+    const isLeave = isSakit || isIzin || isDinasLuar;
+    const isLeavePersetujuanAdmin = (isSakit && durasi_hari >= 3) || (!isSakit && (jenis_presensi === 'Izin' || detail_izin === 'Izin' || isIzin) && durasi_hari > 3) || isDinasLuar;
 
     // Geofence radius validation on server:
     // If 'Sekolah' attendance is outside allowable radius (default 100m or custom radius), requires admin approval -> 'Menunggu'
