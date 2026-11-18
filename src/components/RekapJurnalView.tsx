@@ -992,11 +992,7 @@ export default function RekapJurnalView({
             return false;
           }
           if (isExpandedDate) {
-            const isGeneric = (!j.kelas || j.kelas === '-') && (!j.mapel || j.mapel === '-' || j.mapel === 'Jurnal Kegiatan');
-            if (isGeneric && isValidJurnalKegiatan(j)) {
-              return false;
-            }
-
+            // Keep generic entry, but remove obsolete auto-recorded "tidak masuk kelas" entries
             const statusLower = (j.status_verifikasi || '').toLowerCase();
             const ketLower = (j.keterangan || '').toLowerCase();
             const matLower = (j.materi || j.materi_pembelajaran || j.konten || '').toLowerCase();
@@ -1004,6 +1000,7 @@ export default function RekapJurnalView({
               return false;
             }
           }
+
 
           return true;
         });
