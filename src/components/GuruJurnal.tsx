@@ -92,6 +92,7 @@ export default function GuruJurnal({
   const [jamKe, setJamKe] = useState('');
   const [tujuanPembelajaran, setTujuanPembelajaran] = useState('');
   const [kehadiranMurid, setKehadiranMurid] = useState('');
+  const [pertemuanKe, setPertemuanKe] = useState('');
   const [kktp, setKktp] = useState('');
   const [konten, setKonten] = useState('');
   const [lokasiKbm, setLokasiKbm] = useState('');

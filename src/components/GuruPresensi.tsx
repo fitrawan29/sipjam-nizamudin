@@ -480,10 +480,8 @@ export default function GuruPresensi({
       if (!dailyState?.presensiDatang) {
         return showToast('Belum Presensi Datang', 'Anda harus melakukan Presensi Datang terlebih dahulu sebelum Presensi Pulang.', 'warning');
       }
-      if (dailyState?.isIzinSakit) {
-        return showToast('Info', 'Anda sedang Izin/Sakit hari ini, tidak perlu melakukan presensi pulang.', 'info');
-      }
-      if (!dailyState?.canPresensiPulang) {
+      // Removed: Automatic restriction if IzinSakit for Pulang to allow Izin/Sakit/Dinas during Pulang window
+      if (!dailyState?.canPresensiPulang && jenisPresensi === 'Sekolah') {
         return showToast(
           'Tugas Belum Selesai',
           dailyState?.lockedReason || 'Anda belum menyelesaikan semua tugas hari ini sebelum melakukan Presensi Pulang.',
@@ -1137,7 +1135,6 @@ export default function GuruPresensi({
                           required 
                           className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-nizamudin-green dark:text-nizamudin-gold"
                         >
-                            {/* Allow re-selecting Datang if presensiDatang was rejected */}
                             <option value="Datang" disabled={!!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>DATANG</option>
                             <option value="Pulang" disabled={!dailyState?.presensiDatang || (!!dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak)}>PULANG</option>
                         </select>
@@ -1151,19 +1148,12 @@ export default function GuruPresensi({
                           required 
                           className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-gray-900 dark:text-white"
                         >
-                            {tipeAbsen === 'Pulang' ? (
-                              <>
-                                <option value="Sekolah">Hadir di Sekolah</option>
-                                <option value="Dinas Luar">Dinas Luar</option>
-                              </>
-                            ) : (
-                              <>
-                                <option value="Sekolah">Hadir di Sekolah</option>
-                                <option value="Dinas Luar">Dinas Luar</option>
-                                <option value="Izin Terlambat">Izin Terlambat</option>
-                                <option value="Izin">Izin / Sakit</option>
-                              </>
-                            )}
+                            {/* R1: Integrated Sakit/Izin/Dinas Luar for Pulang */}
+                            <option value="Sekolah">Hadir di Sekolah</option>
+                            <option value="Dinas Luar">Dinas Luar</option>
+                            <option value="Izin">Izin / Sakit</option>
+                            {tipeAbsen === 'Datang' && <option value="Izin Terlambat">Izin Terlambat</option>}
+                            {tipeAbsen === 'Datang' && <option value="Terlambat">Terlambat</option>}
                         </select>
                     </div>
                 </div>

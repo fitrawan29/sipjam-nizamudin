@@ -843,15 +843,6 @@ export default function GradebookView({
                            (s.id ? studentEarnedPoints[s.id] : 0) ?? 
                            0;
             // If session was not recorded, treat attendance as 'H' (100)
-            const unrecordedSessions = allSessions.length - (Object.keys(sess.attendanceMap).length > 0 ? 1 : 0); // Simplified approximation
-            // Actually, better: if attendanceMap is empty, assume all H (100 per student)
-            const totalPossible = allSessions.length * 100;
-            
-            const rate = ((earned + (allSessions.length - (Object.keys(sess.attendanceMap).length > 0 ? 1 : 0)) * 100) / totalPossible) * 100;
-            // Re-think this part.
-            // Simplified: If recorded, use earned. If not recorded, assume 100%.
-            // Total = Sum(earned) + (count of unrecorded sessions * 100)
-            
             const recordedSessions = allSessions.filter(s => Object.keys(s.attendanceMap).length > 0);
             const totalEarned = studentEarnedPoints[s.nisn] || 0;
             const unrecordedCount = allSessions.length - recordedSessions.length;
@@ -1014,27 +1005,55 @@ export default function GradebookView({
           })
           .eq('id', currentSession.journalId);
       } else {
-        const { data: inserted, error: insErr } = await supabase
+        // R6: Ensure we can create a record even if minimal data is available,
+        // or update an existing record if one exists for the same date/session/mapel/kelas
+        // which might have been created without a journalId set in sessions state.
+        
+        // Let's try to see if a record already exists for this date/mapel/kelas/session first,
+        // to avoid duplicate entries if the journalId state was just missing.
+        const { data: existingRecords } = await supabase
           .from('jurnal_pembelajaran')
-          .insert({
-            sekolah_id: sekolahId || null,
-            user_id: user?.id || null,
-            nama_guru: selectedGuru || user?.nama || 'Guru',
-            mapel: selectedMapel,
-            kelas: selectedKelas,
-            tanggal: sessionDate,
-            pertemuan_ke: String(sessionNumber),
-            absensi_siswa: JSON.stringify(updatedMap),
-            kehadiran_murid: summaryText,
-            materi: `Pertemuan ke-${sessionNumber}`,
-            status_verifikasi: 'Menunggu'
-          } as any)
-          .select()
-          .single();
+          .select('id')
+          .eq('sekolah_id', sekolahId || null)
+          .eq('mapel', selectedMapel)
+          .eq('kelas', selectedKelas)
+          .eq('tanggal', sessionDate)
+          .eq('pertemuan_ke', String(sessionNumber))
+          .limit(1);
 
-        if (!insErr && inserted) {
-          newSessions[sessionIdx].journalId = inserted.id;
-          setSessions([...newSessions]);
+        if (existingRecords && existingRecords.length > 0) {
+            await supabase
+              .from('jurnal_pembelajaran')
+              .update({
+                absensi_siswa: JSON.stringify(updatedMap),
+                kehadiran_murid: summaryText
+              })
+              .eq('id', existingRecords[0].id);
+            newSessions[sessionIdx].journalId = existingRecords[0].id;
+            setSessions([...newSessions]);
+        } else {
+            const { data: inserted, error: insErr } = await supabase
+              .from('jurnal_pembelajaran')
+              .insert({
+                sekolah_id: sekolahId || null,
+                user_id: user?.id || null,
+                nama_guru: selectedGuru || user?.nama || 'Guru',
+                mapel: selectedMapel,
+                kelas: selectedKelas,
+                tanggal: sessionDate,
+                pertemuan_ke: String(sessionNumber),
+                absensi_siswa: JSON.stringify(updatedMap),
+                kehadiran_murid: summaryText,
+                materi: `Pertemuan ke-${sessionNumber}`,
+                status_verifikasi: 'Menunggu'
+              } as any)
+              .select()
+              .single();
+
+            if (!insErr && inserted) {
+              newSessions[sessionIdx].journalId = inserted.id;
+              setSessions([...newSessions]);
+            }
         }
       }
     } catch (saveErr) {
@@ -1107,27 +1126,55 @@ export default function GradebookView({
           })
           .eq('id', currentSession.journalId);
       } else {
-        const { data: inserted, error: insErr } = await supabase
+        // R6: Ensure we can create a record even if minimal data is available,
+        // or update an existing record if one exists for the same date/session/mapel/kelas
+        // which might have been created without a journalId set in sessions state.
+        
+        // Let's try to see if a record already exists for this date/mapel/kelas/session first,
+        // to avoid duplicate entries if the journalId state was just missing.
+        const { data: existingRecords } = await supabase
           .from('jurnal_pembelajaran')
-          .insert({
-            sekolah_id: sekolahId || null,
-            user_id: user?.id || null,
-            nama_guru: selectedGuru || user?.nama || 'Guru',
-            mapel: selectedMapel,
-            kelas: selectedKelas,
-            tanggal: sessionDate,
-            pertemuan_ke: String(sessionNumber),
-            absensi_siswa: JSON.stringify(updatedMap),
-            kehadiran_murid: summaryText,
-            materi: `Pertemuan ke-${sessionNumber}`,
-            status_verifikasi: 'Menunggu'
-          } as any)
-          .select()
-          .single();
+          .select('id')
+          .eq('sekolah_id', sekolahId || null)
+          .eq('mapel', selectedMapel)
+          .eq('kelas', selectedKelas)
+          .eq('tanggal', sessionDate)
+          .eq('pertemuan_ke', String(sessionNumber))
+          .limit(1);
 
-        if (!insErr && inserted) {
-          newSessions[sessionIdx].journalId = inserted.id;
-          setSessions([...newSessions]);
+        if (existingRecords && existingRecords.length > 0) {
+            await supabase
+              .from('jurnal_pembelajaran')
+              .update({
+                absensi_siswa: JSON.stringify(updatedMap),
+                kehadiran_murid: summaryText
+              })
+              .eq('id', existingRecords[0].id);
+            newSessions[sessionIdx].journalId = existingRecords[0].id;
+            setSessions([...newSessions]);
+        } else {
+            const { data: inserted, error: insErr } = await supabase
+              .from('jurnal_pembelajaran')
+              .insert({
+                sekolah_id: sekolahId || null,
+                user_id: user?.id || null,
+                nama_guru: selectedGuru || user?.nama || 'Guru',
+                mapel: selectedMapel,
+                kelas: selectedKelas,
+                tanggal: sessionDate,
+                pertemuan_ke: String(sessionNumber),
+                absensi_siswa: JSON.stringify(updatedMap),
+                kehadiran_murid: summaryText,
+                materi: `Pertemuan ke-${sessionNumber}`,
+                status_verifikasi: 'Menunggu'
+              } as any)
+              .select()
+              .single();
+
+            if (!insErr && inserted) {
+              newSessions[sessionIdx].journalId = inserted.id;
+              setSessions([...newSessions]);
+            }
         }
       }
     } catch (saveErr) {

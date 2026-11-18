@@ -306,7 +306,6 @@ export default function HistoryView({
                       <i className="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
-            </div>
         </div>
     </Wrapper>
   );

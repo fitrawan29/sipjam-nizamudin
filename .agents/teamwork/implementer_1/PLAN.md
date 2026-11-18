@@ -1,27 +1,20 @@
-# Rencana Implementasi Mikro: Deduplication & Labeling
+# Implementation Plan - Milestone 2
 
-## 1. Analisis Deduplication (src/components/DokumenView.tsx)
-- **Fungsi**: `submitDokumen`
-- **Logic Saat Ini**: 
-  - Mengecek guru yang sama.
-  - Mengecek jenis dokumen yang sama (fuzzy match).
-  - Mengecek mata pelajaran yang sama (fuzzy match).
-  - Mengecek tingkat kelas (berdasarkan `extractTingkat(kelas)`).
-- **Rencana**:
-  - Verifikasi `extractTingkat` mencakup semua tingkat (X, XI, XII, VII, VIII, IX, I-VI).
-  - Pastikan deduplication memblokir pengunggahan jika perangkat dengan kriteria tersebut sudah ada untuk *tingkat kelas tersebut*.
-  - Tidak ada perubahan besar yang diperlukan, hanya pengujian/verifikasi logic.
+## Implementation Plan
 
-## 2. Analisis Update Label
-- **Lokasi**: Perlu diidentifikasi di mana label dokumen ditampilkan (List view, Matrix view, Preview modal).
-- **Target format**: `[nama mapel] - [Tingkat] - [Nama Guru]`
-- **Rencana**:
-  - Cari semua tempat render dokumen di `DokumenView.tsx`.
-  - Buat helper function (atau gunakan yang ada) untuk membuat string label sesuai format.
-  - Update semua UI render dengan label baru.
+### R3: Attendance UI Consolidation (GuruPresensi.tsx)
+- Merge the two separate UI sections for "presensi datang" and "presensi pulang" into a unified card interface.
+- Use conditional rendering based on current `dailyState` and `tipeAbsen` state.
 
-## 3. Tahap Eksekusi
-1. Update `DokumenView.tsx` untuk menyatukan label.
-2. Verifikasi deduplication logic (`duplicateDoc` block).
-3. Verifikasi UI rendering.
-4. Test & Commit.
+### R1: Attendance Logic Improvements (GuruPresensi.tsx & presensiIntervensi.ts)
+- Update `handlePresensiSubmit` in `GuruPresensi.tsx` to handle "sakit", "izin", "dinas luar" for "presensi pulang".
+- Implement backend logic or helper functions to automate "alpa" if presensi not done by deadline.
+- Implement automation for "pulang cepat" if "presensi pulang" not done by the scheduled time.
+
+### R6: Daftar Nilai Fixes (GradebookView.tsx)
+- Modify `GradebookView.tsx` to allow editing of presensi sesi even if no KBM journal exists.
+- Locate and remove the strict journal check dependency in the update/edit handler.
+
+### Verification Method
+- Run `npm run test` (existing tests + new verification tests).
+- Manually verify UI updates in development mode.
