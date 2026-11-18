@@ -533,6 +533,16 @@ CREATE INDEX IF NOT EXISTS idx_cp_sekolah_mapel_kelas ON public.capaian_pembelaj
 -- Enforce max 1 Diagnostik assessment per TP
 CREATE UNIQUE INDEX IF NOT EXISTS uq_asesmen_tp_diagnostik ON public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik');
 
+-- 1. Index Unik Khusus KBM: Mencegah duplikasi sesi mengajar pada kelas & mapel yang sama
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_jurnal_kbm_sesi 
+ON public.jurnal_pembelajaran (sekolah_id, tanggal, user_id, kelas, mapel) 
+WHERE kelas <> '-' AND mapel <> '-';
+
+-- 2. Index Unik Khusus Kegiatan Guru & TU: Berbasis nama kegiatan agar sah mengisi >1 kegiatan berbeda per hari
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_jurnal_kegiatan_sesi 
+ON public.jurnal_pembelajaran (sekolah_id, tanggal, user_id, kegiatan) 
+WHERE (kelas = '-' OR mapel = '-');
+
 -- ==============================================================================
 -- 5. FUNCTION & STORED PROCEDURES (SECURITY DEFINER)
 -- ==============================================================================
