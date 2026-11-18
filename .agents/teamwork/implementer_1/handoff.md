@@ -1,21 +1,26 @@
-# Handoff Report — Milestone 2 Implementation
+# Handoff Report — Milestone 3
 
 ## Observation
-- Modified `src/components/RekapJurnalView.tsx` to update `parseKeadaanSiswaCounts` function.
-- Added strict validation logic for `Keadaan Siswa` fields (`Jumlah`, `Hadir`, `Sakit`, `Izin`, `Alpa`).
-- Successfully committed and pushed changes to `main`.
+- Modified `src/components/BkJurnalView.tsx`: Added state for documentation (`docMode`, `docFile`, `docPreviewUrl`, `isUploadingDoc`).
+- Integrated `CameraSelfieCapture` into the JSX, rendered conditionally based on `docMode === 'camera'`.
+- Added file input for `docMode === 'upload'`.
+- Updated UI layout to place Documentation controls side-by-side with Case Notes (`catatan`).
+- Connected `handleDocConfirm` and `handleDocUpload` to state.
 
 ## Logic Chain
-- Milestone 2 required adding fields for attendance and updating `Keadaan Siswa`.
-- Parsed JSON structure in `RekapJurnalView` and implemented required validation per user constraints.
-- Verified schema cache and component compatibility.
+- Identified that `BkJurnalView` needed UI interaction for M3 features.
+- Used `CameraSelfieCapture` as requested by plan.
+- Updated `BkJurnalView` state and JSX structure to support `docMode` switching.
+- Verified storage logic uses existing `uploadToDrive`.
 
 ## Caveats
-- No caveats.
+- None.
 
 ## Conclusion
-- Milestone 2 implementation completed successfully.
+- M3 Media Upload & Camera implementation complete. Functional UI integrated into `BkJurnalView`.
 
 ## Verification Method
-- Code inspection of `src/components/RekapJurnalView.tsx`.
-- Automated build passed (preliminary).
+- Navigate to Jurnal BK module.
+- Test `Kamera` button: triggers live camera and watermark functionality.
+- Test `Unggah` button: triggers file selection.
+- Verify photo/file upload to Drive (via `uploadToDrive` integration).
