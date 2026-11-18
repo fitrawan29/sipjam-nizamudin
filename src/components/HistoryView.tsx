@@ -280,68 +280,9 @@ export default function HistoryView({
               ) : (
                 paginatedData.map((item: any) => (
                   <div key={item.id} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-between gap-2 hover:shadow-md transition">
-                    {activeTab === 'presensi' ? (
-                      <>
-                        <div className="space-y-1.5">
-                          <div className="flex justify-between items-start mb-1">
-                            <h3 className="text-xs font-bold text-gray-900 dark:text-white">{item.tipe_absen} - {item.jenis_presensi}</h3>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                item.status_verifikasi === 'Disetujui' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                (item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                (item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              }`}>{item.status_verifikasi || 'Menunggu'}</span>
-                          </div>
-                          <div className="text-[10px] text-gray-700 dark:text-gray-300 space-y-1">
-                            <p><span className="font-semibold text-gray-900 dark:text-white">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
-                            {item.detail_izin && <p><span className="font-semibold text-gray-900 dark:text-white">Keterangan:</span> {item.detail_izin}</p>}
-                          </div>
-                          {item.catatan_admin && (
-                            <div className="mt-1 p-1.5 bg-gray-50 dark:bg-gray-900 rounded text-[9px] border border-gray-100 dark:border-gray-700">
-                              <span className="font-semibold text-gray-900 dark:text-white">Catatan Admin: </span>
-                              <span className="text-gray-700 dark:text-gray-300 italic">{item.catatan_admin}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Presensi Attachment Link ("Lihat Bukti") */}
-                        {item.link_bukti && item.link_bukti !== '-' && (
-                          <div className="pt-2 mt-1 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-                            {item.link_bukti === 'pending:uploading' ? (
-                              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-800">
-                                <i className="fa-solid fa-cloud-arrow-up animate-pulse text-[9px]"></i>
-                                <span>Sedang mengunggah dokumen... (Swipe ke bawah / F5 untuk pembaruan)</span>
-                              </div>
-                            ) : item.link_bukti === 'gagal_upload' ? (
-                              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded border border-red-200 dark:border-red-800">
-                                <i className="fa-solid fa-circle-exclamation text-[9px]"></i>
-                                <span>Upload dokumen tertunda</span>
-                              </div>
-                            ) : (
-                              <>
-                                <img 
-                                  src={transformGoogleDriveUrl(item.link_bukti)} 
-                                  alt="Bukti Presensi" 
-                                  className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
-                                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                                />
-                                <a 
-                                  href={item.link_bukti} 
-                                  target="_blank" 
-                                  rel="noreferrer" 
-                                  className="inline-flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-md border border-blue-200 dark:border-blue-800 transition"
-                                >
-                                  <i className="fa-solid fa-paperclip text-[9px]"></i> Lihat Bukti Presensi
-                                </a>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        <div className="space-y-1.5">
+                    <>
+                      {/* Jurnal Content */}
+                      <div className="space-y-1.5">
                           <div className="flex justify-between items-start mb-1">
                             <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate pr-2">
                               {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan'
@@ -415,8 +356,7 @@ export default function HistoryView({
                             </div>
                           );
                         })()}
-                      </>
-                    )}
+                    </>
                   </div>
                 ))
               ))}
