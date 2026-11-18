@@ -39,7 +39,7 @@ export function transformGoogleDriveUrl(url: string | null | undefined): string 
   const fileId = getGoogleDriveFileId(trimmed);
   if (fileId) {
     // Return thumbnail URL directly for faster/more reliable rendering
-    return `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+    return `https://drive.google.com/uc?export=view&id=${fileId}`;
   }
 
   return trimmed;
