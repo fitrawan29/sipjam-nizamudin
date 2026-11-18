@@ -1366,7 +1366,7 @@ export default function RekapJurnalView({
       const payload: any = {
         tanggal: editTanggal,
         jam_ke: isKegiatanUnderlying ? '-' : (editJamKe || '-'),
-        pertemuan_ke: isKegiatanUnderlying ? '-' : (editPertemuanKe || '-'),
+        pertemuan_ke: '-',
         mapel: isKegiatanUnderlying ? '-' : editMapel,
         kelas: isKegiatanUnderlying ? '-' : editKelas,
         lokasi_kbm: isKegiatanUnderlying ? '-' : editLokasiKbm,

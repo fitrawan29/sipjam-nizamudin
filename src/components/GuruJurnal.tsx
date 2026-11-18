@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
 import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance, hasJournalContent, isValidLokasiKbm, resolveTeacherLokasiKbm } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
+import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';

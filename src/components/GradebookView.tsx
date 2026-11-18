@@ -825,7 +825,8 @@ export default function GradebookView({
         setSessions(initialSessions);
 
         const rates: Record<string, number> = {};
-        const validSessions = initialSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+        // Include ALL sessions in calculation, recorded or not (treat empty as 100%)
+        const allSessions = initialSessions;
 
         if (allSessions.length > 0) {
           const studentEarnedPoints: Record<string, number> = {};
@@ -969,28 +970,29 @@ export default function GradebookView({
     setSessions(newSessions);
 
     // Recalculate attendanceRates immediately
-    const validSessions = newSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+    const allSessions = newSessions;
     const newRates: Record<string, number> = {};
-    if (validSessions.length === 0) {
-      students.forEach(s => { newRates[s.nisn] = 100; });
-    } else {
-      students.forEach(s => {
-        let earned = 0;
-        validSessions.forEach(sess => {
-          const code = sess.attendanceMap[s.nisn] ?? 'H';
-          const st = (code || '').trim().toUpperCase();
-          if (st === 'H' || st === 'HADIR') earned += statusPoints.hadir ?? 100;
-          else if (st === 'S' || st === 'SAKIT') earned += statusPoints.sakit ?? 75;
-          else if (st === 'I' || st === 'IZIN') earned += statusPoints.izin ?? 75;
-          else if (st === 'T' || st === 'TERLAMBAT') earned += statusPoints.terlambat ?? 75;
-          else if (st === 'A' || st === 'ALPA') earned += statusPoints.alpa ?? 0;
-          else if (st === 'B' || st === 'BOLOS') earned += statusPoints.bolos ?? 0;
-          else earned += 100;
-        });
-        const rate = (earned / (validSessions.length * 100)) * 100;
-        newRates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+    const recordedSessions = allSessions.filter(s => Object.keys(s.attendanceMap).length > 0);
+    
+    students.forEach(s => {
+      let totalEarned = 0;
+      recordedSessions.forEach(sess => {
+        const code = sess.attendanceMap[s.nisn] ?? 'H';
+        const st = (code || '').trim().toUpperCase();
+        if (st === 'H' || st === 'HADIR') totalEarned += statusPoints.hadir ?? 100;
+        else if (st === 'S' || st === 'SAKIT') totalEarned += statusPoints.sakit ?? 75;
+        else if (st === 'I' || st === 'IZIN') totalEarned += statusPoints.izin ?? 75;
+        else if (st === 'T' || st === 'TERLAMBAT') totalEarned += statusPoints.terlambat ?? 75;
+        else if (st === 'A' || st === 'ALPA') totalEarned += statusPoints.alpa ?? 0;
+        else if (st === 'B' || st === 'BOLOS') totalEarned += statusPoints.bolos ?? 0;
+        else totalEarned += 100;
       });
-    }
+
+      const unrecordedCount = allSessions.length - recordedSessions.length;
+      const totalPossiblePoints = allSessions.length * 100;
+      const rateActual = ((totalEarned + (unrecordedCount * 100)) / totalPossiblePoints) * 100;
+      newRates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rateActual)).toFixed(1));
+    });
     setAttendanceRates(newRates);
 
     // Persist to Supabase
@@ -1067,23 +1069,28 @@ export default function GradebookView({
     setSessions(newSessions);
 
     // Recalculate attendanceRates immediately
-    const validSessions = newSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
+    const allSessions = newSessions;
     const newRates: Record<string, number> = {};
+    const recordedSessions = allSessions.filter(s => Object.keys(s.attendanceMap).length > 0);
+    
     students.forEach(s => {
-      let earned = 0;
-      validSessions.forEach(sess => {
+      let totalEarned = 0;
+      recordedSessions.forEach(sess => {
         const code = sess.attendanceMap[s.nisn] ?? 'H';
         const st = (code || '').trim().toUpperCase();
-        if (st === 'H' || st === 'HADIR') earned += statusPoints.hadir ?? 100;
-        else if (st === 'S' || st === 'SAKIT') earned += statusPoints.sakit ?? 75;
-        else if (st === 'I' || st === 'IZIN') earned += statusPoints.izin ?? 75;
-        else if (st === 'T' || st === 'TERLAMBAT') earned += statusPoints.terlambat ?? 75;
-        else if (st === 'A' || st === 'ALPA') earned += statusPoints.alpa ?? 0;
-        else if (st === 'B' || st === 'BOLOS') earned += statusPoints.bolos ?? 0;
-        else earned += 100;
+        if (st === 'H' || st === 'HADIR') totalEarned += statusPoints.hadir ?? 100;
+        else if (st === 'S' || st === 'SAKIT') totalEarned += statusPoints.sakit ?? 75;
+        else if (st === 'I' || st === 'IZIN') totalEarned += statusPoints.izin ?? 75;
+        else if (st === 'T' || st === 'TERLAMBAT') totalEarned += statusPoints.terlambat ?? 75;
+        else if (st === 'A' || st === 'ALPA') totalEarned += statusPoints.alpa ?? 0;
+        else if (st === 'B' || st === 'BOLOS') totalEarned += statusPoints.bolos ?? 0;
+        else totalEarned += 100;
       });
-      const rate = (earned / (validSessions.length * 100)) * 100;
-      newRates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+
+      const unrecordedCount = allSessions.length - recordedSessions.length;
+      const totalPossiblePoints = allSessions.length * 100;
+      const rateActual = ((totalEarned + (unrecordedCount * 100)) / totalPossiblePoints) * 100;
+      newRates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rateActual)).toFixed(1));
     });
     setAttendanceRates(newRates);
 
@@ -4440,7 +4447,7 @@ export default function GradebookView({
               <div className="overflow-x-auto max-h-[600px] custom-scroll relative print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   {/* Table Header */}
-                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-30 backdrop-blur-md shadow-sm">
                     {/* Upper Category Row */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
                       <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
@@ -4897,7 +4904,7 @@ export default function GradebookView({
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
               <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-30 backdrop-blur-md shadow-sm">
                     {/* Upper Category Row */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
                       <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
@@ -5228,7 +5235,7 @@ export default function GradebookView({
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
               <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-20 backdrop-blur-md shadow-sm">
+                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-30 backdrop-blur-md shadow-sm">
                     {/* Category Header Row */}
                     <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
                       <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
