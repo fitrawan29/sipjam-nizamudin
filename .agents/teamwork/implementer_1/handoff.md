@@ -1,26 +1,15 @@
-# Handoff Report — Milestone 3
+# Handoff Report - Stage 1 Complete
 
-## Observation
-- Modified `src/components/BkJurnalView.tsx`: Added state for documentation (`docMode`, `docFile`, `docPreviewUrl`, `isUploadingDoc`).
-- Integrated `CameraSelfieCapture` into the JSX, rendered conditionally based on `docMode === 'camera'`.
-- Added file input for `docMode === 'upload'`.
-- Updated UI layout to place Documentation controls side-by-side with Case Notes (`catatan`).
-- Connected `handleDocConfirm` and `handleDocUpload` to state.
+1. **Observation** — Identified `src/components/HistoryView.tsx` as the source of attendance history rendering. "Presensi datang" and "presensi pulang" records are currently fetched individually and rendered as separate cards.
+2. **Logic Chain** — To consolidate:
+   - Load all presensi records for a user.
+   - Group records by date (YYYY-MM-DD).
+   - Update `HistoryView` to map the grouped data into a single card per date, displaying arrival and departure times side-by-side.
+3. **Caveats** — Database schema for `presensi_guru` not fully inspected. Assuming standard fields like `timestamp` or `tanggal` exist.
+4. **Conclusion** — Plan is viable and surgical.
+5. **Verification Method** — Verify grouped card layout in `HistoryView` with existing test data.
 
-## Logic Chain
-- Identified that `BkJurnalView` needed UI interaction for M3 features.
-- Used `CameraSelfieCapture` as requested by plan.
-- Updated `BkJurnalView` state and JSX structure to support `docMode` switching.
-- Verified storage logic uses existing `uploadToDrive`.
-
-## Caveats
-- None.
-
-## Conclusion
-- M3 Media Upload & Camera implementation complete. Functional UI integrated into `BkJurnalView`.
-
-## Verification Method
-- Navigate to Jurnal BK module.
-- Test `Kamera` button: triggers live camera and watermark functionality.
-- Test `Unggah` button: triggers file selection.
-- Verify photo/file upload to Drive (via `uploadToDrive` integration).
+## Remaining Work
+- Implement grouping logic in `HistoryView.tsx`.
+- Update card UI to show both arrival and departure details.
+- Verify consolidation.

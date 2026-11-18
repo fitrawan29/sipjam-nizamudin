@@ -18,3 +18,12 @@ Context: Approval of M3 implementation plan.
 Approved: Implementation plan for Milestone 3.
 Execution: Direct execution in current workspace approved.
 Proceed to Stage 3 (Execution).
+
+## 2026-11-18T13:27:00Z
+Analyze and implement Milestone 1: Attendance Logic & Automation. Adjustments:
+1. Add "Sakit", "Izin", "Dinas Luar" to check-out process. When a teacher checks out with these conditions, reflect it in the remaining KBM journals.
+2. Automatically set "Alpa" if no check-in/out by admin-set deadlines.
+3. Automatically set "Pulang Cepat" if checked-in but no check-out by admin-set deadline.
+
+## 2026-11-18T13:49:25Z
+Implement deduplication of perangkat pembelajaran uploads per grade level, and update labels to "[nama mapel] - [Tingkat] - [Nama Guru]". Refer to PROJECT.md for scope and requirements. Read ORIGINAL_REQUEST.md first. Relevant file: src/components/DokumenView.tsx.

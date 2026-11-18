@@ -1,35 +1,39 @@
-# BRIEFING — 2026-11-18T13:20:48Z
+# BRIEFING — 2026-11-18T21:50:00Z
 
 ## Mission
-Implement Milestone 3: Media Upload & Camera
+Consolidate "presensi datang" and "presensi pulang" views into a single card in attendance history.
 
 ## 🔒 My Identity
 - Archetype: Implementer
 - Roles: Implementer, QA, Specialist
-- Working directory: C:\Users\Fitra\OneDrive\Documents\sipjam-app
-- State folder: C:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\implementer_1\
-- Original parent: 8cc5ba70-bd8b-4b13-9506-b2f1c39aa504
-- Milestone: 3
+- Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+- State folder: c:\Users\Fitra\OneDrive\Documents\sipjam-app\.agents\teamwork\implementer_1
+- Original parent: 9e77b5d7-9d7a-4846-9d5f-727420f6c786
+- Milestone: Attendance History Consolidation
 
 ## 🔒 Key Constraints
-- Follow PROJECT.md for scope and interface contracts.
-- Use audit-dan-ubah skill's 6-stage process.
-- Strict surgical execution mode (no refactoring, no UI changes unless required).
-- Auto-commit changes to main.
+- Follow surgical execution mode (GEMINI.md).
+- Use audit-dan-ubah if applicable.
+- Consolidate "presensi datang" and "presensi pulang" views into a single card in attendance history.
+- Refer to PROJECT.md and ORIGINAL_REQUEST.md.
+- Follow Git Workflow (commit and push to main).
+
+## Loaded Skills
+- Source: C:\Users\Fitra\.gemini\config\skills\audit-dan-ubah\SKILL.md
+- Core methodology: 6-stage structured audit and implementation plan with mandatory check-points for complex tasks.
 
 ## Current Parent
-- Conversation ID: 8cc5ba70-bd8b-4b13-9506-b2f1c39aa504
-- Updated: 2026-11-18T13:20:48Z
+- Conversation ID: 9e77b5d7-9d7a-4846-9d5f-727420f6c786
+- Updated: 2026-11-18T21:50:00Z
 
 ## Task Summary
-- **What to build**: Add live camera option and file upload option for documentation.
-- **Success criteria**: Functional camera and upload in documentation interface.
+- **What to build**: Single card attendance history view.
+- **Success criteria**: Consolidation of arrival/departure attendance into one card.
 - **Interface contracts**: PROJECT.md
-- **Code layout**: PROJECT.md
+- **Code layout**: src/components/HistoryView.tsx
 
 ## Key Decisions Made
-- Use existing `CameraSelfieCapture` and `uploadToDrive`.
-- Integrate via `docMode` in `BkJurnalView`.
+- Starting Stage 0 of audit-dan-ubah.
 
 ## Artifact Index
 - [TBD]

@@ -1,44 +1,49 @@
-This is a single self-contained fix; keep it small and focused. Perbaiki kolom jurnal KBM pada aplikasi sipjam-app agar urutan dan strukturnya sesuai ketentuan pada form input, mode edit, tabel data, data lama, dan tampilan cetak.
+# Penyesuaian Fitur Akun Guru Sipjam
 
-Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+[OPEN: Ini adalah proyek dengan banyak bagian yang melibatkan perubahan backend, database, dan UI. Saya menyarankan tim yang terfokus untuk menangani ini.]
+
 Integrity mode: development
 
 ## Requirements
 
-### R1. Urutan dan Struktur Kolom Jurnal KBM
-Perbarui kolom jurnal KBM agar memiliki urutan dan struktur persis berikut:
-1. Nomor
-2. Hari/Tanggal
-3. Materi/Konten
-4. Kelas/JP
-5. Keadaan Siswa (terdiri dari sub-kolom/sub-field: Jumlah, Hadir, Sakit, Izin, Alpa)
-6. Tempat/Lokasi KBM
-7. Dokumentasi (menyediakan dua opsi: live camera dan upload foto)
-8. Keterangan (opsional)
+### R1. Presensi Pulang
+Tambahkan opsi kondisi "Izin", "Sakit", dan "Dinas Luar" pada presensi pulang. Jika dipilih, sistem harus mengisi otomatis sisa jurnal KBM hari itu dengan keterangan kondisi tersebut.
 
-Urutan dan struktur kolom baru ini wajib diterapkan secara konsisten pada:
-- Form input/pengisian baru dan form mode edit jurnal KBM.
-- Tampilan tabel/daftar jurnal KBM, dengan memastikan data jurnal lama yang sudah diisi sebelumnya tetap dapat tampil secara benar menyesuaikan struktur kolom baru.
-- Mode cetak/print dokumen jurnal KBM.
+### R2. Perbaikan Upload Dokumen Presensi
+Analisis dan perbaiki masalah "Upload dokumen tertunda" agar foto presensi datang/pulang dapat langsung terunggah.
 
-### R2. Pendekatan Implementasi (Ponytail full)
-Terapkan prinsip Ponytail (full): solusi paling sederhana yang berhasil bekerja (laziest solution that works), utamakan fitur native platform (seperti input file / camera capture native), hindari over-engineering, buat diff perubahan seringkas mungkin, dan gunakan kembali kode serta komponen yang sudah ada tanpa membuat abstraksi baru kecuali mutlak diperlukan.
+### R3. Tampilan Riwayat Kehadiran
+Satu-kan tampilan presensi datang dan pulang menjadi 1 kartu agar lebih simpel.
 
-### R3. Alur Kerja Git
-Setelah seluruh perubahan selesai dan terverifikasi, lakukan staging (`git add .`), buat commit dengan pesan deskriptif, dan lakukan push langsung ke branch utama (`git push origin main`).
+### R4. Deduplikasi Perangkat Pembelajaran
+Identifikasi tingkatan kelas untuk mapel. Jika terdapat 2 atau lebih kelas paralel pada tingkatan yang sama, perangkat pembelajaran cukup diupload satu kali untuk tingkat tersebut.
 
-## Acceptance Criteria
+### R5. Penyesuaian Label Mapel
+Sesuaikan label mapel menjadi format "[Nama Mapel] - [Tingkatan]" (misal: "Seni Budaya - X Merdeka") untuk upload perangkat pembelajaran.
 
-### Kolom dan Struktur Jurnal KBM
-- [ ] Kolom pada form input dan mode edit jurnal KBM tersusun sesuai urutan: Nomor, Hari/Tanggal, Materi/Konten, Kelas/JP, Keadaan Siswa, Tempat/Lokasi KBM, Dokumentasi, Keterangan.
-- [ ] Kolom pada tampilan tabel/daftar jurnal KBM mencerminkan urutan dan struktur yang sama.
-- [ ] Data jurnal yang sudah tersimpan sebelumnya tetap dapat dimuat dan ditampilkan secara benar pada struktur kolom baru tanpa error.
-- [ ] Tampilan cetak/print dokumen jurnal KBM mencerminkan urutan dan struktur kolom baru secara konsisten.
-- [ ] Bagian Keadaan Siswa mencakup seluruh sub-field/kolom: Jumlah, Hadir, Sakit, Izin, dan Alpa.
-- [ ] Bagian Dokumentasi menyediakan dua opsi fungsional: live camera dan upload foto.
-- [ ] Kolom Keterangan bersifat opsional (tidak wajib diisi).
+### R6. Perubahan Form Jurnal KBM
+Hilangkan form pengisian "Nomor (Pertemuan ke-)" pada pembuatan dan pengeditan jurnal KBM.
 
-### Verifikasi & Integritas
-- [ ] Proyek Next.js dapat di-build atau typecheck tanpa error (`npm run build`).
-- [ ] Alur input, edit, penampilan data lama, dan cetak jurnal KBM terverifikasi berfungsi normal tanpa regresi.
-- [ ] Perubahan di-stage, di-commit, dan di-push ke branch `main`.
+### R7. Perbaikan Preview Foto Jurnal
+Perbaiki tampilan preview foto dokumentasi pada edit jurnal KBM yang saat ini menampilkan logo gambar pecah.
+
+### R8. Perbaikan Link Foto Jurnal
+Perbaiki error "ERR_FILE_NOT_FOUND" pada foto dokumentasi di rekap jurnal guru agar dapat diakses.
+
+### R9. Edit Jurnal di Daftar Nilai
+Izinkan guru mengedit pertemuan meskipun belum ada jurnal pada presensi sesi di daftar nilai.
+
+### R10. Freeze Kolom Daftar Nilai
+Freeze hanya kolom "NISN" dan "Nama Siswa" pada tabel identitas siswa di daftar nilai.
+
+### R11. Hapus Menu Cetak Jurnal
+Hilangkan menu "Cetak Jurnal" pada sidebar menu.
+
+### R12. Alur Otomatis Alpa
+Sistem secara otomatis memberikan keterangan "Alpa" jika guru tidak melakukan presensi datang dan pulang sesuai batas waktu yang ditentukan admin.
+
+### R13. Alur Otomatis Pulang Cepat
+Sistem secara otomatis memberikan keterangan "Pulang Cepat" jika guru melakukan presensi datang tetapi tidak melakukan presensi pulang sesuai batas waktu yang ditentukan admin.
+
+## Verification Resources
+[OPEN: Apakah Anda memiliki test suite, dokumentasi skema database, atau dokumentasi alur presensi/jurnal yang bisa digunakan tim untuk verifikasi?]

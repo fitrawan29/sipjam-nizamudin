@@ -87,8 +87,7 @@ export default function GuruJurnal({
   const [file, setFile] = useState<File | null>(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
 
-  // New R2 state variables
-  const [pertemuanKe, setPertemuanKe] = useState('');
+
   const [jamKe, setJamKe] = useState('');
   const [tujuanPembelajaran, setTujuanPembelajaran] = useState('');
   const [kehadiranMurid, setKehadiranMurid] = useState('');
@@ -340,7 +339,7 @@ export default function GuruJurnal({
         if (draft.kegiatan !== undefined) setKegiatan(draft.kegiatan);
         if (draft.catatanSiswa !== undefined) setCatatanSiswa(draft.catatanSiswa);
         if (draft.refleksi !== undefined) setRefleksi(draft.refleksi);
-        if (draft.pertemuanKe !== undefined) setPertemuanKe(draft.pertemuanKe);
+
         if (draft.jamKe !== undefined && !hasExplicitIntent) setJamKe(draft.jamKe);
         if (draft.tujuanPembelajaran !== undefined) setTujuanPembelajaran(draft.tujuanPembelajaran);
         if (draft.kehadiranMurid !== undefined) setKehadiranMurid(draft.kehadiranMurid);
@@ -380,7 +379,7 @@ export default function GuruJurnal({
         kegiatan,
         catatanSiswa,
         refleksi,
-        pertemuanKe,
+
         jamKe,
         tujuanPembelajaran,
         kehadiranMurid,
@@ -411,7 +410,7 @@ export default function GuruJurnal({
     }
   }, [
     tipeJurnal, mapel, kelas, tanggal, materi, kegiatan, catatanSiswa,
-    refleksi, pertemuanKe, jamKe, tujuanPembelajaran, kehadiranMurid,
+    refleksi, jamKe, tujuanPembelajaran, kehadiranMurid,
     kktp, konten, lokasiKbm, absensi, user?.id, user?.sekolah_id
   ]);
 
