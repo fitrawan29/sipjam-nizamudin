@@ -1879,13 +1879,6 @@ export default function RekapJurnalView({
                   <div className="text-xs text-gray-500 dark:text-gray-400 font-medium">
                     Menampilkan {filteredJurnal.length} entri jurnal {tabMode === 'kelas' ? `kelas ${kelas || ''}` : ''}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => triggerPrintWithGps()}
-                    className="btn-click bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition ml-auto"
-                  >
-                    <i className="fa-solid fa-print text-xs"></i> Cetak Dokumen
-                  </button>
                 </>
               )}
             </div>

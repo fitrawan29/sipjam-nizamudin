@@ -1175,7 +1175,7 @@ export default function GuruJurnal({
               ? matchingSession.link_bukti_foto
               : ((matchingSession.foto_kegiatan && matchingSession.foto_kegiatan !== '-') ? matchingSession.foto_kegiatan : '');
             if (savedPhoto) {
-              setPhotoPreviewUrl(prev => prev || savedPhoto);
+              setPhotoPreviewUrl(transformGoogleDriveUrl(savedPhoto));
             }
           }
 
@@ -2115,13 +2115,6 @@ export default function GuruJurnal({
                     <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
                 </h2>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => handleTabChange('rekap-pribadi')}
-                    className="btn-click text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-xs transition"
-                  >
-                    <i className="fa-solid fa-print text-xs"></i> Cetak Jurnal KBM
-                  </button>
                   {hasDraft && (
                     <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold shadow-sm">
                       <i className="fa-solid fa-cloud-arrow-down text-emerald-500"></i>
@@ -2545,20 +2538,6 @@ export default function GuruJurnal({
                       /* 1. Nomor, 2. Hari/Tanggal, 3. Materi/Konten, 4. Kelas/JP, */
                       /* 5. Keadaan Siswa, 6. Tempat/Lokasi KBM, 7. Dokumentasi, 8. Keterangan */
                       <div className="space-y-4 fade-in">
-                        {/* 1. Nomor */}
-                        <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Nomor
-                          </label>
-                          <input
-                            type="text"
-                            value={pertemuanKe ? `Pertemuan ${pertemuanKe}` : 'Otomatis'}
-                            readOnly
-                            placeholder="Nomor (Otomatis)"
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
-                          />
-                        </div>
-
                         {/* 2. Hari/Tanggal */}
                         <div>
                           <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
