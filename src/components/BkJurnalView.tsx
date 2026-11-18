@@ -755,12 +755,7 @@ export default function BkJurnalView({
     }
 
     if (!formData.catatan.trim()) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Catatan Kasus Wajib Diisi',
-        text: 'Tuliskan deskripsi permasalahan atau catatan layanan konseling.'
-      });
-      return;
+      // Catatan is now optional
     }
 
     if (!formData.tindak_lanjut.trim()) {
