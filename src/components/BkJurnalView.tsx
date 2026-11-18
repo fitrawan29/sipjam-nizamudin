@@ -329,6 +329,13 @@ export default function BkJurnalView({
   const [docPreviewUrl, setDocPreviewUrl] = useState<string | null>(null);
   const [isUploadingDoc, setIsUploadingDoc] = useState<boolean>(false);
 
+  const handleDocConfirm = async (file: File, preview: string) => {
+    setDocFile(file);
+    setDocPreviewUrl(preview);
+    setDocMode('none');
+    setFormData(prev => ({ ...prev, link_dokumen: preview }));
+  };
+
   // Student Search / Selection in Form
   const [studentSearch, setStudentSearch] = useState<string>('');
   const [studentClassFilter, setStudentClassFilter] = useState<string>('all');
