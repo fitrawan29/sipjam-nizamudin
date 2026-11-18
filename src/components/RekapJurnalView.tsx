@@ -17,8 +17,7 @@ import {
   resolveTeacherAttendancePolicy,
   isValidLokasiKbm,
   resolveTeacherLokasiKbm,
-  isJournalEligibleForKbmTeacher,
-  evaluateScheduleBlock
+  isJournalEligibleForKbmTeacher
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
@@ -45,6 +44,41 @@ function addDaysToDateStr(dateStr: string, days: number): string {
   } catch {
     return dateStr;
   }
+}
+
+function isValidJurnalKegiatan(j: any): boolean {
+  if (!j) return false;
+  const statusLower = (j.status_verifikasi || '').toLowerCase();
+  const ketLower = (j.keterangan || '').toLowerCase();
+  const mapelLower = (j.mapel || '').toLowerCase();
+  const matLower = (j.materi || j.materi_pembelajaran || j.konten || '').toLowerCase();
+
+  if (statusLower === 'tidak melaksanakan kegiatan' || statusLower === 'tidak masuk kelas' || statusLower === 'ditolak') {
+    return false;
+  }
+  if (ketLower === 'tidak melaksanakan kegiatan apapun' || ketLower === 'tidak masuk kelas') {
+    return false;
+  }
+  if (matLower === 'tidak melaksanakan kegiatan apapun' || matLower === 'tidak masuk kelas') {
+    return false;
+  }
+
+  const isKegiatanType =
+    ketLower.includes('jurnal kegiatan') ||
+    mapelLower.includes('jurnal kegiatan') ||
+    (!j.kelas || j.kelas === '-') ||
+    (!j.mapel || j.mapel === '-');
+
+  if (!isKegiatanType) return false;
+
+  const hasContent = Boolean(
+    (j.materi && j.materi !== '-') ||
+    (j.kegiatan && j.kegiatan !== '-') ||
+    (j.konten && j.konten !== '-') ||
+    (j.link_bukti_foto && j.link_bukti_foto !== '-') ||
+    (j.foto_kegiatan && j.foto_kegiatan !== '-')
+  );
+  return hasContent;
 }
 
 export default function RekapJurnalView({ 
@@ -507,6 +541,35 @@ export default function RekapJurnalView({
         );
       }
 
+      // Candidate Jurnal Kegiatan pool across the active date range
+      const candidateKegiatanJournals: any[] = [...combined];
+      if (activeMode === 'kelas') {
+        try {
+          let kq = supabase
+            .from('jurnal_pembelajaran')
+            .select('*')
+            .order('tanggal', { ascending: true });
+          if (user?.sekolah_id) {
+            kq = kq.or(`sekolah_id.eq."${user.sekolah_id}",sekolah_id.is.null`);
+          }
+          if (startDate && endDate) {
+            kq = kq.gte('tanggal', startDate).lte('tanggal', endDate);
+          } else if (bulan) {
+            const year = parseInt(bulan.split('-')[0], 10);
+            const month = parseInt(bulan.split('-')[1], 10);
+            const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+            const lastDay = new Date(year, month, 0).getDate();
+            const lastDayStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            kq = kq.gte('tanggal', firstDay).lte('tanggal', lastDayStr);
+          }
+          kq = kq.or('keterangan.ilike.%Jurnal Kegiatan%,mapel.ilike.%Jurnal Kegiatan%,kelas.eq.-');
+          const { data: kqData } = await kq;
+          if (Array.isArray(kqData)) {
+            candidateKegiatanJournals.push(...kqData);
+          }
+        } catch (_) {}
+      }
+
       // In-memory matching for activeKelas and mapel in personal mode
       if (activeMode === 'pribadi') {
         if (activeKelas) {
@@ -608,23 +671,6 @@ export default function RekapJurnalView({
           });
         } catch (_) {}
 
-        // Load active sistem_blok periods for this range
-        const allBloks: any[] = [];
-        try {
-          let bQ = supabase
-            .from('sistem_blok')
-            .select('*')
-            .lte('tanggal_mulai', endDStr)
-            .gte('tanggal_selesai', startDStr);
-          if (user?.sekolah_id) {
-            bQ = bQ.or(`sekolah_id.eq."${user.sekolah_id}",sekolah_id.is.null`);
-          }
-          const { data: bRows } = await bQ;
-          if (bRows && bRows.length > 0) {
-            allBloks.push(...bRows);
-          }
-        } catch (_) {}
-
         // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar (including multi-day spans)
         let presensiQ = supabase.from('presensi_guru').select('*');
         if (user?.sekolah_id) presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
@@ -673,6 +719,8 @@ export default function RekapJurnalView({
         const presensiRows = Array.from(combinedPresensiMap.values());
 
         const missingEntries: any[] = [];
+        const expandedKegiatanIds = new Set<string>();
+        const expandedTeacherDates = new Set<string>();
         const cur = new Date(`${startDStr}T12:00:00+08:00`);
         const end = new Date(`${endDStr}T12:00:00+08:00`);
 
@@ -716,56 +764,36 @@ export default function RekapJurnalView({
               }
             }
 
-            // Check if combined already has a matching journal (either real or auto-recorded)
-            const hasJournal = combined.some(j => 
-              j.tanggal === dateStr &&
-              isJurnalMatchJadwal(j, sched) &&
-              (activeMode === 'pribadi'
-                ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
-                : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
-            );
+            const teacherTarget = activeMode === 'pribadi'
+              ? { nama_guru: user?.nama, user_id: user?.id, sekolah_id: user?.sekolah_id }
+              : { nama_guru: sched.nama_guru, user_id: sched.user_id, sekolah_id: sched.sekolah_id };
 
-            // Periksa apakah guru telah mengisi Jurnal Kegiatan untuk tanggal ini
-            const teacherRef = {
-              id: sched.user_id || (activeMode === 'pribadi' ? user?.id : null),
-              user_id: sched.user_id || (activeMode === 'pribadi' ? user?.id : null),
-              nama: sched.nama_guru || (activeMode === 'pribadi' ? user?.nama : ''),
-              nama_guru: sched.nama_guru || (activeMode === 'pribadi' ? user?.nama : ''),
+            // Check if teacher submitted a Jurnal Kegiatan for this date
+            const teacherKegiatan = candidateKegiatanJournals.find((j: any) =>
+              j.tanggal === dateStr &&
+              isTeacherJournalMatch(teacherTarget, j) &&
+              isValidJurnalKegiatan(j)
+            );
+            const hasTeacherKegiatan = Boolean(teacherKegiatan);
+
+            const isDelinquentJournal = (j: any) => {
+              const st = (j.status_verifikasi || '').toLowerCase();
+              const kt = (j.keterangan || '').toLowerCase();
+              const mt = (j.materi || j.materi_pembelajaran || j.konten || '').toLowerCase();
+              return st === 'tidak masuk kelas' || kt === 'tidak masuk kelas' || mt === 'tidak masuk kelas' || (j.id && String(j.id).startsWith('unfilled-kbm-'));
             };
 
-            const hasTeacherKegiatan = combined.some(j =>
+            // Check if schedule already has a real submitted KBM journal
+            const hasRealKbmJournal = combined.some(j => 
               j.tanggal === dateStr &&
-              (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (j.keterangan && j.keterangan.includes('Jurnal Kegiatan'))) &&
+              isJurnalMatchJadwal(j, sched) &&
+              !isDelinquentJournal(j) &&
               (activeMode === 'pribadi'
-                ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+                ? isTeacherJournalMatch({ nama_guru: user?.nama, user_id: user?.id, sekolah_id: user?.sekolah_id }, j)
                 : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
             );
 
-            // Cek apakah jadwal ini terblokir oleh sistem blok aktif pada dateStr
-            const dateBloks = allBloks.filter(b => b.tanggal_mulai <= dateStr && b.tanggal_selesai >= dateStr);
-            const isSchedBlocked = dateBloks.length > 0 && evaluateScheduleBlock(sched, teacherRef, dateBloks).isBlocked;
-
-            // Jika guru sudah mengisi Jurnal Kegiatan dan jadwal ini terblokir (atau digantikan kegiatan khusus), jangan disintesis "tidak masuk kelas"
-            if (!hasJournal && hasTeacherKegiatan && isSchedBlocked) {
-              continue;
-            }
-
-            if (!hasJournal) {
-              // Check if teacher has excused attendance (Sakit, Izin, Cuti, Dinas Luar) on dateStr
-              const leavePresensi = (presensiRows || []).find((p: any) => {
-                const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
-                if (!matchTeacher) return false;
-                return Boolean(getPresensiLeaveCategory(p)) && isPresensiCoveringDate(p, dateStr);
-              });
-
-              const leaveType: 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar' | null = leavePresensi
-                ? getPresensiLeaveCategory(leavePresensi)
-                : null;
-
-              const isExcused = Boolean(leaveType);
-              const leaveNote = leavePresensi?.detail_izin || leavePresensi?.keterangan || (leaveType || '');
-              const leaveProof = leavePresensi?.link_bukti && leavePresensi.link_bukti !== '-' ? leavePresensi.link_bukti : '-';
-
+            if (!hasRealKbmJournal) {
               const isSchedHanyaKbm = checkIsHanyaKbm(sched.nama_guru, undefined, sched.user_id);
               const resolvedSynthLokasi = resolveTeacherLokasiKbm(
                 {
@@ -777,31 +805,104 @@ export default function RekapJurnalView({
                 user
               );
 
-              missingEntries.push({
-                id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
-                tanggal: dateStr,
-                nama_guru: sched.nama_guru || '-',
-                user_id: sched.user_id || null,
-                sekolah_id: sched.sekolah_id || user?.sekolah_id || null,
-                kelas: sched.kelas || '-',
-                mapel: sched.mata_pelajaran || sched.mapel || '-',
-                jam_ke: isSchedHanyaKbm ? '-' : (sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-')),
-                materi: isExcused ? leaveType! : 'tidak masuk kelas',
-                materi_pembelajaran: isExcused ? leaveType! : 'tidak masuk kelas',
-                kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : 'tidak masuk kelas',
-                kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
-                keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
-                status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
-                catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : undefined,
-                catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
-                tujuan_pembelajaran: '-',
-                kktp: '-',
-                konten: isExcused ? leaveType! : 'tidak masuk kelas',
-                lokasi_kbm: resolvedSynthLokasi,
-                kehadiran_murid: '-',
-                foto_kegiatan: isExcused ? leaveProof : '-',
-                link_bukti_foto: isExcused ? leaveProof : '-'
-              });
+              if (hasTeacherKegiatan && teacherKegiatan) {
+                // Convert unfilled KBM schedule into Jurnal Kegiatan row for this class & time
+                const jamDisplay = isSchedHanyaKbm ? '-' : (sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-'));
+                const convertedMateri = teacherKegiatan.materi || teacherKegiatan.materi_pembelajaran || teacherKegiatan.konten || 'Jurnal Kegiatan';
+                const convertedKegiatan = teacherKegiatan.kegiatan || teacherKegiatan.kegiatan_pembelajaran || 'Jurnal Kegiatan';
+                const convertedFoto = teacherKegiatan.link_bukti_foto && teacherKegiatan.link_bukti_foto !== '-' 
+                  ? teacherKegiatan.link_bukti_foto 
+                  : (teacherKegiatan.foto_kegiatan && teacherKegiatan.foto_kegiatan !== '-' ? teacherKegiatan.foto_kegiatan : '-');
+                const convertedRefleksi = teacherKegiatan.catatan_refleksi || teacherKegiatan.refleksi || '-';
+
+                missingEntries.push({
+                  id: `converted-kegiatan-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}-${sched.jam_ke || sched.jam_mulai || '0'}`,
+                  original_id: teacherKegiatan.id,
+                  tanggal: dateStr,
+                  timestamp: teacherKegiatan.timestamp || `${dateStr} 07:00:00`,
+                  nama_guru: sched.nama_guru || teacherKegiatan.nama_guru || user?.nama || '-',
+                  user_id: sched.user_id || teacherKegiatan.user_id || user?.id || null,
+                  sekolah_id: sched.sekolah_id || teacherKegiatan.sekolah_id || user?.sekolah_id || null,
+                  kelas: sched.kelas || '-',
+                  mapel: sched.mata_pelajaran || sched.mapel || '-',
+                  jam_ke: jamDisplay,
+                  materi: convertedMateri,
+                  materi_pembelajaran: convertedMateri,
+                  kegiatan: convertedKegiatan,
+                  kegiatan_pembelajaran: convertedKegiatan,
+                  keterangan: teacherKegiatan.keterangan || 'Jurnal Kegiatan',
+                  status_verifikasi: teacherKegiatan.status_verifikasi || 'Disetujui',
+                  catatan_admin: teacherKegiatan.catatan_admin,
+                  catatan_refleksi: convertedRefleksi,
+                  refleksi: convertedRefleksi,
+                  tujuan_pembelajaran: teacherKegiatan.tujuan_pembelajaran || '-',
+                  kktp: teacherKegiatan.kktp || '-',
+                  konten: convertedMateri,
+                  lokasi_kbm: teacherKegiatan.lokasi_kbm || resolvedSynthLokasi,
+                  kehadiran_murid: teacherKegiatan.kehadiran_murid || '-',
+                  absensi_siswa: teacherKegiatan.absensi_siswa || '-',
+                  foto_kegiatan: convertedFoto,
+                  link_bukti_foto: convertedFoto
+                });
+
+                if (teacherKegiatan.id) {
+                  expandedKegiatanIds.add(String(teacherKegiatan.id));
+                }
+                const tNameKey = (teacherTarget.nama_guru || '').toLowerCase().trim();
+                expandedTeacherDates.add(`${tNameKey}_${dateStr}`);
+              } else {
+                // Teacher did NOT submit Jurnal Kegiatan -> check existing auto-record or synthesize missing
+                const hasExistingAnyJournal = combined.some(j => 
+                  j.tanggal === dateStr &&
+                  isJurnalMatchJadwal(j, sched) &&
+                  (activeMode === 'pribadi'
+                    ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+                    : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
+                );
+
+                if (!hasExistingAnyJournal) {
+                  // Check if teacher has excused attendance (Sakit, Izin, Cuti, Dinas Luar) on dateStr
+                  const leavePresensi = (presensiRows || []).find((p: any) => {
+                    const matchTeacher = isTeacherScheduleMatch({ nama_guru: p.nama_guru, user_id: p.user_id }, sched);
+                    if (!matchTeacher) return false;
+                    return Boolean(getPresensiLeaveCategory(p)) && isPresensiCoveringDate(p, dateStr);
+                  });
+
+                  const leaveType: 'Sakit' | 'Izin' | 'Cuti' | 'Dinas Luar' | null = leavePresensi
+                    ? getPresensiLeaveCategory(leavePresensi)
+                    : null;
+
+                  const isExcused = Boolean(leaveType);
+                  const leaveNote = leavePresensi?.detail_izin || leavePresensi?.keterangan || (leaveType || '');
+                  const leaveProof = leavePresensi?.link_bukti && leavePresensi.link_bukti !== '-' ? leavePresensi.link_bukti : '-';
+
+                  missingEntries.push({
+                    id: `unfilled-kbm-${dateStr}-${sched.kelas}-${sched.mata_pelajaran || sched.mapel || 'kbm'}-${sched.nama_guru || 'guru'}`,
+                    tanggal: dateStr,
+                    nama_guru: sched.nama_guru || '-',
+                    user_id: sched.user_id || null,
+                    sekolah_id: sched.sekolah_id || user?.sekolah_id || null,
+                    kelas: sched.kelas || '-',
+                    mapel: sched.mata_pelajaran || sched.mapel || '-',
+                    jam_ke: isSchedHanyaKbm ? '-' : (sched.jam_mulai && sched.jam_selesai ? `${sched.jam_mulai} - ${sched.jam_selesai}` : (sched.jam_ke || '-')),
+                    materi: isExcused ? leaveType! : 'tidak masuk kelas',
+                    materi_pembelajaran: isExcused ? leaveType! : 'tidak masuk kelas',
+                    kegiatan: isExcused ? `Presensi ${leaveType}${leaveNote ? `: ${leaveNote}` : ''}` : 'tidak masuk kelas',
+                    kegiatan_pembelajaran: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
+                    keterangan: isExcused ? leaveType! : 'tidak masuk kelas',
+                    status_verifikasi: isExcused ? leaveType! : 'Tidak Masuk Kelas',
+                    catatan_admin: isExcused ? `Otomatis terisi sesuai presensi (${leaveType})` : undefined,
+                    catatan_refleksi: isExcused ? `Presensi ${leaveType}` : 'tidak masuk kelas',
+                    tujuan_pembelajaran: '-',
+                    kktp: '-',
+                    konten: isExcused ? leaveType! : 'tidak masuk kelas',
+                    lokasi_kbm: resolvedSynthLokasi,
+                    kehadiran_murid: '-',
+                    foto_kegiatan: isExcused ? leaveProof : '-',
+                    link_bukti_foto: isExcused ? leaveProof : '-'
+                  });
+                }
+              }
             }
           }
 
@@ -879,6 +980,33 @@ export default function RekapJurnalView({
 
           cur.setDate(cur.getDate() + 1);
         }
+
+        // 1. Remove generic Jurnal Kegiatan entries if they were expanded into individual KBM schedules
+        // 2. Remove obsolete auto-recorded "tidak masuk kelas" entries if teacher had Jurnal Kegiatan on that date
+        combined = combined.filter((j: any) => {
+          const tNameKey = (j.nama_guru || '').toLowerCase().trim();
+          const tDateKey = `${tNameKey}_${j.tanggal}`;
+          const isExpandedDate = expandedTeacherDates.has(tDateKey) || (user?.nama && expandedTeacherDates.has(`${user.nama.toLowerCase().trim()}_${j.tanggal}`));
+
+          if (expandedKegiatanIds.has(String(j.id))) {
+            return false;
+          }
+          if (isExpandedDate) {
+            const isGeneric = (!j.kelas || j.kelas === '-') && (!j.mapel || j.mapel === '-' || j.mapel === 'Jurnal Kegiatan');
+            if (isGeneric && isValidJurnalKegiatan(j)) {
+              return false;
+            }
+
+            const statusLower = (j.status_verifikasi || '').toLowerCase();
+            const ketLower = (j.keterangan || '').toLowerCase();
+            const matLower = (j.materi || j.materi_pembelajaran || j.konten || '').toLowerCase();
+            if (statusLower === 'tidak masuk kelas' || ketLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas' || (j.id && String(j.id).startsWith('unfilled-kbm-'))) {
+              return false;
+            }
+          }
+
+          return true;
+        });
 
         if (missingEntries.length > 0) {
           combined = [...combined, ...missingEntries];
@@ -1072,10 +1200,11 @@ export default function RekapJurnalView({
     if (!confirmResult.isConfirmed) return;
 
     try {
+      const targetDbId = targetJurnal.original_id || targetJurnal.id;
       let query = supabase
         .from('jurnal_pembelajaran')
         .delete()
-        .eq('id', targetJurnal.id);
+        .eq('id', targetDbId);
 
       if (user?.nama) {
         query = query.eq('nama_guru', user.nama);
@@ -1087,7 +1216,7 @@ export default function RekapJurnalView({
       const { error } = await query;
       if (error) throw error;
 
-      setJurnalData(prev => prev ? prev.filter(item => item.id !== targetJurnal.id) : []);
+      setJurnalData(prev => prev ? prev.filter(item => item.id !== targetJurnal.id && item.original_id !== targetDbId) : []);
       if (selectedJurnal?.id === targetJurnal.id) {
         setSelectedJurnal(null);
       }
@@ -1223,10 +1352,11 @@ export default function RekapJurnalView({
         payload.keterangan_penolakan = null;
       }
 
+      const targetDbId = editingJurnal.original_id || editingJurnal.id;
       let query = supabase
         .from('jurnal_pembelajaran')
         .update(payload)
-        .eq('id', editingJurnal.id);
+        .eq('id', targetDbId);
 
       if (user?.nama) {
         query = query.eq('nama_guru', user.nama);
@@ -1249,7 +1379,7 @@ export default function RekapJurnalView({
         let retryQuery = supabase
           .from('jurnal_pembelajaran')
           .update(targetedPayload)
-          .eq('id', editingJurnal.id);
+          .eq('id', targetDbId);
         if (user?.nama) retryQuery = retryQuery.eq('nama_guru', user.nama);
         if (user?.sekolah_id) retryQuery = retryQuery.eq('sekolah_id', user.sekolah_id);
         let retryRes = await retryQuery;
@@ -1268,7 +1398,7 @@ export default function RekapJurnalView({
           let fallbackQuery = supabase
             .from('jurnal_pembelajaran')
             .update(strippedPayload)
-            .eq('id', editingJurnal.id);
+            .eq('id', targetDbId);
           if (user?.nama) fallbackQuery = fallbackQuery.eq('nama_guru', user.nama);
           if (user?.sekolah_id) fallbackQuery = fallbackQuery.eq('sekolah_id', user.sekolah_id);
           retryRes = await fallbackQuery;
@@ -1342,9 +1472,38 @@ export default function RekapJurnalView({
         }
       }
 
-      // Squelch obsolete "tidak masuk kelas" auto-record if the teacher actually has a real submitted journal for this same date, class, and mapel
-      const isDelinquency = statusLower === 'tidak masuk kelas' || ketLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas';
+      // Squelch obsolete "tidak masuk kelas" auto-record if the teacher actually has a real submitted journal for this same date, class, and mapel, OR if teacher submitted Jurnal Kegiatan on that date
+      const isDelinquency = statusLower === 'tidak masuk kelas' || ketLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas' || (j.id && String(j.id).startsWith('unfilled-kbm-'));
       if (isDelinquency) {
+        // Squelch if teacher has Jurnal Kegiatan on this same date
+        const hasKegiatanOnDate = (jurnalData || []).some((rj: any) => {
+          if (rj.id === j.id) return false;
+          if (rj.tanggal !== j.tanggal) return false;
+          const teacherMatches = (!j.nama_guru || j.nama_guru === '-')
+            ? true
+            : isTeacherJournalMatch({ nama_guru: j.nama_guru, user_id: j.user_id, sekolah_id: j.sekolah_id }, rj);
+          if (!teacherMatches) return false;
+
+          const rjStatus = (rj.status_verifikasi || '').toLowerCase();
+          const rjKet = (rj.keterangan || '').toLowerCase();
+          const rjMapel = (rj.mapel || '').toLowerCase();
+          const rjMat = (rj.materi || rj.materi_pembelajaran || rj.konten || '').toLowerCase();
+
+          if (rjStatus === 'ditolak' || rjStatus === 'tidak melaksanakan kegiatan' || rjStatus === 'tidak masuk kelas') return false;
+          if (rjKet === 'tidak melaksanakan kegiatan apapun' || rjKet === 'tidak masuk kelas') return false;
+          if (rjMat === 'tidak melaksanakan kegiatan apapun' || rjMat === 'tidak masuk kelas') return false;
+
+          return (
+            rjKet.includes('jurnal kegiatan') ||
+            rjMapel.includes('jurnal kegiatan') ||
+            Boolean(rj.id && String(rj.id).startsWith('converted-kegiatan-'))
+          );
+        });
+
+        if (hasKegiatanOnDate) {
+          return false;
+        }
+
         const hasRealJournalForClass = (jurnalData || []).some((rj: any) => {
           if (rj.id === j.id) return false;
           if (rj.tanggal !== j.tanggal) return false;

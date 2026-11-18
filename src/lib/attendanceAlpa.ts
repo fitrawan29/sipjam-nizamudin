@@ -19,8 +19,7 @@ import {
   isTeacherRecordMatch,
   resolveSchoolLegacyGhmList,
   resolveSchoolAturanKehadiran,
-  resolveTeacherAttendancePolicy,
-  evaluateScheduleBlock
+  resolveTeacherAttendancePolicy
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
@@ -1069,11 +1068,55 @@ export async function recordUnfilledJournalsAndPiket(
       const { data: jbData } = await jbQ;
       const tJournals = (jbData || []).filter((j: any) => isTeacherJournalMatch(teacher, j));
       if (jurnalKBM === undefined) {
-        jurnalKBM = tJournals.filter((j: any) => j.keterangan !== 'Jurnal Kegiatan' && j.mapel !== 'Jurnal Kegiatan');
+        jurnalKBM = tJournals.filter((j: any) => 
+          !((j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) || (j.mapel && j.mapel.includes('Jurnal Kegiatan')) || (!j.kelas || j.kelas === '-'))
+        );
       }
       if (jurnalKegiatan === undefined) {
-        jurnalKegiatan = tJournals.find((j: any) => j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan') || null;
+        jurnalKegiatan = tJournals.find((j: any) => 
+          j.status_verifikasi !== 'Ditolak' &&
+          j.status_verifikasi !== 'Tidak Melaksanakan Kegiatan' &&
+          j.status_verifikasi !== 'Tidak Masuk Kelas' &&
+          (j.keterangan || '').toLowerCase() !== 'tidak melaksanakan kegiatan apapun' &&
+          (j.materi || '').toLowerCase() !== 'tidak melaksanakan kegiatan apapun' &&
+          ((j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) ||
+           (j.mapel && j.mapel.includes('Jurnal Kegiatan')) ||
+           ((j.kegiatan || j.keterangan) && (!j.kelas || j.kelas === '-')))
+        ) || null;
       }
+    }
+
+    // Determine if teacher has filled a valid Jurnal Kegiatan for evaluatedDate
+    let hasTeacherKegiatan = Boolean(
+      jurnalKegiatan &&
+      jurnalKegiatan.status_verifikasi !== 'Ditolak' &&
+      jurnalKegiatan.status_verifikasi !== 'Tidak Melaksanakan Kegiatan' &&
+      jurnalKegiatan.status_verifikasi !== 'Tidak Masuk Kelas' &&
+      (jurnalKegiatan.keterangan || '').toLowerCase() !== 'tidak melaksanakan kegiatan apapun' &&
+      (jurnalKegiatan.materi || '').toLowerCase() !== 'tidak melaksanakan kegiatan apapun'
+    );
+
+    if (!hasTeacherKegiatan) {
+      try {
+        let jkQ = client.from('jurnal_pembelajaran').select('*').eq('tanggal', evaluatedDate);
+        if (teacher.sekolah_id) jkQ = jkQ.eq('sekolah_id', teacher.sekolah_id);
+        const { data: jkRows } = await jkQ;
+        const foundJk = (jkRows || []).find((j: any) =>
+          isTeacherJournalMatch(teacher, j) &&
+          j.status_verifikasi !== 'Ditolak' &&
+          j.status_verifikasi !== 'Tidak Melaksanakan Kegiatan' &&
+          j.status_verifikasi !== 'Tidak Masuk Kelas' &&
+          (j.keterangan || '').toLowerCase() !== 'tidak melaksanakan kegiatan apapun' &&
+          (j.materi || '').toLowerCase() !== 'tidak melaksanakan kegiatan apapun' &&
+          ((j.keterangan && j.keterangan.includes('Jurnal Kegiatan')) ||
+           (j.mapel && j.mapel.includes('Jurnal Kegiatan')) ||
+           ((j.kegiatan || j.keterangan) && (!j.kelas || j.kelas === '-')))
+        );
+        if (foundJk) {
+          hasTeacherKegiatan = true;
+          if (!jurnalKegiatan) jurnalKegiatan = foundJk;
+        }
+      } catch (_) {}
     }
 
     let isPiket = state.isPiket;
@@ -1154,17 +1197,9 @@ export async function recordUnfilledJournalsAndPiket(
     const leaveProof = presensiDatang?.link_bukti && presensiDatang.link_bukti !== '-' ? presensiDatang.link_bukti : '-';
 
     // 1. KBM Schedules not filled -> Auto-record (Presensi Sakit/Izin/Dinas Luar or "tidak masuk kelas")
-    if (jadwalKBM && jadwalKBM.length > 0) {
+    // When teacher already filled Jurnal Kegiatan on evaluatedDate, do NOT record "tidak masuk kelas"
+    if (jadwalKBM && jadwalKBM.length > 0 && !hasTeacherKegiatan) {
       for (const sched of jadwalKBM) {
-        // Skip jika jadwal terblokir oleh sistem blok dan guru telah mengisi Jurnal Kegiatan
-        const isSchedBlocked = Boolean(sched.isBlocked) || Boolean(
-          state.activeBloks && state.activeBloks.length > 0 &&
-          evaluateScheduleBlock(sched, { id: teacher.user_id, user_id: teacher.user_id, nama: teacher.nama_guru, nama_guru: teacher.nama_guru }, state.activeBloks).isBlocked
-        );
-        if (Boolean(jurnalKegiatan) && isSchedBlocked) {
-          continue;
-        }
-
         const isFilled = (jurnalKBM || []).some(j => 
           j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, sched)
         );
@@ -1239,7 +1274,7 @@ export async function recordUnfilledJournalsAndPiket(
       } catch (_) {}
     }
     const needsKegiatan = !isExcusedFromActivity && !isBkTeacher && !hasSubmittedBkToday && (jadwalKBM?.length === 0 || state.isBlok || state.isDinasLuar) && !state.isNonTeachingDay;
-    if (needsKegiatan && !jurnalKegiatan) {
+    if (needsKegiatan && !jurnalKegiatan && !hasTeacherKegiatan) {
       let q = client
         .from('jurnal_pembelajaran')
         .select('*')
