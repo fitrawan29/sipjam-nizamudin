@@ -2861,7 +2861,7 @@ export default function GuruJurnal({
                               {photoPreviewUrl ? (
                                 <div className="space-y-2 w-full">
                                   <img
-                                    src={photoPreviewUrl}
+                                    src={photoPreviewUrl.startsWith('blob:') ? photoPreviewUrl : transformGoogleDriveUrl(photoPreviewUrl)}
                                     alt="Preview Foto Galeri"
                                     className="w-full max-h-48 object-cover rounded-xl shadow-sm mx-auto"
                                   />

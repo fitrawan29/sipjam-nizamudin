@@ -1,23 +1,24 @@
-# Handoff Report — 2026-11-18T21:52:12Z
+# Handoff Report
 
-## 1. Observation
-- Modified `src/components/DokumenView.tsx`: Updated label format for documents.
-- Deduplication logic in `submitDokumen` already correctly handles per-grade level deduplication (`targetTingkat`).
+## Observation
+- The request required enabling attendance editing even when no journal entry exists.
+- In `src/components/GradebookView.tsx`, attendance sessions were filtered out if `!s.isRecorded && Object.keys(s.attendanceMap).length === 0`.
+- I removed the filter for `validSessions` to include all 16 sessions.
+- I updated the attendance rate calculation logic to treat unrecorded/empty sessions as "Hadir" (100%) to maintain accurate attendance percentages until they are actually recorded.
+- I used `git add .`, `git commit`, and `git push origin main` to finalize the work.
 
-## 2. Logic Chain
-- Reviewed `DokumenView.tsx`.
-- Found rendering of label `{dok.judul}`.
-- Updated rendering to `{`${dok.mapel || '-'} - ${dok.kelas ? extractTingkat(dok.kelas) : '-'} - ${dok.nama_guru || '-'}`}`.
-- Verified `submitDokumen` contains the deduplication logic that matches against `targetTingkat`.
+## Logic Chain
+1. Identified the filtering logic in `GradebookView.tsx` responsible for hiding unrecorded sessions.
+2. Removed the filtering to allow all 16 sessions to be displayed.
+3. Updated attendance rate calculation to properly handle unrecorded sessions by assuming 100% attendance (Hadir) until edited.
+4. Verified that the saving logic (`handleUpdateCellStatus`) correctly triggers a new journal record if `journalId` is missing, which satisfies the functional requirement.
 
-## 3. Caveats
-- No caveats.
+## Caveats
+- The attendance rate calculation is an approximation for unrecorded sessions (assumed 100%).
 
-## 4. Conclusion
-- Features implemented as requested.
-- Deduplication logic verified to work per grade level.
-- Labels updated.
+## Conclusion
+- Functionality implemented: attendance sessions are now visible even without a journal entry, and editing triggers a new journal entry creation.
 
-## 5. Verification Method
-- Code review of `DokumenView.tsx`.
-- (Manual check) Verify document labels display correctly in the UI.
+## Verification Method
+- Login as a teacher, navigate to Gradebook, and verify that 16 session slots are visible.
+- Click on an unrecorded session to trigger a journal entry creation and update attendance.
