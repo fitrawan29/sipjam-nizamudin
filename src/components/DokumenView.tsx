@@ -800,7 +800,8 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
       let fileUrl = '';
       if (file) {
         try {
-          fileUrl = await uploadToDrive(file, user.nama, 'Perangkat_Pembelajaran', 'Dokumen');
+          const label = `${selectedMapel || 'Mapel'} - ${targetTingkat || 'Tingkat'} - ${user.nama || 'Guru'}`.replace(/[\\/:*?"<>|]/g, ' ');
+          fileUrl = await uploadToDrive(file, user.nama, 'Perangkat_Pembelajaran', label);
         } catch (err: any) {
           setLoading(false);
           return Swal.fire('Gagal Upload', err.message, 'error');
