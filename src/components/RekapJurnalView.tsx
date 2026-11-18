@@ -1103,6 +1103,25 @@ export default function RekapJurnalView({
   // Helper: Standarisasi pembacaan keadaan siswa (Jumlah, Hadir, Sakit, Izin, Alpa) dari format lama dan baru
   function parseKeadaanSiswaCounts(jurnal: any): { jumlah: number; hadir: number; sakit: number; izin: number; alpa: number } {
     if (!jurnal) return { jumlah: 0, hadir: 0, sakit: 0, izin: 0, alpa: 0 };
+
+    if (jurnal.absensi_siswa && typeof jurnal.absensi_siswa === 'object') {
+      try {
+        const raw = typeof jurnal.absensi_siswa === 'string' ? JSON.parse(jurnal.absensi_siswa) : jurnal.absensi_siswa;
+        if (raw && typeof raw === 'object' && ('jumlah' in raw || 'hadir' in raw)) {
+            const jumlah = raw.jumlah || 0;
+            const hadir = raw.hadir || 0;
+            const sakit = raw.sakit || 0;
+            const izin = raw.izin || 0;
+            const alpa = raw.alpa || 0;
+            
+            // Strict Validation
+            if (jumlah === (hadir + sakit + izin + alpa)) {
+                return { jumlah, hadir, sakit, izin, alpa };
+            }
+        }
+      } catch {}
+    }
+
     const rawFormatted = formatAttendanceSummary(jurnal.absensi_siswa, jurnal.detail_absen, jurnal.kehadiran_murid);
     const match = rawFormatted.match(/Total murid:\s*(\d+),\s*Hadir:\s*(\d+),\s*Izin:\s*(\d+),\s*Sakit:\s*(\d+),\s*Alpa:\s*(\d+)/i);
     if (match) {
