@@ -1,7 +1,7 @@
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import { recordUnfilledJournalsAndPiket } from '../src/lib/attendanceAlpa';
+import { recordUnfilledJournalsAndPiket, isTeacherJournalMatch } from '../src/lib/attendanceAlpa';
 
 let passed = 0;
 let failed = 0;
@@ -86,20 +86,16 @@ async function main() {
       rekapCode.includes('expandedKegiatanIds.add'),
       'RekapJurnalView must track expandedKegiatanIds'
     );
-    assert(
-      rekapCode.includes('expandedTeacherDates.add'),
-      'RekapJurnalView must track expandedTeacherDates'
-    );
   });
 
-  await runTest('1.3: RekapJurnalView removes generic Jurnal Kegiatan entries when expanded into KBM schedules', () => {
+  await runTest('1.3: RekapJurnalView removes generic Jurnal Kegiatan and delinquency via hasConvertedOnDate', () => {
     assert(
       rekapCode.includes('expandedKegiatanIds.has(String(j.id))'),
       'RekapJurnalView must remove generic Jurnal Kegiatan matching expandedKegiatanIds'
     );
     assert(
-      rekapCode.includes('expandedTeacherDates.has'),
-      'RekapJurnalView must verify expandedTeacherDates'
+      rekapCode.includes('hasConvertedOnDate'),
+      'RekapJurnalView must check hasConvertedOnDate with isTeacherJournalMatch'
     );
   });
 
@@ -111,6 +107,28 @@ async function main() {
     assert(
       rekapCode.includes('converted-kegiatan-'),
       'filteredJurnal must recognize converted-kegiatan- as valid activity squelching delinquency'
+    );
+  });
+
+  await runTest('1.5: RekapJurnalView uses valid PostgREST quotes in kq.or for Jurnal Kegiatan', () => {
+    assert(
+      rekapCode.includes('keterangan.ilike."%Jurnal Kegiatan%"'),
+      'kq.or must wrap ilike pattern with double quotes for PostgREST grammar'
+    );
+  });
+
+  await runTest('1.6: RekapJurnalView handleSaveEdit preserves generic fields for Jurnal Kegiatan', () => {
+    assert(
+      rekapCode.includes('const isKegiatanUnderlying = isEditingJurnalKegiatan || Boolean(editingJurnal.original_id)'),
+      'handleSaveEdit must determine underlying kegiatan mode'
+    );
+    assert(
+      rekapCode.includes("kelas: isKegiatanUnderlying ? '-' : editKelas"),
+      'handleSaveEdit must keep kelas as - for underlying kegiatan records in DB'
+    );
+    assert(
+      rekapCode.includes("mapel: isKegiatanUnderlying ? '-' : editMapel"),
+      'handleSaveEdit must keep mapel as - for underlying kegiatan records in DB'
     );
   });
 
@@ -229,6 +247,134 @@ async function main() {
     assert.strictEqual(hasTidakMasuk, false, 'No row should contain "tidak masuk kelas"');
     const allKegiatanMateri = combined.every(j => j.materi === 'Pelatihan Guru Penggerak');
     assert.strictEqual(allKegiatanMateri, true, 'All 4 rows must inherit the Jurnal Kegiatan materi');
+  });
+
+  await runTest('3.2: Handles teacher academic titles mismatch ("Ahmad Fauzi" vs "Ahmad Fauzi, S.Pd.") and squelches pre-existing delinquency', () => {
+    // Schedule has "Ahmad Fauzi" without title
+    const sched = {
+      nama_guru: 'Ahmad Fauzi',
+      user_id: 'usr-fauzi',
+      kelas: '7A',
+      mapel: 'Matematika',
+      hari: 'Rabu',
+      jam_ke: '1-2'
+    };
+
+    // Database Jurnal Kegiatan has "Ahmad Fauzi, S.Pd." with title
+    const teacherKegiatan = {
+      id: 'keg-fauzi-01',
+      nama_guru: 'Ahmad Fauzi, S.Pd.',
+      user_id: 'usr-fauzi',
+      tanggal: '2026-11-18',
+      kelas: '-',
+      mapel: 'Jurnal Kegiatan',
+      keterangan: 'Jurnal Kegiatan',
+      materi: 'Rapat Koordinasi Kurikulum',
+      kegiatan: 'Penyusunan RPP',
+      status_verifikasi: 'Disetujui'
+    };
+
+    // Pre-existing delinquency auto-recorded previously with title
+    const oldDelinquency = {
+      id: 'alpa-fauzi-01',
+      nama_guru: 'Ahmad Fauzi, S.Pd.',
+      user_id: 'usr-fauzi',
+      tanggal: '2026-11-18',
+      kelas: '7A',
+      mapel: 'Matematika',
+      materi: 'tidak masuk kelas',
+      keterangan: 'tidak masuk kelas',
+      status_verifikasi: 'Tidak Masuk Kelas'
+    };
+
+    let combined = [teacherKegiatan, oldDelinquency];
+    const missingEntries: any[] = [];
+    const expandedKegiatanIds = new Set<string>();
+
+    // Conversion
+    const convertedEntry = {
+      id: `converted-kegiatan-2026-11-18-${sched.kelas}-${sched.mapel}-${sched.jam_ke}`,
+      original_id: teacherKegiatan.id,
+      tanggal: '2026-11-18',
+      nama_guru: sched.nama_guru,
+      user_id: sched.user_id,
+      kelas: sched.kelas,
+      mapel: sched.mapel,
+      materi: teacherKegiatan.materi,
+      kegiatan: teacherKegiatan.kegiatan,
+      status_verifikasi: teacherKegiatan.status_verifikasi
+    };
+    missingEntries.push(convertedEntry);
+    expandedKegiatanIds.add(teacherKegiatan.id);
+
+    // Apply combined filter using isTeacherJournalMatch
+    combined = combined.filter((j: any) => {
+      if (expandedKegiatanIds.has(String(j.id))) return false;
+
+      const hasConvertedOnDate = missingEntries.some((m: any) =>
+        m.id &&
+        String(m.id).startsWith('converted-kegiatan-') &&
+        m.tanggal === j.tanggal &&
+        isTeacherJournalMatch(m, j)
+      );
+
+      if (hasConvertedOnDate) {
+        const isGeneric = (!j.kelas || j.kelas === '-') && (!j.mapel || j.mapel === '-' || j.mapel === 'Jurnal Kegiatan');
+        if (isGeneric) return false;
+
+        const statusLower = (j.status_verifikasi || '').toLowerCase();
+        const matLower = (j.materi || '').toLowerCase();
+        if (statusLower === 'tidak masuk kelas' || matLower === 'tidak masuk kelas') return false;
+      }
+
+      return true;
+    });
+
+    combined = [...combined, ...missingEntries];
+
+    assert.strictEqual(combined.length, 1, 'Exactly 1 row should remain (the converted entry)');
+    assert.strictEqual(combined[0].materi, 'Rapat Koordinasi Kurikulum');
+    assert.strictEqual(combined[0].kelas, '7A');
+    assert.strictEqual(combined[0].status_verifikasi, 'Disetujui');
+  });
+
+  await runTest('3.3: Edit payload simulation preserves generic kelas and mapel as - for converted Jurnal Kegiatan', () => {
+    const editingJurnal = {
+      id: 'converted-kegiatan-2026-11-18-7A-Matematika-1-2',
+      original_id: 'keg-fauzi-01',
+      tanggal: '2026-11-18',
+      nama_guru: 'Ahmad Fauzi, S.Pd.',
+      kelas: '7A',
+      mapel: 'Matematika',
+      keterangan: 'Jurnal Kegiatan',
+      materi: 'Rapat Koordinasi Kurikulum',
+      kegiatan: 'Penyusunan RPP',
+      status_verifikasi: 'Disetujui'
+    };
+
+    const isEditingJurnalKegiatan = Boolean(
+      editingJurnal && (
+        Boolean(editingJurnal.original_id) ||
+        editingJurnal.keterangan?.includes('Jurnal Kegiatan') ||
+        editingJurnal.mapel === 'Jurnal Kegiatan'
+      )
+    );
+    assert.strictEqual(isEditingJurnalKegiatan, true, 'Converted entry must be detected as Jurnal Kegiatan');
+
+    const isKegiatanUnderlying = isEditingJurnalKegiatan || Boolean(editingJurnal.original_id);
+    const payload = {
+      tanggal: editingJurnal.tanggal,
+      jam_ke: isKegiatanUnderlying ? '-' : '1-2',
+      mapel: isKegiatanUnderlying ? '-' : editingJurnal.mapel,
+      kelas: isKegiatanUnderlying ? '-' : editingJurnal.kelas,
+      materi: 'Rapat Koordinasi Kurikulum (Revisi)',
+      kegiatan: 'Penyusunan RPP Kolaboratif'
+    };
+
+    assert.strictEqual(payload.kelas, '-', 'Payload kelas must remain - to preserve generic nature in DB');
+    assert.strictEqual(payload.mapel, '-', 'Payload mapel must remain - to preserve generic nature in DB');
+    assert.strictEqual(payload.jam_ke, '-', 'Payload jam_ke must remain -');
+    assert.strictEqual(payload.materi, 'Rapat Koordinasi Kurikulum (Revisi)');
   });
 
   console.log('\n========================================');

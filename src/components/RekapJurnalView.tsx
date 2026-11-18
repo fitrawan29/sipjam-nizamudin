@@ -562,7 +562,7 @@ export default function RekapJurnalView({
             const lastDayStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
             kq = kq.gte('tanggal', firstDay).lte('tanggal', lastDayStr);
           }
-          kq = kq.or('keterangan.ilike.%Jurnal Kegiatan%,mapel.ilike.%Jurnal Kegiatan%,kelas.eq.-');
+          kq = kq.or('keterangan.ilike."%Jurnal Kegiatan%",mapel.ilike."%Jurnal Kegiatan%",kelas.eq.-');
           const { data: kqData } = await kq;
           if (Array.isArray(kqData)) {
             candidateKegiatanJournals.push(...kqData);
@@ -1206,7 +1206,7 @@ export default function RekapJurnalView({
         .delete()
         .eq('id', targetDbId);
 
-      if (user?.nama) {
+      if (user?.nama && !isAdmin && !isKepalaSekolah) {
         query = query.eq('nama_guru', user.nama);
       }
       if (user?.sekolah_id) {
@@ -1236,6 +1236,7 @@ export default function RekapJurnalView({
 
   const isEditingJurnalKegiatan = Boolean(
     editingJurnal && (
+      Boolean(editingJurnal.original_id) ||
       editingJurnal.keterangan?.includes('Jurnal Kegiatan') ||
       editingJurnal.mapel === 'Jurnal Kegiatan' ||
       (!editingJurnal.keterangan?.includes('Jurnal KBM') && (!editingJurnal.kelas || editingJurnal.kelas === '-') && (!editingJurnal.mapel || editingJurnal.mapel === '-'))
@@ -1321,16 +1322,18 @@ export default function RekapJurnalView({
         nextStatus = (isMateriLengkap && isKegiatanLengkap && isAbsensiLengkap && isFotoLengkap) ? 'Disetujui' : 'Menunggu';
       }
 
+      const isKegiatanUnderlying = isEditingJurnalKegiatan || Boolean(editingJurnal.original_id);
+
       const payload: any = {
         tanggal: editTanggal,
-        jam_ke: editJamKe || '-',
-        pertemuan_ke: editPertemuanKe || '-',
-        mapel: isEditingJurnalKegiatan ? (editingJurnal.mapel || '-') : editMapel,
-        kelas: isEditingJurnalKegiatan ? (editingJurnal.kelas || '-') : editKelas,
-        lokasi_kbm: isEditingJurnalKegiatan ? (editingJurnal.lokasi_kbm || '-') : editLokasiKbm,
-        lokasi: isEditingJurnalKegiatan ? (editingJurnal.lokasi || '-') : editLokasiKbm,
-        tujuan_pembelajaran: editTujuanPembelajaran || '-',
-        kktp: editKktp || '-',
+        jam_ke: isKegiatanUnderlying ? '-' : (editJamKe || '-'),
+        pertemuan_ke: isKegiatanUnderlying ? '-' : (editPertemuanKe || '-'),
+        mapel: isKegiatanUnderlying ? '-' : editMapel,
+        kelas: isKegiatanUnderlying ? '-' : editKelas,
+        lokasi_kbm: isKegiatanUnderlying ? '-' : editLokasiKbm,
+        lokasi: isKegiatanUnderlying ? '-' : editLokasiKbm,
+        tujuan_pembelajaran: isKegiatanUnderlying ? '-' : (editTujuanPembelajaran || '-'),
+        kktp: isKegiatanUnderlying ? '-' : (editKktp || '-'),
         konten: editKonten,
         materi: editKonten,
         materi_pembelajaran: editKonten,
@@ -1338,7 +1341,7 @@ export default function RekapJurnalView({
         kegiatan_pembelajaran: editKegiatan || editKonten || '-',
         catatan_refleksi: editRefleksi || '-',
         refleksi: editRefleksi || '-',
-        catatan_khusus_siswa: isEditingJurnalKegiatan ? (editingJurnal.catatan_khusus_siswa || null) : (editCatatanKhususSiswa || null),
+        catatan_khusus_siswa: isKegiatanUnderlying ? null : (editCatatanKhususSiswa || null),
         kehadiran_murid: computedKehadiran,
         link_bukti_foto: finalPhotoUrl,
         foto_kegiatan: finalPhotoUrl,
@@ -1358,7 +1361,7 @@ export default function RekapJurnalView({
         .update(payload)
         .eq('id', targetDbId);
 
-      if (user?.nama) {
+      if (user?.nama && !isAdmin && !isKepalaSekolah) {
         query = query.eq('nama_guru', user.nama);
       }
       if (user?.sekolah_id) {
@@ -1380,7 +1383,7 @@ export default function RekapJurnalView({
           .from('jurnal_pembelajaran')
           .update(targetedPayload)
           .eq('id', targetDbId);
-        if (user?.nama) retryQuery = retryQuery.eq('nama_guru', user.nama);
+        if (user?.nama && !isAdmin && !isKepalaSekolah) retryQuery = retryQuery.eq('nama_guru', user.nama);
         if (user?.sekolah_id) retryQuery = retryQuery.eq('sekolah_id', user.sekolah_id);
         let retryRes = await retryQuery;
 
@@ -1399,7 +1402,7 @@ export default function RekapJurnalView({
             .from('jurnal_pembelajaran')
             .update(strippedPayload)
             .eq('id', targetDbId);
-          if (user?.nama) fallbackQuery = fallbackQuery.eq('nama_guru', user.nama);
+          if (user?.nama && !isAdmin && !isKepalaSekolah) fallbackQuery = fallbackQuery.eq('nama_guru', user.nama);
           if (user?.sekolah_id) fallbackQuery = fallbackQuery.eq('sekolah_id', user.sekolah_id);
           retryRes = await fallbackQuery;
         }
@@ -1480,8 +1483,8 @@ export default function RekapJurnalView({
           if (rj.id === j.id) return false;
           if (rj.tanggal !== j.tanggal) return false;
           const teacherMatches = (!j.nama_guru || j.nama_guru === '-')
-            ? true
-            : isTeacherJournalMatch({ nama_guru: j.nama_guru, user_id: j.user_id, sekolah_id: j.sekolah_id }, rj);
+            ? (!j.user_id || !rj.user_id || j.user_id === rj.user_id)
+            : isTeacherJournalMatch(j, rj);
           if (!teacherMatches) return false;
 
           const rjStatus = (rj.status_verifikasi || '').toLowerCase();
@@ -1494,6 +1497,7 @@ export default function RekapJurnalView({
           if (rjMat === 'tidak melaksanakan kegiatan apapun' || rjMat === 'tidak masuk kelas') return false;
 
           return (
+            isValidJurnalKegiatan(rj) ||
             rjKet.includes('jurnal kegiatan') ||
             rjMapel.includes('jurnal kegiatan') ||
             Boolean(rj.id && String(rj.id).startsWith('converted-kegiatan-'))
@@ -1521,6 +1525,20 @@ export default function RekapJurnalView({
           return (matchJadwal || (classMatches && (mapelMatches || !j.mapel || j.mapel === '-')));
         });
         if (hasRealJournalForClass) {
+          return false;
+        }
+      }
+
+      // Singkirkan entri generik Jurnal Kegiatan jika jadwal KBM hari itu sudah di-expand ke masing-masing jadwal kelas/mapel guru tersebut
+      const isGenericKegiatan = (!j.kelas || j.kelas === '-') && (!j.mapel || j.mapel === '-' || j.mapel === 'Jurnal Kegiatan') && isValidJurnalKegiatan(j);
+      if (isGenericKegiatan) {
+        const hasConvertedOnDate = (jurnalData || []).some((rj: any) =>
+          rj.id &&
+          String(rj.id).startsWith('converted-kegiatan-') &&
+          rj.tanggal === j.tanggal &&
+          isTeacherJournalMatch(j, rj)
+        );
+        if (hasConvertedOnDate) {
           return false;
         }
       }

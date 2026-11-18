@@ -338,10 +338,12 @@ Untuk menjamin tidak akan pernah ada jurnal ganda baik di tingkat UI, jaringan, 
 │    Penyatuan sesi absensi siswa & materi jurnal dalam satu ID referensi     │
 │    In-memory cache update pada loop auto-fill izin/sakit                    │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│ 3. LAPISAN RDBMS (POSTGRESQL UNIQUE CONSTRAINT & IDEMPOTENT UPSERT):        │
-│    CONSTRAINT uq_jurnal_kbm_sesi UNIQUE (sekolah_id, tanggal, user_id,       │
-│                                           kelas, mapel)                     │
-│    Operasi Database: supabase.from('jurnal_pembelajaran').upsert(payload)   │
+│ 3. LAPISAN RDBMS (POSTGRESQL PARTIAL UNIQUE INDEX & IDEMPOTENT UPSERT):       │
+│    idx_uq_jurnal_kbm_sesi: UNIQUE (sekolah_id, tanggal, user_id, kelas, mapel)│
+│                            WHERE kelas <> '-' AND mapel <> '-'               │
+│    idx_uq_jurnal_kegiatan_sesi: UNIQUE (sekolah_id, tanggal, user_id, kegiatan)│
+│                                 WHERE (kelas = '-' OR mapel = '-')           │
+│    Operasi Database: supabase.from('jurnal_pembelajaran').upsert(payload)    │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -382,22 +384,42 @@ let existingSessionQuery = supabase
   .eq('tanggal', tgl)
   .eq('kelas', queryKelas);
 ```
+> **Catatan Kritis Sesi Kegiatan:** Untuk Jurnal Kegiatan di mana `kelas = '-'` dan `mapel = '-'`, kueri pencarian sesi yang ada juga harus menyertakan nama kegiatan (`.eq('kegiatan', kegiatan)`). Hal ini menjamin bahwa jika guru atau staf TU mengisi lebih dari 1 kegiatan pada tanggal yang sama, data sesi kegiatan pertama tidak tertukar atau tertimpa oleh kegiatan kedua.
 
-#### C. Penerapan PostgreSQL Unique Constraint & Idempotent Upsert
-Tambahkan batasan unik pada tingkat tabel PostgreSQL untuk menjamin integritas data secara mutlak:
+#### C. Penerapan PostgreSQL Partial Unique Index & Idempotent Upsert
+
+Pada perancangan awal, pembatasan unik global `UNIQUE (sekolah_id, tanggal, user_id, kelas, mapel)` tampak logis. Namun, evaluasi empiris terhadap basis kode (`GuruJurnal.tsx:1648–1655`) dan basis data live membuktikan bahwa untuk **Jurnal Kegiatan** (baik guru non-mengajar maupun staf Tata Usaha/TU), nilai `kelas` dan `mapel` selalu dinormalisasi menjadi `'-'`. Jika batasan unik kaku diterapkan secara global, maka guru atau staf TU **hanya dapat mencatat 1 kegiatan per hari**, dan input kegiatan kedua (misalnya: Sesi 1 PTS, Sesi 2 Pendampingan Laboratorium/Rapat Dinas) akan ditolak keras atau menimpa (*overwrite*) data kegiatan pertama secara destruktif!
+
+Oleh karena itu, arsitektur RDBMS yang benar dan aman di PostgreSQL adalah menerapkan **dua Partial Unique Index terpisah**:
+
 ```sql
--- Skrip DDL untuk tabel jurnal_pembelajaran
-ALTER TABLE public.jurnal_pembelajaran
-ADD CONSTRAINT uq_jurnal_kbm_sesi 
-UNIQUE (sekolah_id, tanggal, user_id, kelas, mapel);
+-- 1. Index Unik Khusus KBM: Mencegah duplikasi sesi mengajar pada kelas & mapel yang sama
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_jurnal_kbm_sesi 
+ON public.jurnal_pembelajaran (sekolah_id, tanggal, user_id, kelas, mapel) 
+WHERE kelas <> '-' AND mapel <> '-';
+
+-- 2. Index Unik Khusus Kegiatan Guru & TU: Berbasis nama kegiatan agar sah mengisi >1 kegiatan berbeda per hari
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_jurnal_kegiatan_sesi 
+ON public.jurnal_pembelajaran (sekolah_id, tanggal, user_id, kegiatan) 
+WHERE (kelas = '-' OR mapel = '-');
 ```
-Dengan adanya batasan unik ini, logika penyimpanan pada aplikasi digantikan dari pola manual *Check-Then-Act* (`SELECT -> IF NOT EXISTS -> INSERT`) menjadi operasi **Idempotent Upsert**:
+
+Dengan arsitektur Partial Unique Index ini:
+1. **Integritas Jurnal KBM:** Guru terlindungi 100% dari duplikasi sesi mengajar yang sama akibat balapan jaringan atau klik berulang.
+2. **Fleksibilitas Jurnal Kegiatan:** Guru dan staf TU leluasa mencatatkan beberapa kegiatan sah yang berbeda dalam sehari, tanpa risiko duplikasi kegiatan yang sama persis.
+3. **Penyimpanan Idempoten pada Sisi Aplikasi:** Logika penyimpanan pada aplikasi digantikan dari pola manual *Check-Then-Act* (`SELECT -> IF NOT EXISTS -> INSERT`) menjadi operasi **Idempotent Upsert**:
+
 ```ts
+// Contoh upsert idempoten yang disesuaikan dengan tipe jurnal
+const conflictColumns = tipeJurnal === 'Jurnal KBM'
+  ? 'sekolah_id,tanggal,user_id,kelas,mapel'
+  : 'sekolah_id,tanggal,user_id,kegiatan';
+
 const { data, error } = await supabase
   .from('jurnal_pembelajaran')
   .upsert(newJurnalPayload, {
-    onConflict: 'sekolah_id,tanggal,user_id,kelas,mapel',
-    ignoreDuplicates: false // Lakukan update jika data sudah ada
+    onConflict: conflictColumns,
+    ignoreDuplicates: false // Lakukan update jika entri sudah ada
   });
 ```
 
@@ -442,12 +464,20 @@ ON storage.objects FOR SELECT
 TO public
 USING (bucket_id = 'sipjam_media');
 
--- 3. Kebijakan RLS: Pengguna terautentikasi dapat mengunggah berkas
+-- 3. Kebijakan RLS: Pengguna terautentikasi dapat mengunggah berkas baru
 CREATE POLICY "Authenticated Users Upload Access"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'sipjam_media');
+
+-- 4. Kebijakan RLS: Pengguna terautentikasi wajib memiliki izin UPDATE untuk mendukung opsi upsert: true
+CREATE POLICY "Authenticated users can update own school media"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'sipjam_media');
 ```
+
+> **Catatan Teknis RLS Storage:** Opsi `upsert: true` pada klien JavaScript Supabase Storage (`supabase.storage.from('...').upload(..., { upsert: true })`) secara internal mengeksekusi operasi `UPDATE` pada tabel `storage.objects` jika berkas pada path yang sama telah ada (misalnya pada skenario *retry* jaringan atau penggantian foto jurnal/presensi). Ketiadaan kebijakan `FOR UPDATE` akan memicu penolakan izin *Row Level Security* (`new row violates row-level security policy for table "objects"`), sehingga penambahan policy `UPDATE` di atas bersifat mutlak.
 
 #### B. Modul Unggah Klien Langsung (Direct Client Upload)
 Gantikan fungsi `uploadToDrive` pada `src/lib/driveUpload.ts` dengan fungsi unggah langsung Supabase Storage:
@@ -599,7 +629,7 @@ Apakah ada presensi ditolak?              Apakah guru melakukan Presensi Pulang?
 ```
 
 1. **Skenario 1: Guru Tidak Hadir Penuh (Tanpa Presensi Datang):**
-   - Guru tidak memiliki rekaman presensi datang, tidak sedang izin/sakit multi-hari, dan memiliki kewajiban hadir hari itu.
+   - Guru tidak memiliki rekaman presensi datang, tidak sedang dalam periode izin/sakit/cuti multi-hari (`jenis_presensi` atau `status_verifikasi` atau `detail_izin` mencakup `'Cuti'`, `'Sakit'`, `'Izin'`, atau `'Dinas Luar'`), dan memiliki kewajiban hadir hari itu.
    - **Tindakan Sistem:** Menambahkan baris baru di `public.presensi_guru`:
      `tipe_absen = 'Datang'`, `jenis_presensi = 'Alpa'`, `status_verifikasi = 'Alpa'`, `catatan_admin = 'Alpa otomatis: Guru tidak hadir dan tidak melakukan presensi hingga jam batas tutup pulang.'`.
 2. **Skenario 2: Guru Presensi Datang Ditolak oleh Admin:**
@@ -619,7 +649,43 @@ Mesin evaluasi dilengkapi pengaman invariant (*safety invariant guards*) sebelum
 1. **Pengecekan Hari Minggu:** Jika hari yang dievaluasi adalah hari Minggu, proses langsung dihentikan (*early exit*).
 2. **Pengecekan Hari Sabtu (5-Hari Sekolah):** Sistem memeriksa konfigurasi `hari_sekolah` pada tabel `pengaturan`. Jika bernilai `'5'`, hari Sabtu otomatis dikecualikan.
 3. **Pengecekan Kalender Pendidikan:** Sistem memeriksa tabel `public.kalender_pendidikan`. Jika terdapat catatan bertipe `'Libur'` (baik libur nasional maupun libur khusus sekolah) tanpa adanya status penimpal bertipe `'Masuk'`, evaluasi Alpa dibatalkan untuk seluruh guru pada hari tersebut.
-4. **Perlindungan Izin/Sakit/Cuti Multi-Hari:** Sebelum memproses seorang guru, sistem memeriksa apakah tanggal evaluasi berada di dalam rentang `[tanggal_mulai, tanggal_selesai]` pada presensi izin/sakit yang berstatus disetujui. Jika berada dalam rentang tersebut, guru dilindungi dari penetapan Alpa dan dibebaskan dari kewajiban presensi pulang.
+4. **Perlindungan Eksplisit Izin/Sakit/Cuti Multi-Hari (Pencegahan Vonis Alpa Palsu):**
+   Sebelum mengevaluasi ketidakhadiran seorang guru, mesin wajib memeriksa apakah tanggal evaluasi berada di dalam rentang `[tanggal_mulai, tanggal_selesai]` pada presensi dispensasi multi-hari yang sah.
+   
+   **Temuan Kritis Evaluasi Kode (`src/lib/attendanceAlpa.ts:153–169`):**
+   Pada implementasi eksisting, filter `activeMultiDayLeaves` hanya memeriksa:
+   ```ts
+   const isLeaveType = ['Sakit', 'Izin', 'Dinas Luar'].includes(rec.jenis_presensi) ||
+     rec.detail_izin === 'Sakit' || (rec.detail_izin && rec.detail_izin.includes('Izin'));
+   ```
+   Filter ini memiliki **celah kerentanan fatal (*false positive*)**: Jika seorang guru atau staf mengajukan cuti resmi berdurasi panjang seperti **Cuti Melahirkan (90 hari)** atau **Cuti Umroh/Haji**, di mana data tersimpan dengan `jenis_presensi = 'Cuti'` dan `detail_izin = 'Cuti Melahirkan'`, ekspresi di atas mengevaluasi `isLeaveType` menjadi `false`! Akibatnya, `hasActiveMultiDayLeave` bernilai salah, dan sistem cron mengeksekusi `.insert(alpaRecord)` setiap malam selama masa cuti berlangsung. Guru yang sah cuti melahirkan divonis Alpa hingga puluhan hari berturut-turut.
+
+   **Rekomendasi Perbaikan Mutlak pada `attendanceAlpa.ts`:**
+   Daftar whitelist dispensasi wajib memasukkan `'Cuti'` secara eksplisit pada seluruh predikat:
+   ```ts
+   // src/lib/attendanceAlpa.ts
+   const activeMultiDayLeaves = (multiDayRecords || []).filter(rec => {
+     if (rec.status_verifikasi === 'Ditolak') return false;
+     if (isLateArrival(rec)) return false;
+
+     // Whitelist eksplisit: Sakit, Izin, Dinas Luar, dan CUTI
+     const isLeaveType = 
+       ['Sakit', 'Izin', 'Dinas Luar', 'Cuti'].includes(rec.jenis_presensi) ||
+       ['Sakit', 'Izin', 'Cuti'].includes(rec.status_verifikasi) ||
+       rec.detail_izin === 'Sakit' || 
+       (rec.detail_izin && (
+         rec.detail_izin.includes('Izin') || 
+         rec.detail_izin.toLowerCase().includes('cuti')
+       ));
+
+     if (!isLeaveType) return false;
+     if (rec.tanggal_mulai && rec.tanggal_selesai) {
+       return evaluatedDate >= rec.tanggal_mulai && evaluatedDate <= rec.tanggal_selesai;
+     }
+     return false;
+   });
+   ```
+   Dengan perlindungan eksplisit ini, guru yang sedang cuti melahirkan, cuti besar, maupun cuti sakit multi-hari dipastikan 100% terlindungi dari vonis Alpa otomatis oleh runner cron.
 
 ---
 
@@ -644,7 +710,7 @@ Solusi arsitektur yang direkomendasikan adalah **Arsitektur Hibrida 3-Lapis**:
 
  [LAPIS 1: PEMICU UTAMA]                 [LAPIS 1 CADANGAN: GITHUB ACTIONS]
  Vercel Cron: vercel.json                .github/workflows/auto-alpa.yml
- Trigger: 14:05 UTC (22:05 WITA)         Trigger: 14:05 UTC (22:05 WITA)
+ Trigger: 14:05 UTC (22:05 WITA)         Trigger: 15:00 UTC (23:00 WITA)
           │                                        │
           └───────────────────┬────────────────────┘
                               │ HTTP POST + Header: Authorization: Bearer <CRON_SECRET>
@@ -667,7 +733,7 @@ Solusi arsitektur yang direkomendasikan adalah **Arsitektur Hibrida 3-Lapis**:
  └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Jadwal Eksekusi:** Pukul **14:05 UTC** setiap hari, yang bertepatan dengan pukul **22:05 WITA** (5 menit setelah jam batas tutup absensi pulang default).
+1. **Jadwal Eksekusi Terkoordinasi & Pencegahan Race Condition:** Pemicu utama Vercel Cron berjalan pada pukul **14:05 UTC** (22:05 WITA, 5 menit setelah jam batas tutup absensi pulang default). Runner cadangan GitHub Actions dijadwalkan secara bertingkat (*staggered*) pada **15:00 UTC** (23:00 WITA) dengan parameter `{"force": false}`. Penjadwalan bertingkat ini mencegah dua runner mengeksekusi secara simultan pada menit yang sama, mengeliminasi balapan konkurensi pada basis data.
 2. **Keamanan Autentikasi:** Route handler memverifikasi header `Authorization: Bearer <CRON_SECRET>`. Akses tanpa token rahasia ini akan langsung ditolak dengan respon `401 Unauthorized`.
 3. **Idempotency Guard:** Logika evaluasi di `src/lib/attendanceAlpa.ts` memeriksa keberadaan record presensi sebelum melakukan pembaruan, sehingga eksekusi berulang tidak akan pernah menduplikasi data presensi maupun jurnal.
 
@@ -896,10 +962,10 @@ Rencana implementasi dirancang ke dalam 4 fase eksekusi bertahap yang aman, modu
 │                    ROADMAP IMPLEMENTASI BERTAHAP (4 FASE)                   │
 └─────────────────────────────────────────────────────────────────────────────┘
   FASE 1: MIGRASI BASIS DATA & INTEGRITAS RDBMS (Pondasi Data)
-  - Tambah Constraint Unik: uq_jurnal_kbm_sesi
+  - Tambah Partial Unique Indexes: idx_uq_jurnal_kbm_sesi & idx_uq_jurnal_kegiatan_sesi
   - Ubah Default status_verifikasi = 'Disetujui'
   - Tambah Kolom Audit Trail: rejected_by & rejected_at
-  - Pembersihan Data Macet Historis (pending:uploading)
+  - Pembersihan Data Macet Historis (pending:uploading) dengan Casting ::timestamptz
                                │
                                ▼
   FASE 2: TRANSFORMASI MEDIA & PERBAIKAN LOGIKA JURNAL (Eliminasi Bug)
@@ -929,9 +995,9 @@ Rencana implementasi dirancang ke dalam 4 fase eksekusi bertahap yang aman, modu
 ### 7.1. Tahapan Eksekusi Bertahap (Fase 1 hingga Fase 4)
 
 #### Fase 1: Migrasi Basis Data & Pembersihan Data Macet (Prioritas Utama)
-- **Tujuan:** Menutup celah RDBMS dari entri ganda, memperbarui status default jurnal, dan membersihkan 21 data presensi yang macet permanen.
-- **Risiko:** Nol (tidak merusak relasi foreign key).
-- **Hasil:** Tabel PostgreSQL siap menerima operasi *upsert* dan status *auto-approval*.
+- **Tujuan:** Mengunci integritas RDBMS melalui Partial Unique Index (memisahkan KBM dan Kegiatan Guru/TU agar tidak terjadi pemblokiran multi-kegiatan), memperbarui status default jurnal, dan membersihkan 21 data presensi yang macet permanen dengan casting aman `::timestamptz`.
+- **Risiko:** Nol (tidak merusak data kegiatan sah yang multi-sesi dan tidak merusak relasi foreign key).
+- **Hasil:** Tabel PostgreSQL siap menerima operasi *upsert* aman, bebas dari kegagalan transaksi akibat galat PostgreSQL error 42883, dan status *auto-approval* aktif.
 
 #### Fase 2: Transformasi Arsitektur Media & Refactoring Formulir Jurnal
 - **Tujuan:** Menghapus ketergantungan pada Google Drive/GAS, menghentikan penyimpanan URL blob, dan mengunci formulir dari balapan klik ganda.
@@ -961,31 +1027,36 @@ Skrip SQL berikut telah divalidasi dan siap dijalankan secara bertahap pada SQL 
 BEGIN;
 
 -- ----------------------------------------------------------------------------
--- 1. PEMBERSIHAN DATA DUPLIKAT HISTORIS SEBELUM MENAMBAH UNIQUE CONSTRAINT
+-- 1. PEMBERSIHAN DATA DUPLIKAT HISTORIS SEBELUM MEMASANG UNIQUE INDEX
 -- ----------------------------------------------------------------------------
--- Hapus entri duplikat pada jurnal_pembelajaran, pertahankan ID terbaru
+-- Hapus entri duplikat pada jurnal_pembelajaran berbasis perbandingan kronologis timestamp,
+-- mempertahankan entri terbaru dan secara ketat melindungi Jurnal Kegiatan dengan nama kegiatan berbeda.
 DELETE FROM public.jurnal_pembelajaran a
 USING public.jurnal_pembelajaran b
-WHERE a.id < b.id
+WHERE a.timestamp::timestamptz < b.timestamp::timestamptz
   AND a.sekolah_id = b.sekolah_id
   AND a.tanggal = b.tanggal
   AND a.user_id = b.user_id
-  AND a.kelas = b.kelas
-  AND a.mapel = b.mapel;
+  AND (
+    -- Kasus A: Duplikat KBM murni (kelas dan mapel sama, bukan '-')
+    (a.kelas = b.kelas AND a.mapel = b.mapel AND a.kelas <> '-' AND a.mapel <> '-')
+    OR
+    -- Kasus B: Duplikat Kegiatan Guru/TU (kegiatan sama persis pada tanggal yang sama)
+    ((a.kelas = '-' OR a.mapel = '-') AND (b.kelas = '-' OR b.mapel = '-') AND a.kegiatan = b.kegiatan)
+  );
 
 -- ----------------------------------------------------------------------------
--- 2. PENAMBAHAN UNIQUE CONSTRAINT PENCEGAH JURNAL GANDA
+-- 2. PENAMBAHAN PARTIAL UNIQUE INDEX PENCEGAH DUPLIKASI JURNAL
 -- ----------------------------------------------------------------------------
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'uq_jurnal_kbm_sesi'
-  ) THEN
-    ALTER TABLE public.jurnal_pembelajaran
-    ADD CONSTRAINT uq_jurnal_kbm_sesi 
-    UNIQUE (sekolah_id, tanggal, user_id, kelas, mapel);
-  END IF;
-END $$;
+-- Index 1: Khusus Jurnal KBM (Mencegah duplikasi kelas & mapel pada hari yang sama)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_jurnal_kbm_sesi 
+ON public.jurnal_pembelajaran (sekolah_id, tanggal, user_id, kelas, mapel) 
+WHERE kelas <> '-' AND mapel <> '-';
+
+-- Index 2: Khusus Jurnal Kegiatan Guru & TU (Berbasis nama kegiatan agar sah mengisi >1 kegiatan berbeda per hari)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_uq_jurnal_kegiatan_sesi 
+ON public.jurnal_pembelajaran (sekolah_id, tanggal, user_id, kegiatan) 
+WHERE (kelas = '-' OR mapel = '-');
 
 -- ----------------------------------------------------------------------------
 -- 3. PEMBARUAN DEFAULT VALUE UNTUK AUTO-APPROVAL JURNAL (R3)
@@ -1021,11 +1092,15 @@ ADD COLUMN IF NOT EXISTS rejected_at TIMESTAMPTZ;
 -- ----------------------------------------------------------------------------
 -- 5. PEMBERSIHAN DATA MACET HISTORIS PADA TABEL PRESENSI (R1)
 -- ----------------------------------------------------------------------------
--- Bersihkan status link_bukti 'pending:uploading' atau 'gagal_upload' yang sudah lampau (>24 jam)
+-- Bersihkan status link_bukti 'pending:uploading' atau 'gagal_upload' yang sudah lampau (>24 jam).
+-- Catatan Teknis Arsitektur: Kolom `timestamp` pada `public.presensi_guru` bertipe `text` di Supabase.
+-- Kueri wajib menyertakan casting eksplisit `::timestamptz` untuk mencegah galat fatal PostgreSQL
+-- 42883 ('operator does not exist: text < timestamp with time zone') yang akan membatalkan
+-- (rollback) seluruh blok transaksi migrasi.
 UPDATE public.presensi_guru
 SET link_bukti = '-'
 WHERE link_bukti IN ('pending:uploading', 'gagal_upload')
-  AND timestamp < (NOW() - INTERVAL '24 hours');
+  AND timestamp::timestamptz < (NOW() - INTERVAL '24 hours');
 
 -- Bersihkan data foto jurnal yang berisi URL blob lokal yang rusak
 UPDATE public.jurnal_pembelajaran
@@ -1064,6 +1139,14 @@ CREATE POLICY "Authenticated Users Upload Access"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'sipjam_media');
+
+-- Pasang Policy Pembaruan Storage: UPDATE wajib tersedia agar opsi client `upsert: true` 
+-- dapat menimpa berkas pada retry/re-upload tanpa memicu RLS violation
+DROP POLICY IF EXISTS "Authenticated users can update own school media" ON storage.objects;
+CREATE POLICY "Authenticated users can update own school media"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'sipjam_media');
 
 COMMIT;
 ```
