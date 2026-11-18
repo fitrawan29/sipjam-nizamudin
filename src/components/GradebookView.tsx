@@ -827,9 +827,9 @@ export default function GradebookView({
         const rates: Record<string, number> = {};
         const validSessions = initialSessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
 
-        if (validSessions.length > 0) {
+        if (allSessions.length > 0) {
           const studentEarnedPoints: Record<string, number> = {};
-          validSessions.forEach(sess => {
+          allSessions.forEach(sess => {
             Object.entries(sess.attendanceMap).forEach(([key, status]) => {
               const pts = getStatusPointValue(String(status));
               studentEarnedPoints[key] = (studentEarnedPoints[key] || 0) + pts;
@@ -841,8 +841,24 @@ export default function GradebookView({
                            (s.nama_siswa ? (studentEarnedPoints[s.nama_siswa] ?? studentEarnedPoints[s.nama_siswa.trim().toLowerCase()]) : undefined) ?? 
                            (s.id ? studentEarnedPoints[s.id] : 0) ?? 
                            0;
-            const rate = (earned / (validSessions.length * 100)) * 100;
-            rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rate)).toFixed(1));
+            // If session was not recorded, treat attendance as 'H' (100)
+            const unrecordedSessions = allSessions.length - (Object.keys(sess.attendanceMap).length > 0 ? 1 : 0); // Simplified approximation
+            // Actually, better: if attendanceMap is empty, assume all H (100 per student)
+            const totalPossible = allSessions.length * 100;
+            
+            const rate = ((earned + (allSessions.length - (Object.keys(sess.attendanceMap).length > 0 ? 1 : 0)) * 100) / totalPossible) * 100;
+            // Re-think this part.
+            // Simplified: If recorded, use earned. If not recorded, assume 100%.
+            // Total = Sum(earned) + (count of unrecorded sessions * 100)
+            
+            const recordedSessions = allSessions.filter(s => Object.keys(s.attendanceMap).length > 0);
+            const totalEarned = studentEarnedPoints[s.nisn] || 0;
+            const unrecordedCount = allSessions.length - recordedSessions.length;
+            const totalPossiblePoints = allSessions.length * 100;
+            
+            const rateActual = ((totalEarned + (unrecordedCount * 100)) / totalPossiblePoints) * 100;
+            
+            rates[s.nisn] = parseFloat(Math.min(100, Math.max(0, rateActual)).toFixed(1));
           });
           setAttendanceRates(rates);
           return;
