@@ -17,7 +17,8 @@ import {
   resolveTeacherAttendancePolicy,
   isValidLokasiKbm,
   resolveTeacherLokasiKbm,
-  isJournalEligibleForKbmTeacher
+  isJournalEligibleForKbmTeacher,
+  evaluateScheduleBlock
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isTeacherScheduleMatch, isTeacherJournalMatch } from '@/lib/attendanceAlpa';
@@ -607,6 +608,23 @@ export default function RekapJurnalView({
           });
         } catch (_) {}
 
+        // Load active sistem_blok periods for this range
+        const allBloks: any[] = [];
+        try {
+          let bQ = supabase
+            .from('sistem_blok')
+            .select('*')
+            .lte('tanggal_mulai', endDStr)
+            .gte('tanggal_selesai', startDStr);
+          if (user?.sekolah_id) {
+            bQ = bQ.or(`sekolah_id.eq."${user.sekolah_id}",sekolah_id.is.null`);
+          }
+          const { data: bRows } = await bQ;
+          if (bRows && bRows.length > 0) {
+            allBloks.push(...bRows);
+          }
+        } catch (_) {}
+
         // R2: Fetch presensi_guru for this period to detect teachers with Sakit, Izin, or Dinas Luar (including multi-day spans)
         let presensiQ = supabase.from('presensi_guru').select('*');
         if (user?.sekolah_id) presensiQ = presensiQ.eq('sekolah_id', user.sekolah_id);
@@ -706,6 +724,31 @@ export default function RekapJurnalView({
                 ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
                 : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
             );
+
+            // Periksa apakah guru telah mengisi Jurnal Kegiatan untuk tanggal ini
+            const teacherRef = {
+              id: sched.user_id || (activeMode === 'pribadi' ? user?.id : null),
+              user_id: sched.user_id || (activeMode === 'pribadi' ? user?.id : null),
+              nama: sched.nama_guru || (activeMode === 'pribadi' ? user?.nama : ''),
+              nama_guru: sched.nama_guru || (activeMode === 'pribadi' ? user?.nama : ''),
+            };
+
+            const hasTeacherKegiatan = combined.some(j =>
+              j.tanggal === dateStr &&
+              (j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (j.keterangan && j.keterangan.includes('Jurnal Kegiatan'))) &&
+              (activeMode === 'pribadi'
+                ? isTeacherJournalMatch({ nama_guru: user.nama, user_id: user.id, sekolah_id: user.sekolah_id }, j)
+                : (sched.nama_guru ? isTeacherJournalMatch({ nama_guru: sched.nama_guru, sekolah_id: sched.sekolah_id }, j) : true))
+            );
+
+            // Cek apakah jadwal ini terblokir oleh sistem blok aktif pada dateStr
+            const dateBloks = allBloks.filter(b => b.tanggal_mulai <= dateStr && b.tanggal_selesai >= dateStr);
+            const isSchedBlocked = dateBloks.length > 0 && evaluateScheduleBlock(sched, teacherRef, dateBloks).isBlocked;
+
+            // Jika guru sudah mengisi Jurnal Kegiatan dan jadwal ini terblokir (atau digantikan kegiatan khusus), jangan disintesis "tidak masuk kelas"
+            if (!hasJournal && hasTeacherKegiatan && isSchedBlocked) {
+              continue;
+            }
 
             if (!hasJournal) {
               // Check if teacher has excused attendance (Sakit, Izin, Cuti, Dinas Luar) on dateStr

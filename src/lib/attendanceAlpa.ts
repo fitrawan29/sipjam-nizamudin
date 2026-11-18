@@ -19,7 +19,8 @@ import {
   isTeacherRecordMatch,
   resolveSchoolLegacyGhmList,
   resolveSchoolAturanKehadiran,
-  resolveTeacherAttendancePolicy
+  resolveTeacherAttendancePolicy,
+  evaluateScheduleBlock
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
@@ -1155,6 +1156,15 @@ export async function recordUnfilledJournalsAndPiket(
     // 1. KBM Schedules not filled -> Auto-record (Presensi Sakit/Izin/Dinas Luar or "tidak masuk kelas")
     if (jadwalKBM && jadwalKBM.length > 0) {
       for (const sched of jadwalKBM) {
+        // Skip jika jadwal terblokir oleh sistem blok dan guru telah mengisi Jurnal Kegiatan
+        const isSchedBlocked = Boolean(sched.isBlocked) || Boolean(
+          state.activeBloks && state.activeBloks.length > 0 &&
+          evaluateScheduleBlock(sched, { id: teacher.user_id, user_id: teacher.user_id, nama: teacher.nama_guru, nama_guru: teacher.nama_guru }, state.activeBloks).isBlocked
+        );
+        if (Boolean(jurnalKegiatan) && isSchedBlocked) {
+          continue;
+        }
+
         const isFilled = (jurnalKBM || []).some(j => 
           j.status_verifikasi !== 'Tidak Masuk Kelas' && isJurnalMatchJadwal(j, sched)
         );
