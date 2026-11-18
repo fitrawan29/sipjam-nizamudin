@@ -29,10 +29,15 @@ Refactor `tests/navigation_consolidation_verification.test.ts` to remove interna
 - **Code layout**: Standard layout.
 
 ## Key Decisions Made
-- [TBD]
+- Deleted internal mock definitions (`RouteResolution`, `MenuItem`, `resolveCanonicalRoute`, `getConsolidatedMenuItems`, `evaluateTabRBAC`, `SubTabStateManager`) from the test file to resolve the integrity violation.
+- Imported real application logic from `../src/lib/navigation`.
+- Removed tests relying on the mock `SubTabStateManager` class, as it did not exist in the real codebase.
+- Updated test assertions to match real application logic (sidebar menu counts and RBAC fallback tabs).
 
 ## Artifact Index
 - .agents/teamwork/navigation_fixer_1/BRIEFING.md — This file
 - .agents/teamwork/navigation_fixer_1/DISPATCH.md — Original assignment
+- .agents/teamwork/navigation_fixer_1/handoff.md — Final report
 - tests/navigation_consolidation_verification.test.ts — Test file
 - src/lib/navigation.ts — Application logic
+
