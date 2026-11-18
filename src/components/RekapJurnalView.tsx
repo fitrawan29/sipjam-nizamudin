@@ -122,6 +122,7 @@ export default function RekapJurnalView({
   });
 
   const [isMasterReady, setIsMasterReady] = useState<boolean>(false);
+  const [activeBlokDates, setActiveBlokDates] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (controlledMode && controlledMode !== tabMode) {
@@ -371,6 +372,24 @@ export default function RekapJurnalView({
         let wQuery = supabase.from('wali_kelas').select('*');
         if (user?.sekolah_id) wQuery = wQuery.eq('sekolah_id', user.sekolah_id);
         const { data: wData } = await wQuery;
+
+        // Fetch active sistem_blok
+        let bQuery = supabase.from('sistem_blok').select('tanggal_mulai, tanggal_selesai');
+        if (user?.sekolah_id) bQuery = bQuery.eq('sekolah_id', user.sekolah_id);
+        const { data: bData } = await bQuery;
+        if (bData) {
+          const blkSet = new Set<string>();
+          bData.forEach(b => {
+            if (b.tanggal_mulai && b.tanggal_selesai) {
+              const start = new Date(b.tanggal_mulai + 'T12:00:00+08:00');
+              const end = new Date(b.tanggal_selesai + 'T12:00:00+08:00');
+              for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                blkSet.add(getWitaDateStr(d));
+              }
+            }
+          });
+          setActiveBlokDates(blkSet);
+        }
 
         const assignedWalis: string[] = [...waliClasses];
         if (wData && wData.length > 0) {
@@ -769,9 +788,10 @@ export default function RekapJurnalView({
               : { nama_guru: sched.nama_guru, user_id: sched.user_id, sekolah_id: sched.sekolah_id };
 
             // Check if teacher submitted a Jurnal Kegiatan for this date
+            const isBlok = activeBlokDates.has(dateStr);
             const teacherKegiatan = candidateKegiatanJournals.find((j: any) =>
               j.tanggal === dateStr &&
-              isTeacherJournalMatch(teacherTarget, j) &&
+              (isBlok ? (j.kelas === sched.kelas) : isTeacherJournalMatch(teacherTarget, j)) &&
               isValidJurnalKegiatan(j)
             );
             const hasTeacherKegiatan = Boolean(teacherKegiatan);
@@ -992,7 +1012,11 @@ export default function RekapJurnalView({
             return false;
           }
           if (isExpandedDate) {
-            // Keep generic entry, but remove obsolete auto-recorded "tidak masuk kelas" entries
+            const isGeneric = (!j.kelas || j.kelas === '-') && (!j.mapel || j.mapel === '-' || j.mapel === 'Jurnal Kegiatan');
+            if (isGeneric && isValidJurnalKegiatan(j)) {
+              return false;
+            }
+
             const statusLower = (j.status_verifikasi || '').toLowerCase();
             const ketLower = (j.keterangan || '').toLowerCase();
             const matLower = (j.materi || j.materi_pembelajaran || j.konten || '').toLowerCase();
@@ -1000,7 +1024,6 @@ export default function RekapJurnalView({
               return false;
             }
           }
-
 
           return true;
         });
