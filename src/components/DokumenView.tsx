@@ -1925,7 +1925,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                           </span>
                         </div>
                         <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight">
-                          {dok.judul}
+                          {`${dok.mapel || '-'} - ${dok.kelas ? extractTingkat(dok.kelas) : '-'} - ${dok.nama_guru || '-'}`}
                         </h4>
                         <div className="text-[10px] text-gray-500 dark:text-gray-400">
                           {dok.timestamp ? formatTimestampWita(dok.timestamp) : '-'}
