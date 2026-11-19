@@ -446,12 +446,28 @@ export default function HomeViewAdmin({
         const hasBlocked = targetClasses.some((jk: any) => jk.isBlocked);
         const allBlocked = targetCount > 0 && targetClasses.every((jk: any) => jk.isBlocked);
         let isBlokToday = allBlocked;
+        // Check if blocked by any rule (including angkatan/kelas based on weekly schedule)
+        const isTeacherBlockedByRule = (rule: any) => {
+          if (rule.tipe_target === 'sekolah' || rule.tipe_target === 'keseluruhan' || !rule.tipe_target) return true;
+          if (rule.tipe_target === 'guru') return evaluateScheduleBlock({}, teacherRef, [rule]).isBlocked;
+          if (rule.tipe_target === 'angkatan') {
+            const teacherClasses = allWeeklyJadwalList
+              .filter((j: any) => isTeacherMatch(j, teacher, linkedUser, true))
+              .map((j: any) => j.kelas);
+            return teacherClasses.some((cls: string) => isKelasInAngkatan(cls, rule.target_angkatan));
+          }
+          if (rule.tipe_target === 'kelas') {
+            const teacherClasses = allWeeklyJadwalList
+              .filter((j: any) => isTeacherMatch(j, teacher, linkedUser, true))
+              .map((j: any) => j.kelas);
+            const targetKelas = (rule.target_kelas || '').trim().toLowerCase();
+            return teacherClasses.some((cls: string) => (cls || '').trim().toLowerCase() === targetKelas);
+          }
+          return false;
+        };
+
         if (!isBlokToday && targetCount === 0 && activeBloks.length > 0) {
-          isBlokToday = activeBloks.some((b: any) => {
-            if (b.tipe_target === 'sekolah' || b.tipe_target === 'keseluruhan' || !b.tipe_target) return true;
-            if (b.tipe_target === 'guru') return evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
-            return false;
-          });
+          isBlokToday = activeBloks.some(isTeacherBlockedByRule);
         }
 
         const policy = resolveTeacherAttendancePolicy({

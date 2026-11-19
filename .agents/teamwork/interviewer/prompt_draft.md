@@ -1,49 +1,15 @@
-# Penyesuaian Fitur Akun Guru Sipjam
+Fix the bug in the blocking system where selecting "Perguru" (teacher-specific blocking) incorrectly applies the block to the entire school.
 
-[OPEN: Ini adalah proyek dengan banyak bagian yang melibatkan perubahan backend, database, dan UI. Saya menyarankan tim yang terfokus untuk menangani ini.]
-
-Integrity mode: development
+Working directory: c:\Users\Fitra\OneDrive\Documents\sipjam-app
+Integrity mode: [OPEN: Which of these should the team NOT be allowed to do? (a) Copy code from existing open-source projects; (b) Use pre-built libraries; (c) Run external scripts; (d) Read test source code before implementing; (e) None of these: no restrictions.]
 
 ## Requirements
 
-### R1. Presensi Pulang
-Tambahkan opsi kondisi "Izin", "Sakit", dan "Dinas Luar" pada presensi pulang. Jika dipilih, sistem harus mengisi otomatis sisa jurnal KBM hari itu dengan keterangan kondisi tersebut.
+### R1. Correct blocking scope logic
+Modify the blocking mechanism to ensure selecting "Perguru" correctly limits the block to the target teacher only.
 
-### R2. Perbaikan Upload Dokumen Presensi
-Analisis dan perbaiki masalah "Upload dokumen tertunda" agar foto presensi datang/pulang dapat langsung terunggah.
+### R2. [OPEN: Add regression testing? (a) Fix without tests, (b) Add regression tests]
 
-### R3. Tampilan Riwayat Kehadiran
-Satu-kan tampilan presensi datang dan pulang menjadi 1 kartu agar lebih simpel.
+## Acceptance Criteria
 
-### R4. Deduplikasi Perangkat Pembelajaran
-Identifikasi tingkatan kelas untuk mapel. Jika terdapat 2 atau lebih kelas paralel pada tingkatan yang sama, perangkat pembelajaran cukup diupload satu kali untuk tingkat tersebut.
-
-### R5. Penyesuaian Label Mapel
-Sesuaikan label mapel menjadi format "[Nama Mapel] - [Tingkatan]" (misal: "Seni Budaya - X Merdeka") untuk upload perangkat pembelajaran.
-
-### R6. Perubahan Form Jurnal KBM
-Hilangkan form pengisian "Nomor (Pertemuan ke-)" pada pembuatan dan pengeditan jurnal KBM.
-
-### R7. Perbaikan Preview Foto Jurnal
-Perbaiki tampilan preview foto dokumentasi pada edit jurnal KBM yang saat ini menampilkan logo gambar pecah.
-
-### R8. Perbaikan Link Foto Jurnal
-Perbaiki error "ERR_FILE_NOT_FOUND" pada foto dokumentasi di rekap jurnal guru agar dapat diakses.
-
-### R9. Edit Jurnal di Daftar Nilai
-Izinkan guru mengedit pertemuan meskipun belum ada jurnal pada presensi sesi di daftar nilai.
-
-### R10. Freeze Kolom Daftar Nilai
-Freeze hanya kolom "NISN" dan "Nama Siswa" pada tabel identitas siswa di daftar nilai.
-
-### R11. Hapus Menu Cetak Jurnal
-Hilangkan menu "Cetak Jurnal" pada sidebar menu.
-
-### R12. Alur Otomatis Alpa
-Sistem secara otomatis memberikan keterangan "Alpa" jika guru tidak melakukan presensi datang dan pulang sesuai batas waktu yang ditentukan admin.
-
-### R13. Alur Otomatis Pulang Cepat
-Sistem secara otomatis memberikan keterangan "Pulang Cepat" jika guru melakukan presensi datang tetapi tidak melakukan presensi pulang sesuai batas waktu yang ditentukan admin.
-
-## Verification Resources
-[OPEN: Apakah Anda memiliki test suite, dokumentasi skema database, atau dokumentasi alur presensi/jurnal yang bisa digunakan tim untuk verifikasi?]
+### [OPEN: Objective criteria for verification, e.g., a test case that fails before the fix and passes after]
