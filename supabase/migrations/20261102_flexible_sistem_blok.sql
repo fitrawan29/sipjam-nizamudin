@@ -11,7 +11,8 @@ ALTER TABLE public.sistem_blok
     ADD COLUMN IF NOT EXISTS target_angkatan TEXT DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS target_kelas TEXT DEFAULT NULL,
     ADD COLUMN IF NOT EXISTS target_guru_id UUID REFERENCES public.data_guru(id) ON DELETE SET NULL DEFAULT NULL,
-    ADD COLUMN IF NOT EXISTS target_guru_nama TEXT DEFAULT NULL;
+    ADD COLUMN IF NOT EXISTS target_guru_nama TEXT DEFAULT NULL,
+    ADD COLUMN IF NOT EXISTS target_guru_nip TEXT DEFAULT NULL;
 
 -- 2. Add time range columns to public.sistem_blok
 ALTER TABLE public.sistem_blok

@@ -287,6 +287,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         user_id: teacher.user_id,
         nama: tName,
         nama_guru: tName,
+        nip: teacher.nip || '',
+        username: teacher.nip || '',
       };
 
       // Evaluasi apakah ada aturan sistem blok yang berlaku untuk guru ini

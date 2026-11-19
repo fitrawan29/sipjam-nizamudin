@@ -433,6 +433,8 @@ export default function HomeViewAdmin({
           user_id: teacher.user_id || linkedUser?.id,
           nama: nama,
           nama_guru: nama,
+          nip: teacher.nip || linkedUser?.username || '',
+          username: linkedUser?.username || teacher.nip || '',
         };
         targetClasses = targetClasses.map((jk: any) => {
           const evalResult = evaluateScheduleBlock(jk, teacherRef, activeBloks);
@@ -1216,7 +1218,7 @@ export default function HomeViewAdmin({
                     )}
                     {activeBlokToday.tipe_target === 'guru' && (
                       <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
-                        Khusus Guru: {activeBlokToday.target_guru_nama || 'Guru Terpilih'}
+                        Khusus Guru: {activeBlokToday.target_guru_nama || 'Guru Terpilih'}{activeBlokToday.target_guru_nip ? ` (NIP: ${activeBlokToday.target_guru_nip})` : ''}
                       </span>
                     )}
                     <span className="text-xs text-gray-500 dark:text-gray-400">

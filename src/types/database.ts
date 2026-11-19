@@ -1437,6 +1437,7 @@ export type Database = {
           target_angkatan: string | null
           target_guru_id: string | null
           target_guru_nama: string | null
+          target_guru_nip: string | null
           target_kelas: string | null
           tipe_target: TargetBlokType
           updated_at: string
@@ -1455,6 +1456,7 @@ export type Database = {
           target_angkatan?: string | null
           target_guru_id?: string | null
           target_guru_nama?: string | null
+          target_guru_nip?: string | null
           target_kelas?: string | null
           tipe_target?: TargetBlokType
           updated_at?: string
@@ -1473,6 +1475,7 @@ export type Database = {
           target_angkatan?: string | null
           target_guru_id?: string | null
           target_guru_nama?: string | null
+          target_guru_nip?: string | null
           target_kelas?: string | null
           tipe_target?: TargetBlokType
           updated_at?: string

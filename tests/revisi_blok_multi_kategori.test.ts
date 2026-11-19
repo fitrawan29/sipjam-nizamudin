@@ -183,6 +183,29 @@ const evalRahma = evaluateScheduleBlock({ kelas: 'X RPL 1' }, teacherRahma, [rul
 testAssert(evalBudi.isBlocked === true, 'Kategori 4: Jadwal Pak Budi terblokir oleh aturan khusus guru');
 testAssert(evalRahma.isBlocked === false, 'Kategori 4: Guru lain (Bu Rahma) di kelas yang sama TIDAK terblokir');
 
+// Test matching berdasarkan Nama Guru dan NIP (Sesuai petunjuk user)
+const ruleGuruNip: any = {
+  id: 'blok-guru-nip',
+  sekolah_id: 'sch-1',
+  nama_kegiatan: 'Dispen Guru via NIP & Nama',
+  tanggal_mulai: '2026-11-20',
+  tanggal_selesai: '2026-11-20',
+  tipe_target: 'guru',
+  target_guru_nama: 'Budi Santoso',
+  target_guru_nip: '19850101',
+  target_guru_id: null, // Tanpa UUID sama sekali!
+  is_full_day: true,
+};
+
+const teacherBudiWithNip = { nama: 'Budi Santoso', nip: '19850101', username: '19850101' };
+const teacherRahmaDiffNip = { nama: 'Rahma Wijaya', nip: '19900202', username: '19900202' };
+
+const evalNipBudi = evaluateScheduleBlock({}, teacherBudiWithNip, [ruleGuruNip]);
+const evalNipRahma = evaluateScheduleBlock({}, teacherRahmaDiffNip, [ruleGuruNip]);
+
+testAssert(evalNipBudi.isBlocked === true, 'Pencocokan NIP & Nama: Guru target (Budi Santoso NIP 19850101) terblokir');
+testAssert(evalNipRahma.isBlocked === false, 'Pencocokan NIP & Nama: Guru lain (Rahma Wijaya NIP 19900202) TIDAK terblokir');
+
 // -------------------------------------------------------------
 // Section 5: getActiveSistemBlok Contextual Resolution
 // -------------------------------------------------------------

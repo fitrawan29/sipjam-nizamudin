@@ -70,6 +70,7 @@ export default function SistemBlokView({ user }: { user: any }) {
   const [targetKelas, setTargetKelas] = useState('');
   const [targetGuruId, setTargetGuruId] = useState('');
   const [targetGuruNama, setTargetGuruNama] = useState('');
+  const [targetGuruNip, setTargetGuruNip] = useState('');
   const [isFullDay, setIsFullDay] = useState(true);
   const [jamMulai, setJamMulai] = useState('');
   const [jamSelesai, setJamSelesai] = useState('');
@@ -86,6 +87,7 @@ export default function SistemBlokView({ user }: { user: any }) {
   const [editTargetKelas, setEditTargetKelas] = useState('');
   const [editTargetGuruId, setEditTargetGuruId] = useState('');
   const [editTargetGuruNama, setEditTargetGuruNama] = useState('');
+  const [editTargetGuruNip, setEditTargetGuruNip] = useState('');
   const [editIsFullDay, setEditIsFullDay] = useState(true);
   const [editJamMulai, setEditJamMulai] = useState('');
   const [editJamSelesai, setEditJamSelesai] = useState('');
@@ -222,6 +224,7 @@ export default function SistemBlokView({ user }: { user: any }) {
     setTargetKelas('');
     setTargetGuruId('');
     setTargetGuruNama('');
+    setTargetGuruNip('');
     setIsFullDay(true);
     setJamMulai('');
     setJamSelesai('');
@@ -291,6 +294,7 @@ export default function SistemBlokView({ user }: { user: any }) {
         target_kelas: tipeTarget === 'kelas' ? targetKelas || null : null,
         target_guru_id: tipeTarget === 'guru' ? targetGuruId || null : null,
         target_guru_nama: tipeTarget === 'guru' ? targetGuruNama || null : null,
+        target_guru_nip: tipeTarget === 'guru' ? targetGuruNip || null : null,
         is_full_day: isFullDay,
         jam_mulai: !isFullDay ? jamMulai || null : null,
         jam_selesai: !isFullDay ? jamSelesai || null : null,
@@ -312,6 +316,7 @@ export default function SistemBlokView({ user }: { user: any }) {
           target_kelas: payload.target_kelas,
           target_guru_id: payload.target_guru_id,
           target_guru_nama: payload.target_guru_nama,
+          target_guru_nip: payload.target_guru_nip,
           is_full_day: payload.is_full_day,
           jam_mulai: payload.jam_mulai,
           jam_selesai: payload.jam_selesai,
@@ -349,6 +354,18 @@ export default function SistemBlokView({ user }: { user: any }) {
     setEditTargetKelas(item.target_kelas || '');
     setEditTargetGuruId(item.target_guru_id || '');
     setEditTargetGuruNama(item.target_guru_nama || '');
+    setEditTargetGuruNip((item as any).target_guru_nip || '');
+    // Jika target_guru_id kosong tapi target_guru_nama ada, sinkronkan dengan availableTeachers
+    if (!item.target_guru_id && item.target_guru_nama) {
+      const matchedT = availableTeachers.find(t => 
+        t.nama_guru === item.target_guru_nama ||
+        ((item as any).target_guru_nip && t.nip === (item as any).target_guru_nip)
+      );
+      if (matchedT) {
+        setEditTargetGuruId(matchedT.id);
+        setEditTargetGuruNip(matchedT.nip || '');
+      }
+    }
     setEditIsFullDay(item.is_full_day ?? true);
     setEditJamMulai(item.jam_mulai || '');
     setEditJamSelesai(item.jam_selesai || '');
@@ -407,6 +424,7 @@ export default function SistemBlokView({ user }: { user: any }) {
         target_kelas: editTipeTarget === 'kelas' ? editTargetKelas || null : null,
         target_guru_id: editTipeTarget === 'guru' ? editTargetGuruId || null : null,
         target_guru_nama: editTipeTarget === 'guru' ? editTargetGuruNama || null : null,
+        target_guru_nip: editTipeTarget === 'guru' ? editTargetGuruNip || null : null,
         is_full_day: editIsFullDay,
         jam_mulai: !editIsFullDay ? editJamMulai || null : null,
         jam_selesai: !editIsFullDay ? editJamSelesai || null : null,
@@ -437,6 +455,7 @@ export default function SistemBlokView({ user }: { user: any }) {
           target_kelas: updatePayload.target_kelas,
           target_guru_id: updatePayload.target_guru_id,
           target_guru_nama: updatePayload.target_guru_nama,
+          target_guru_nip: updatePayload.target_guru_nip,
           is_full_day: updatePayload.is_full_day,
           jam_mulai: updatePayload.jam_mulai,
           jam_selesai: updatePayload.jam_selesai,
@@ -743,6 +762,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                       setTargetGuruId(gId);
                       const match = availableTeachers.find(t => t.id === gId);
                       setTargetGuruNama(match ? match.nama_guru : '');
+                      setTargetGuruNip(match ? match.nip || '' : '');
                     }}
                     required
                     className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
@@ -1021,7 +1041,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                           {item.tipe_target === 'guru' && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
                               <i className="fa-solid fa-user-tie text-[9px]"></i>
-                              <span>Guru: {item.target_guru_nama || 'Guru Terpilih'}</span>
+                              <span>Guru: {item.target_guru_nama || 'Guru Terpilih'}{(item as any).target_guru_nip ? ` (NIP: ${(item as any).target_guru_nip})` : ''}</span>
                             </span>
                           )}
 
@@ -1240,6 +1260,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                         setEditTargetGuruId(gId);
                         const match = availableTeachers.find(t => t.id === gId);
                         setEditTargetGuruNama(match ? match.nama_guru : '');
+                        setEditTargetGuruNip(match ? match.nip || '' : '');
                       }}
                       required
                       className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"

@@ -1084,6 +1084,8 @@ export function resolveActiveBlockForContext(
     user_id: guruId,
     nama: context?.namaGuru,
     nama_guru: context?.namaGuru,
+    nip: (context as any)?.nip || context?.username || '',
+    username: context?.username || '',
   };
 
   // 1. Cek apakah ada blok spesifik guru
@@ -1291,37 +1293,61 @@ export function evaluateScheduleBlock(
       );
     } else if (targetType === 'guru') {
       const targetGuruId = (rule.target_guru_id || (rule as any).target_id || '').trim().toLowerCase();
-      const targetGuruNama = (rule.target_guru_nama || '').trim().toLowerCase();
+      const targetGuruNama = (rule.target_guru_nama || '').trim();
+      const targetGuruNip = String((rule as any).target_guru_nip || '').trim().toLowerCase();
 
       const teacherId = String(teacher.id || '').trim().toLowerCase();
       const teacherUserId = String(teacher.user_id || '').trim().toLowerCase();
       const schedUserId = String(schedule.user_id || '').trim().toLowerCase();
       const schedGuruId = String(schedule.guru_id || '').trim().toLowerCase();
 
-      const teacherNama = String(teacher.nama || teacher.nama_guru || '').trim().toLowerCase();
-      const schedNamaGuru = String(schedule.nama_guru || '').trim().toLowerCase();
+      const teacherNama = String(teacher.nama || teacher.nama_guru || '').trim();
+      const schedNamaGuru = String(schedule.nama_guru || '').trim();
+      const teacherNip = String(teacher.nip || teacher.username || '').trim().toLowerCase();
 
+      // 1. Pencocokan NIP (Utama sesuai rekomendasi user)
+      const nipMatches = Boolean(
+        targetGuruNip &&
+        (
+          (teacherNip && (teacherNip === targetGuruNip || teacherNip.includes(targetGuruNip) || targetGuruNip.includes(teacherNip))) ||
+          (schedNamaGuru && (schedNamaGuru.toLowerCase() === targetGuruNip || schedNamaGuru.toLowerCase().includes(targetGuruNip) || targetGuruNip.includes(schedNamaGuru.toLowerCase())))
+        )
+      );
+
+      // 2. Pencocokan Nama Guru (Utama sesuai rekomendasi user)
+      const namaMatches = Boolean(
+        targetGuruNama &&
+        (
+          (teacherNama && (
+            isTeacherNameEquivalent(targetGuruNama, teacherNama, true) ||
+            teacherNama.toLowerCase().includes(targetGuruNama.toLowerCase()) ||
+            targetGuruNama.toLowerCase().includes(teacherNama.toLowerCase())
+          )) ||
+          (schedNamaGuru && (
+            isTeacherNameEquivalent(targetGuruNama, schedNamaGuru, true) ||
+            schedNamaGuru.toLowerCase().includes(targetGuruNama.toLowerCase()) ||
+            targetGuruNama.toLowerCase().includes(schedNamaGuru.toLowerCase())
+          ))
+        )
+      );
+
+      // 3. Pencocokan ID / UUID (Safety fallback)
       const idMatches = Boolean(
         targetGuruId &&
         (targetGuruId === teacherId ||
           targetGuruId === teacherUserId ||
           targetGuruId === schedUserId ||
-          targetGuruId === schedGuruId)
-      );
-
-      const namaMatches = Boolean(
-        targetGuruNama &&
-        ((teacherNama && (teacherNama.includes(targetGuruNama) || targetGuruNama.includes(teacherNama))) ||
-          (schedNamaGuru && (schedNamaGuru.includes(targetGuruNama) || targetGuruNama.includes(schedNamaGuru))))
+          targetGuruId === schedGuruId ||
+          (teacherNip && targetGuruId === teacherNip))
       );
 
       const fallbackMatches = Boolean(
         targetGuruId &&
-        ((teacherNama && teacherNama.includes(targetGuruId)) ||
-          (schedNamaGuru && schedNamaGuru.includes(targetGuruId)))
+        ((teacherNama && teacherNama.toLowerCase().includes(targetGuruId)) ||
+          (schedNamaGuru && schedNamaGuru.toLowerCase().includes(targetGuruId)))
       );
 
-      targetMatches = idMatches || namaMatches || fallbackMatches;
+      targetMatches = nipMatches || namaMatches || idMatches || fallbackMatches;
     }
 
     if (!targetMatches) continue;
@@ -2002,7 +2028,14 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         (b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai))
       );
 
-      const teacherRef = { nama: namaGuru, nama_guru: namaGuru, id: userId || '', user_id: userId || '' };
+      const teacherRef = {
+        nama: namaGuru,
+        nama_guru: namaGuru,
+        id: userId || '',
+        user_id: userId || '',
+        nip: username || '',
+        username: username || '',
+      };
       const teacherBlockRule = activeBloks.find(b => evaluateScheduleBlock({}, teacherRef, [b]).isBlocked);
       const activeBlock = wholeSchoolFullDay || teacherBlockRule;
 
@@ -2284,7 +2317,9 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       id: teacherDataGuruId || userId,
       user_id: userId,
       nama: namaGuru,
-      nama_guru: namaGuru,
+      nama_guru: teacherCanonicalNama || namaGuru,
+      nip: teacherDataGuruNip || username || '',
+      username: username || '',
     };
 
     state.jadwalKBM = (state.jadwalKBM || []).map((jk: any) => {
