@@ -306,6 +306,14 @@ export default function SistemBlokView({ user }: { user: any }) {
           tanggal_selesai: payload.tanggal_selesai,
           deskripsi: payload.deskripsi,
           sekolah_id: payload.sekolah_id,
+          tipe_target: payload.tipe_target,
+          target_angkatan: payload.target_angkatan,
+          target_kelas: payload.target_kelas,
+          target_guru_id: payload.target_guru_id,
+          target_guru_nama: payload.target_guru_nama,
+          is_full_day: payload.is_full_day,
+          jam_mulai: payload.jam_mulai,
+          jam_selesai: payload.jam_selesai,
         };
         const res = await supabase.from('sistem_blok').insert([basePayload]);
         error = res.error;
@@ -423,6 +431,14 @@ export default function SistemBlokView({ user }: { user: any }) {
           tanggal_selesai: updatePayload.tanggal_selesai,
           deskripsi: updatePayload.deskripsi,
           updated_at: updatePayload.updated_at,
+          tipe_target: updatePayload.tipe_target,
+          target_angkatan: updatePayload.target_angkatan,
+          target_kelas: updatePayload.target_kelas,
+          target_guru_id: updatePayload.target_guru_id,
+          target_guru_nama: updatePayload.target_guru_nama,
+          is_full_day: updatePayload.is_full_day,
+          jam_mulai: updatePayload.jam_mulai,
+          jam_selesai: updatePayload.jam_selesai,
         };
         let fallbackQ = supabase.from('sistem_blok').update(baseUpdate).eq('id', editingItem.id);
         if (user?.sekolah_id) {
