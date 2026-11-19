@@ -584,7 +584,14 @@ export default function RekapJurnalView({
           kq = kq.or('keterangan.ilike."%Jurnal Kegiatan%",mapel.ilike."%Jurnal Kegiatan%",kelas.eq.-');
           const { data: kqData } = await kq;
           if (Array.isArray(kqData)) {
-            candidateKegiatanJournals.push(...kqData);
+            // Deduplikasi dengan menggabungkan hasil kueri tambahan ke pool utama
+            const existingIds = new Set(candidateKegiatanJournals.map(j => j.id));
+            kqData.forEach(item => {
+              if (!existingIds.has(item.id)) {
+                candidateKegiatanJournals.push(item);
+                existingIds.add(item.id);
+              }
+            });
           }
         } catch (_) {}
       }
