@@ -332,9 +332,11 @@ export async function uploadToDrive(
           onProgress?.(100, 'Unggahan berhasil!');
           resolve(json.url);
         } else {
+          console.error('[driveUpload] Server response error:', json);
           reject(new Error(json.error || json.message || 'Gagal mengupload file ke Google Drive.'));
         }
       } catch (err: any) {
+        console.error('[driveUpload] Exception:', err);
         reject(new Error('Koneksi terputus saat mengupload file: ' + err.message));
       }
     };

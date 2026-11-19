@@ -1195,10 +1195,30 @@ export default function HomeViewAdmin({
                   <i className="fa-solid fa-layer-group"></i>
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
                       Sistem Blok Aktif
                     </span>
+                    {activeBlokToday.tipe_target === 'sekolah' && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                        Seluruh Sekolah
+                      </span>
+                    )}
+                    {activeBlokToday.tipe_target === 'angkatan' && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                        Angkatan {activeBlokToday.target_angkatan}
+                      </span>
+                    )}
+                    {activeBlokToday.tipe_target === 'kelas' && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                        Dispen Kelas {activeBlokToday.target_kelas}
+                      </span>
+                    )}
+                    {activeBlokToday.tipe_target === 'guru' && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
+                        Khusus Guru: {activeBlokToday.target_guru_nama || 'Guru Terpilih'}
+                      </span>
+                    )}
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {activeBlokToday.tanggal_mulai} s/d {activeBlokToday.tanggal_selesai}
                     </span>

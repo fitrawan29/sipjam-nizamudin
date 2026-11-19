@@ -274,11 +274,48 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       const tName = (teacher.nama_guru || '').trim();
       const tNameLower = tName.toLowerCase();
 
-      if (isTeacherOnLeaveOrAlpa(teacher, !activeBlok)) {
+      // Find scheduled classes for this teacher today
+      const teacherSchedules = scheduleList.filter(s => {
+        if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
+        const sName = (s.nama_guru || '').toLowerCase().trim();
+        if (!sName || !tNameLower) return false;
+        return isTeacherRecordMatch(s, teacher, null, { allowSingleWordFirstToken: true });
+      });
+
+      const teacherRef = {
+        id: teacher.id,
+        user_id: teacher.user_id,
+        nama: tName,
+        nama_guru: tName,
+      };
+
+      // Evaluasi apakah ada aturan sistem blok yang berlaku untuk guru ini
+      const teacherBlokRule = (activeBloks || []).find((b: any) => {
+        const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
+        if (tgt === 'sekolah' || tgt === 'keseluruhan' || !b.tipe_target) return true;
+        if (tgt === 'guru') {
+          return evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
+        }
+        if (tgt === 'angkatan') {
+          return teacherSchedules.some(s => isKelasInAngkatan(s.kelas, b.target_angkatan || b.target_id));
+        }
+        if (tgt === 'kelas') {
+          const ruleK = (b.target_kelas || b.target_id || '').trim().toLowerCase();
+          return teacherSchedules.some(s => {
+            const sk = (s.kelas || '').trim().toLowerCase();
+            return sk === ruleK || sk.replace(/[\s_-]+/g, '') === ruleK.replace(/[\s_-]+/g, '');
+          });
+        }
+        return false;
+      });
+
+      const isTeacherInBlok = Boolean(teacherBlokRule);
+
+      if (isTeacherOnLeaveOrAlpa(teacher, !isTeacherInBlok)) {
         continue;
       }
 
-      if (activeBlok) {
+      if (isTeacherInBlok && teacherBlokRule) {
         const hasSubmittedBkToday = bkJurnalList.some((b: any) => {
           if (b.status_verifikasi === 'Ditolak') return false;
           if (teacher.user_id && b.guru_id && String(b.guru_id) === String(teacher.user_id)) return true;
@@ -290,12 +327,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
         }
         // Teachers exempt on non-teaching days do not need to fill block journals if they have no classes today
         if (isExemptTeacher(teacher)) {
-          const hasTeachingToday = scheduleList.some(s => {
-            if (teacher.user_id && s.user_id && String(s.user_id) === String(teacher.user_id)) return true;
-            const sName = (s.nama_guru || '').toLowerCase().trim();
-            if (!sName || !tNameLower) return false;
-            return sName === tNameLower || (sName.length >= 3 && tNameLower.includes(sName)) || (tNameLower.length >= 3 && sName.includes(tNameLower));
-          });
+          const hasTeachingToday = teacherSchedules.length > 0;
           if (!hasTeachingToday) {
             continue;
           }
@@ -318,7 +350,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
             sekolah_id: sekolahId,
             category: 'jurnal',
             title: 'Pengingat Jurnal Kegiatan (Sistem Blok)',
-            body: `Halo ${tName}, hari ini berlaku Sistem Blok (${activeBlok.nama_kegiatan}). Mohon lengkapi Jurnal Kegiatan Anda.`,
+            body: `Halo ${tName}, hari ini berlaku Sistem Blok (${teacherBlokRule.nama_kegiatan}). Mohon lengkapi Jurnal Kegiatan Anda.`,
             url: '/?view=view-guru-jurnal'
           });
         }

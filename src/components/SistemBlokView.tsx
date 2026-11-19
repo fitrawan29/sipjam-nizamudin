@@ -94,6 +94,7 @@ export default function SistemBlokView({ user }: { user: any }) {
   // Search & Filter
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<'Semua' | 'Aktif' | 'Akan Datang' | 'Selesai'>('Semua');
+  const [filterKategori, setFilterKategori] = useState<'Semua' | 'sekolah' | 'angkatan' | 'kelas' | 'guru'>('Semua');
 
   const todayStr = getWitaDateStr();
 
@@ -504,6 +505,9 @@ export default function SistemBlokView({ user }: { user: any }) {
     return blokList.filter(item => {
       const status = getStatus(item.tanggal_mulai, item.tanggal_selesai);
       if (filterStatus !== 'Semua' && status !== filterStatus) return false;
+
+      const itemTgt = (item.tipe_target || 'sekolah').toLowerCase().trim();
+      if (filterKategori !== 'Semua' && itemTgt !== filterKategori) return false;
 
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -917,6 +921,31 @@ export default function SistemBlokView({ user }: { user: any }) {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Filter Kategori 4 Jenis Blok */}
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1">
+          {[
+            { id: 'Semua', label: 'Semua Kategori', icon: 'fa-cubes' },
+            { id: 'sekolah', label: 'Seluruh Sekolah', icon: 'fa-school' },
+            { id: 'angkatan', label: 'Per Tingkat/Angkatan', icon: 'fa-graduation-cap' },
+            { id: 'kelas', label: 'Per Kelas (Dispen)', icon: 'fa-chalkboard-user' },
+            { id: 'guru', label: 'Per Guru', icon: 'fa-user-tie' },
+          ].map(cat => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setFilterKategori(cat.id as any)}
+              className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition border flex items-center gap-1.5 ${
+                filterKategori === cat.id
+                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
+                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              <i className={`fa-solid ${cat.icon} text-[10px]`}></i>
+              <span>{cat.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* Content List / Table */}

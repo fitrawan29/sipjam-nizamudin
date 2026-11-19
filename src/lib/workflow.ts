@@ -1030,17 +1030,27 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string,
       query = query.eq('sekolah_id', sekolahId);
     }
 
-    // [FIX]: Filter blok berdasarkan guru jika guruId disediakan, 
-    // atau jika tipe_target adalah 'sekolah'
-    if (guruId) {
-      query = query.or(`tipe_target.eq.sekolah,target_guru_id.eq.${guruId}`);
-    }
-
     query = query.order('created_at', { ascending: false });
 
     const { data, error } = await query;
     if (error || !data || data.length === 0) return [];
-    return data as SistemBlok[];
+    
+    const list = data as SistemBlok[];
+    // Jika guruId disediakan, saring hanya aturan yang relevan:
+    // blok sekolah, angkatan, kelas, serta blok yang menargetkan guru tersebut
+    if (guruId) {
+      const cleanGid = String(guruId).trim().toLowerCase();
+      return list.filter(b => {
+        const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
+        if (tgt === 'guru') {
+          const ruleGid = String(b.target_guru_id || (b as any).target_id || '').trim().toLowerCase();
+          return ruleGid === cleanGid;
+        }
+        return true;
+      });
+    }
+
+    return list;
   } catch (err) {
     console.warn('Error fetching active sistem_bloks:', err);
     return [];
@@ -1048,10 +1058,101 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string,
 }
 
 /**
+ * Helper: Evaluasi kecocokan sistem blok terhadap konteks guru / jadwal / kelas secara murni di memori.
+ */
+export function resolveActiveBlockForContext(
+  sorted: SistemBlok[],
+  guruId?: string,
+  context?: {
+    namaGuru?: string;
+    username?: string;
+    schedules?: any[];
+    kelas?: string;
+  }
+): SistemBlok | null {
+  if (!sorted || sorted.length === 0) return null;
+
+  // Jika tanpa guruId dan tanpa context guru/kelas, kembalikan aturan prioritas pertama (backward-compatible)
+  if (!guruId && !context?.namaGuru && !context?.kelas) {
+    return sorted[0];
+  }
+
+  // Jika ada konteks kelas spesifik yang dicek
+  if (context?.kelas) {
+    const matchingClassBlock = sorted.find(b => {
+      const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
+      if (tgt === 'sekolah' || tgt === 'keseluruhan' || !b.tipe_target) return true;
+      if (tgt === 'angkatan') return isKelasInAngkatan(context.kelas, b.target_angkatan || (b as any).target_id || '');
+      if (tgt === 'kelas') {
+        const targetK = (b.target_kelas || (b as any).target_id || '').trim().toLowerCase();
+        const schedK = context.kelas!.trim().toLowerCase();
+        return targetK === schedK || targetK.replace(/[\s_-]+/g, '') === schedK.replace(/[\s_-]+/g, '');
+      }
+      return false;
+    });
+    if (matchingClassBlock) return matchingClassBlock;
+  }
+
+  const teacherRef = {
+    id: guruId,
+    user_id: guruId,
+    nama: context?.namaGuru,
+    nama_guru: context?.namaGuru,
+  };
+
+  // 1. Cek apakah ada blok spesifik guru
+  const guruBlock = sorted.find(b => {
+    const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
+    return tgt === 'guru' && evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
+  });
+  if (guruBlock) return guruBlock;
+
+  // 2. Evaluasi terhadap daftar jadwal guru jika disediakan dalam context
+  if (context?.schedules && context.schedules.length > 0) {
+    for (const s of context.schedules) {
+      const evalRes = evaluateScheduleBlock(s, teacherRef, sorted);
+      if (evalRes.isBlocked && evalRes.blockRule) {
+        return evalRes.blockRule;
+      }
+    }
+  }
+
+  // 3. Cek blok seluruh sekolah (full day atau irisan waktu)
+  const schoolBlock = sorted.find(b => {
+    const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
+    return tgt === 'sekolah' || tgt === 'keseluruhan' || !b.tipe_target;
+  });
+  if (schoolBlock) return schoolBlock;
+
+  // Jika context schedules diberikan secara eksplisit tapi tidak ada jadwal yang terblokir
+  if (context?.schedules !== undefined) {
+    return null;
+  }
+
+  // Fallback jika hanya guruId tanpa info jadwal: hanya kembalikan jika sorted[0] adalah sekolah/guru
+  const first = sorted[0];
+  const firstTgt = (first.tipe_target || 'sekolah').toLowerCase().trim();
+  if (firstTgt === 'sekolah' || firstTgt === 'guru' || firstTgt === 'keseluruhan' || !first.tipe_target) {
+    return first;
+  }
+  return null;
+}
+
+/**
  * Helper: Ambil data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
  * Backward-compatible wrapper mengembalikan aturan pertama yang aktif.
  */
-export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string, guruId?: string): Promise<any | null> {
+export async function getActiveSistemBlok(
+  dateStr?: string,
+  sekolahId?: string,
+  guruId?: string,
+  context?: {
+    namaGuru?: string;
+    username?: string;
+    schedules?: any[];
+    kelas?: string;
+  }
+): Promise<any | null> {
   const bloks = await getActiveSistemBloks(dateStr, sekolahId, guruId);
   if (bloks.length === 0) return null;
   // Prioritize blocks: 'guru' > 'kelas' > 'angkatan' > 'sekolah'
@@ -1059,7 +1160,7 @@ export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string, 
     const order: Record<string, number> = { 'guru': 1, 'kelas': 2, 'angkatan': 3, 'sekolah': 4 };
     return (order[a.tipe_target] || 99) - (order[b.tipe_target] || 99);
   });
-  return sorted[0];
+  return resolveActiveBlockForContext(sorted, guruId, context);
 }
 
 /**
@@ -1193,7 +1294,15 @@ export function evaluateScheduleBlock(
     } else if (targetType === 'kelas') {
       const targetKelas = (rule.target_kelas || (rule as any).target_id || '').trim().toLowerCase();
       const schedKelas = (schedule.kelas || '').trim().toLowerCase();
-      targetMatches = Boolean(targetKelas && schedKelas === targetKelas);
+      const normK = (s: string) => (s || '').toLowerCase().replace(/^kelas\s+/i, '').trim();
+      const nTarget = normK(targetKelas);
+      const nSched = normK(schedKelas);
+      targetMatches = Boolean(
+        nTarget && (
+          nSched === nTarget ||
+          nSched.replace(/[\s_-]+/g, '') === nTarget.replace(/[\s_-]+/g, '')
+        )
+      );
     } else if (targetType === 'guru') {
       const targetGuruId = (rule.target_guru_id || (rule as any).target_id || '').trim().toLowerCase();
       const targetGuruNama = (rule.target_guru_nama || '').trim().toLowerCase();
@@ -1920,15 +2029,6 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
           tanggal_mulai: activeBlock.tanggal_mulai,
           tanggal_selesai: activeBlock.tanggal_selesai,
         };
-      } else if (activeBloks.length > 0) {
-        const firstBlok = activeBloks[0];
-        state.blokInfo = {
-          id: firstBlok.id,
-          nama_kegiatan: firstBlok.nama_kegiatan,
-          deskripsi: firstBlok.deskripsi,
-          tanggal_mulai: firstBlok.tanggal_mulai,
-          tanggal_selesai: firstBlok.tanggal_selesai,
-        };
       }
     } catch (bErr) {
       console.warn('Error checking sistem_blok in workflow:', bErr);
@@ -2256,8 +2356,12 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         state.blokInfo = null;
       }
     } else if (!hasBlocked) {
+      state.isBlok = false;
+      state.hasBlockedSchedule = false;
       state.blokInfo = null;
     } else {
+      state.isBlok = false;
+      state.hasBlockedSchedule = true;
       const firstBlockedRule = state.jadwalKBM.find((jk: any) => jk.isBlocked)?.blockRule;
       if (firstBlockedRule) {
         state.blokInfo = {
@@ -2273,7 +2377,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // 3. Cek Piket Hari Ini (case-insensitive matching)
     // Guru pengecualian (wajib hadir hanya di hari mengajar) dibebaskan dari piket jika tidak ada jadwal hari ini
     const isExemptAndNoSchedule = isTeacherExempt && state.jadwalKBM.length === 0;
-    if (!isExemptAndNoSchedule) {
+    if (!(state.isBlok && isExemptAndNoSchedule)) {
+      if (!isExemptAndNoSchedule) {
       // Check penugasan_piket directly
       let penugasanQuery = supabase
         .from('penugasan_piket')
@@ -2330,6 +2435,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
           }
         }
       }
+    }
     }
 
     if (isExemptAndNoSchedule) {
@@ -2466,7 +2572,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       state.departureState = state.presensiPulang?.jenis_presensi || null;
     }
 
-    const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || (state.isPiket && !isExemptAndNoSchedule);
+    const hasTeachingObligation = (state.isBlok && !isTeacherExempt) || state.jadwalKBM.length > 0 || state.isPiket;
 
     // Evaluasi kewajiban kehadiran & penentuan Alpa
     if (!state.presensiDatang) {

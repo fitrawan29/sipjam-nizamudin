@@ -440,7 +440,7 @@ export default function HomeViewGuru({
       (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))
     );
 
-    if (isExemptNonTeachingDay) { // dailyState.isNonTeachingDay && dailyState.aturanKehadiran === 'Hari_Mengajar_Saja'
+    if (dailyState.isNonTeachingDay) {
       if (!dailyState.presensiDatang) {
         steps.push({ label: 'Bebas Presensi', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Kehadiran)', icon: 'fa-calendar-check' });
         return steps;
@@ -1153,7 +1153,7 @@ export default function HomeViewGuru({
                   </button>
                 </div>
               </div>
-            ) : (dailyState?.isNonTeachingDay || (dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0))) ? (
+            ) : dailyState?.isNonTeachingDay ? (
               <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
                 <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
                   <i className="fa-solid fa-calendar-check"></i>

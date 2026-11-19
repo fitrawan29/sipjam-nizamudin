@@ -845,11 +845,19 @@ export default function GuruJurnal({
     const checkDateBlok = async () => {
       if (!tanggal) return;
       try {
-        const blok = await getActiveSistemBlok(tanggal, user?.sekolah_id, user?.id);
+        const blok = await getActiveSistemBlok(tanggal, user?.sekolah_id, user?.id, {
+          namaGuru: user?.nama,
+          username: user?.username,
+          schedules: dailyState?.jadwalKBM || [],
+          kelas: kelas || undefined,
+        });
         setDateBlok(blok);
         if (blok) {
           if (kbmSubMode !== 'absensi') {
-            setTipeJurnal('Jurnal Kegiatan');
+            const isMixedWithPendingUnblocked = dailyState?.hasBlockedSchedule && !dailyState?.isBlok && (dailyState?.jadwalKBM || []).some((jk: any) => !jk.isBlocked && !(dailyState?.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk) && (!(j.materi === '-' && j.kegiatan === '-') || hasJournalContent(j))));
+            if (!isMixedWithPendingUnblocked) {
+              setTipeJurnal('Jurnal Kegiatan');
+            }
           }
           if (!materi || materi === dateBlok?.nama_kegiatan || materi === dailyState?.blokInfo?.nama_kegiatan) {
             setMateri(blok.nama_kegiatan);
@@ -884,7 +892,7 @@ export default function GuruJurnal({
       }
     };
     checkDateBlok();
-  }, [tanggal, dailyState?.isBlok, dailyState?.isDinasLuar, user?.sekolah_id, kbmSubMode]);
+  }, [tanggal, dailyState?.isBlok, dailyState?.hasBlockedSchedule, dailyState?.jadwalKBM, dailyState?.isDinasLuar, user?.sekolah_id, user?.id, user?.nama, user?.username, kelas, kbmSubMode]);
 
   useEffect(() => {
     const fetchStudents = async () => {
@@ -2162,7 +2170,29 @@ export default function GuruJurnal({
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl p-3.5 mb-4 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
                 <i className="fa-solid fa-layer-group text-amber-600 dark:text-amber-400 text-sm mt-0.5 shrink-0"></i>
                 <div>
-                  <div className="font-bold">Periode Sistem Blok Aktif: {dateBlok.nama_kegiatan}</div>
+                  <div className="font-bold flex items-center gap-1.5 flex-wrap">
+                    <span>Periode Sistem Blok Aktif: {dateBlok.nama_kegiatan}</span>
+                    {dateBlok.tipe_target === 'sekolah' && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                        Seluruh Sekolah
+                      </span>
+                    )}
+                    {dateBlok.tipe_target === 'angkatan' && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                        Angkatan {dateBlok.target_angkatan}
+                      </span>
+                    )}
+                    {dateBlok.tipe_target === 'kelas' && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                        Dispen Kelas {dateBlok.target_kelas}
+                      </span>
+                    )}
+                    {dateBlok.tipe_target === 'guru' && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
+                        Tugas Khusus Guru
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[11px] mt-0.5 text-amber-700 dark:text-amber-300 leading-relaxed">
                     Jadwal KBM reguler ditiadakan sementara dan digantikan oleh kegiatan khusus ini{dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? ' untuk jam pelajaran yang terblokir' : ''}. Anda hanya perlu mengisi form <strong>Jurnal Kegiatan</strong> di bawah ini (tidak perlu mengisi jurnal absensi kelas reguler){dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? ', atau pilih opsi Jurnal KBM di bawah jika mengisi kelas reguler Anda yang tidak diblok' : ''}.
                   </div>
@@ -2344,9 +2374,14 @@ export default function GuruJurnal({
                               className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                             >
                               <option value="" disabled>Pilih Kelas...</option>
-                              {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => (
-                                <option key={k} value={k}>{k}</option>
-                              ))}
+                              {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => {
+                                const blockedSched = (dailyState?.jadwalKBM || []).find((jk: any) => jk.isBlocked && ((jk.kelas || '').trim().toLowerCase() === k.trim().toLowerCase() || (jk.kelas || '').replace(/[\s_-]+/g, '').toLowerCase() === k.replace(/[\s_-]+/g, '').toLowerCase()));
+                                return (
+                                  <option key={k} value={k}>
+                                    {k}{blockedSched ? ` (Diblokir: ${blockedSched.blockRule?.nama_kegiatan || 'Sistem Blok'})` : ''}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
                         </div>
@@ -2584,9 +2619,14 @@ export default function GuruJurnal({
                               className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
                             >
                               <option value="" disabled>Pilih Kelas...</option>
-                              {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => (
-                                <option key={k} value={k}>{k}</option>
-                              ))}
+                              {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => {
+                                const blockedSched = (dailyState?.jadwalKBM || []).find((jk: any) => jk.isBlocked && ((jk.kelas || '').trim().toLowerCase() === k.trim().toLowerCase() || (jk.kelas || '').replace(/[\s_-]+/g, '').toLowerCase() === k.replace(/[\s_-]+/g, '').toLowerCase()));
+                                return (
+                                  <option key={k} value={k}>
+                                    {k}{blockedSched ? ` (Diblokir: ${blockedSched.blockRule?.nama_kegiatan || 'Sistem Blok'})` : ''}
+                                  </option>
+                                );
+                              })}
                             </select>
                           </div>
                           <div>

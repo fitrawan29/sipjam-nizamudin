@@ -42,6 +42,7 @@ export default function HomeView({
     // Invariant preservation for three_fixes_verification.test.ts & sistem_blok_verification.test.ts:
     // const isPiket = isAssignedPiket && (!isBlokToday || !isExemptNonTeaching);
     // const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
+    // if (dailyState.isNonTeachingDay && !dailyState.presensiDatang) return
     return (
       <HomeViewGuru
         user={user}
