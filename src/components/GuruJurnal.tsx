@@ -845,7 +845,7 @@ export default function GuruJurnal({
     const checkDateBlok = async () => {
       if (!tanggal) return;
       try {
-        const blok = await getActiveSistemBlok(tanggal, user?.sekolah_id);
+        const blok = await getActiveSistemBlok(tanggal, user?.sekolah_id, user?.id);
         setDateBlok(blok);
         if (blok) {
           if (kbmSubMode !== 'absensi') {

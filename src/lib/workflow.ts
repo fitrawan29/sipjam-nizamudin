@@ -1053,7 +1053,13 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string,
  */
 export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string, guruId?: string): Promise<any | null> {
   const bloks = await getActiveSistemBloks(dateStr, sekolahId, guruId);
-  return bloks.length > 0 ? bloks[0] : null;
+  if (bloks.length === 0) return null;
+  // Prioritize blocks: 'guru' > 'kelas' > 'angkatan' > 'sekolah'
+  const sorted = bloks.sort((a, b) => {
+    const order: Record<string, number> = { 'guru': 1, 'kelas': 2, 'angkatan': 3, 'sekolah': 4 };
+    return (order[a.tipe_target] || 99) - (order[b.tipe_target] || 99);
+  });
+  return sorted[0];
 }
 
 /**
