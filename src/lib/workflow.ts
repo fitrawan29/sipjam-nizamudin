@@ -1036,20 +1036,6 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string,
     if (error || !data || data.length === 0) return [];
     
     const list = data as SistemBlok[];
-    // Jika guruId disediakan, saring hanya aturan yang relevan:
-    // blok sekolah, angkatan, kelas, serta blok yang menargetkan guru tersebut
-    if (guruId) {
-      const cleanGid = String(guruId).trim().toLowerCase();
-      return list.filter(b => {
-        const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
-        if (tgt === 'guru') {
-          const ruleGid = String(b.target_guru_id || (b as any).target_id || '').trim().toLowerCase();
-          return ruleGid === cleanGid;
-        }
-        return true;
-      });
-    }
-
     return list;
   } catch (err) {
     console.warn('Error fetching active sistem_bloks:', err);
@@ -1129,10 +1115,10 @@ export function resolveActiveBlockForContext(
     return null;
   }
 
-  // Fallback jika hanya guruId tanpa info jadwal: hanya kembalikan jika sorted[0] adalah sekolah/guru
+  // Fallback jika hanya guruId tanpa info jadwal: hanya kembalikan jika sorted[0] adalah blok seluruh sekolah
   const first = sorted[0];
   const firstTgt = (first.tipe_target || 'sekolah').toLowerCase().trim();
-  if (firstTgt === 'sekolah' || firstTgt === 'guru' || firstTgt === 'keseluruhan' || !first.tipe_target) {
+  if (firstTgt === 'sekolah' || firstTgt === 'keseluruhan' || !first.tipe_target) {
     return first;
   }
   return null;
@@ -2016,7 +2002,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         (b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai))
       );
 
-      const teacherRef = { nama: namaGuru, id: userId || '' };
+      const teacherRef = { nama: namaGuru, nama_guru: namaGuru, id: userId || '', user_id: userId || '' };
       const teacherBlockRule = activeBloks.find(b => evaluateScheduleBlock({}, teacherRef, [b]).isBlocked);
       const activeBlock = wholeSchoolFullDay || teacherBlockRule;
 
@@ -2353,6 +2339,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
           tanggal_selesai: matchedBlock.tanggal_selesai,
         };
       } else {
+        state.isBlok = false;
         state.blokInfo = null;
       }
     } else if (!hasBlocked) {

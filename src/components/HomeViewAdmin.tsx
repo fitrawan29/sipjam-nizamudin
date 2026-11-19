@@ -1199,7 +1199,7 @@ export default function HomeViewAdmin({
                     <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
                       Sistem Blok Aktif
                     </span>
-                    {activeBlokToday.tipe_target === 'sekolah' && (
+                    {(!activeBlokToday.tipe_target || activeBlokToday.tipe_target === 'sekolah') && (
                       <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
                         Seluruh Sekolah
                       </span>
