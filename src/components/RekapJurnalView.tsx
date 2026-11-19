@@ -1168,6 +1168,11 @@ export default function RekapJurnalView({
   }
 
   const resolveEntryLokasiKbm = useCallback((j: any): string => {
+    // PRIORITAS 1: Lokasi spesifik pada entri jurnal saat ini
+    if (j.lokasi_kbm && j.lokasi_kbm !== '-' && j.lokasi_kbm.trim() !== '') return j.lokasi_kbm;
+    if (j.lokasi && j.lokasi !== '-' && j.lokasi.trim() !== '') return j.lokasi;
+
+    // PRIORITAS 2: Gunakan history
     const historyPool = [
       ...(teacherLokasiHistory || []),
       ...((jurnalData || []).filter((r: any) => r && !String(r.id || '').startsWith('unfilled-')))
@@ -2050,20 +2055,20 @@ export default function RekapJurnalView({
                                   )}
                                 </td>
 
-                                {/* 7. Foto */}
+                              {/* 7. Foto */}
                                 <td className="p-1 print:p-0 border border-gray-200 dark:border-gray-700 print:border-black align-top text-center">
-                                  {hasFoto ? (
+                                  {hasFoto || (j.link_bukti_foto && j.link_bukti_foto.trim() !== '' && j.link_bukti_foto !== '-') ? (
                                     <div className="flex flex-col items-center justify-center gap-1 print:block print:w-full print:h-full">
                                       <img
-                                        src={getGoogleDriveThumbnailUrl(fotoUrl, 800) || transformGoogleDriveUrl(fotoUrl)}
+                                        src={getGoogleDriveThumbnailUrl(fotoUrl || j.link_bukti_foto, 800) || transformGoogleDriveUrl(fotoUrl || j.link_bukti_foto)}
                                         alt="Foto Kegiatan"
                                         loading="eager"
                                         referrerPolicy="no-referrer"
                                         className="w-14 h-14 object-cover rounded border border-gray-300 dark:border-gray-600 mx-auto bg-white print:w-full print:h-auto print:rounded-none print:border-none print:bg-transparent print:m-0 print:block"
                                         onError={(e) => {
                                           const target = e.target as HTMLImageElement;
-                                          if (target.src !== transformGoogleDriveUrl(fotoUrl)) {
-                                            target.src = transformGoogleDriveUrl(fotoUrl);
+                                          if (target.src !== transformGoogleDriveUrl(fotoUrl || j.link_bukti_foto)) {
+                                            target.src = transformGoogleDriveUrl(fotoUrl || j.link_bukti_foto);
                                           } else {
                                             target.style.display = 'none';
                                           }
