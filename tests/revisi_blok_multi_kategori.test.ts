@@ -7,6 +7,8 @@ import {
   resolveActiveBlockForContext,
   isJurnalMatchJadwal,
   hasJournalContent,
+  encodeBlokMetadata,
+  parseBlokItem,
 } from '../src/lib/workflow';
 import type { SistemBlok } from '../src/types/database';
 
@@ -353,6 +355,69 @@ const isJurnalDone3 = unblockedDone3 && blockedDone3;
 testAssert(isJurnalDone3 === true, 'Mixed Mode: Mengisi KBM reguler + Jurnal Kegiatan dinyatakan tuntas (Presensi Pulang terbuka)');
 
 testContextualGetActiveSistemBlok();
+
+// -------------------------------------------------------------
+// Section 8: Metadata Encoding & Schema Resilience (Interoperabilitas Sekolah Satelit)
+// -------------------------------------------------------------
+console.log('\n--- 8. Interoperabilitas Sekolah Satelit (Database Tanpa Kolom Baru) ---');
+
+// 8.1 Encoding metadata ke dalam deskripsi
+const metaPayload = {
+  tipe_target: 'guru',
+  target_guru_nama: 'Ade Fitrawan Ibrahim',
+  target_guru_nip: '198803212015031001',
+  is_full_day: true,
+  deskripsi: 'Pelatihan Kurikulum Mandiri'
+};
+const encodedDesc = encodeBlokMetadata(metaPayload);
+testAssert(
+  encodedDesc.includes('[BLOK_META:') && encodedDesc.includes('Pelatihan Kurikulum Mandiri') && encodedDesc.includes('198803212015031001'),
+  '8.1 encodeBlokMetadata menyematkan JSON metadata target dan mempertahankan deskripsi asli'
+);
+
+// 8.2 Parsing record dari database satelit (hanya kolom lama)
+const legacyDbRow: any = {
+  id: 'sat-blok-1',
+  sekolah_id: 'b0000000-0000-0000-0000-000000000001',
+  nama_kegiatan: 'Uji Coba Blok Guru Satelit',
+  deskripsi: encodedDesc,
+  tanggal_mulai: '2026-11-19',
+  tanggal_selesai: '2026-11-19',
+  // Kolom baru undefined di database satelit
+  tipe_target: undefined,
+  target_guru_nama: undefined,
+  target_guru_nip: undefined,
+};
+
+const parsedRow = parseBlokItem(legacyDbRow);
+testAssert(
+  parsedRow.tipe_target === 'guru' &&
+  parsedRow.target_guru_nama === 'Ade Fitrawan Ibrahim' &&
+  parsedRow.target_guru_nip === '198803212015031001' &&
+  parsedRow.deskripsi === 'Pelatihan Kurikulum Mandiri',
+  '8.2 parseBlokItem merekonstruksi tipe_target guru, nama, nip, dan membersihkan deskripsi dari JSON header'
+);
+
+// 8.3 Evaluasi jadwal dengan baris legacy yang diparsing
+const scheduleAde = { kelas: 'X Merdeka A', mata_pelajaran: 'Kimia', nama_guru: 'Ade Fitrawan' };
+const teacherAdeRef = { nama: 'Ade Fitrawan', nama_guru: 'Ade Fitrawan', nip: '198803212015031001' };
+const scheduleLain = { kelas: 'X Merdeka B', mata_pelajaran: 'Fisika', nama_guru: 'Budi Santoso' };
+const teacherBudiRef = { nama: 'Budi Santoso', nama_guru: 'Budi Santoso', nip: '197501012000011001' };
+
+const evalAdeLegacy = evaluateScheduleBlock(scheduleAde, teacherAdeRef, [parsedRow]);
+testAssert(evalAdeLegacy.isBlocked === true, '8.3 Guru target (Ade Fitrawan via NIP/Nama) terblokir sempurna dari database legacy');
+
+const evalBudiLegacy = evaluateScheduleBlock(scheduleLain, teacherBudiRef, [parsedRow]);
+testAssert(evalBudiLegacy.isBlocked === false, '8.4 Guru lain (Budi Santoso) TIDAK terblokir (zero leakage pada database legacy)');
+
+// 8.5 Intelligent fallback inference jika record tidak memiliki metadata tapi memiliki target_guru_nama
+const inferredRow = parseBlokItem({
+  id: 'sat-blok-2',
+  nama_kegiatan: 'Blok Guru Manual',
+  target_guru_nama: 'Ade Fitrawan',
+  tipe_target: undefined // Database kolom belum ada
+});
+testAssert(inferredRow.tipe_target === 'guru', '8.5 parseBlokItem menginferensi tipe_target guru bila tipe_target kosong dan target_guru_nama ada');
 
 console.log('\n=================================================================');
 console.log(`TOTAL TESTS: ${passed + failed}`);

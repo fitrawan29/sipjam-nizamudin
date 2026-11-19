@@ -8,6 +8,7 @@ import { getWitaDateStr } from '@/lib/wita';
 import { SistemBlok, TargetBlokType } from '@/types/database';
 import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
 import { downloadMasterDataCsv } from '@/lib/csvExport';
+import { encodeBlokMetadata, parseBlokItem, isTeacherNameEquivalent } from '@/lib/workflow';
 
 interface TeacherOption {
   id: string;
@@ -118,7 +119,8 @@ export default function SistemBlokView({ user }: { user: any }) {
         console.error('Error fetching sistem_blok:', error);
         showToast('Gagal Memuat Data', error.message, 'error');
       } else {
-        setBlokList((data as SistemBlok[]) || []);
+        const normalized = ((data as any[]) || []).map(parseBlokItem);
+        setBlokList(normalized);
       }
     } catch (err: any) {
       console.error('Unexpected error loading sistem_blok:', err);
@@ -282,13 +284,7 @@ export default function SistemBlokView({ user }: { user: any }) {
 
     setSubmitting(true);
     try {
-      const payload: any = {
-        id: crypto.randomUUID(),
-        nama_kegiatan: namaKegiatan.trim(),
-        tanggal_mulai: sanitizeDateStr(tanggalMulai),
-        tanggal_selesai: sanitizeDateStr(tanggalSelesai),
-        deskripsi: deskripsi.trim() || null,
-        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+      const metaPayload = {
         tipe_target: tipeTarget,
         target_angkatan: tipeTarget === 'angkatan' ? targetAngkatan || null : null,
         target_kelas: tipeTarget === 'kelas' ? targetKelas || null : null,
@@ -298,30 +294,41 @@ export default function SistemBlokView({ user }: { user: any }) {
         is_full_day: isFullDay,
         jam_mulai: !isFullDay ? jamMulai || null : null,
         jam_selesai: !isFullDay ? jamSelesai || null : null,
+        deskripsi: deskripsi.trim() || null,
+      };
+      const metaDeskripsi = encodeBlokMetadata(metaPayload);
+
+      const payload: any = {
+        id: crypto.randomUUID(),
+        nama_kegiatan: namaKegiatan.trim(),
+        tanggal_mulai: sanitizeDateStr(tanggalMulai),
+        tanggal_selesai: sanitizeDateStr(tanggalSelesai),
+        deskripsi: metaDeskripsi,
+        sekolah_id: user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001',
+        tipe_target: tipeTarget,
+        target_angkatan: metaPayload.target_angkatan,
+        target_kelas: metaPayload.target_kelas,
+        target_guru_id: metaPayload.target_guru_id,
+        target_guru_nama: metaPayload.target_guru_nama,
+        target_guru_nip: metaPayload.target_guru_nip,
+        is_full_day: isFullDay,
+        jam_mulai: metaPayload.jam_mulai,
+        jam_selesai: metaPayload.jam_selesai,
       };
 
       let { error } = await supabase.from('sistem_blok').insert([payload]);
 
-      // Schema cache fallback resilience (PGRST204)
-      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column'))) {
-        const basePayload = {
+      // Schema cache fallback resilience (PGRST204) - jika DB sekolah belum dimigrasi
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        const safeBasePayload = {
           id: payload.id,
           nama_kegiatan: payload.nama_kegiatan,
           tanggal_mulai: payload.tanggal_mulai,
           tanggal_selesai: payload.tanggal_selesai,
-          deskripsi: payload.deskripsi,
+          deskripsi: metaDeskripsi,
           sekolah_id: payload.sekolah_id,
-          tipe_target: payload.tipe_target,
-          target_angkatan: payload.target_angkatan,
-          target_kelas: payload.target_kelas,
-          target_guru_id: payload.target_guru_id,
-          target_guru_nama: payload.target_guru_nama,
-          target_guru_nip: payload.target_guru_nip,
-          is_full_day: payload.is_full_day,
-          jam_mulai: payload.jam_mulai,
-          jam_selesai: payload.jam_selesai,
         };
-        const res = await supabase.from('sistem_blok').insert([basePayload]);
+        const res = await supabase.from('sistem_blok').insert([safeBasePayload]);
         error = res.error;
       }
 
@@ -340,32 +347,49 @@ export default function SistemBlokView({ user }: { user: any }) {
   };
 
   // Open edit modal
-  const openEditModal = (item: SistemBlok) => {
+  const openEditModal = (rawItem: SistemBlok) => {
     if (!isAdmin) {
       return showToast('Akses Ditolak', 'Hanya Admin yang dapat mengubah data master sistem blok.', 'error');
     }
+    const item = parseBlokItem(rawItem);
     setEditingItem(item);
     setEditNama(item.nama_kegiatan);
     setEditMulai(sanitizeDateStr(item.tanggal_mulai));
     setEditSelesai(sanitizeDateStr(item.tanggal_selesai));
     setEditDeskripsi(item.deskripsi || '');
+
     setEditTipeTarget((item.tipe_target as TargetBlokType) || 'sekolah');
+    let resolvedTipe = (item.tipe_target as TargetBlokType) || 'sekolah';
+    if (!resolvedTipe || resolvedTipe === 'sekolah') {
+      if (item.target_guru_id || item.target_guru_nama || (item as any).target_guru_nip) resolvedTipe = 'guru';
+      else if (item.target_kelas) resolvedTipe = 'kelas';
+      else if (item.target_angkatan) resolvedTipe = 'angkatan';
+    }
+    if (resolvedTipe !== 'sekolah') {
+      setEditTipeTarget(resolvedTipe);
+    }
     setEditTargetAngkatan(item.target_angkatan || '');
     setEditTargetKelas(item.target_kelas || '');
-    setEditTargetGuruId(item.target_guru_id || '');
-    setEditTargetGuruNama(item.target_guru_nama || '');
-    setEditTargetGuruNip((item as any).target_guru_nip || '');
-    // Jika target_guru_id kosong tapi target_guru_nama ada, sinkronkan dengan availableTeachers
-    if (!item.target_guru_id && item.target_guru_nama) {
-      const matchedT = availableTeachers.find(t => 
-        t.nama_guru === item.target_guru_nama ||
-        ((item as any).target_guru_nip && t.nip === (item as any).target_guru_nip)
-      );
-      if (matchedT) {
-        setEditTargetGuruId(matchedT.id);
-        setEditTargetGuruNip(matchedT.nip || '');
-      }
+
+    const rawTargetGuruId = item.target_guru_id || '';
+    const rawTargetGuruNama = item.target_guru_nama || '';
+    const rawTargetGuruNip = (item as any).target_guru_nip || '';
+    setEditTargetGuruId(rawTargetGuruId);
+    setEditTargetGuruNama(rawTargetGuruNama);
+    setEditTargetGuruNip(rawTargetGuruNip);
+
+    // Sinkronkan dengan availableTeachers
+    const matchedT = availableTeachers.find(t => 
+      (rawTargetGuruNip && t.nip === rawTargetGuruNip) ||
+      (rawTargetGuruNama && isTeacherNameEquivalent(t.nama_guru, rawTargetGuruNama, true)) ||
+      (rawTargetGuruId && t.id === rawTargetGuruId)
+    );
+    if (matchedT) {
+      setEditTargetGuruId(matchedT.id);
+      setEditTargetGuruNama(matchedT.nama_guru);
+      setEditTargetGuruNip(matchedT.nip || '');
     }
+
     setEditIsFullDay(item.is_full_day ?? true);
     setEditJamMulai(item.jam_mulai || '');
     setEditJamSelesai(item.jam_selesai || '');
@@ -414,11 +438,7 @@ export default function SistemBlokView({ user }: { user: any }) {
 
     setEditSubmitting(true);
     try {
-      const updatePayload: any = {
-        nama_kegiatan: editNama.trim(),
-        tanggal_mulai: sanitizeDateStr(editMulai),
-        tanggal_selesai: sanitizeDateStr(editSelesai),
-        deskripsi: editDeskripsi.trim() || null,
+      const metaPayload = {
         tipe_target: editTipeTarget,
         target_angkatan: editTipeTarget === 'angkatan' ? editTargetAngkatan || null : null,
         target_kelas: editTipeTarget === 'kelas' ? editTargetKelas || null : null,
@@ -428,6 +448,24 @@ export default function SistemBlokView({ user }: { user: any }) {
         is_full_day: editIsFullDay,
         jam_mulai: !editIsFullDay ? editJamMulai || null : null,
         jam_selesai: !editIsFullDay ? editJamSelesai || null : null,
+        deskripsi: editDeskripsi.trim() || null,
+      };
+      const metaDeskripsi = encodeBlokMetadata(metaPayload);
+
+      const updatePayload: any = {
+        nama_kegiatan: editNama.trim(),
+        tanggal_mulai: sanitizeDateStr(editMulai),
+        tanggal_selesai: sanitizeDateStr(editSelesai),
+        deskripsi: metaDeskripsi,
+        tipe_target: editTipeTarget,
+        target_angkatan: metaPayload.target_angkatan,
+        target_kelas: metaPayload.target_kelas,
+        target_guru_id: metaPayload.target_guru_id,
+        target_guru_nama: metaPayload.target_guru_nama,
+        target_guru_nip: metaPayload.target_guru_nip,
+        is_full_day: editIsFullDay,
+        jam_mulai: metaPayload.jam_mulai,
+        jam_selesai: metaPayload.jam_selesai,
         updated_at: new Date().toISOString(),
       };
 
@@ -442,25 +480,16 @@ export default function SistemBlokView({ user }: { user: any }) {
 
       let { error } = await updateQ;
 
-      // Schema cache fallback resilience (PGRST204)
-      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column'))) {
-        const baseUpdate = {
+      // Schema cache fallback resilience (PGRST204) - jika DB sekolah belum dimigrasi
+      if (error && (error.code === 'PGRST204' || error.message?.includes('schema cache') || error.message?.includes('column') || error.message?.includes('Could not find the'))) {
+        const safeBaseUpdate = {
           nama_kegiatan: updatePayload.nama_kegiatan,
           tanggal_mulai: updatePayload.tanggal_mulai,
           tanggal_selesai: updatePayload.tanggal_selesai,
-          deskripsi: updatePayload.deskripsi,
+          deskripsi: metaDeskripsi,
           updated_at: updatePayload.updated_at,
-          tipe_target: updatePayload.tipe_target,
-          target_angkatan: updatePayload.target_angkatan,
-          target_kelas: updatePayload.target_kelas,
-          target_guru_id: updatePayload.target_guru_id,
-          target_guru_nama: updatePayload.target_guru_nama,
-          target_guru_nip: updatePayload.target_guru_nip,
-          is_full_day: updatePayload.is_full_day,
-          jam_mulai: updatePayload.jam_mulai,
-          jam_selesai: updatePayload.jam_selesai,
         };
-        let fallbackQ = supabase.from('sistem_blok').update(baseUpdate).eq('id', editingItem.id);
+        let fallbackQ = supabase.from('sistem_blok').update(safeBaseUpdate).eq('id', editingItem.id);
         if (user?.sekolah_id) {
           fallbackQ = fallbackQ.eq('sekolah_id', user.sekolah_id);
         }

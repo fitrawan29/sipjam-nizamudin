@@ -1014,6 +1014,88 @@ export type GuruDailyState = {
 };
 
 /**
+ * Helper: Encode metadata target sistem blok ke dalam string deskripsi
+ * untuk interoperabilitas penuh dengan database sekolah satelit yang belum menjalankan migrasi kolom baru.
+ */
+export function encodeBlokMetadata(payload: {
+  tipe_target?: string | null;
+  target_angkatan?: string | null;
+  target_kelas?: string | null;
+  target_guru_id?: string | null;
+  target_guru_nama?: string | null;
+  target_guru_nip?: string | null;
+  is_full_day?: boolean | null;
+  jam_mulai?: string | null;
+  jam_selesai?: string | null;
+  deskripsi?: string | null;
+}): string {
+  const meta: any = {
+    tipe_target: payload.tipe_target || 'sekolah',
+    target_angkatan: payload.target_angkatan || null,
+    target_kelas: payload.target_kelas || null,
+    target_guru_id: payload.target_guru_id || null,
+    target_guru_nama: payload.target_guru_nama || null,
+    target_guru_nip: payload.target_guru_nip || null,
+    is_full_day: payload.is_full_day !== undefined ? payload.is_full_day : true,
+    jam_mulai: payload.jam_mulai || null,
+    jam_selesai: payload.jam_selesai || null,
+  };
+  const rawDesc = payload.deskripsi || '';
+  const cleanDesc = rawDesc.replace(/\[BLOK_META:.*?\]\s*/g, '').trim();
+  const metaStr = `[BLOK_META:${JSON.stringify(meta)}]`;
+  return cleanDesc ? `${metaStr} ${cleanDesc}` : metaStr;
+}
+
+/**
+ * Helper: Parse record sistem blok dari database.
+ * Jika tipe_target kosong atau database belum memiliki kolom baru, ekstrak dari [BLOK_META:...] di deskripsi
+ * atau inferensi dari field yang tersedia secara cerdas.
+ */
+export function parseBlokItem(item: any): SistemBlok {
+  if (!item || typeof item !== 'object') return item;
+  let parsed = { ...item };
+
+  // 1. Ekstraksi dari [BLOK_META:...] di dalam deskripsi jika ada
+  if (parsed.deskripsi && typeof parsed.deskripsi === 'string' && parsed.deskripsi.includes('[BLOK_META:')) {
+    try {
+      const match = parsed.deskripsi.match(/\[BLOK_META:(.*?)\]/);
+      if (match && match[1]) {
+        const meta = JSON.parse(match[1]);
+        const cleanDeskripsi = parsed.deskripsi.replace(/\[BLOK_META:.*?\]\s*/g, '').trim();
+        parsed = {
+          ...parsed,
+          tipe_target: meta.tipe_target || parsed.tipe_target || 'sekolah',
+          target_angkatan: meta.target_angkatan || parsed.target_angkatan || null,
+          target_kelas: meta.target_kelas || parsed.target_kelas || null,
+          target_guru_id: meta.target_guru_id || parsed.target_guru_id || null,
+          target_guru_nama: meta.target_guru_nama || parsed.target_guru_nama || null,
+          target_guru_nip: meta.target_guru_nip || parsed.target_guru_nip || null,
+          is_full_day: meta.is_full_day !== undefined ? meta.is_full_day : (parsed.is_full_day ?? true),
+          jam_mulai: meta.jam_mulai || parsed.jam_mulai || null,
+          jam_selesai: meta.jam_selesai || parsed.jam_selesai || null,
+          deskripsi: cleanDeskripsi || null,
+        };
+      }
+    } catch (_) {}
+  }
+
+  // 2. Intelligent fallback inference jika tipe_target masih kosong / null / undefined
+  let inferredTgt = parsed.tipe_target;
+  if (!inferredTgt) {
+    if (parsed.target_guru_id || parsed.target_guru_nama || parsed.target_guru_nip) {
+      inferredTgt = 'guru';
+    } else if (parsed.target_kelas) {
+      inferredTgt = 'kelas';
+    } else if (parsed.target_angkatan) {
+      inferredTgt = 'angkatan';
+    }
+  }
+
+  parsed.tipe_target = inferredTgt || 'sekolah';
+  return parsed as SistemBlok;
+}
+
+/**
  * Helper: Ambil semua data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
  */
 export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string, guruId?: string): Promise<SistemBlok[]> {
@@ -1035,7 +1117,7 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string,
     const { data, error } = await query;
     if (error || !data || data.length === 0) return [];
     
-    const list = data as SistemBlok[];
+    const list = (data as any[]).map(parseBlokItem);
     return list;
   } catch (err) {
     console.warn('Error fetching active sistem_bloks:', err);
@@ -1057,17 +1139,18 @@ export function resolveActiveBlockForContext(
   }
 ): SistemBlok | null {
   if (!sorted || sorted.length === 0) return null;
+  const normalizedSorted = sorted.map(parseBlokItem);
 
   // Jika tanpa guruId dan tanpa context guru/kelas, kembalikan aturan prioritas pertama (backward-compatible)
   if (!guruId && !context?.namaGuru && !context?.kelas) {
-    return sorted[0];
+    return normalizedSorted[0];
   }
 
   // Jika ada konteks kelas spesifik yang dicek
   if (context?.kelas) {
-    const matchingClassBlock = sorted.find(b => {
+    const matchingClassBlock = normalizedSorted.find(b => {
       const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
-      if (tgt === 'sekolah' || tgt === 'keseluruhan' || !b.tipe_target) return true;
+      if (tgt === 'sekolah' || tgt === 'keseluruhan') return true;
       if (tgt === 'angkatan') return isKelasInAngkatan(context.kelas, b.target_angkatan || (b as any).target_id || '');
       if (tgt === 'kelas') {
         const targetK = (b.target_kelas || (b as any).target_id || '').trim().toLowerCase();
@@ -1089,7 +1172,7 @@ export function resolveActiveBlockForContext(
   };
 
   // 1. Cek apakah ada blok spesifik guru
-  const guruBlock = sorted.find(b => {
+  const guruBlock = normalizedSorted.find(b => {
     const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
     return tgt === 'guru' && evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
   });
@@ -1098,7 +1181,7 @@ export function resolveActiveBlockForContext(
   // 2. Evaluasi terhadap daftar jadwal guru jika disediakan dalam context
   if (context?.schedules && context.schedules.length > 0) {
     for (const s of context.schedules) {
-      const evalRes = evaluateScheduleBlock(s, teacherRef, sorted);
+      const evalRes = evaluateScheduleBlock(s, teacherRef, normalizedSorted);
       if (evalRes.isBlocked && evalRes.blockRule) {
         return evalRes.blockRule;
       }
@@ -1106,9 +1189,9 @@ export function resolveActiveBlockForContext(
   }
 
   // 3. Cek blok seluruh sekolah (full day atau irisan waktu)
-  const schoolBlock = sorted.find(b => {
+  const schoolBlock = normalizedSorted.find(b => {
     const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
-    return tgt === 'sekolah' || tgt === 'keseluruhan' || !b.tipe_target;
+    return tgt === 'sekolah' || tgt === 'keseluruhan';
   });
   if (schoolBlock) return schoolBlock;
 
@@ -1117,10 +1200,10 @@ export function resolveActiveBlockForContext(
     return null;
   }
 
-  // Fallback jika hanya guruId tanpa info jadwal: hanya kembalikan jika sorted[0] adalah blok seluruh sekolah
-  const first = sorted[0];
+  // Fallback jika hanya guruId tanpa info jadwal: hanya kembalikan jika first adalah blok seluruh sekolah
+  const first = normalizedSorted[0];
   const firstTgt = (first.tipe_target || 'sekolah').toLowerCase().trim();
-  if (firstTgt === 'sekolah' || firstTgt === 'keseluruhan' || !first.tipe_target) {
+  if (firstTgt === 'sekolah' || firstTgt === 'keseluruhan') {
     return first;
   }
   return null;
@@ -1270,7 +1353,8 @@ export function evaluateScheduleBlock(
     return { isBlocked: false };
   }
 
-  for (const rule of activeBloks) {
+  for (const rawRule of activeBloks) {
+    const rule = parseBlokItem(rawRule);
     let targetMatches = false;
     const targetType = (rule.tipe_target || 'sekolah').toLowerCase().trim();
 
@@ -2021,9 +2105,10 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     let activeBloks: SistemBlok[] = [];
     try {
       activeBloks = await getActiveSistemBloks(todayStr, sekolahId, userId);
-      state.activeBloks = activeBloks;
+      const parsedBloks = activeBloks.map(parseBlokItem);
+      state.activeBloks = parsedBloks;
 
-      const wholeSchoolFullDay = activeBloks.find(b => 
+      const wholeSchoolFullDay = parsedBloks.find(b => 
         (b.tipe_target === 'sekolah' || (b.tipe_target as any) === 'keseluruhan' || !b.tipe_target) &&
         (b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai))
       );
@@ -2036,7 +2121,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         nip: username || '',
         username: username || '',
       };
-      const teacherBlockRule = activeBloks.find(b => evaluateScheduleBlock({}, teacherRef, [b]).isBlocked);
+      const teacherBlockRule = parsedBloks.find(b => evaluateScheduleBlock({}, teacherRef, [b]).isBlocked);
       const activeBlock = wholeSchoolFullDay || teacherBlockRule;
 
       if (activeBlock) {
@@ -2350,7 +2435,8 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
       }
     } else if (state.jadwalKBM.length === 0 && activeBloks.length > 0) {
       let matchedBlock: SistemBlok | undefined;
-      const teacherMatches = activeBloks.some(b => {
+      const parsedBloks = activeBloks.map(parseBlokItem);
+      const teacherMatches = parsedBloks.some(b => {
         if (b.tipe_target === 'sekolah' || (b.tipe_target as any) === 'keseluruhan' || !b.tipe_target) {
           matchedBlock = b;
           return true;

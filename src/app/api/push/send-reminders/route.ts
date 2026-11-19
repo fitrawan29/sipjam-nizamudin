@@ -10,7 +10,10 @@ import {
   isTeacherRecordMatch,
   parseExplicitBooleanFlag,
   resolveSchoolLegacyGhmList,
-  resolveTeacherAttendancePolicy
+  resolveTeacherAttendancePolicy,
+  parseBlokItem,
+  evaluateScheduleBlock,
+  isKelasInAngkatan
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 
@@ -214,7 +217,8 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
     if (sekolahId && sekolahId !== '00000000-0000-0000-0000-000000000000') {
       blokQuery = blokQuery.eq('sekolah_id', sekolahId);
     }
-    const { data: activeBloks } = await blokQuery;
+    const { data: rawActiveBloks } = await blokQuery;
+    const activeBloks = (rawActiveBloks || []).map(parseBlokItem);
     const activeBlok = activeBloks && activeBloks.length > 0 ? activeBloks[0] : null;
 
     // -------------------------------------------------------------
@@ -294,7 +298,7 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
       // Evaluasi apakah ada aturan sistem blok yang berlaku untuk guru ini
       const teacherBlokRule = (activeBloks || []).find((b: any) => {
         const tgt = (b.tipe_target || 'sekolah').toLowerCase().trim();
-        if (tgt === 'sekolah' || tgt === 'keseluruhan' || !b.tipe_target) return true;
+        if (tgt === 'sekolah' || tgt === 'keseluruhan') return true;
         if (tgt === 'guru') {
           return evaluateScheduleBlock({}, teacherRef, [b]).isBlocked;
         }

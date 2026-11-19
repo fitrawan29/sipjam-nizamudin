@@ -23,7 +23,9 @@ import {
   normalizeTeacherIdentityName,
   resolveLinkedUserForTeacher,
   isTeacherRecordMatch,
-  hasJournalContent
+  hasJournalContent,
+  parseBlokItem,
+  isKelasInAngkatan
 } from '@/lib/workflow';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
@@ -311,7 +313,7 @@ export default function HomeViewAdmin({
       const piketSchedule = (piketScheduleRes.data && piketScheduleRes.data[0]) || null;
       const piketReports = piketLaporanRes.data || [];
       const assignedPiketTeachers = penugasanPiketRes.data || [];
-      const activeBloks = blokRes.data || [];
+      const activeBloks = (blokRes.data || []).map(parseBlokItem);
       const activeBlok = (activeBloks && activeBloks[0]) || null;
       setActiveBlokToday(activeBlok);
 

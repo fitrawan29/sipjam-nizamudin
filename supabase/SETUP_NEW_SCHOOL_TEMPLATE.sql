@@ -475,6 +475,15 @@ CREATE TABLE IF NOT EXISTS public.sistem_blok (
     deskripsi TEXT DEFAULT NULL,
     tanggal_mulai DATE NOT NULL,
     tanggal_selesai DATE NOT NULL,
+    tipe_target TEXT NOT NULL DEFAULT 'sekolah' CHECK (tipe_target IN ('sekolah', 'angkatan', 'kelas', 'guru')),
+    target_angkatan TEXT DEFAULT NULL,
+    target_kelas TEXT DEFAULT NULL,
+    target_guru_id UUID DEFAULT NULL,
+    target_guru_nama TEXT DEFAULT NULL,
+    target_guru_nip TEXT DEFAULT NULL,
+    is_full_day BOOLEAN NOT NULL DEFAULT true,
+    jam_mulai TIME DEFAULT NULL,
+    jam_selesai TIME DEFAULT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
