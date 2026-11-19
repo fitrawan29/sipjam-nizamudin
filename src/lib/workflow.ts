@@ -1901,14 +1901,18 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
         (b.is_full_day !== false || (!b.jam_mulai && !b.jam_selesai))
       );
 
-      if (wholeSchoolFullDay) {
+      const teacherRef = { nama: namaGuru, id: userId || '' };
+      const teacherBlockRule = activeBloks.find(b => evaluateScheduleBlock({}, teacherRef, [b]).isBlocked);
+      const activeBlock = wholeSchoolFullDay || teacherBlockRule;
+
+      if (activeBlock) {
         state.isBlok = true;
         state.blokInfo = {
-          id: wholeSchoolFullDay.id,
-          nama_kegiatan: wholeSchoolFullDay.nama_kegiatan,
-          deskripsi: wholeSchoolFullDay.deskripsi,
-          tanggal_mulai: wholeSchoolFullDay.tanggal_mulai,
-          tanggal_selesai: wholeSchoolFullDay.tanggal_selesai,
+          id: activeBlock.id,
+          nama_kegiatan: activeBlock.nama_kegiatan,
+          deskripsi: activeBlock.deskripsi,
+          tanggal_mulai: activeBlock.tanggal_mulai,
+          tanggal_selesai: activeBlock.tanggal_selesai,
         };
       } else if (activeBloks.length > 0) {
         const firstBlok = activeBloks[0];
