@@ -246,7 +246,8 @@ export function buildDriveFolderPath(folderFitur: string, namaGuru: string) {
     rootFolder: SIPJAM_ROOT_FOLDER,
     folderFitur: normalizedFitur,
     guruFolder: normalizedGuru,
-    folderPath: `${SIPJAM_ROOT_FOLDER}/${normalizedFitur}/${normalizedGuru}`,
+    // [FIX]: Struktur folder: SIPJAM/TeacherName/Category
+    folderPath: `${SIPJAM_ROOT_FOLDER}/${normalizedGuru}/${normalizedFitur}`,
   };
 }
 

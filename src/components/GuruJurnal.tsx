@@ -1586,12 +1586,14 @@ export default function GuruJurnal({
         const compressedFile = await compressImageWithCanvas(file);
         fileUrl = await uploadToDrive(compressedFile, user.nama, tipeJurnal, 'Jurnal');
       } else if (photoPreviewUrl) {
+        // Jika tidak ada file baru (misal ambil dari preview lama), gunakan langsung
         fileUrl = photoPreviewUrl;
       }
     } catch (err: any) {
-      console.warn('Gagal upload ke Google Drive, melanjutkan simpan jurnal dengan preview/fallback foto:', err);
-      fileUrl = photoPreviewUrl || '';
-      showToast('Info Upload Foto', 'Foto belum tersinkron ke cloud drive, data jurnal tetap tersimpan di database.', 'info');
+      setLoading(false);
+      console.error('Upload ke Google Drive gagal:', err);
+      showToast('Upload Gagal', 'Gagal mengunggah foto ke Google Drive. Mohon periksa koneksi internet Anda dan coba lagi.', 'error');
+      return;
     }
 
     const cleanAbsensiForSave: Record<string, string> = {};
