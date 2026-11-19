@@ -1016,7 +1016,7 @@ export type GuruDailyState = {
 /**
  * Helper: Ambil semua data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
  */
-export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string): Promise<SistemBlok[]> {
+export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string, guruId?: string): Promise<SistemBlok[]> {
   try {
     const rawDate = dateStr || getWitaDateStr();
     const targetDate = rawDate.includes('T') ? rawDate.split('T')[0] : rawDate.trim();
@@ -1028,6 +1028,12 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string)
 
     if (sekolahId) {
       query = query.eq('sekolah_id', sekolahId);
+    }
+
+    // [FIX]: Filter blok berdasarkan guru jika guruId disediakan, 
+    // atau jika tipe_target adalah 'sekolah'
+    if (guruId) {
+      query = query.or(`tipe_target.eq.sekolah,target_guru_id.eq.${guruId}`);
     }
 
     query = query.order('created_at', { ascending: false });
@@ -1045,8 +1051,8 @@ export async function getActiveSistemBloks(dateStr?: string, sekolahId?: string)
  * Helper: Ambil data sistem blok yang aktif pada tanggal tertentu (WITA format YYYY-MM-DD).
  * Backward-compatible wrapper mengembalikan aturan pertama yang aktif.
  */
-export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string): Promise<any | null> {
-  const bloks = await getActiveSistemBloks(dateStr, sekolahId);
+export async function getActiveSistemBlok(dateStr?: string, sekolahId?: string, guruId?: string): Promise<any | null> {
+  const bloks = await getActiveSistemBloks(dateStr, sekolahId, guruId);
   return bloks.length > 0 ? bloks[0] : null;
 }
 
@@ -1887,7 +1893,7 @@ export async function getGuruDailyState(namaGuru: string, username?: string, use
     // 0. Cek Sistem Blok aktif hari ini
     let activeBloks: SistemBlok[] = [];
     try {
-      activeBloks = await getActiveSistemBloks(todayStr, sekolahId);
+      activeBloks = await getActiveSistemBloks(todayStr, sekolahId, userId);
       state.activeBloks = activeBloks;
 
       const wholeSchoolFullDay = activeBloks.find(b => 
