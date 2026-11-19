@@ -112,6 +112,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
   const usbInputRef = useRef<HTMLInputElement | null>(null);
   const isSubmittingPresensiRef = useRef(false);
   const isMountedRef = useRef(true);
+  const isFetchingScanDataRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -257,7 +258,8 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
   // Fetch today's scans and summary counts
   const fetchTodayScanData = async () => {
-    if (!user?.sekolah_id) return;
+    if (!user?.sekolah_id || isFetchingScanDataRef.current) return;
+    isFetchingScanDataRef.current = true;
     const todayStr = getLocalTodayDate();
     try {
       const summary = await getTodayPresensiSummary(supabase, user.sekolah_id, todayStr);
@@ -267,6 +269,8 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
       setTodayScans(recent);
     } catch (e) {
       console.error('Error fetching today scan data:', e);
+    } finally {
+      isFetchingScanDataRef.current = false;
     }
   };
 
@@ -275,7 +279,8 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
     if (activeTab === 'scan') {
       fetchTodayScanData();
 
-      // Realtime subscription to presensi_siswa table
+      // Realtime subscription to presensi_siswa table with burst debouncing
+      let realtimeDebounceTimer: NodeJS.Timeout | null = null;
       const channelName = `presensi_kiosk_${user?.sekolah_id || 'all'}_${Date.now()}`;
       const channel = supabase
         .channel(channelName)
@@ -288,20 +293,38 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
           },
           (payload: any) => {
             if (!user?.sekolah_id || payload.new?.sekolah_id === user.sekolah_id || payload.old?.sekolah_id === user.sekolah_id) {
-              fetchTodayScanData();
+              if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
+              realtimeDebounceTimer = setTimeout(() => {
+                fetchTodayScanData();
+              }, 800);
             }
           }
         )
         .subscribe();
 
-      // Short polling fallback (8 seconds) for maximum multi-kiosk sync reliability
+      // Optimized fallback polling (60s instead of 8s to prevent egress blowup),
+      // paused while document/tab is hidden in background
       const pollTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
         fetchTodayScanData();
-      }, 8000);
+      }, 60000);
+
+      const handleVisibilityChange = () => {
+        if (typeof document !== 'undefined' && !document.hidden) {
+          fetchTodayScanData();
+        }
+      };
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+      }
 
       return () => {
         supabase.removeChannel(channel);
         clearInterval(pollTimer);
+        if (realtimeDebounceTimer) clearTimeout(realtimeDebounceTimer);
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('visibilitychange', handleVisibilityChange);
+        }
       };
     }
   }, [activeTab, user?.sekolah_id]);

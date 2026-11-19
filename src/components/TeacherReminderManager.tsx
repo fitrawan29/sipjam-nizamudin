@@ -191,6 +191,14 @@ export interface ReminderConfig {
   [key: string]: any;
 }
 
+// School hours configuration in-memory cache with 15-minute TTL to reduce repetitive Supabase egress
+let cachedReminderSchoolConfig: { sekolahId: string | null; config: ReminderConfig; timestamp: number } | null = null;
+const REMINDER_CONFIG_TTL_MS = 15 * 60 * 1000;
+
+export function invalidateReminderSchoolConfigCache(): void {
+  cachedReminderSchoolConfig = null;
+}
+
 export interface TeacherReminderManagerProps {
   user: any;
   onNavigate: (viewId: string) => void;
@@ -400,41 +408,59 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     setIsSnoozed(false);
 
     try {
-      // 1. Fetch school hours configuration
-      let configQuery = supabase
-        .from('pengaturan')
-        .select('*')
-        .in('key', [
-          'jam_datang_mulai',
-          'jam_datang_batas',
-          'jam_datang_akhir',
-          'jam_pulang_mulai',
-          'jam_pulang_jumat',
-          'jam_pulang_akhir',
-        ]);
-      if (user?.sekolah_id) {
-        configQuery = configQuery.eq('sekolah_id', user.sekolah_id);
-      }
-      const { data: configData } = await configQuery;
+      // 1. Fetch school hours configuration (with in-memory TTL caching to save egress)
+      let config: ReminderConfig;
+      const nowTs = Date.now();
+      const currentSekolahId = user?.sekolah_id || null;
 
-      const config: ReminderConfig = {
-        jam_datang_mulai: '06:45',
-        jam_datang_batas: '07:15',
-        jam_datang_akhir: '08:00',
-        jam_pulang_mulai: '11:00',
-        jam_pulang_jumat: '11:00',
-        jam_pulang_akhir: '22:00',
-      };
+      if (
+        cachedReminderSchoolConfig &&
+        cachedReminderSchoolConfig.sekolahId === currentSekolahId &&
+        nowTs - cachedReminderSchoolConfig.timestamp < REMINDER_CONFIG_TTL_MS
+      ) {
+        config = { ...cachedReminderSchoolConfig.config };
+      } else {
+        let configQuery = supabase
+          .from('pengaturan')
+          .select('key, value, jam_pulang_jumat')
+          .in('key', [
+            'jam_datang_mulai',
+            'jam_datang_batas',
+            'jam_datang_akhir',
+            'jam_pulang_mulai',
+            'jam_pulang_jumat',
+            'jam_pulang_akhir',
+          ]);
+        if (user?.sekolah_id) {
+          configQuery = configQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: configData } = await configQuery;
 
-      if (configData) {
-        configData.forEach((item: any) => {
-          if (item.key && item.value) {
-            config[item.key] = item.value;
-          }
-          if (item.jam_pulang_jumat && !configData.some((r: any) => r.key === 'jam_pulang_jumat' && r.value)) {
-            config.jam_pulang_jumat = item.jam_pulang_jumat;
-          }
-        });
+        config = {
+          jam_datang_mulai: '06:45',
+          jam_datang_batas: '07:15',
+          jam_datang_akhir: '08:00',
+          jam_pulang_mulai: '11:00',
+          jam_pulang_jumat: '11:00',
+          jam_pulang_akhir: '22:00',
+        };
+
+        if (configData) {
+          configData.forEach((item: any) => {
+            if (item.key && item.value) {
+              config[item.key] = item.value;
+            }
+            if (item.jam_pulang_jumat && !configData.some((r: any) => r.key === 'jam_pulang_jumat' && r.value)) {
+              config.jam_pulang_jumat = item.jam_pulang_jumat;
+            }
+          });
+        }
+
+        cachedReminderSchoolConfig = {
+          sekolahId: currentSekolahId,
+          config,
+          timestamp: nowTs,
+        };
       }
 
       // 2. Fetch daily state via workflow engine
@@ -505,6 +531,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
     let configTimer: NodeJS.Timeout | null = null;
     const handleConfigChange = () => {
+      invalidateReminderSchoolConfigCache();
       if (configTimer) clearTimeout(configTimer);
       configTimer = setTimeout(() => {
         const cfg = getReminderConfig(user?.id);
@@ -598,6 +625,11 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
 
       // Setup dynamic recurring evaluation interval
       intervalId = setInterval(() => {
+        // Skip background checks if document is hidden and browser notifications are not permitted
+        if (typeof document !== 'undefined' && document.hidden) {
+          const hasNotification = typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+          if (!hasNotification) return;
+        }
         checkReminders();
       }, reminderConfig.intervalMs);
     }
