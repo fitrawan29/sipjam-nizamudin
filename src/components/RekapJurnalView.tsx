@@ -2204,6 +2204,7 @@ export default function RekapJurnalView({
                             const isSakit = j.status_verifikasi === 'Sakit' || j.keterangan === 'Sakit' || j.materi === 'Sakit';
                             const isIzin = j.status_verifikasi === 'Izin' || j.keterangan === 'Izin' || j.materi === 'Izin';
                             const isDinasLuar = j.status_verifikasi === 'Dinas Luar' || j.keterangan === 'Dinas Luar' || j.materi === 'Dinas Luar';
+                            const isJurnalKegiatan = j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || isValidJurnalKegiatan(j);
                             const keadaan = parseKeadaanSiswaCounts(j);
                             const hasAttendance = keadaan.jumlah > 0 || (typeof j.kehadiran_murid === 'string' && j.kehadiran_murid.includes('Hadir:'));
 
@@ -2244,27 +2245,27 @@ export default function RekapJurnalView({
 
                                 {/* 5. Keadaan Siswa: Jumlah */}
                                 <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold align-top">
-                                  {hasAttendance ? (keadaan.jumlah || (keadaan.hadir + keadaan.sakit + keadaan.izin + keadaan.alpa)) : '-'}
+                                  {isJurnalKegiatan ? '-' : (hasAttendance ? (keadaan.jumlah || (keadaan.hadir + keadaan.sakit + keadaan.izin + keadaan.alpa)) : '-')}
                                 </td>
 
                                 {/* 5. Keadaan Siswa: Hadir */}
                                 <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-green-700 dark:text-green-400 print:text-black align-top">
-                                  {hasAttendance ? keadaan.hadir : '-'}
+                                  {isJurnalKegiatan ? '-' : (hasAttendance ? keadaan.hadir : '-')}
                                 </td>
 
                                 {/* 5. Keadaan Siswa: Sakit */}
                                 <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-blue-700 dark:text-blue-400 print:text-black align-top">
-                                  {hasAttendance ? keadaan.sakit : '-'}
+                                  {isJurnalKegiatan ? '-' : (hasAttendance ? keadaan.sakit : '-')}
                                 </td>
 
                                 {/* 5. Keadaan Siswa: Izin */}
                                 <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-amber-700 dark:text-amber-400 print:text-black align-top">
-                                  {hasAttendance ? keadaan.izin : '-'}
+                                  {isJurnalKegiatan ? '-' : (hasAttendance ? keadaan.izin : '-')}
                                 </td>
 
                                 {/* 5. Keadaan Siswa: Alpa */}
                                 <td className="px-1 py-1.5 print:p-1 border border-gray-200 dark:border-gray-700 print:border-black text-center font-semibold text-red-700 dark:text-red-400 print:text-black align-top">
-                                  {hasAttendance ? keadaan.alpa : '-'}
+                                  {isJurnalKegiatan ? '-' : (hasAttendance ? keadaan.alpa : '-')}
                                 </td>
 
                                 {/* 6. Tempat/Lokasi KBM */}
