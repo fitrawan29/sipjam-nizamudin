@@ -1,0 +1,61 @@
+name: Supabase Multi-Database Schema Sync
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/multi-db-migrator.ts'
+      - '.github/workflows/supabase-multi-db-sync.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Jalankan simulasi tanpa mengeksekusi perubahan (Dry Run)'
+        required: false
+        default: false
+        type: boolean
+      school:
+        description: 'Target sekolah tertentu (contoh: SMANTUTUYAN atau kosongkan untuk semua)'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: supabase-migrations-main
+  cancel-in-progress: false
+
+jobs:
+  sync-database-cluster:
+    name: Sync Cluster Databases
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: 📦 Install Dependencies
+        run: npm ci --prefer-offline --no-audit || npm install --no-audit
+
+      - name: 🚀 Execute Multi-Database Migrations
+        env:
+          SUPABASE_CLUSTER_DBS: ${{ secrets.SUPABASE_CLUSTER_DBS }}
+          DB_URL_NIZAMUDIN: ${{ secrets.DB_URL_NIZAMUDIN }}
+          DB_URL_SMANTUTUYAN: ${{ secrets.DB_URL_SMANTUTUYAN }}
+        run: |
+          ARGS=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ -n "${{ github.event.inputs.school }}" ]; then
+            ARGS="$ARGS --school=${{ github.event.inputs.school }}"
+          fi
+          echo "Menjalankan sinkronisasi migrasi dengan parameter: $ARGS"
+          npx tsx scripts/multi-db-migrator.ts $ARGS

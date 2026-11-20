@@ -111,6 +111,9 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (rawStr.includes('kegiatan_pembelajaran') && rawStr.includes('schema cache')) ||
     (rawStr.includes('lokasi') && rawStr.includes('schema cache')) ||
     (rawStr.includes('lokasi_kbm') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('jurnal_bk') && (rawStr.includes('schema cache') || rawStr.includes('does not exist') || rawStr.includes('not found'))) ||
+    (rawStr.includes('detail_layanan') && rawStr.includes('schema cache')) ||
+    (rawStr.includes('peserta_didik') && rawStr.includes('schema cache')) ||
     message.includes('could not find the table') ||
     (message.includes('could not find the') && message.includes('column')) ||
     (message.includes('sekolah_registry') && message.includes('schema cache')) ||
@@ -123,6 +126,9 @@ export function isSchemaCacheOrMissingTableError(err: any): boolean {
     (message.includes('kegiatan_pembelajaran') && message.includes('schema cache')) ||
     (message.includes('lokasi') && message.includes('schema cache')) ||
     (message.includes('lokasi_kbm') && message.includes('schema cache')) ||
+    (message.includes('jurnal_bk') && (message.includes('schema cache') || message.includes('does not exist') || message.includes('not found'))) ||
+    (message.includes('detail_layanan') && message.includes('schema cache')) ||
+    (message.includes('peserta_didik') && message.includes('schema cache')) ||
     (details.includes('sekolah_registry') && details.includes('schema cache')) ||
     (details.includes('push_subscriptions') && details.includes('schema cache')) ||
     (details.includes('data_guru') && details.includes('schema cache')) ||

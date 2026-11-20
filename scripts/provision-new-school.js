@@ -88,7 +88,28 @@ async function main() {
       WHERE username = 'admin';
     `, [passAdmin]);
 
-    console.log('✅ Profil sekolah dan akun admin berhasil dikonfigurasi!');
+    console.log('⏳ Mendaftarkan riwayat migrasi pada tabel _schema_migrations...');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public._schema_migrations (
+        version VARCHAR(255) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        executed_at TIMESTAMPTZ DEFAULT NOW()
+      );
+    `);
+
+    const migrationsDir = path.join(__dirname, '../supabase/migrations');
+    if (fs.existsSync(migrationsDir)) {
+      const migFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+      for (const f of migFiles) {
+        const ver = f.replace(/\.sql$/, '');
+        await client.query(
+          'INSERT INTO public._schema_migrations (version, name, executed_at) VALUES ($1, $2, NOW()) ON CONFLICT (version) DO NOTHING;',
+          [ver, f]
+        );
+      }
+    }
+
+    console.log('✅ Profil sekolah, akun admin, dan riwayat migrasi berhasil dikonfigurasi!');
 
     console.log('\n======================================================');
     console.log('🎉 PROVISI DATABASE SELESAI!');

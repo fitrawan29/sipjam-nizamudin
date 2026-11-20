@@ -509,6 +509,43 @@ CREATE TABLE IF NOT EXISTS public.riwayat_backup (
     keterangan TEXT
 );
 
+-- 2.32 Jurnal BK (Bimbingan Konseling)
+CREATE TABLE IF NOT EXISTS public.jurnal_bk (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sekolah_id UUID NOT NULL REFERENCES public.sekolah(id) ON DELETE CASCADE,
+    guru_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    user_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    nama_guru TEXT NOT NULL,
+    siswa_id UUID REFERENCES public.data_siswa(id) ON DELETE SET NULL,
+    nisn TEXT,
+    nama_siswa TEXT NOT NULL,
+    kelas TEXT NOT NULL,
+    tanggal DATE NOT NULL DEFAULT CURRENT_DATE,
+    waktu TEXT NOT NULL,
+    bidang_bimbingan TEXT NOT NULL CHECK (bidang_bimbingan IN ('Pribadi', 'Sosial', 'Belajar', 'Karir')),
+    jenis_layanan TEXT NOT NULL,
+    sasaran TEXT DEFAULT 'Individu',
+    tempat_layanan TEXT DEFAULT 'Ruang BK',
+    catatan TEXT NOT NULL,
+    tindak_lanjut TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Dalam Penanganan' CHECK (status IN ('Dalam Penanganan', 'Selesai', 'Alih Tangan Kasus')),
+    status_verifikasi TEXT DEFAULT 'Menunggu',
+    catatan_admin TEXT,
+    alasan_penolakan TEXT,
+    detail_layanan JSONB DEFAULT '{}'::jsonb,
+    peserta_didik JSONB DEFAULT '[]'::jsonb,
+    link_dokumen TEXT,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 2.33 Schema Migrations Tracker
+CREATE TABLE IF NOT EXISTS public._schema_migrations (
+    version VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    executed_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- ==============================================================================
 -- 3. VIEWS
 -- ==============================================================================
@@ -538,6 +575,10 @@ CREATE INDEX IF NOT EXISTS idx_tp_sekolah_guru ON public.tujuan_pembelajaran(sek
 CREATE INDEX IF NOT EXISTS idx_nilai_siswa_sekolah_tp ON public.nilai_siswa(sekolah_id, tp_id);
 CREATE INDEX IF NOT EXISTS idx_piket_form_lock_lookup ON public.piket_form_lock(sekolah_id, tanggal, form_type);
 CREATE INDEX IF NOT EXISTS idx_cp_sekolah_mapel_kelas ON public.capaian_pembelajaran(sekolah_id, nama_mapel, kelas);
+CREATE INDEX IF NOT EXISTS idx_jurnal_bk_sekolah_id ON public.jurnal_bk(sekolah_id);
+CREATE INDEX IF NOT EXISTS idx_jurnal_bk_tanggal ON public.jurnal_bk(sekolah_id, tanggal DESC);
+CREATE INDEX IF NOT EXISTS idx_jurnal_bk_status ON public.jurnal_bk(sekolah_id, status);
+CREATE INDEX IF NOT EXISTS idx_jurnal_bk_tanggal_verifikasi ON public.jurnal_bk(sekolah_id, tanggal, status_verifikasi);
 
 -- Enforce max 1 Diagnostik assessment per TP
 CREATE UNIQUE INDEX IF NOT EXISTS uq_asesmen_tp_diagnostik ON public.asesmen_kolom(tp_id) WHERE (kategori = 'Diagnostik');
@@ -969,6 +1010,7 @@ ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sistem_blok ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.syarat_perangkat_pembelajaran ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.riwayat_backup ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.jurnal_bk ENABLE ROW LEVEL SECURITY;
 
 -- Dynamic universal policy loop for tenant isolation
 DO $$
@@ -982,7 +1024,7 @@ DECLARE
         'asesmen_kolom', 'nilai_siswa', 'kalender_pendidikan', 'bank_dokumen',
         'pengaturan', 'pengumuman', 'pengumuman_dibaca', 'pengumuman_tanggapan',
         'chat_messages', 'push_subscriptions', 'sistem_blok', 'syarat_perangkat_pembelajaran',
-        'riwayat_backup'
+        'riwayat_backup', 'jurnal_bk'
     ];
 BEGIN
     FOREACH tbl IN ARRAY tables
