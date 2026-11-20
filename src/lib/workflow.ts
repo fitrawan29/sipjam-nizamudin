@@ -1462,24 +1462,35 @@ export function evaluateScheduleBlock(
  * Kita cari semua jadwal hari ini, lalu filter yang nama guru-nya COCOK (partial match).
  */
 export async function findJadwalForGuru(hari: string, namaGuru: string, username?: string, userId?: string, sekolahId?: string): Promise<any[]> {
-  // Ambil semua jadwal hari ini
+  const targetHari = (hari || '').trim();
+  // Filter hari directly at database level to reduce egress (1 day instead of 6 days)
   let query = supabase
     .from('jadwal_pelajaran')
     .select('*')
     .order('kelas', { ascending: true });
   if (sekolahId) query = query.eq('sekolah_id', sekolahId);
+  if (targetHari) query = query.ilike('hari', targetHari);
   const { data: allJadwalRaw, error: qErr } = await query;
   let rawList = (allJadwalRaw && !qErr) ? allJadwalRaw : [];
   if (rawList.length === 0 && sekolahId) {
-    const fbRes = await supabase.from('jadwal_pelajaran').select('*').order('kelas', { ascending: true });
+    let fbQ = supabase.from('jadwal_pelajaran').select('*').order('kelas', { ascending: true });
+    if (targetHari) fbQ = fbQ.ilike('hari', targetHari);
+    const fbRes = await fbQ;
     if (Array.isArray(fbRes.data)) rawList = fbRes.data;
+  }
+  // Resilience fallback: if case/naming didn't match directly, retry without hari filter
+  if (rawList.length === 0 && targetHari) {
+    let retryQ = supabase.from('jadwal_pelajaran').select('*').order('kelas', { ascending: true });
+    if (sekolahId) retryQ = retryQ.eq('sekolah_id', sekolahId);
+    const { data: retryData } = await retryQ;
+    if (retryData && retryData.length > 0) rawList = retryData;
   }
   
   if (rawList.length === 0) return [];
 
-  const targetHari = (hari || '').trim().toLowerCase();
+  const targetHariLower = targetHari.toLowerCase();
   const dayFiltered = rawList.filter((j: any) =>
-    (j.hari || '').trim().toLowerCase() === targetHari
+    (j.hari || '').trim().toLowerCase() === targetHariLower
   );
 
   // Filter out any invalid / non-existent subjects (such as "teknik informasi" or "teknologi informasi")
@@ -2062,7 +2073,57 @@ export function filterGuruMapelByHari(
   return scheduledToday;
 }
 
-export async function getGuruDailyState(namaGuru: string, username?: string, userId?: string, sekolahId?: string): Promise<GuruDailyState> {
+interface CachedDailyState {
+  state: GuruDailyState;
+  timestamp: number;
+}
+const dailyStateBrowserCache = new Map<string, CachedDailyState>();
+const DAILY_STATE_CACHE_TTL_MS = 60 * 1000; // 60-second in-memory session cache to eliminate egress bursts
+
+export function invalidateGuruDailyStateCache(teacherKey?: string): void {
+  if (teacherKey) {
+    dailyStateBrowserCache.delete(teacherKey);
+  } else {
+    dailyStateBrowserCache.clear();
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('sipjam:guru_updated', () => invalidateGuruDailyStateCache());
+  window.addEventListener('sipjam:state_mutated', () => invalidateGuruDailyStateCache());
+  window.addEventListener('sipjam:config_updated', () => invalidateGuruDailyStateCache());
+}
+
+export async function getGuruDailyState(
+  namaGuru: string,
+  username?: string,
+  userId?: string,
+  sekolahId?: string,
+  options?: { forceFresh?: boolean }
+): Promise<GuruDailyState> {
+  const isBrowser = typeof window !== 'undefined';
+  const cacheKey = `${sekolahId || 'default'}_${userId || ''}_${username || ''}_${(namaGuru || '').trim().toLowerCase()}`;
+
+  if (isBrowser && !options?.forceFresh) {
+    const cached = dailyStateBrowserCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < DAILY_STATE_CACHE_TTL_MS) {
+      return JSON.parse(JSON.stringify(cached.state));
+    }
+  }
+
+  const state = await computeGuruDailyState(namaGuru, username, userId, sekolahId);
+
+  if (isBrowser) {
+    dailyStateBrowserCache.set(cacheKey, {
+      state: JSON.parse(JSON.stringify(state)),
+      timestamp: Date.now(),
+    });
+  }
+
+  return state;
+}
+
+async function computeGuruDailyState(namaGuru: string, username?: string, userId?: string, sekolahId?: string): Promise<GuruDailyState> {
   const now = new Date();
   const todayStr = getWitaDateStr(now);
   const cleanTeacherName = (namaGuru || '').split(',')[0].trim();

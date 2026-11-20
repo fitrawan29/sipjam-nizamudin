@@ -160,6 +160,12 @@ export default function HomeViewGuru({
             query = query.eq('sekolah_id', user.sekolah_id);
           }
 
+          if (targetYearMonth) {
+            const [y, m] = targetYearMonth.split('-');
+            const mClean = String(parseInt(m, 10));
+            query = query.or(`timestamp.ilike.${targetYearMonth}%,timestamp.ilike.${mClean}/%/${y}%,timestamp.ilike.${m}/%/${y}%`);
+          }
+
           const { data, error } = await query;
 
           if (error) {

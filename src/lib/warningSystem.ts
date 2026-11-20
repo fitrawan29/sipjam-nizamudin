@@ -444,11 +444,11 @@ export async function getTeacherDisciplineWarnings(
   const teacherId = guruData?.id;
   const resolvedSekolahId = sekolahId || guruData?.sekolah_id;
 
-  let configQuery = supabase.from('pengaturan').select('*');
-  let calQuery = supabase.from('kalender_pendidikan').select('tanggal, tipe, keterangan');
-  let jadwalQuery = supabase.from('jadwal_pelajaran').select('*');
-  let penugasanQuery = supabase.from('penugasan_piket').select('*').eq('tipe_petugas', 'Guru');
-  let legacyPiketQuery = supabase.from('jadwal_piket').select('*');
+  let configQuery = supabase.from('pengaturan').select('key, value, sekolah_id');
+  let calQuery = supabase.from('kalender_pendidikan').select('tanggal, tipe, keterangan, sekolah_id');
+  let jadwalQuery = supabase.from('jadwal_pelajaran').select('id, kelas, hari, jam_ke, mata_pelajaran, mapel, nama_guru, user_id, sekolah_id');
+  let penugasanQuery = supabase.from('penugasan_piket').select('id, hari, nama_guru, user_id, tipe_petugas, sekolah_id').eq('tipe_petugas', 'Guru');
+  let legacyPiketQuery = supabase.from('jadwal_piket').select('id, hari, guru_piket, nama_guru, sekolah_id');
 
   if (resolvedSekolahId) {
     configQuery = configQuery.eq('sekolah_id', resolvedSekolahId);
@@ -483,17 +483,61 @@ export async function getTeacherDisciplineWarnings(
   const minDate = evaluationDates.length > 0 ? evaluationDates[0].dateStr : todayStr;
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
-  let presensiQuery = supabase.from('presensi_guru').select('*').gte('timestamp', minTimestamp).lte('timestamp', maxDate);
-  let multiLeaveQuery = supabase.from('presensi_guru').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', minDate).neq('status_verifikasi', 'Ditolak');
-  let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
-  let piketQuery = supabase.from('laporan_piket').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
-  let bkJurnalQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
+  const cleanTeacherName = (normName || teacherProfile?.nama_guru || '').split(',')[0].trim();
+  const teacherUserId = linkedUser?.id || guruData?.user_id;
+
+  // Build targeted teacher filters for PostgREST to avoid fetching whole-school datasets
+  const teacherIdentFilters: string[] = [];
+  if (teacherUserId) teacherIdentFilters.push(`user_id.eq.${teacherUserId}`);
+  if (teacherId) teacherIdentFilters.push(`user_id.eq.${teacherId}`);
+  if (cleanTeacherName) {
+    teacherIdentFilters.push(`nama_guru.ilike."%${cleanTeacherName}%"`);
+  }
+
+  const presensiCols = 'id, user_id, nama_guru, timestamp, tanggal_mulai, tanggal_selesai, jenis_presensi, detail_izin, status_verifikasi, tipe_absen, sekolah_id';
+  let presensiQuery = supabase.from('presensi_guru').select(presensiCols).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  let multiLeaveQuery = supabase.from('presensi_guru').select(presensiCols).lte('tanggal_mulai', todayStr).gte('tanggal_selesai', minDate).neq('status_verifikasi', 'Ditolak');
+
+  const jurnalCols = 'id, user_id, nama_guru, tanggal, status_verifikasi, keterangan, mapel, kelas, materi, kegiatan, sekolah_id';
+  let jurnalQuery = supabase.from('jurnal_pembelajaran').select(jurnalCols).gte('tanggal', minDate).lte('tanggal', todayStr);
+
+  const piketCols = 'id, tanggal, guru_pelapor, kehadiran_guru_piket, status_verifikasi, sekolah_id';
+  let piketQuery = supabase.from('laporan_piket').select(piketCols).gte('tanggal', minDate).lte('tanggal', todayStr);
+
+  const bkJurnalCols = 'id, user_id, guru_id, nama_guru, tanggal, status_verifikasi, keterangan, mapel, kelas, bidang_bimbingan, jenis_layanan, sekolah_id';
+  let bkJurnalQuery = supabase.from('jurnal_bk').select(bkJurnalCols).gte('tanggal', minDate).lte('tanggal', todayStr);
+
   if (resolvedSekolahId) {
     presensiQuery = presensiQuery.eq('sekolah_id', resolvedSekolahId);
     multiLeaveQuery = multiLeaveQuery.eq('sekolah_id', resolvedSekolahId);
     jurnalQuery = jurnalQuery.eq('sekolah_id', resolvedSekolahId);
     piketQuery = piketQuery.eq('sekolah_id', resolvedSekolahId);
     bkJurnalQuery = bkJurnalQuery.eq('sekolah_id', resolvedSekolahId);
+  }
+
+  if (teacherIdentFilters.length > 0) {
+    presensiQuery = presensiQuery.or(teacherIdentFilters.join(','));
+    multiLeaveQuery = multiLeaveQuery.or(teacherIdentFilters.join(','));
+  }
+
+  if (cleanTeacherName || teacherUserId) {
+    const jFilters = [...teacherIdentFilters];
+    if (cleanTeacherName) {
+      jFilters.push(`keterangan.ilike."%Menggantikan:%${cleanTeacherName}%"`);
+    }
+    jurnalQuery = jurnalQuery.or(jFilters.join(','));
+
+    const pFilters: string[] = [];
+    if (teacherUserId) pFilters.push(`user_id.eq.${teacherUserId}`);
+    if (cleanTeacherName) {
+      pFilters.push(`guru_pelapor.ilike."%${cleanTeacherName}%"`);
+      pFilters.push(`kehadiran_guru_piket.ilike."%${cleanTeacherName}%"`);
+    }
+    piketQuery = piketQuery.or(pFilters.join(','));
+
+    const bFilters = [...teacherIdentFilters];
+    if (teacherId) bFilters.push(`guru_id.eq.${teacherId}`);
+    bkJurnalQuery = bkJurnalQuery.or(bFilters.join(','));
   }
 
   const safeBkPromise = Promise.resolve(bkJurnalQuery).then(
@@ -574,12 +618,12 @@ export async function getAllTeachersDisciplineWarnings(
 
   if (teachers.length === 0) return [];
 
-  let configQuery = supabase.from('pengaturan').select('*');
+  let configQuery = supabase.from('pengaturan').select('key, value, sekolah_id');
   let calQuery = supabase.from('kalender_pendidikan').select('tanggal, tipe, keterangan, sekolah_id');
-  let jadwalQuery = supabase.from('jadwal_pelajaran').select('*');
-  let penugasanQuery = supabase.from('penugasan_piket').select('*').eq('tipe_petugas', 'Guru');
-  let legacyPiketQuery = supabase.from('jadwal_piket').select('*');
-  let usersRoleQuery = supabase.from('users').select('id, nama, username, role');
+  let jadwalQuery = supabase.from('jadwal_pelajaran').select('id, kelas, hari, jam_ke, mata_pelajaran, mapel, nama_guru, user_id, sekolah_id');
+  let penugasanQuery = supabase.from('penugasan_piket').select('id, hari, nama_guru, user_id, tipe_petugas, sekolah_id').eq('tipe_petugas', 'Guru');
+  let legacyPiketQuery = supabase.from('jadwal_piket').select('id, hari, guru_piket, nama_guru, sekolah_id');
+  let usersRoleQuery = supabase.from('users').select('id, nama, username, role, sekolah_id');
 
   if (sekolahId) {
     configQuery = configQuery.eq('sekolah_id', sekolahId);
@@ -621,11 +665,12 @@ export async function getAllTeachersDisciplineWarnings(
   const minDate = `${yearMonth}-01`;
   const minTimestamp = minDate + 'T00:00:00+08:00';
 
-  let presensiQuery = supabase.from('presensi_guru').select('*').gte('timestamp', minTimestamp).lte('timestamp', maxDate);
-  let multiLeaveQuery = supabase.from('presensi_guru').select('*').lte('tanggal_mulai', todayStr).gte('tanggal_selesai', minDate).neq('status_verifikasi', 'Ditolak');
-  let jurnalQuery = supabase.from('jurnal_pembelajaran').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
-  let piketQuery = supabase.from('laporan_piket').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
-  let bkJurnalAllQuery = supabase.from('jurnal_bk').select('*').gte('tanggal', minDate).lte('tanggal', todayStr);
+  const presensiCols = 'id, user_id, nama_guru, timestamp, tanggal_mulai, tanggal_selesai, jenis_presensi, detail_izin, status_verifikasi, tipe_absen, sekolah_id';
+  let presensiQuery = supabase.from('presensi_guru').select(presensiCols).gte('timestamp', minTimestamp).lte('timestamp', maxDate);
+  let multiLeaveQuery = supabase.from('presensi_guru').select(presensiCols).lte('tanggal_mulai', todayStr).gte('tanggal_selesai', minDate).neq('status_verifikasi', 'Ditolak');
+  let jurnalQuery = supabase.from('jurnal_pembelajaran').select('id, user_id, nama_guru, tanggal, status_verifikasi, keterangan, mapel, kelas, materi, kegiatan, sekolah_id').gte('tanggal', minDate).lte('tanggal', todayStr);
+  let piketQuery = supabase.from('laporan_piket').select('id, tanggal, guru_pelapor, kehadiran_guru_piket, status_verifikasi, sekolah_id').gte('tanggal', minDate).lte('tanggal', todayStr);
+  let bkJurnalAllQuery = supabase.from('jurnal_bk').select('id, user_id, guru_id, nama_guru, tanggal, status_verifikasi, keterangan, mapel, kelas, bidang_bimbingan, jenis_layanan, sekolah_id').gte('tanggal', minDate).lte('tanggal', todayStr);
 
   if (sekolahId) {
     presensiQuery = presensiQuery.eq('sekolah_id', sekolahId);
