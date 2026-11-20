@@ -132,167 +132,177 @@ export default function HomeViewGuru({
   }, [user?.sekolah_id]);
 
 
-    useEffect(() => {
+  // Fetch Personal Attendance Stat Cards (Selected Month in WITA)
+  const fetchAttendanceStats = useCallback(async () => {
+    if (!user?.nama) return;
+    try {
+      const targetYearMonth = selectedMonth;
+
+      const searchName = `%${user.nama.split(',')[0].trim()}%`;
+      let query = supabase
+        .from('presensi_guru')
+        .select('timestamp, keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen, status_verifikasi, sekolah_id')
+        .ilike('nama_guru', searchName);
+
+      if (user?.sekolah_id) {
+        query = query.eq('sekolah_id', user.sekolah_id);
+      }
+
+      if (targetYearMonth) {
+        const [y, m] = targetYearMonth.split('-');
+        const mClean = String(parseInt(m, 10));
+        query = query.or(`timestamp.ilike.${targetYearMonth}%,timestamp.ilike.${mClean}/%/${y}%,timestamp.ilike.${m}/%/${y}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching teacher attendance:', error);
+        return;
+      }
+
+      // Multi-format WITA current month matcher
+      const matchWitaMonth = (ts: string | null | undefined): boolean => {
+        if (!ts) return false;
+        if (ts.startsWith(targetYearMonth)) return true;
+        const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+        if (slashMatch) {
+          const month = String(slashMatch[1]).padStart(2, '0');
+          const year = slashMatch[3];
+          return `${year}-${month}` === targetYearMonth;
+        }
+        try {
+          const d = new Date(ts);
+          if (!isNaN(d.getTime())) {
+            return getWitaDateStr(d).startsWith(targetYearMonth);
+          }
+        } catch (_) {}
+        return false;
+      };
+
+      let h = 0;
+      let dl = 0;
+      let iz = 0;
+      let sk = 0;
+      let al = 0;
+      let totalDetik = 0;
+
+      data?.forEach((p: any) => {
+        // 1. Exclude records outside current month in WITA
+        if (!matchWitaMonth(p.timestamp)) return;
+
+        // 2. Exclude rejected records from accumulation
+        if (p.status_verifikasi === 'Ditolak') return;
+
+        const tipe = (p.tipe_absen || 'Datang').toLowerCase();
+        const jenis = (p.jenis_presensi || '').toLowerCase();
+        const detail = (p.detail_izin || '').toLowerCase();
+        const statusVerif = (p.status_verifikasi || '').toLowerCase();
+
+        if (tipe === 'pulang') return;
+
+        if (jenis === 'alpa' || statusVerif === 'alpa') {
+          al++;
+          return;
+        }
+
+        const detik = Number(p.keterlambatan_detik) || 0;
+        totalDetik += detik;
+
+        if (jenis === 'izin') {
+          if (detail.includes('sakit')) {
+            sk++;
+          } else {
+            iz++;
+          }
+        } else if (jenis === 'sakit') {
+          sk++;
+        } else if (jenis === 'dinas luar') {
+          dl++;
+        } else {
+          h++;
+        }
+      });
+
+      setAttendanceStats({
+        hadir: h,
+        dinasLuar: dl,
+        izin: iz,
+        sakit: sk,
+        alpa: al,
+      });
+      let aktif = true;
+      let batasJam = 4;
+      let penaltiHari = 1;
+      try {
+        if (typeof window !== 'undefined') {
+          const syncRaw = localStorage.getItem('sipjam_config_sync');
+          if (syncRaw) {
+            const parsed = JSON.parse(syncRaw);
+            const cfg = parsed?.config;
+            if (cfg) {
+              if (cfg.akumulasi_telat_aktif !== undefined) aktif = String(cfg.akumulasi_telat_aktif) !== 'false';
+              if (Number(cfg.batas_jam_penalti_telat) > 0) batasJam = Number(cfg.batas_jam_penalti_telat);
+              if (Number(cfg.jumlah_hari_penalti_telat) > 0) penaltiHari = Math.floor(Number(cfg.jumlah_hari_penalti_telat));
+            }
+          }
+        }
+        let cfgQuery = supabase
+          .from('pengaturan')
+          .select('key, value')
+          .in('key', ['akumulasi_telat_aktif', 'batas_jam_penalti_telat', 'jumlah_hari_penalti_telat']);
+        if (user?.sekolah_id) {
+          cfgQuery = cfgQuery.eq('sekolah_id', user.sekolah_id);
+        }
+        const { data: cfgRows } = await cfgQuery;
+        if (cfgRows && cfgRows.length > 0) {
+          const aktifRow = cfgRows.find((r: any) => r.key === 'akumulasi_telat_aktif');
+          const jamRow = cfgRows.find((r: any) => r.key === 'batas_jam_penalti_telat');
+          const hariRow = cfgRows.find((r: any) => r.key === 'jumlah_hari_penalti_telat');
+          if (aktifRow?.value !== undefined && aktifRow?.value !== null && aktifRow?.value !== '') {
+            aktif = String(aktifRow.value) !== 'false';
+          }
+          if (Number(jamRow?.value) > 0) batasJam = Number(jamRow?.value);
+          if (Number(hariRow?.value) > 0) penaltiHari = Math.floor(Number(hariRow?.value));
+        }
+      } catch (_) {}
+
+      const batasDetik = Math.round(batasJam * 3600);
+      const alpaPenalti = aktif && batasDetik > 0
+        ? (batasDetik === 14400 ? Math.floor(totalDetik / 14400) : Math.floor(totalDetik / batasDetik)) * penaltiHari
+        : 0;
+      setTelatConfig({ aktif, batasJam, penaltiHari });
+      setAkumulasiTelat({ detik: totalDetik, alpa: alpaPenalti });
+    } catch (err) {
+      console.error('Failed to load teacher stats:', err);
+    }
+  }, [user?.nama, user?.sekolah_id, selectedMonth]);
+
+  useEffect(() => {
+    let isMounted = true;
     if (user?.nama) {
-      setTimeout(() => setLoadingState(true), 0);
       getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id)
-        .then(setDailyState)
+        .then(res => {
+          if (isMounted) setDailyState(res);
+        })
         .catch(console.error)
-        .finally(() => setLoadingState(false));
+        .finally(() => {
+          if (isMounted) setLoadingState(false);
+        });
 
       // Fetch 3x Absence Warnings (F7) for the selected month
       getTeacherDisciplineWarnings(user.nama, user.sekolah_id, selectedMonth)
-        .then(setTeacherWarnings)
+        .then(warnings => {
+          if (isMounted) setTeacherWarnings(warnings);
+        })
         .catch(err => console.error('Error fetching discipline warnings:', err));
-
-      // Fetch Personal Attendance Stat Cards (Selected Month in WITA)
-      const fetchAttendanceStats = async () => {
-        try {
-          const targetYearMonth = selectedMonth;
-
-          const searchName = `%${user.nama.split(',')[0].trim()}%`;
-          let query = supabase
-            .from('presensi_guru')
-            .select('timestamp, keterlambatan_detik, jenis_presensi, detail_izin, tipe_absen, status_verifikasi, sekolah_id')
-            .ilike('nama_guru', searchName);
-
-          if (user?.sekolah_id) {
-            query = query.eq('sekolah_id', user.sekolah_id);
-          }
-
-          if (targetYearMonth) {
-            const [y, m] = targetYearMonth.split('-');
-            const mClean = String(parseInt(m, 10));
-            query = query.or(`timestamp.ilike.${targetYearMonth}%,timestamp.ilike.${mClean}/%/${y}%,timestamp.ilike.${m}/%/${y}%`);
-          }
-
-          const { data, error } = await query;
-
-          if (error) {
-            console.error('Error fetching teacher attendance:', error);
-            return;
-          }
-
-          // Multi-format WITA current month matcher
-          const matchWitaMonth = (ts: string | null | undefined): boolean => {
-            if (!ts) return false;
-            if (ts.startsWith(targetYearMonth)) return true;
-            const slashMatch = ts.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-            if (slashMatch) {
-              const month = String(slashMatch[1]).padStart(2, '0');
-              const year = slashMatch[3];
-              return `${year}-${month}` === targetYearMonth;
-            }
-            try {
-              const d = new Date(ts);
-              if (!isNaN(d.getTime())) {
-                return getWitaDateStr(d).startsWith(targetYearMonth);
-              }
-            } catch (_) {}
-            return false;
-          };
-
-          let h = 0;
-          let dl = 0;
-          let iz = 0;
-          let sk = 0;
-          let al = 0;
-          let totalDetik = 0;
-
-          data?.forEach((p: any) => {
-            // 1. Exclude records outside current month in WITA
-            if (!matchWitaMonth(p.timestamp)) return;
-
-            // 2. Exclude rejected records from accumulation
-            if (p.status_verifikasi === 'Ditolak') return;
-
-            const tipe = (p.tipe_absen || 'Datang').toLowerCase();
-            const jenis = (p.jenis_presensi || '').toLowerCase();
-            const detail = (p.detail_izin || '').toLowerCase();
-            const statusVerif = (p.status_verifikasi || '').toLowerCase();
-
-            if (tipe === 'pulang') return;
-
-            if (jenis === 'alpa' || statusVerif === 'alpa') {
-              al++;
-              return;
-            }
-
-            const detik = Number(p.keterlambatan_detik) || 0;
-            totalDetik += detik;
-
-            if (jenis === 'izin') {
-              if (detail.includes('sakit')) {
-                sk++;
-              } else {
-                iz++;
-              }
-            } else if (jenis === 'sakit') {
-              sk++;
-            } else if (jenis === 'dinas luar') {
-              dl++;
-            } else {
-              h++;
-            }
-          });
-
-          setAttendanceStats({
-            hadir: h,
-            dinasLuar: dl,
-            izin: iz,
-            sakit: sk,
-            alpa: al,
-          });
-          let aktif = true;
-          let batasJam = 4;
-          let penaltiHari = 1;
-          try {
-            if (typeof window !== 'undefined') {
-              const syncRaw = localStorage.getItem('sipjam_config_sync');
-              if (syncRaw) {
-                const parsed = JSON.parse(syncRaw);
-                const cfg = parsed?.config;
-                if (cfg) {
-                  if (cfg.akumulasi_telat_aktif !== undefined) aktif = String(cfg.akumulasi_telat_aktif) !== 'false';
-                  if (Number(cfg.batas_jam_penalti_telat) > 0) batasJam = Number(cfg.batas_jam_penalti_telat);
-                  if (Number(cfg.jumlah_hari_penalti_telat) > 0) penaltiHari = Math.floor(Number(cfg.jumlah_hari_penalti_telat));
-                }
-              }
-            }
-            let cfgQuery = supabase
-              .from('pengaturan')
-              .select('key, value')
-              .in('key', ['akumulasi_telat_aktif', 'batas_jam_penalti_telat', 'jumlah_hari_penalti_telat']);
-            if (user?.sekolah_id) {
-              cfgQuery = cfgQuery.eq('sekolah_id', user.sekolah_id);
-            }
-            const { data: cfgRows } = await cfgQuery;
-            if (cfgRows && cfgRows.length > 0) {
-              const aktifRow = cfgRows.find((r: any) => r.key === 'akumulasi_telat_aktif');
-              const jamRow = cfgRows.find((r: any) => r.key === 'batas_jam_penalti_telat');
-              const hariRow = cfgRows.find((r: any) => r.key === 'jumlah_hari_penalti_telat');
-              if (aktifRow?.value !== undefined && aktifRow?.value !== null && aktifRow?.value !== '') {
-                aktif = String(aktifRow.value) !== 'false';
-              }
-              if (Number(jamRow?.value) > 0) batasJam = Number(jamRow?.value);
-              if (Number(hariRow?.value) > 0) penaltiHari = Math.floor(Number(hariRow?.value));
-            }
-          } catch (_) {}
-
-          const batasDetik = Math.round(batasJam * 3600);
-          const alpaPenalti = aktif && batasDetik > 0
-            ? (batasDetik === 14400 ? Math.floor(totalDetik / 14400) : Math.floor(totalDetik / batasDetik)) * penaltiHari
-            : 0;
-          setTelatConfig({ aktif, batasJam, penaltiHari });
-          setAkumulasiTelat({ detik: totalDetik, alpa: alpaPenalti });
-        } catch (err) {
-          console.error('Failed to load teacher stats:', err);
-        }
-      };
 
       fetchAttendanceStats();
     }
-  }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth, configSyncTick]);
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.nama, user?.username, user?.sekolah_id, user?.id, selectedMonth, configSyncTick, fetchAttendanceStats]);
 
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -303,10 +313,9 @@ export default function HomeViewGuru({
     }
     const run = async () => {
       try {
-        setLoadingState(true);
         const state = await getGuruDailyState(user.nama, user.username, user.id, user.sekolah_id);
         setDailyState(state);
-        setConfigSyncTick(t => t + 1);
+        fetchAttendanceStats();
         getTeacherDisciplineWarnings(user.nama, user.sekolah_id, selectedMonth)
           .then(setTeacherWarnings)
           .catch(err => console.error('Error refreshing discipline warnings:', err));
@@ -322,7 +331,7 @@ export default function HomeViewGuru({
     } else {
       refreshTimerRef.current = setTimeout(run, 200);
     }
-  }, [user?.nama, user?.username, user?.id, user?.sekolah_id, selectedMonth]);
+  }, [user?.nama, user?.username, user?.id, user?.sekolah_id, selectedMonth, fetchAttendanceStats]);
 
   // Realtime subscription: postgres_changes on 'pengaturan' & 'data_guru', Supabase broadcast channel, and window/storage events
   useEffect(() => {
@@ -966,7 +975,7 @@ export default function HomeViewGuru({
               <i className="fa-solid fa-list-check text-emerald-500"></i> Status Tugas Hari Ini
             </h3>
 
-            {loadingState ? (
+            {loadingState && !dailyState ? (
               <div className="flex items-center justify-center py-6 text-gray-500 dark:text-white">
                 <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2"></i>
                 <span className="text-xs">Memeriksa status...</span>
@@ -1108,7 +1117,7 @@ export default function HomeViewGuru({
               </div>
             </div>
 
-            {loadingState ? (
+            {loadingState && !dailyState ? (
               <div className="flex items-center justify-center py-6 text-gray-500 dark:text-gray-400">
                 <i className="fa-solid fa-circle-notch fa-spin text-base mr-2 text-emerald-600 dark:text-emerald-400"></i>
                 <span className="text-xs">Memuat jadwal pelajaran...</span>
