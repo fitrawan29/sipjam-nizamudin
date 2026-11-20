@@ -13,6 +13,18 @@ import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { getSemesterDateRange } from '@/lib/workflow';
 import { formatKepalaSekolahLabel } from '@/utils/textUtils';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
+import { isMatchingWaliGuru } from '@/lib/presensiIntervensi';
+
+const ROMAN_TO_NUM: Record<string, string> = {
+  xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7',
+  vi: '6', v: '5', iv: '4', iii: '3', ii: '2', i: '1'
+};
+const normK = (k?: string | null) =>
+  (k || '')
+    .toLowerCase()
+    .replace(/^(kelas|tingkat|ruang|kls)[.\s_-]*/i, '')
+    .replace(/[\s\-_.]/g, '')
+    .replace(/^(xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)/i, m => ROMAN_TO_NUM[m] || m);
 
 interface RaporViewProps {
   user: any;
@@ -51,10 +63,22 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
   const sekolahId = user?.sekolah_id || null;
   const effectiveStatus = statusKepalaSekolah || user?.status_kepala_sekolah || user?.statusKepalaSekolah || (typeof window !== 'undefined' && (() => { try { const s = localStorage.getItem('sipjam_config_sync'); if (s) return JSON.parse(s)?.config?.status_kepala_sekolah; } catch {} })()) || 'Definitif';
 
+  // Multi-tier homeroom class resolution
+  const resolvedAssignedKelas =
+    assignedKelas ||
+    (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas) ||
+    user?.penugasan?.kelas_binaan ||
+    user?.penugasan?.kelas ||
+    (user as any)?.kelas_binaan ||
+    (user as any)?.assignedKelas ||
+    (user as any)?.assigned_kelas ||
+    (user as any)?.waliKelas ||
+    null;
+
   // View state
   const [activeTab, setActiveTab] = useState<'ringkasan' | 'cetak-individu'>('ringkasan');
   const [kelasList, setKelasList] = useState<string[]>([]);
-  const [selectedKelas, setSelectedKelas] = useState<string>(assignedKelas || '');
+  const [selectedKelas, setSelectedKelas] = useState<string>(assignedKelas || resolvedAssignedKelas || '');
   const [selectedSemester, setSelectedSemester] = useState<'Ganjil' | 'Genap'>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -173,32 +197,82 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     }
   }, [isAdmin, isTataUsaha, isKepalaSekolah, assignedKelas, selectedKelas]);
 
+  // Auto-sync with resolvedAssignedKelas if assignedKelas prop was initially empty
+  useEffect(() => {
+    if (!isAdmin && !isTataUsaha && !isKepalaSekolah) {
+      const target = assignedKelas || resolvedAssignedKelas;
+      if (target && !selectedKelas) {
+        setSelectedKelas(target);
+      }
+    }
+  }, [isAdmin, isTataUsaha, isKepalaSekolah, assignedKelas, resolvedAssignedKelas, selectedKelas]);
+
+  // Discover assigned homeroom class if not supplied in props/session
+  useEffect(() => {
+    if (isAdmin || isTataUsaha || isKepalaSekolah || assignedKelas || resolvedAssignedKelas) return;
+    const discoverAssignedKelas = async () => {
+      try {
+        let q = supabase.from('wali_kelas').select('*');
+        if (sekolahId) q = q.eq('sekolah_id', sekolahId);
+        let { data } = await q;
+        if ((!data || data.length === 0) && sekolahId) {
+          const { data: noSchData } = await supabase.from('wali_kelas').select('*');
+          if (noSchData) data = noSchData;
+        }
+        if (data && data.length > 0) {
+          const match = data.find((w: any) => isMatchingWaliGuru(user, w));
+          if (match?.kelas) {
+            setSelectedKelas(prev => prev || match.kelas);
+          }
+        }
+      } catch (err) {
+        console.warn('[RaporView] Discover assigned class error:', err);
+      }
+    };
+    discoverAssignedKelas();
+  }, [isAdmin, isTataUsaha, isKepalaSekolah, assignedKelas, resolvedAssignedKelas, user, sekolahId]);
+
   // Fetch available classes (all active classes in school for Admin)
   useEffect(() => {
     const fetchKelasList = async () => {
       try {
         let q = supabase.from('data_siswa').select('kelas');
         if (sekolahId) q = q.eq('sekolah_id', sekolahId);
-        const { data } = await q;
+        const { data: initialData } = await q;
+        let data = initialData;
+        if ((!data || data.length === 0) && sekolahId) {
+          const { data: fallbackData } = await supabase.from('data_siswa').select('kelas');
+          if (fallbackData && fallbackData.length > 0) data = fallbackData;
+        }
 
         let wq = supabase.from('wali_kelas').select('kelas');
         if (sekolahId) wq = wq.eq('sekolah_id', sekolahId);
-        const { data: wData } = await wq;
+        const { data: initialWData } = await wq;
+        let wData = initialWData;
+        if ((!wData || wData.length === 0) && sekolahId) {
+          const { data: fallbackWData } = await supabase.from('wali_kelas').select('kelas');
+          if (fallbackWData && fallbackWData.length > 0) wData = fallbackWData;
+        }
 
         let dkData: any[] = [];
         try {
           let dkq = supabase.from('data_kelas').select('nama_kelas, kelas');
           if (sekolahId) dkq = dkq.eq('sekolah_id', sekolahId);
           const { data: dkd, error: dkErr } = await dkq;
-          if (dkd && !dkErr) {
+          if (dkd && !dkErr && dkd.length > 0) {
             dkData = dkd;
+          } else if (sekolahId) {
+            const { data: fallbackDkd } = await supabase.from('data_kelas').select('nama_kelas, kelas');
+            if (fallbackDkd && fallbackDkd.length > 0) dkData = fallbackDkd;
           }
         } catch (_) {}
 
+        const activeAssigned = assignedKelas || resolvedAssignedKelas;
         const allClasses = [
           ...(data || []).map((d: any) => d.kelas),
           ...(wData || []).map((w: any) => w.kelas),
-          ...dkData.map((k: any) => k.nama_kelas || k.kelas)
+          ...dkData.map((k: any) => k.nama_kelas || k.kelas),
+          activeAssigned
         ].filter(Boolean);
 
         if (allClasses.length > 0) {
@@ -206,18 +280,18 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
           unique.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
           setKelasList(unique);
           if (!selectedKelas && unique.length > 0) {
-            setSelectedKelas(assignedKelas || unique[0]);
+            setSelectedKelas(activeAssigned || unique[0]);
           }
-        } else if (assignedKelas) {
-          setKelasList([assignedKelas]);
-          setSelectedKelas(assignedKelas);
+        } else if (activeAssigned) {
+          setKelasList([activeAssigned]);
+          setSelectedKelas(activeAssigned);
         }
       } catch (err) {
         console.error('Error fetching kelas list:', err);
       }
     };
     fetchKelasList();
-  }, [sekolahId, assignedKelas]);
+  }, [sekolahId, assignedKelas, resolvedAssignedKelas]);
 
   // Fetch active school configuration from pengaturan table
   const fetchSchoolConfig = useCallback(async (isInitial = false) => {
@@ -462,7 +536,15 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
           .select('nama_guru, nip, kelas, tahun_ajaran, guru_id')
           .eq('kelas', selectedKelas);
         if (sekolahId) wQuery = wQuery.eq('sekolah_id', sekolahId);
-        const { data: wList } = await wQuery;
+        const { data: initialWList } = await wQuery;
+        let wList = initialWList;
+        if ((!wList || wList.length === 0) && sekolahId) {
+          const { data: fallbackWList } = await supabase
+            .from('wali_kelas')
+            .select('nama_guru, nip, kelas, tahun_ajaran, guru_id')
+            .eq('kelas', selectedKelas);
+          if (fallbackWList && fallbackWList.length > 0) wList = fallbackWList;
+        }
 
         const matchingWali =
           (wList || []).find((w: any) => w.tahun_ajaran === selectedTahunAjaran) ||
@@ -515,7 +597,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         }
 
         // Fallback for teacher assigned to this class
-        if (user && !isAdmin && assignedKelas === selectedKelas) {
+        if (user && !isAdmin && (assignedKelas === selectedKelas || resolvedAssignedKelas === selectedKelas)) {
           setAssignedWaliInfo({
             nama_guru: user.nama || '...........................................',
             nip: user.nip || user.username || null
@@ -528,7 +610,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       }
     };
     fetchWaliKelasInfo();
-  }, [selectedKelas, sekolahId, user, isAdmin, assignedKelas, selectedTahunAjaran]);
+  }, [selectedKelas, sekolahId, user, isAdmin, assignedKelas, resolvedAssignedKelas, selectedTahunAjaran]);
 
   // Fetch students, attendance, real Merdeka academic data, and notes for selected class
   const fetchClassData = useCallback(async () => {
@@ -550,10 +632,53 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         .select('id, nisn, nama_siswa, kelas, gender, agama')
         .eq('kelas', selectedKelas);
       if (sekolahId) sQuery = sQuery.eq('sekolah_id', sekolahId);
-      const { data: sData, error: sErr } = await sQuery;
+      let { data: sData, error: sErr } = await sQuery;
 
       if (sErr) throw sErr;
-      const sortedStudents = (sData || []).sort((a: any, b: any) =>
+
+      let effectiveStudentsData = sData;
+
+      // Fallback 1: Jika dengan sekolah_id kosong, coba query tanpa batasan sekolah_id
+      if ((!effectiveStudentsData || effectiveStudentsData.length === 0) && sekolahId) {
+        const { data: noSchData } = await supabase
+          .from('data_siswa')
+          .select('id, nisn, nama_siswa, kelas, gender, agama')
+          .eq('kelas', selectedKelas);
+        if (noSchData && noSchData.length > 0) {
+          effectiveStudentsData = noSchData;
+        }
+      }
+
+      // Fallback 2: Pencocokan ekuivalensi kelas (Romawi vs Arab, spasi, awalan 'Kelas', suffix Merdeka)
+      let resolvedClassKey = selectedKelas;
+      if (!effectiveStudentsData || effectiveStudentsData.length === 0) {
+        let allSiswaQ = supabase.from('data_siswa').select('id, nisn, nama_siswa, kelas, gender, agama');
+        if (sekolahId) allSiswaQ = allSiswaQ.eq('sekolah_id', sekolahId);
+        let { data: allSiswa } = await allSiswaQ;
+        if ((!allSiswa || allSiswa.length === 0) && sekolahId) {
+          const { data: globalSiswa } = await supabase.from('data_siswa').select('id, nisn, nama_siswa, kelas, gender, agama');
+          allSiswa = globalSiswa;
+        }
+        if (allSiswa && allSiswa.length > 0) {
+          const targetNorm = normK(selectedKelas);
+          const exactMatches = allSiswa.filter((s: any) => normK(s.kelas) === targetNorm);
+          if (exactMatches.length > 0) {
+            effectiveStudentsData = exactMatches;
+            if (exactMatches[0]?.kelas) resolvedClassKey = exactMatches[0].kelas;
+          } else {
+            const partialMatches = allSiswa.filter((s: any) => {
+              const sn = normK(s.kelas);
+              return sn && targetNorm && (sn.startsWith(targetNorm) || targetNorm.startsWith(sn));
+            });
+            if (partialMatches.length > 0) {
+              effectiveStudentsData = partialMatches;
+              if (partialMatches[0]?.kelas) resolvedClassKey = partialMatches[0].kelas;
+            }
+          }
+        }
+      }
+
+      const sortedStudents = (effectiveStudentsData || []).sort((a: any, b: any) =>
         (a.nama_siswa || '').localeCompare(b.nama_siswa || '')
       );
       setStudents(sortedStudents);
@@ -577,7 +702,18 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         .gte('tanggal', startDate)
         .lte('tanggal', endDate);
       if (sekolahId) aQuery = aQuery.eq('sekolah_id', sekolahId);
-      const { data: aData } = await aQuery;
+      let { data: aData } = await aQuery;
+
+      if ((!aData || aData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+        let fbAQuery = supabase
+          .from('absensi')
+          .select('nisn, status, tanggal')
+          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean))
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
+        const { data: fbA } = await fbAQuery;
+        if (fbA && fbA.length > 0) aData = fbA;
+      }
 
       const attRecord: Record<string, { hadir: number; izin: number; sakit: number; alpa: number }> = {};
       sortedStudents.forEach((s: any) => {
@@ -608,7 +744,15 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
           .select('nama_mapel')
           .eq('kelas', selectedKelas);
         if (sekolahId) gmQuery = gmQuery.eq('sekolah_id', sekolahId);
-        const { data: gmData } = await gmQuery;
+        let { data: gmData } = await gmQuery;
+        if ((!gmData || gmData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+          let fbGm = supabase
+            .from('guru_mapel')
+            .select('nama_mapel')
+            .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean));
+          const { data: fbData } = await fbGm;
+          if (fbData && fbData.length > 0) gmData = fbData;
+        }
         (gmData || []).forEach((g: any) => {
           if (g.nama_mapel) activeMapelSet.add(g.nama_mapel);
         });
@@ -619,7 +763,15 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       try {
         let jpQuery = supabase.from('jadwal_pelajaran').select('mata_pelajaran').eq('kelas', selectedKelas);
         if (sekolahId) jpQuery = jpQuery.eq('sekolah_id', sekolahId);
-        const { data: jpData } = await jpQuery;
+        let { data: jpData } = await jpQuery;
+        if ((!jpData || jpData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+          let fbJp = supabase
+            .from('jadwal_pelajaran')
+            .select('mata_pelajaran')
+            .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean));
+          const { data: fbData } = await fbJp;
+          if (fbData && fbData.length > 0) jpData = fbData;
+        }
         if (jpData && jpData.length > 0) {
           jpData.forEach((j: any) => {
             if (j.mata_pelajaran) activeMapelSet.add(j.mata_pelajaran);
@@ -633,13 +785,18 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         try {
           let dmQuery = supabase.from('data_mapel').select('*');
           if (sekolahId) dmQuery = dmQuery.eq('sekolah_id', sekolahId);
-          const { data: dmData } = await dmQuery;
+          let { data: dmData } = await dmQuery;
+          if ((!dmData || dmData.length === 0) && sekolahId) {
+            const { data: fbDm } = await supabase.from('data_mapel').select('*');
+            if (fbDm && fbDm.length > 0) dmData = fbDm;
+          }
           if (dmData && dmData.length > 0) {
             const filtered = dmData.filter((d: any) => {
               const kat = (d.kategori || d.kelompok || '').toLowerCase().trim();
               const sk = (selectedKelas || '').toLowerCase().trim();
+              const rk = (resolvedClassKey || '').toLowerCase().trim();
               if (!kat) return true;
-              return kat === sk || sk.startsWith(kat) || kat.startsWith(sk);
+              return kat === sk || sk.startsWith(kat) || kat.startsWith(sk) || kat === rk || rk.startsWith(kat) || kat.startsWith(rk);
             });
             const source = filtered.length > 0 ? filtered : dmData;
             source.forEach((d: any) => {
@@ -662,7 +819,17 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         .eq('semester', selectedSemester)
         .eq('tahun_ajaran', selectedTahunAjaran);
       if (sekolahId) cpQuery = cpQuery.eq('sekolah_id', sekolahId);
-      const { data: cpData } = await cpQuery.order('urutan', { ascending: true });
+      let { data: cpData } = await cpQuery.order('urutan', { ascending: true });
+      if ((!cpData || cpData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+        let fbCp = supabase
+          .from('capaian_pembelajaran')
+          .select('id, kode_cp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean))
+          .eq('semester', selectedSemester)
+          .eq('tahun_ajaran', selectedTahunAjaran);
+        const { data: fbData } = await fbCp.order('urutan', { ascending: true });
+        if (fbData && fbData.length > 0) cpData = fbData;
+      }
       const currentCps = (cpData || []) as CapaianPembelajaran[];
       setCpList(currentCps);
 
@@ -680,7 +847,17 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         .eq('semester', selectedSemester)
         .eq('tahun_ajaran', selectedTahunAjaran);
       if (sekolahId) tpQuery = tpQuery.eq('sekolah_id', sekolahId);
-      const { data: tpData } = await tpQuery.order('urutan', { ascending: true });
+      let { data: tpData } = await tpQuery.order('urutan', { ascending: true });
+      if ((!tpData || tpData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+        let fbTp = supabase
+          .from('tujuan_pembelajaran')
+          .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean))
+          .eq('semester', selectedSemester)
+          .eq('tahun_ajaran', selectedTahunAjaran);
+        const { data: fbData } = await fbTp.order('urutan', { ascending: true });
+        if (fbData && fbData.length > 0) tpData = fbData;
+      }
       const currentTps = (tpData || []) as TujuanPembelajaran[];
       setTpList(currentTps);
 
@@ -701,7 +878,15 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
           .select('id, tp_id, kategori, nama, bobot, urutan, keterangan')
           .in('tp_id', tpIds);
         if (sekolahId) akQuery = akQuery.eq('sekolah_id', sekolahId);
-        const { data: akData } = await akQuery.order('urutan', { ascending: true });
+        let { data: akData } = await akQuery.order('urutan', { ascending: true });
+        if ((!akData || akData.length === 0) && sekolahId) {
+          const { data: fbAk } = await supabase
+            .from('asesmen_kolom')
+            .select('id, tp_id, kategori, nama, bobot, urutan, keterangan')
+            .in('tp_id', tpIds)
+            .order('urutan', { ascending: true });
+          if (fbAk && fbAk.length > 0) akData = fbAk;
+        }
         currentCols = (akData || []) as AsesmenKolom[];
       }
       setColumnsList(currentCols);
@@ -713,7 +898,15 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         .select('asesmen_id, tp_id, nisn, nilai, mapel')
         .eq('kelas', selectedKelas);
       if (sekolahId) nsQuery = nsQuery.eq('sekolah_id', sekolahId);
-      const { data: nsData } = await nsQuery;
+      let { data: nsData } = await nsQuery;
+      if ((!nsData || nsData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+        let fbNs = supabase
+          .from('nilai_siswa')
+          .select('asesmen_id, tp_id, nisn, nilai, mapel')
+          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean));
+        const { data: fbData } = await fbNs;
+        if (fbData && fbData.length > 0) nsData = fbData;
+      }
 
       if (nsData) {
         nsData.forEach((row: any) => {
@@ -1186,7 +1379,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 </select>
               ) : (
                 <span className="font-extrabold text-teal-700 dark:text-teal-300">
-                  {selectedKelas || assignedKelas || 'Tidak Ada'}
+                  {selectedKelas || assignedKelas || resolvedAssignedKelas || 'Tidak Ada'}
                 </span>
               )}
             </div>

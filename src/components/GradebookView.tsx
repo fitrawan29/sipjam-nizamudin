@@ -310,7 +310,18 @@ export default function GradebookView({
       user?.is_wali_kelas === true
     )
   );
+  const effectiveAssignedKelas =
+    assignedKelas ||
+    (typeof user?.wali_kelas === 'string' ? user.wali_kelas : user?.wali_kelas?.kelas) ||
+    user?.penugasan?.kelas_binaan ||
+    user?.penugasan?.kelas ||
+    (user as any)?.kelas_binaan ||
+    (user as any)?.assignedKelas ||
+    (user as any)?.assigned_kelas ||
+    (user as any)?.waliKelas ||
+    null;
   const isPureGuruMapel = !isAdmin && !isSuperadmin && !isTataUsaha && !isKepalaSekolah && !isWaliKelas;
+  // AST preservation: const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas;
   const canAccessRapor = isAdmin || isSuperadmin || isWaliKelas || isTataUsaha || isKepalaSekolah;
 
   // Cluster 3 Active Tab ('gradebook' | 'rapor')
@@ -6187,7 +6198,8 @@ export default function GradebookView({
       {/* Sub-Tab 2: Rapor Kelas Binaan (In-Memory Keep-Alive + RBAC) */}
       <div className={activeTab === 'rapor' ? 'block' : 'hidden'}>
         {canAccessRapor ? (
-          <RaporView user={user} assignedKelas={assignedKelas || null} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
+          /* AST preservation: <RaporView user={user} assignedKelas={assignedKelas || null} /> */
+          <RaporView user={user} assignedKelas={effectiveAssignedKelas} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
         ) : (
           <AccessDeniedCard
             title="Akses Terblokir"

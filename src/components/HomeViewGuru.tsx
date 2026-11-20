@@ -43,7 +43,7 @@ export default function HomeViewGuru({
 
     // --- Teacher States ---
   const [dailyState, setDailyState] = useState<GuruDailyState | null>(null);
-  const [loadingState, setLoadingState] = useState(false);
+  const [loadingState, setLoadingState] = useState(true);
   const [attendanceStats, setAttendanceStats] = useState({
     hadir: 0,
     dinasLuar: 0,
