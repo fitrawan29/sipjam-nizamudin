@@ -1,5 +1,5 @@
 // SIPJAM Native Service Worker for VAPID Web Push Notifications & Offline Caching
-const CACHE_NAME = 'sipjam-cache-v2';
+const CACHE_NAME = 'sipjam-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/favicon.ico',
@@ -41,50 +41,89 @@ self.addEventListener('activate', (event) => {
   }
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
-  // Only cache GET requests
+  // Only handle GET requests
   if (event.request.method !== 'GET') return;
   if (typeof caches === 'undefined') return;
-  // Ignore chrome-extension, API calls, and other non-http requests
   if (!event.request.url.startsWith('http')) return;
+
+  let url;
   try {
-    const url = new URL(event.request.url);
-    if (url.pathname.startsWith('/api/')) return;
+    url = new URL(event.request.url);
+    // Bypass local API requests and all cross-origin requests (e.g. Supabase DB, external services)
+    if (url.pathname.startsWith('/api/') || url.origin !== self.location.origin) return;
   } catch {
-    // ignore URL parsing error
+    return;
   }
 
+  // 1. Navigation requests (HTML Document): NETWORK-FIRST with Cache Fallback
+  // Guarantees users immediately get fresh HTML and updated chunk references after any deploy
+  // without needing manual browser browsing data clearing, while preserving full offline PWA access.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone).catch(() => {});
+            }).catch(() => {});
+          }
+          return response;
+        })
+        .catch(() => {
+          // Offline fallback
+          return caches.match(event.request).then((cachedResponse) => {
+            return cachedResponse || caches.match('/');
+          });
+        })
+    );
+    return;
+  }
+
+  // 2. Next.js hashed static assets (_next/static/): CACHE-FIRST
+  // Next.js chunks have unique content hashes in their filename; they are immutable and safe to cache aggressively.
+  if (url.pathname.startsWith('/_next/static/')) {
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseClone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseClone).catch(() => {});
+            }).catch(() => {});
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // 3. Other local static assets (icons, images, manifest): STALE-WHILE-REVALIDATE
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return from cache, but update cache in background
-        event.waitUntil(
-          fetch(event.request).then((response) => {
-            if (response && response.status === 200 && response.type === 'basic') {
-              const responseClone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => {
-                cache.put(event.request, responseClone).catch(() => {});
-              }).catch(() => {});
-            }
-          }).catch(() => {})
-        );
-        return cachedResponse;
-      }
-      
-      return fetch(event.request).then((response) => {
-        // Cache new successful GET responses
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseClone = response.clone();
+      const fetchPromise = fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseClone).catch(() => {});
           }).catch(() => {});
         }
-        return response;
-      }).catch(() => {
-        // Safe offline fallback: return cached root for navigate, or 503 response (never resolve undefined)
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
+        return networkResponse;
+      }).catch(() => null);
+
+      return cachedResponse || fetchPromise.then((res) => {
+        if (res) return res;
         return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
       });
     })

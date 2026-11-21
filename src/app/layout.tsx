@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Amiri, Poppins, Space_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
+import UpdateNotificationToast from '@/components/UpdateNotificationToast';
 
 const amiri = Amiri({
   weight: ['400', '700'],
@@ -49,6 +50,7 @@ export default function RootLayout({
       <body className={`${amiri.variable} ${poppins.variable} ${spaceMono.variable} font-sans bg-[#FDF6EC] dark:bg-[#18181b] text-gray-900 dark:text-white transition-colors duration-300`}>
         <ThemeProvider defaultTheme="light">
           {children}
+          <UpdateNotificationToast />
         </ThemeProvider>
       </body>
     </html>
