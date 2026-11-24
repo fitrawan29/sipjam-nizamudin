@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { formatTimestampWita } from '@/lib/wita';
+import { formatTimestampWita, getWitaDateStr, getWitaStartOfDay, getWitaEndOfDay } from '@/lib/wita';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { processPendingUploads } from '@/lib/presensiUploadPersistence';
 
@@ -30,7 +30,7 @@ export default function HistoryView({
     }
   }, [onlyTab]);
   const [search, setSearch] = useState('');
-  const [filterBulan, setFilterBulan] = useState('');
+  const [filterBulan, setFilterBulan] = useState(() => getWitaDateStr().slice(0, 7));
   const [dataList, setDataList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(0);
@@ -50,7 +50,7 @@ export default function HistoryView({
     return () => {
       window.removeEventListener('sipjam:presensi_updated', handlePresensiUpdated);
     };
-  }, [activeTab]);
+  }, [activeTab, filterBulan]);
 
   const loadData = async () => {
     if (!user?.nama) return;
@@ -59,20 +59,39 @@ export default function HistoryView({
 
     const cleanNama = user.nama.trim();
     const namaVariants = cleanNama !== user.nama ? [user.nama, cleanNama] : [cleanNama];
+
+    let monthStart = '';
+    let monthEnd = '';
+    if (filterBulan && /^\d{4}-\d{2}$/.test(filterBulan)) {
+      const [yStr, mStr] = filterBulan.split('-');
+      const lastDay = new Date(Number(yStr), Number(mStr), 0).getDate();
+      monthStart = `${filterBulan}-01`;
+      monthEnd = `${filterBulan}-${String(lastDay).padStart(2, '0')}`;
+    }
     
     let query;
     if (activeTab === 'presensi') {
-      const base = supabase
+      let base = supabase
         .from('presensi_guru')
-        .select('*');
+        .select('id, timestamp, tanggal, nama_guru, tipe_absen, jenis_presensi, status_verifikasi, detail_izin, catatan_admin, link_bukti_foto, link_dokumen, foto_url, tanggal_mulai, tanggal_selesai, durasi_hari');
+      if (user?.sekolah_id) base = base.eq('sekolah_id', user.sekolah_id);
+      if (monthStart && monthEnd) {
+        base = base.gte('timestamp', getWitaStartOfDay(monthStart)).lte('timestamp', getWitaEndOfDay(monthEnd));
+      }
       query = (namaVariants.length > 1 ? base.in('nama_guru', namaVariants) : base.eq('nama_guru', cleanNama))
-        .order('timestamp', { ascending: false });
+        .order('timestamp', { ascending: false })
+        .limit(150);
     } else {
-      const base = supabase
+      let base = supabase
         .from('jurnal_pembelajaran')
-        .select('*');
+        .select('id, timestamp, tanggal, nama_guru, mapel, kelas, jam_ke, materi, materi_pembelajaran, konten, kegiatan, kegiatan_pembelajaran, keterangan, status_verifikasi, catatan_admin, link_bukti_foto, lokasi');
+      if (user?.sekolah_id) base = base.eq('sekolah_id', user.sekolah_id);
+      if (monthStart && monthEnd) {
+        base = base.gte('tanggal', monthStart).lte('tanggal', monthEnd);
+      }
       query = (namaVariants.length > 1 ? base.in('nama_guru', namaVariants) : base.eq('nama_guru', cleanNama))
-        .order('timestamp', { ascending: false });
+        .order('timestamp', { ascending: false })
+        .limit(150);
     }
 
     try {

@@ -69,18 +69,24 @@ export function useBroadcasts(
   useEffect(() => {
     fetchBroadcasts();
 
+    let broadcastTimer: NodeJS.Timeout | null = null;
+    const scheduleBroadcastRefresh = () => {
+      if (broadcastTimer) clearTimeout(broadcastTimer);
+      broadcastTimer = setTimeout(() => {
+        fetchBroadcasts();
+      }, 1500);
+    };
+
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
     const channelName = `realtime-broadcasts-${user?.sekolah_id || 'global'}`;
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengumuman' }, () => {
-        fetchBroadcasts();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengumuman_dibaca' }, () => {
-        fetchBroadcasts();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengumuman', ...rtFilter }, scheduleBroadcastRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengumuman_dibaca', ...rtFilter }, scheduleBroadcastRefresh)
       .subscribe();
 
     return () => {
+      if (broadcastTimer) clearTimeout(broadcastTimer);
       supabase.removeChannel(channel);
     };
   }, [user?.sekolah_id, myUserId, isAdmin, isWaliKelas, syncKey]);

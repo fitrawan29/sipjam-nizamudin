@@ -512,18 +512,21 @@ export default function HomeViewTU({
   useEffect(() => {
     if (!user?.nama) return;
 
+    let tuRealtimeTimer: NodeJS.Timeout | null = null;
+    const scheduleTuRefresh = () => {
+      if (tuRealtimeTimer) clearTimeout(tuRealtimeTimer);
+      tuRealtimeTimer = setTimeout(() => {
+        loadTuData();
+      }, 3000);
+    };
+
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
     const channelName = `realtime-tu-state-${user?.id || user?.nama || 'anon'}`;
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru' }, () => {
-        loadTuData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran' }, () => {
-        loadTuData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
-        loadTuData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru', ...rtFilter }, scheduleTuRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran', ...rtFilter }, scheduleTuRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan', ...rtFilter }, scheduleTuRefresh)
       .subscribe();
 
     const handleWindowConfigSync = (e?: any) => {
@@ -561,6 +564,7 @@ export default function HomeViewTU({
     document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
+      if (tuRealtimeTimer) clearTimeout(tuRealtimeTimer);
       try {
         (supabase as any).realtime?._remove?.(channel);
         channel.unsubscribe();

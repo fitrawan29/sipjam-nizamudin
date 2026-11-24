@@ -913,7 +913,7 @@ export default function HomeViewAdmin({
       if (realtimeTimerRef.current) clearTimeout(realtimeTimerRef.current);
       realtimeTimerRef.current = setTimeout(() => {
         loadAdminMatrix();
-      }, 250);
+      }, 3500);
     };
     const handleGuruUpdated = () => {
       scheduleRefresh();
@@ -963,17 +963,13 @@ export default function HomeViewAdmin({
         supabase.removeChannel(existing);
       }
     }
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jadwal_pelajaran' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sistem_blok' }, scheduleRefresh)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'kalender_pendidikan' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru', ...rtFilter }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran', ...rtFilter }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk', ...rtFilter }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket', ...rtFilter }, scheduleRefresh)
       .subscribe();
 
     window.addEventListener('sipjam:config_updated', handleWindowConfigSync);

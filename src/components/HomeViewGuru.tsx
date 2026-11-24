@@ -350,15 +350,16 @@ export default function HomeViewGuru({
       }
     }
 
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan', ...rtFilter }, () => {
         refreshDailyWorkflow();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru', ...rtFilter }, () => {
         refreshDailyWorkflow();
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk', ...rtFilter }, () => {
         refreshDailyWorkflow();
       })
       .on('broadcast', { event: 'config_updated' }, () => {

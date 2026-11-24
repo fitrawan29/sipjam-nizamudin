@@ -25,7 +25,7 @@ export default function AdminBackupView({ user }: { user: any }) {
       if (user?.sekolah_id) {
         query = query.eq('sekolah_id', user.sekolah_id);
       }
-      const { data, error } = await query.order('timestamp', { ascending: false });
+      const { data, error } = await query.order('timestamp', { ascending: false }).limit(50);
       if (data && !error) setRiwayat(data);
     } catch (error) {
       console.error('Fetch riwayat backup error:', error);
@@ -94,6 +94,99 @@ export default function AdminBackupView({ user }: { user: any }) {
 
   const handleTriggerRestore = () => {
     fileInputRef.current?.click();
+  };
+
+  const handlePruneOldYear = async () => {
+    const targetYear = Number(tahun);
+    const currentYear = new Date().getFullYear();
+    if (!targetYear || targetYear >= currentYear) {
+      return Swal.fire(
+        'Tahun Tidak Valid',
+        `Hanya data tahun sebelum tahun berjalan (< ${currentYear}) yang boleh dipangkas agar data aktif tidak hilang.`,
+        'warning'
+      );
+    }
+
+    const firstConfirm = await Swal.fire({
+      title: `Pangkas Data Transaksi Tahun ${targetYear}?`,
+      html: `Fitur ini akan menghapus data transaksi harian tahun <b>${targetYear}</b> (presensi guru/siswa, absensi kelas, jurnal KBM/BK, dan laporan piket) dari database aktif agar kapasitas Supabase tetap lega.<br><br><span class="text-xs text-rose-600 dark:text-rose-400 font-bold">Pastikan Anda sudah mengunduh Cadangan ZIP tahun ${targetYear} sebelum melanjutkan! Data master (guru, siswa, mapel, akun) TIDAK akan dihapus.</span>`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Sudah Backup, Lanjutkan',
+      cancelButtonText: 'Batal'
+    });
+
+    if (!firstConfirm.isConfirmed) return;
+
+    const keyword = `HAPUS ${targetYear}`;
+    const secondConfirm = await Swal.fire({
+      title: 'Konfirmasi Akhir',
+      text: `Ketik "${keyword}" untuk mengonfirmasi pemangkasan data transaksi tahun ${targetYear}:`,
+      input: 'text',
+      inputPlaceholder: keyword,
+      showCancelButton: true,
+      confirmButtonColor: '#e11d48',
+      confirmButtonText: 'Pangkas Sekarang',
+      cancelButtonText: 'Batal',
+      preConfirm: (val) => {
+        if (String(val || '').trim().toUpperCase() !== keyword) {
+          Swal.showValidationMessage(`Ketik persis: ${keyword}`);
+          return false;
+        }
+        return true;
+      }
+    });
+
+    if (!secondConfirm.isConfirmed) return;
+
+    setLoading(true);
+    try {
+      const startDate = `${targetYear}-01-01`;
+      const endDate = `${targetYear}-12-31`;
+      const startTs = `${targetYear}-01-01T00:00:00+08:00`;
+      const endTs = `${targetYear}-12-31T23:59:59+08:00`;
+      const sekolahId = user?.sekolah_id;
+
+      const pruneByTanggal = async (table: string) => {
+        let q = supabase.from(table).delete().gte('tanggal', startDate).lte('tanggal', endDate);
+        if (sekolahId) q = q.eq('sekolah_id', sekolahId);
+        const { error } = await q;
+        if (error) console.warn(`[Prune ${table}]`, error.message);
+      };
+
+      const pruneByTimestamp = async (table: string) => {
+        let q = supabase.from(table).delete().gte('timestamp', startTs).lte('timestamp', endTs);
+        if (sekolahId) q = q.eq('sekolah_id', sekolahId);
+        const { error } = await q;
+        if (error) console.warn(`[Prune ${table}]`, error.message);
+      };
+
+      await Promise.all([
+        pruneByTimestamp('presensi_guru'),
+        pruneByTanggal('presensi_siswa'),
+        pruneByTanggal('absensi'),
+        pruneByTanggal('jurnal_pembelajaran'),
+        pruneByTanggal('jurnal_bk'),
+        pruneByTanggal('laporan_piket')
+      ]);
+
+      try {
+        await supabase.rpc('cleanup_stale_ephemeral_data');
+      } catch (_) {}
+
+      Swal.fire(
+        'Database Dirampingkan',
+        `Data transaksi tahun ${targetYear} berhasil dipangkas dari database aktif. Data master dan arsip ZIP Anda tetap aman.`,
+        'success'
+      );
+    } catch (err: any) {
+      console.error('[AdminBackupView] Prune error:', err);
+      Swal.fire('Gagal', err.message || 'Terjadi kesalahan saat memangkas data lama.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -216,6 +309,23 @@ export default function AdminBackupView({ user }: { user: any }) {
             </button>
           </div>
         </div>
+      </div>
+
+      <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl mb-4 text-center">
+        <h3 className="text-xs font-bold text-amber-900 dark:text-amber-300 mb-1.5">
+          <i className="fa-solid fa-broom mr-1"></i> Arsipkan &amp; Pangkas Data Tahun Lalu
+        </h3>
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+          Agar kapasitas database Supabase tetap lega selamanya, setelah mengunduh Cadangan ZIP untuk tahun ajaran lama, Anda dapat memangkas data transaksi tahun tersebut dari database aktif (data master guru, siswa, dan akun tetap aman).
+        </p>
+        <button
+          type="button"
+          onClick={handlePruneOldYear}
+          disabled={loading}
+          className="btn-click bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+        >
+          <i className="fa-solid fa-box-archive"></i> Pangkas Transaksi Tahun {tahun || '...'}
+        </button>
       </div>
 
       <div>

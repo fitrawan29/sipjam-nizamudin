@@ -30,7 +30,7 @@ export default function AnalitikView({ user }: { user: any }) {
       const endDateStr = lastDayStr;
 
       // 0. Fetch data_guru & users untuk konsolidasi identitas guru (non-blocking)
-      let guruQ = supabase.from('data_guru').select('*');
+      let guruQ = supabase.from('data_guru').select('id, user_id, username, nip, nama_guru, mata_pelajaran, status');
       let usersQ = supabase.from('users').select('id, nama, username, role');
       if (user?.sekolah_id) {
         guruQ = guruQ.eq('sekolah_id', user.sekolah_id);
@@ -48,7 +48,7 @@ export default function AnalitikView({ user }: { user: any }) {
       // 1. Fetch Presensi
       let presensiQuery = supabase
         .from('presensi_guru')
-        .select('*')
+        .select('id, user_id, guru_id, nama_guru, nip, jenis_presensi, status_verifikasi, timestamp')
         .gte('timestamp', start)
         .lte('timestamp', end)
         .eq('tipe_absen', 'Datang')
@@ -60,7 +60,7 @@ export default function AnalitikView({ user }: { user: any }) {
       // 2. Fetch Jurnal (KBM/Kegiatan + Jurnal BK)
       let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
-        .select('*')
+        .select('id, user_id, guru_id, nama_guru, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
@@ -70,7 +70,7 @@ export default function AnalitikView({ user }: { user: any }) {
 
       let bkJurnalQuery = supabase
         .from('jurnal_bk')
-        .select('*')
+        .select('id, user_id, guru_id, nama_guru, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
@@ -85,7 +85,7 @@ export default function AnalitikView({ user }: { user: any }) {
       // 3. Fetch Piket
       let piketQuery = supabase
         .from('laporan_piket')
-        .select('*')
+        .select('id, user_id, guru_pelapor, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);

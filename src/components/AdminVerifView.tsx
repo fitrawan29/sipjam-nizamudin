@@ -269,21 +269,25 @@ export default function AdminVerifView({
   useEffect(() => {
     loadData();
 
+    let verifDebounceTimer: NodeJS.Timeout | null = null;
+    const scheduleVerifRefresh = (tabTarget: 'Presensi' | 'Jurnal' | 'Piket') => {
+      if (activeTab !== tabTarget) return;
+      if (verifDebounceTimer) clearTimeout(verifDebounceTimer);
+      verifDebounceTimer = setTimeout(() => {
+        loadData();
+      }, 1500);
+    };
+
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
     const channelPresensi = supabase
       .channel(`verif-presensi-${user?.sekolah_id || 'global'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru' }, () => {
-        if (activeTab === 'Presensi') loadData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru', ...rtFilter }, () => scheduleVerifRefresh('Presensi'))
       .subscribe();
 
     const channelJurnal = supabase
       .channel(`verif-jurnal-${user?.sekolah_id || 'global'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran' }, () => {
-        if (activeTab === 'Jurnal') loadData();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk' }, () => {
-        if (activeTab === 'Jurnal') loadData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran', ...rtFilter }, () => scheduleVerifRefresh('Jurnal'))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk', ...rtFilter }, () => scheduleVerifRefresh('Jurnal'))
       .subscribe();
 
     const handleBkUpdated = () => {
@@ -295,12 +299,11 @@ export default function AdminVerifView({
 
     const channelPiket = supabase
       .channel(`verif-piket-${user?.sekolah_id || 'global'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket' }, () => {
-        if (activeTab === 'Piket') loadData();
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket', ...rtFilter }, () => scheduleVerifRefresh('Piket'))
       .subscribe();
 
     return () => {
+      if (verifDebounceTimer) clearTimeout(verifDebounceTimer);
       if (typeof window !== 'undefined') {
         window.removeEventListener('sipjam:jurnal_bk_updated', handleBkUpdated);
       }
@@ -315,6 +318,9 @@ export default function AdminVerifView({
     try {
       if (activeTab === 'Presensi') {
         let query = supabase.from('presensi_guru').select('*');
+        if (user?.sekolah_id) {
+          query = query.eq('sekolah_id', user.sekolah_id);
+        }
         if (date) {
           const startOfDay = getWitaStartOfDay(date);
           const endOfDay = getWitaEndOfDay(date);
@@ -365,6 +371,9 @@ export default function AdminVerifView({
         setPresensiList(combinedData);
       } else if (activeTab === 'Jurnal') {
         let query = supabase.from('jurnal_pembelajaran').select('*');
+        if (user?.sekolah_id) {
+          query = query.eq('sekolah_id', user.sekolah_id);
+        }
         if (date) {
           query = query.eq('tanggal', date);
         }
@@ -456,6 +465,9 @@ export default function AdminVerifView({
         }
       } else if (activeTab === 'Piket') {
         let query = supabase.from('laporan_piket').select('*');
+        if (user?.sekolah_id) {
+          query = query.eq('sekolah_id', user.sekolah_id);
+        }
         if (date) {
           query = query.eq('tanggal', date);
         }

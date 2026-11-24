@@ -448,14 +448,15 @@ export default function AppScreen({
       }
     }
 
+    const rtFilter = schoolId ? { filter: `sekolah_id=eq.${schoolId}` } : {};
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan', ...rtFilter }, () => {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('sipjam:config_updated', { detail: { sekolah_id: schoolId } }));
         }
       })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'data_guru', ...rtFilter }, () => {
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('sipjam:guru_updated', { detail: { sekolah_id: schoolId } }));
         }
