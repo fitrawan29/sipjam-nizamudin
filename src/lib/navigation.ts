@@ -158,6 +158,7 @@ export function getConsolidatedMenuItems(params: {
       { id: 'view-guru-jurnal', icon: 'fa-book-open', label: 'Jurnal Pembelajaran', dataTour: 'view-guru-jurnal view-guru-rekap-jurnal view-jurnal-kelas' },
       { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen', dataTour: 'view-gradebook' },
       { id: 'view-rapor', icon: 'fa-file-lines', label: 'Rapor', dataTour: 'view-rapor' },
+      { id: 'view-kolaborasi', icon: 'fa-comments', label: 'Ruang Kolaborasi', dataTour: 'view-kolaborasi' },
       { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' }
     ];
   }
@@ -170,6 +171,7 @@ export function getConsolidatedMenuItems(params: {
       { id: 'view-admin-rekap', icon: 'fa-chart-pie', label: 'Laporan & Analitik Kinerja', dataTour: 'view-admin-rekap view-analitik' },
       { id: 'view-rekap-siswa', icon: 'fa-users', label: 'Presensi Siswa' },
       { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen & Rapor Sekolah', dataTour: 'view-gradebook view-rapor' },
+      { id: 'view-kolaborasi', icon: 'fa-comments', label: 'Ruang Kolaborasi', dataTour: 'view-kolaborasi' },
       { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi' },
       {
         id: 'view-admin-data',
@@ -178,6 +180,14 @@ export function getConsolidatedMenuItems(params: {
         dataTour: 'view-admin-data view-sistem-blok view-admin-kelas'
       },
       { id: 'view-admin-config', icon: 'fa-gear', label: 'Pengaturan Sistem & Database', dataTour: 'view-admin-config view-admin-backup' }
+    ];
+  }
+
+  if (normRole === 'orangtua' || normRole === 'walimurid') {
+    return [
+      { id: 'view-kolaborasi', icon: 'fa-comments', label: 'Ruang Kolaborasi', dataTour: 'view-kolaborasi' },
+      { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi Sekolah', dataTour: 'view-informasi' },
+      { id: 'view-pengaturan-akun', icon: 'fa-user-gear', label: 'Pengaturan Akun', dataTour: 'view-pengaturan-akun' }
     ];
   }
 
@@ -207,6 +217,7 @@ export function getConsolidatedMenuItems(params: {
       { id: 'view-home', icon: 'fa-house', label: 'Dashboard', dataTour: 'view-home' },
       { id: 'view-guru-presensi', icon: 'fa-clock', label: 'Presensi BK', dataTour: 'view-guru-presensi' },
       { id: 'view-jurnal-bk', icon: 'fa-heart-pulse', label: 'Jurnal BK', dataTour: 'view-jurnal-bk' },
+      { id: 'view-kolaborasi', icon: 'fa-comments', label: 'Ruang Kolaborasi', dataTour: 'view-kolaborasi' },
       { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi Sekolah', dataTour: 'view-informasi' },
       { id: 'view-pengaturan-akun', icon: 'fa-user-gear', label: 'Pengaturan Akun', dataTour: 'view-pengaturan-akun' }
     ];
@@ -219,6 +230,7 @@ export function getConsolidatedMenuItems(params: {
     { id: 'view-guru-jurnal', icon: 'fa-book-open', label: 'Jurnal Pembelajaran', dataTour: 'view-guru-jurnal view-guru-rekap-jurnal view-jurnal-kelas' },
     { id: 'view-dokumen', icon: 'fa-folder-open', label: 'Perangkat Pembelajaran' },
     { id: 'view-gradebook', icon: 'fa-graduation-cap', label: 'Asesmen & Rapor', dataTour: 'view-gradebook view-rapor' },
+    { id: 'view-kolaborasi', icon: 'fa-comments', label: 'Ruang Kolaborasi', dataTour: 'view-kolaborasi' },
     { id: 'view-informasi', icon: 'fa-bullhorn', label: 'Informasi Sekolah' }
   ];
 
@@ -255,6 +267,7 @@ export function evaluateTabRBAC(
   const isDinas = normRole === 'dinaspendidikan' || rawRole === 'dinas pendidikan';
   const isWali = !!user?.isWaliKelas;
   const isSiswa = normRole === 'siswa';
+  const isOrangTua = normRole === 'orangtua' || normRole === 'walimurid';
   const isTataUsaha = normRole === 'tatausaha';
   const normMapel = (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase();
   const isBk = user?.isBk === true ||
@@ -282,13 +295,14 @@ export function evaluateTabRBAC(
     return { allowed: true };
   }
 
-  // Strict isolation for Role BK: strictly restricted to 5 dedicated modules
+  // Strict isolation for Role BK: strictly restricted to dedicated modules
   if (isBk) {
     const allowedBkViews = [
       'view-home',
       'view-guru-presensi',
       'view-jurnal-bk',
       'view-bk-jurnal',
+      'view-kolaborasi',
       'view-informasi',
       'view-pengaturan-akun'
     ];
@@ -299,6 +313,19 @@ export function evaluateTabRBAC(
       allowed: false,
       fallbackTab: 'view-home',
       reason: 'Role Guru BK tidak memiliki izin akses ke modul ini.'
+    };
+  }
+
+  // Strict isolation for Orang Tua role
+  if (isOrangTua) {
+    const allowedOrtuViews = ['view-kolaborasi', 'view-informasi', 'view-pengaturan-akun'];
+    if (allowedOrtuViews.includes(effectiveView) || allowedOrtuViews.includes(viewId)) {
+      return { allowed: true };
+    }
+    return {
+      allowed: false,
+      fallbackTab: 'view-kolaborasi',
+      reason: 'Role Orang Tua hanya memiliki akses ke Ruang Kolaborasi, Informasi Sekolah, dan Pengaturan Akun.'
     };
   }
 

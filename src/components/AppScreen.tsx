@@ -27,6 +27,7 @@ const SistemBlokView = dynamic(() => import('./SistemBlokView'));
 const RaporView = dynamic(() => import('./RaporView'));
 const UjianSiswaView = dynamic(() => import('./UjianSiswaView'));
 const BkJurnalView = dynamic(() => import('./BkJurnalView'));
+const KolaborasiOrtuView = dynamic(() => import('./KolaborasiOrtuView'));
 import ClayCard from './ClayCard';
 import ClayButton from './ClayButton';
 import AccountSettingsModal from './AccountSettingsModal';
@@ -94,6 +95,9 @@ export default function AppScreen({
   const isDinas = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'dinaspendidikan';
   const isAdmin = isSuperadmin || (baseUser?.role || '').toLowerCase() === 'admin';
   const isSiswa = (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'siswa';
+  const isOrangTua =
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'orangtua' ||
+    (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'walimurid';
   const isTataUsaha =
     (baseUser?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha' ||
     (baseUser?.mata_pelajaran || '').toLowerCase().includes('tata usaha');
@@ -207,6 +211,7 @@ export default function AppScreen({
     if (isSuperadmin) return 'view-superadmin-overview';
     if (isDinas) return 'view-dinas-overview';
     if (isSiswa) return 'view-ujian';
+    if (isOrangTua) return 'view-kolaborasi';
     if (isTataUsaha) return 'view-home';
     if (isBk) return 'view-home';
     return 'view-home';
@@ -247,14 +252,15 @@ export default function AppScreen({
         setUrlTab(null);
         const defaultDinasPopView = isDinas ? 'view-dinas-overview' : 'view-home';
         const defaultSiswaPopView = isSiswa ? 'view-ujian' : 'view-home';
+        const defaultOrtuPopView = isOrangTua ? 'view-kolaborasi' : defaultSiswaPopView;
         const defaultTuPopView = isTataUsaha ? 'view-home' : defaultDinasPopView;
         const defaultBkPopView = isBk ? 'view-home' : defaultTuPopView;
-        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa ? defaultSiswaPopView : defaultBkPopView));
+        setCurrentView(isSuperadmin ? 'view-superadmin-overview' : (isSiswa || isOrangTua ? defaultOrtuPopView : defaultBkPopView));
       }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [isSuperadmin, isDinas, isSiswa, isTataUsaha, isBk]);
+  }, [isSuperadmin, isDinas, isSiswa, isOrangTua, isTataUsaha, isBk]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
@@ -525,6 +531,29 @@ export default function AppScreen({
         return;
       }
 
+      // Orang Tua navigation guard: strictly restricted to Kolaborasi, Informasi, and Akun
+      if (isOrangTua) {
+        const allowedOrtuViews = ['view-kolaborasi', 'view-informasi', 'view-pengaturan-akun'];
+        const resolution = resolveCanonicalRoute(targetId, targetTab);
+        if (!allowedOrtuViews.includes(targetId) && !allowedOrtuViews.includes(resolution.canonicalView)) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Akses Ditolak',
+            text: 'Akun Orang Tua hanya memiliki akses ke Ruang Kolaborasi, Informasi Sekolah, dan Pengaturan Akun.',
+            confirmButtonColor: '#0B4619'
+          });
+          return;
+        }
+        const nextView = resolution.canonicalView;
+        const nextTab = resolution.defaultTab;
+        const url = nextTab ? `?view=${nextView}&tab=${nextTab}` : `?view=${nextView}`;
+        window.history.pushState(null, '', url);
+        setCurrentView(nextView);
+        setUrlTab(nextTab || null);
+        setSidebarOpen(false);
+        return;
+      }
+
       // Tata Usaha navigation guard: strictly restricted to 6 dedicated modules
       if (isTataUsaha) {
         if (targetId === 'view-dokumen') {
@@ -566,6 +595,7 @@ export default function AppScreen({
           'view-guru-presensi',
           'view-jurnal-bk',
           'view-bk-jurnal',
+          'view-kolaborasi',
           'view-informasi',
           'view-pengaturan-akun'
         ];
@@ -905,7 +935,7 @@ export default function AppScreen({
 
   // Active consolidated menus generated for Miller's Law ergonomics (7 ± 2 items per role)
   const consolidatedMenuItems = getConsolidatedMenuItems({
-    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : isTataUsaha ? 'tata_usaha' : isBk ? 'bk' : 'guru'),
+    role: isSuperadmin ? 'superadmin' : isDinas ? 'dinaspendidikan' : isAdmin ? 'admin' : (isKepalaSekolah ? 'kepalasekolah' : isSiswa ? 'siswa' : isOrangTua ? 'orang_tua' : isTataUsaha ? 'tata_usaha' : isBk ? 'bk' : 'guru'),
     isWaliKelas,
     isPiketHariIni,
     isKepalaSekolah,
@@ -1357,6 +1387,7 @@ export default function AppScreen({
                 />
               )}
               {currentView === 'view-informasi' && <InformasiView user={user} setView={handleNavigation} />}
+              {currentView === 'view-kolaborasi' && <KolaborasiOrtuView user={user} />}
               {currentView === 'view-history' && <HistoryView user={user} />}
               {currentView === 'view-guru-rekap-jurnal' && <RekapJurnalView user={user} isKepalaSekolah={isKepalaSekolah} />}
               {currentView === 'view-jurnal-kelas' && (

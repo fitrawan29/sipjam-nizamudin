@@ -1817,6 +1817,183 @@ export type Database = {
           },
         ]
       }
+      orang_tua_siswa: {
+        Row: {
+          created_at: string | null
+          hubungan: string
+          id: string
+          sekolah_id: string
+          siswa_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          hubungan?: string
+          id?: string
+          sekolah_id: string
+          siswa_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          hubungan?: string
+          id?: string
+          sekolah_id?: string
+          siswa_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      kolaborasi_topik: {
+        Row: {
+          created_at: string | null
+          dibuat_oleh_id: string | null
+          dibuat_oleh_nama: string
+          dibuat_oleh_role: string
+          id: string
+          judul: string
+          kategori: string
+          kelas: string
+          last_message_at: string | null
+          sekolah_id: string
+          siswa_id: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          dibuat_oleh_id?: string | null
+          dibuat_oleh_nama: string
+          dibuat_oleh_role: string
+          id?: string
+          judul: string
+          kategori?: string
+          kelas: string
+          last_message_at?: string | null
+          sekolah_id: string
+          siswa_id: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          dibuat_oleh_id?: string | null
+          dibuat_oleh_nama?: string
+          dibuat_oleh_role?: string
+          id?: string
+          judul?: string
+          kategori?: string
+          kelas?: string
+          last_message_at?: string | null
+          sekolah_id?: string
+          siswa_id?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      kolaborasi_pesan: {
+        Row: {
+          created_at: string | null
+          id: string
+          isi: string
+          lampiran_url: string | null
+          pengirim_id: string | null
+          pengirim_nama: string
+          pengirim_role: string
+          sekolah_id: string
+          topik_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          isi: string
+          lampiran_url?: string | null
+          pengirim_id?: string | null
+          pengirim_nama: string
+          pengirim_role: string
+          sekolah_id: string
+          topik_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          isi?: string
+          lampiran_url?: string | null
+          pengirim_id?: string | null
+          pengirim_nama?: string
+          pengirim_role?: string
+          sekolah_id?: string
+          topik_id?: string
+        }
+        Relationships: []
+      }
+      izin_siswa_ortu: {
+        Row: {
+          alasan: string
+          catatan_guru: string | null
+          created_at: string | null
+          diproses_at: string | null
+          diproses_oleh: string | null
+          id: string
+          jenis: string
+          kelas: string
+          lampiran_url: string | null
+          nama_siswa: string
+          nisn: string | null
+          orang_tua_id: string | null
+          orang_tua_nama: string
+          sekolah_id: string
+          siswa_id: string
+          status: string
+          tanggal_mulai: string
+          tanggal_selesai: string
+          updated_at: string | null
+        }
+        Insert: {
+          alasan: string
+          catatan_guru?: string | null
+          created_at?: string | null
+          diproses_at?: string | null
+          diproses_oleh?: string | null
+          id?: string
+          jenis: string
+          kelas: string
+          lampiran_url?: string | null
+          nama_siswa: string
+          nisn?: string | null
+          orang_tua_id?: string | null
+          orang_tua_nama: string
+          sekolah_id: string
+          siswa_id: string
+          status?: string
+          tanggal_mulai: string
+          tanggal_selesai: string
+          updated_at?: string | null
+        }
+        Update: {
+          alasan?: string
+          catatan_guru?: string | null
+          created_at?: string | null
+          diproses_at?: string | null
+          diproses_oleh?: string | null
+          id?: string
+          jenis?: string
+          kelas?: string
+          lampiran_url?: string | null
+          nama_siswa?: string
+          nisn?: string | null
+          orang_tua_id?: string | null
+          orang_tua_nama?: string
+          sekolah_id?: string
+          siswa_id?: string
+          status?: string
+          tanggal_mulai?: string
+          tanggal_selesai?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       guru_kelas: {

@@ -92,16 +92,62 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           sekolahId: u.sekolah_id
         }));
 
+      // Load Orang Tua accounts
+      const ortuUsers = (tuUsers || []).filter((u: any) => {
+        const norm = (u.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+        return norm === 'orangtua' || norm === 'walimurid';
+      });
+      let ortuSiswaLabelMap: Record<string, string> = {};
+      if (ortuUsers.length > 0) {
+        const { data: ortuLinks } = await supabase
+          .from('orang_tua_siswa')
+          .select('user_id, hubungan, siswa_id')
+          .eq('sekolah_id', sekolahId);
+        const siswaIds = Array.from(new Set((ortuLinks || []).map((l: any) => l.siswa_id).filter(Boolean)));
+        let siswaMap: Record<string, { nama_siswa: string; kelas: string }> = {};
+        if (siswaIds.length > 0) {
+          const { data: siswaRows } = await supabase
+            .from('data_siswa')
+            .select('id, nama_siswa, kelas')
+            .in('id', siswaIds);
+          (siswaRows || []).forEach((s: any) => {
+            siswaMap[s.id] = { nama_siswa: s.nama_siswa || '-', kelas: s.kelas || '-' };
+          });
+        }
+        (ortuLinks || []).forEach((l: any) => {
+          const s = siswaMap[l.siswa_id];
+          const label = s ? `${l.hubungan}: ${s.nama_siswa} (${s.kelas})` : l.hubungan;
+          ortuSiswaLabelMap[l.user_id] = ortuSiswaLabelMap[l.user_id]
+            ? `${ortuSiswaLabelMap[l.user_id]}, ${label}`
+            : label;
+        });
+      }
+      const ortuAccounts: TeacherAccountItem[] = ortuUsers.map((u: any) => ({
+        guruId: u.id,
+        userId: u.id,
+        nama: u.nama,
+        nip: '-',
+        username: u.username,
+        defaultPassword: '-',
+        role: 'orang_tua',
+        mataPelajaran: ortuSiswaLabelMap[u.id] || 'Orang Tua / Wali Murid',
+        status: 'Aktif',
+        hasAccount: true,
+        sekolahId: u.sekolah_id
+      }));
+
       if (!isMountedRef.current) return;
 
       const existingUserIds = new Set((result.accounts || []).map(a => a.userId).filter(Boolean));
       const filteredTuAccounts = tuAccounts.filter(a => !existingUserIds.has(a.userId));
       const filteredBkAccounts = bkAccounts.filter(a => !existingUserIds.has(a.userId));
+      const filteredOrtuAccounts = ortuAccounts.filter(a => !existingUserIds.has(a.userId));
 
       const combinedAccounts = [
         ...(result.accounts || []),
         ...filteredTuAccounts,
-        ...filteredBkAccounts
+        ...filteredBkAccounts,
+        ...filteredOrtuAccounts
       ];
       setAccounts(combinedAccounts);
 
@@ -682,6 +728,119 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
     }
   };
 
+  const handleCreateOrtuUser = async () => {
+    if (!isAdmin) return;
+    const targetSekolahId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
+    const { data: siswaList, error: siswaErr } = await supabase
+      .from('data_siswa')
+      .select('id, nama_siswa, nisn, kelas')
+      .eq('sekolah_id', targetSekolahId)
+      .order('kelas')
+      .order('nama_siswa');
+
+    if (siswaErr || !siswaList || siswaList.length === 0) {
+      showToast('Data Siswa Kosong', 'Tambahkan data siswa terlebih dahulu sebelum membuat akun orang tua.', 'warning');
+      return;
+    }
+
+    const siswaOptionsHtml = siswaList
+      .map((s: any) => `<option value="${s.id}" data-nisn="${s.nisn || ''}">${s.kelas || '-'} — ${s.nama_siswa || '-'} (${s.nisn || '-'})</option>`)
+      .join('');
+
+    const { value: formValues } = await Swal.fire({
+      title: 'Tambah Akun Orang Tua / Wali',
+      width: '460px',
+      html: `
+        <div class="text-left space-y-3 text-xs">
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Pilih Siswa *</label>
+            <select id="swal-ortu-siswa" class="swal2-input !mt-0 !w-full text-xs">
+              ${siswaOptionsHtml}
+            </select>
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Hubungan *</label>
+            <select id="swal-ortu-hubungan" class="swal2-input !mt-0 !w-full text-xs">
+              <option value="Ibu">Ibu</option>
+              <option value="Ayah">Ayah</option>
+              <option value="Wali">Wali</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Nama Orang Tua / Wali *</label>
+            <input id="swal-ortu-nama" class="swal2-input !mt-0 !w-full text-xs" placeholder="Nama lengkap orang tua...">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Username Login *</label>
+            <input id="swal-ortu-username" class="swal2-input !mt-0 !w-full text-xs font-mono" placeholder="Contoh: ortu_1234567890">
+          </div>
+          <div>
+            <label class="font-bold text-gray-700 dark:text-gray-300 block mb-1">Password Awal *</label>
+            <input id="swal-ortu-password" type="text" class="swal2-input !mt-0 !w-full text-xs font-mono" value="Ortu12345" placeholder="Minimal 6 karakter...">
+          </div>
+        </div>
+      `,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Simpan Akun Ortu',
+      confirmButtonColor: '#2563EB',
+      cancelButtonText: 'Batal',
+      preConfirm: () => {
+        const siswaId = (document.getElementById('swal-ortu-siswa') as HTMLSelectElement)?.value;
+        const hubungan = (document.getElementById('swal-ortu-hubungan') as HTMLSelectElement)?.value || 'Orang Tua';
+        const nama = (document.getElementById('swal-ortu-nama') as HTMLInputElement)?.value?.trim();
+        const username = (document.getElementById('swal-ortu-username') as HTMLInputElement)?.value?.trim();
+        const password = (document.getElementById('swal-ortu-password') as HTMLInputElement)?.value?.trim();
+        if (!siswaId || !nama || !username || !password) {
+          Swal.showValidationMessage('Siswa, Nama, Username, dan Password wajib diisi!');
+          return null;
+        }
+        if (password.length < 6) {
+          Swal.showValidationMessage('Password minimal 6 karakter!');
+          return null;
+        }
+        return { siswaId, hubungan, nama, username, password };
+      }
+    });
+
+    if (formValues) {
+      setLoading(true);
+      const userId = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `usr-ortu-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+      const { error: insUserErr } = await supabase.from('users').insert({
+        id: userId,
+        nama: formValues.nama,
+        username: formValues.username,
+        password: formValues.password,
+        role: 'orang_tua',
+        sekolah_id: targetSekolahId
+      });
+
+      if (insUserErr) {
+        setLoading(false);
+        showToast('Gagal Membuat Akun', insUserErr.message, 'error');
+        return;
+      }
+
+      const { error: linkErr } = await supabase.from('orang_tua_siswa').insert({
+        sekolah_id: targetSekolahId,
+        user_id: userId,
+        siswa_id: formValues.siswaId,
+        hubungan: formValues.hubungan
+      });
+
+      setLoading(false);
+      if (linkErr) {
+        showToast('Peringatan Relasi', `Akun dibuat, namun gagal menautkan siswa: ${linkErr.message}`, 'warning');
+      } else {
+        showToast('Berhasil', `Akun Orang Tua "${formValues.nama}" berhasil dibuat.`, 'success');
+      }
+      handleLoadAndSync(false);
+    }
+  };
+
   // Handle Delete BK Account
   const handleDeleteBk = async (item: TeacherAccountItem) => {
     if (!isAdmin) return;
@@ -1062,6 +1221,16 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
             >
               <i className="fa-solid fa-user-plus"></i>
               <span>+ Akun BK</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateOrtuUser}
+              disabled={syncing || loading}
+              className="clay-btn px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              title="Tambah akun Orang Tua / Wali Murid"
+            >
+              <i className="fa-solid fa-user-plus"></i>
+              <span>+ Akun Ortu</span>
             </button>
             <button
               type="button"

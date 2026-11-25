@@ -30,11 +30,14 @@ export function useBroadcasts(
       const { data: annData } = await annQuery;
       if (!annData) return;
 
-      // Filter by sasaran for teachers
+      // Filter by sasaran based on role
       let filtered = annData as Pengumuman[];
+      const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+      const isOrangTua = normRole === 'orangtua' || normRole === 'walimurid';
       if (!isAdmin) {
         filtered = filtered.filter(a => {
           if (!a.sasaran || a.sasaran === 'Semua') return true;
+          if (isOrangTua) return a.sasaran === 'Orang Tua';
           if (a.sasaran === 'Guru') return true;
           if (isWaliKelas && a.sasaran === 'Wali Kelas') return true;
           return false;

@@ -1,10 +1,10 @@
-export type UserRole = 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan' | 'siswa' | 'tata_usaha' | 'bk' | 'guru_bk' | string;
+export type UserRole = 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan' | 'siswa' | 'tata_usaha' | 'bk' | 'guru_bk' | 'orang_tua' | string;
 
 export interface AppUser {
   id: string;
   username: string;
   nama: string;
-  role: 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan' | 'siswa' | 'tata_usaha' | 'bk' | 'guru_bk' | string;
+  role: 'superadmin' | 'admin' | 'guru' | 'dinas_pendidikan' | 'siswa' | 'tata_usaha' | 'bk' | 'guru_bk' | 'orang_tua' | string;
   sekolah_id: string;
   session_token: string;
   avatar?: string | null;
