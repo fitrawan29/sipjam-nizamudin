@@ -686,7 +686,12 @@ export default function GuruJurnal({
         setTipeJurnal('Jurnal Kegiatan');
       } else if (state.jadwalKBM && state.jadwalKBM.length > 0) {
         setTipeJurnal('Jurnal KBM');
-      } else if (!kelas && !mapel && (myAssignments.length === 0 || (state as any).isNonKbmOrTu)) {
+      } else if (
+        !kelas &&
+        !mapel &&
+        !state.isNonTeachingDay &&
+        !(state.aturanKehadiran === 'Hari_Mengajar_Saja' && (!state.jadwalKBM || state.jadwalKBM.length === 0))
+      ) {
         setTipeJurnal('Jurnal Kegiatan');
       }
     };
@@ -881,8 +886,7 @@ export default function GuruJurnal({
             !kelas &&
             !mapel &&
             !dailyState?.isNonTeachingDay &&
-            !(dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0)) &&
-            (myAssignments.length === 0 || (dailyState as any)?.isNonKbmOrTu)
+            !(dailyState?.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0))
           ) {
             setTipeJurnal('Jurnal Kegiatan');
           }

@@ -489,7 +489,7 @@ export default function HomeViewAdmin({
         void (aturanGlobal === 'Hari_Mengajar_Saja' && guruHanyaMengajarList.includes(teacher.id));
         const isTeacherExempt = !isNonKbmOrTu && policy.isTeacherExempt;
         const activeTargetCount = targetClasses.filter((jk: any) => !jk.isBlocked).length;
-        const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;
+        const isExemptNonTeaching = isTeacherExempt && targetCount === 0;
 
         // 4. Laporan Piket (Check penugasan_piket directly + jadwal_piket fallback)
         const inPenugasan = assignedPiketTeachers.some((p: any) =>
@@ -785,9 +785,6 @@ export default function HomeViewAdmin({
           } else if (hasRejectedJournal) {
             jurnalStatus = 'Ditolak (Perlu Revisi)';
             jurnalColor = 'rose';
-          } else if (!isNonKbmOrTu && isPiket) {
-            jurnalStatus = 'Bebas KBM';
-            jurnalColor = 'gray';
           } else {
             jurnalStatus = 'Perlu Jurnal Kegiatan';
             jurnalColor = 'amber';
@@ -835,7 +832,7 @@ export default function HomeViewAdmin({
                 : isExemptNonTeaching
                 ? true
                 : effectiveTargetCount === 0
-                ? Boolean(hasJurnalKegiatan || realTeacherJournals.length > 0 || (!isNonKbmOrTu && isPiket))
+                ? Boolean(hasJurnalKegiatan || realTeacherJournals.length > 0)
                 : filledCount >= effectiveTargetCount && !hasMixedBlockPending));
 
         const isTugasLengkap = isLiburOrExempt

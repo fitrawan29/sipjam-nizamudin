@@ -3006,7 +3006,6 @@ async function computeGuruDailyState(namaGuru: string, username?: string, userId
     } else if (state.isBlok || state.isDinasLuar || state.jadwalKBM.length === 0) {
       if (state.jurnalKegiatan) isJurnalDone = true;
       else if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;
-      else if (!isNonKbmOrTu && state.jadwalKBM.length === 0 && state.isPiket) isJurnalDone = true;
       // Invariant preservation for legacy test suites:
       // if (isTeacherExempt && state.jadwalKBM.length === 0) isJurnalDone = true;
       // if (state.jadwalKBM.length === 0 && state.isPiket) isJurnalDone = true;

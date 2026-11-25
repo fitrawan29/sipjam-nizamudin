@@ -955,8 +955,22 @@ export default function AdminVerifView({
           return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
         });
 
-        // Guru reguler yang tidak memiliki jadwal KBM hari ini tidak memiliki kewajiban jurnal KBM (Bebas KBM)
-        if (scheduledClasses.length === 0) return false;
+        const isTu = isTuAccount(t, linkedUser?.role);
+        const totalTeacherSchedules = isTu ? 0 : allJadwalPelajaran.filter((j: any) =>
+          isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true })
+        ).length;
+        const isNonKbmOrTu = isTu || totalTeacherSchedules === 0;
+        const isTeacherExempt = !isNonKbmOrTu && resolveTeacherAttendancePolicy({
+          teacher: t,
+          linkedUser,
+          totalTeacherKbmCount: totalTeacherSchedules,
+          aturanGlobal,
+          guruHanyaMengajarList,
+          preferLegacyListWhenGlobalKbm: true,
+        }).isTeacherExempt;
+
+        // Guru yang diatur hanya hadir pada jadwal KBM-nya bebas dari kewajiban jurnal saat tidak ada jadwal KBM hari ini (termasuk saat Sistem Blok)
+        if (isTeacherExempt && scheduledClasses.length === 0) return false;
 
         return true;
       })
@@ -971,6 +985,8 @@ export default function AdminVerifView({
           return isTeacherRecordMatch(j, t, linkedUser, { allowSingleWordFirstToken: true });
         });
 
+        const isRegularNonTeachingDay = !isTeacherBk && scheduledClasses.length === 0;
+
         return {
           id: `unsub-jurnal-${t.id}`,
           nama_guru: t.nama_guru,
@@ -982,17 +998,21 @@ export default function AdminVerifView({
             : (t.mata_pelajaran || 'Guru'),
           scheduledInfo: isTeacherBk
             ? `Layanan BK (${effectiveDayName})`
+            : isRegularNonTeachingDay
+            ? `Jurnal Kegiatan (${effectiveDayName})`
             : `${scheduledClasses.length} Kelas Terjadwal (${effectiveDayName})`,
           task_type: 'Jurnal',
           pesan_belum: isTeacherBk
             ? `Belum mengisi jurnal BK untuk tanggal ${targetDate}`
+            : isRegularNonTeachingDay
+            ? `Belum mengisi Jurnal Kegiatan (Wajib Hadir) untuk hari ${effectiveDayName}`
             : `Belum mengisi jurnal KBM untuk ${scheduledClasses.length} kelas terjadwal pada hari ${effectiveDayName}`,
           tanggal: targetDate,
           isUnsubmitted: true,
           search_aliases: [t.nama_guru, linkedUser?.nama, linkedUser?.username, t.nip].filter(Boolean).join(' ')
         };
       });
-  }, [allTeachers, allUsers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, holidayInfo]);
+  }, [allTeachers, allUsers, jurnalList, presensiList, date, effectiveDate, effectiveDayName, allJadwalPelajaran, holidayInfo, aturanGlobal, guruHanyaMengajarList]);
 
   const unsubmittedPiket = useMemo(() => {
     if (allTeachers.length === 0) return [];

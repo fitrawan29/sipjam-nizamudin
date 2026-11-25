@@ -389,6 +389,24 @@ export async function checkMissingTasks(targetDateStr?: string, targetDayName?: 
               url: '/?view=view-guru-jurnal'
             });
           }
+        } else if (!isExemptTeacher(teacher) && !isBkAccount(teacher.mata_pelajaran)) {
+          const hasSubmittedKegiatan = journalList.some(j => {
+            const jName = (j.nama_guru || '').toLowerCase().trim();
+            const isThisTeacher = jName === tNameLower || (jName.length >= 3 && tNameLower.includes(jName)) || (tNameLower.length >= 3 && jName.includes(tNameLower));
+            if (!isThisTeacher || j.status_verifikasi === 'Ditolak') return false;
+            return j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || (!j.kelas || j.kelas === '-');
+          });
+          if (!hasSubmittedKegiatan) {
+            reminders.push({
+              guru_id: teacher.id,
+              guru_nama: tName,
+              sekolah_id: sekolahId,
+              category: 'jurnal',
+              title: 'Pengingat Jurnal Kegiatan',
+              body: `Halo ${tName}, Anda tidak memiliki jadwal KBM hari ini. Mohon lengkapi Jurnal Kegiatan harian Anda.`,
+              url: '/?view=view-guru-jurnal'
+            });
+          }
         }
       }
     }
