@@ -105,9 +105,9 @@ async function runTests() {
   for (const perm of bkPermutations) {
     const items = getConsolidatedMenuItems({ role: perm });
     recordAssert(
-      items.length === 5,
+      items.length === 6,
       `T2.1.${perm.trim()}`,
-      `getConsolidatedMenuItems({ role: '${perm.trim()}' }) returns strictly 5 items (got: ${items.length})`
+      `getConsolidatedMenuItems({ role: '${perm.trim()}' }) returns strictly 6 items (got: ${items.length})`
     );
   }
 
@@ -117,6 +117,7 @@ async function runTests() {
     'view-home',
     'view-guru-presensi',
     'view-jurnal-bk',
+    'view-kolaborasi',
     'view-informasi',
     'view-pengaturan-akun'
   ];
@@ -124,7 +125,7 @@ async function runTests() {
   recordAssert(
     JSON.stringify(bkMenuIds) === JSON.stringify(expectedBkIds),
     'T2.2',
-    `Menu items match expected consolidated 5 items: ${expectedBkIds.join(', ')}`
+    `Menu items match expected consolidated 6 items: ${expectedBkIds.join(', ')}`
   );
 
   // Verify labels
@@ -226,7 +227,7 @@ async function runTests() {
   }
 
   // Allowed views for BK
-  const allowedForBk = ['view-home', 'view-guru-presensi', 'view-jurnal-bk', 'view-informasi', 'view-pengaturan-akun'];
+  const allowedForBk = ['view-home', 'view-guru-presensi', 'view-jurnal-bk', 'view-kolaborasi', 'view-informasi', 'view-pengaturan-akun'];
   for (const v of allowedForBk) {
     const res = evaluateTabRBAC(v, '', { role: 'bk' });
     recordAssert(res.allowed === true, `T4.2.${v}`, `evaluateTabRBAC allows BK in ${v}`);
@@ -382,7 +383,7 @@ async function runTests() {
 
   // Admin
   const adminMenus = getConsolidatedMenuItems({ role: 'admin' });
-  recordAssert(adminMenus.length === 9, 'T9.1', 'Admin menus remain strictly 9 items');
+  recordAssert(adminMenus.length === 10, 'T9.1', 'Admin menus remain strictly 10 items (includes view-kolaborasi)');
   recordAssert(adminMenus.some(m => m.id === 'view-admin-data'), 'T9.1.data', 'Admin retains Master Data');
 
   // Superadmin
@@ -391,7 +392,7 @@ async function runTests() {
 
   // Regular Teacher
   const guruMenus = getConsolidatedMenuItems({ role: 'guru' });
-  recordAssert(guruMenus.length === 6, 'T9.3', 'Guru reguler menus remain strictly 6 items');
+  recordAssert(guruMenus.length === 7, 'T9.3', 'Guru reguler menus remain strictly 7 items (includes view-kolaborasi)');
   recordAssert(guruMenus.some(m => m.id === 'view-dokumen'), 'T9.3.dokumen', 'Guru retains Perangkat Pembelajaran');
   recordAssert(guruMenus.some(m => m.id === 'view-guru-jurnal'), 'T9.3.jurnal', 'Guru retains Jurnal Pembelajaran KBM');
 
@@ -405,7 +406,7 @@ async function runTests() {
 
   // Kepala Sekolah
   const kepsekMenus = getConsolidatedMenuItems({ role: 'kepalasekolah', isKepalaSekolah: true });
-  recordAssert(kepsekMenus.length === 9, 'T9.6', 'Kepala Sekolah menus contain 9 items including Asesmen & Rapor');
+  recordAssert(kepsekMenus.length === 10, 'T9.6', 'Kepala Sekolah menus contain 10 items including Asesmen, Rapor, & Kolaborasi');
   recordAssert(kepsekMenus.some(m => m.id === 'view-gradebook'), 'T9.6.asesmen', 'Kepala Sekolah retains Asesmen');
   recordAssert(kepsekMenus.some(m => m.id === 'view-rapor'), 'T9.6.rapor', 'Kepala Sekolah retains Rapor');
 

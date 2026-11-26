@@ -420,10 +420,10 @@ async function runTests() {
     "Superadmin menu items remain intact (Ringkasan Platform, Jaringan Sekolah, Akun Dinas)"
   );
 
-  // Test 6.3: Guru menu items preserved
+  // Test 6.3: Guru menu items preserved (includes view-kolaborasi from commit 25e198d)
   const guruItems = getConsolidatedMenuItems({ role: 'guru' });
   recordAssert(
-    guruItems.length === 6 && guruItems.some(i => i.id === 'view-dokumen') && guruItems.some(i => i.id === 'view-guru-jurnal'),
+    guruItems.length === 7 && guruItems.some(i => i.id === 'view-dokumen') && guruItems.some(i => i.id === 'view-guru-jurnal') && guruItems.some(i => i.id === 'view-kolaborasi'),
     'T6.3',
     "Guru menu items remain intact and continue to have access to Perangkat Pembelajaran (view-dokumen)"
   );

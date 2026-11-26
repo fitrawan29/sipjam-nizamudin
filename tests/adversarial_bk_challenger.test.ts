@@ -143,14 +143,15 @@ async function runAdversarialChallenges() {
   }
 
   // --------------------------------------------------------------------------
-  // SECTION 2: Adversarial Menu Isolation (Miller's Law - Strictly 5 Items)
+  // SECTION 2: Adversarial Menu Isolation (6 Items incl. view-kolaborasi)
   // --------------------------------------------------------------------------
-  console.log(`\n${BOLD}SECTION 2: Adversarial Menu Isolation & Tampering (Miller's Law)${RESET}`);
+  console.log(`\n${BOLD}SECTION 2: Adversarial Menu Isolation & Tampering${RESET}`);
 
   const expectedBkIds = [
     'view-home',
     'view-guru-presensi',
     'view-jurnal-bk',
+    'view-kolaborasi',
     'view-informasi',
     'view-pengaturan-akun'
   ];
@@ -161,9 +162,9 @@ async function runAdversarialChallenges() {
     const itemIds = items.map(i => i.id);
 
     challenge(
-      items.length === 5,
+      items.length === 6,
       `MENU-LEN-${roleVariant.trim()}`,
-      `Role variant '${roleVariant.trim()}' produces strictly 5 items (got: ${items.length})`
+      `Role variant '${roleVariant.trim()}' produces strictly 6 items (got: ${items.length})`
     );
 
     challenge(
@@ -189,9 +190,9 @@ async function runAdversarialChallenges() {
     const itemIds = items.map(i => i.id);
 
     challenge(
-      items.length === 5,
+      items.length === 6,
       `TAMPER-LEN-${idx}`,
-      `Tampered params {role: '${param.role}', isWali: ${param.isWaliKelas}, isPiket: ${param.isPiketHariIni}} still returns strictly 5 items (got: ${items.length})`
+      `Tampered params {role: '${param.role}', isWali: ${param.isWaliKelas}, isPiket: ${param.isPiketHariIni}} still returns strictly 6 items (got: ${items.length})`
     );
 
     challenge(

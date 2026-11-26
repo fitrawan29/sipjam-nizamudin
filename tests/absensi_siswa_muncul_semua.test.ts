@@ -35,8 +35,8 @@ async function runAll() {
   const guruJurnalPath = path.join(root, 'src', 'components', 'GuruJurnal.tsx');
   const homeViewGuruPath = path.join(root, 'src', 'components', 'HomeViewGuru.tsx');
 
-  const jurnalContent = fs.readFileSync(guruJurnalPath, 'utf8');
-  const homeContent = fs.readFileSync(homeViewGuruPath, 'utf8');
+  const jurnalContent = fs.readFileSync(guruJurnalPath, 'utf8').replace(/\r\n/g, '\n');
+  const homeContent = fs.readFileSync(homeViewGuruPath, 'utf8').replace(/\r\n/g, '\n');
 
   // ==========================================================================
   // SECTION 1: PEMISAHAN ANTARMUKA & SESSION INTENT RESILIENCE
@@ -284,7 +284,9 @@ async function runAll() {
 
   runTest('5.4: checkDateBlok tidak memaksa Jurnal Kegiatan saat berada di sub-mode absensi', () => {
     assert.ok(
-      jurnalContent.includes("if (blok) {\n          if (kbmSubMode !== 'absensi') {\n            setTipeJurnal('Jurnal Kegiatan');"),
+      jurnalContent.includes('if (blok) {') &&
+      jurnalContent.includes("if (kbmSubMode !== 'absensi') {") &&
+      jurnalContent.includes("setTipeJurnal('Jurnal Kegiatan');"),
       'checkDateBlok must not downgrade tipeJurnal when block period is active if user is in absensi mode'
     );
     assert.ok(

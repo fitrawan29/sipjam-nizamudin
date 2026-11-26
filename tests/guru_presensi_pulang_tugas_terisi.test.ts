@@ -277,11 +277,11 @@ async function runTests() {
     );
   });
 
-  test('2.3: GuruPresensi.tsx validates !dailyState?.canPresensiPulang in handleSubmit', () => {
+  test('2.3: GuruPresensi.tsx validates !dailyState?.canPresensiPulang for Sekolah checkout in handleSubmit', () => {
     assert.ok(
-      guruPresensiContent.includes("if (!dailyState?.canPresensiPulang) {") &&
+      guruPresensiContent.includes("if (!dailyState?.canPresensiPulang && jenisPresensi === 'Sekolah') {") &&
       guruPresensiContent.includes("'Tugas Belum Selesai'"),
-      'GuruPresensi.tsx must reject submission if dailyState.canPresensiPulang is false'
+      'GuruPresensi.tsx must reject Sekolah Pulang submission if dailyState.canPresensiPulang is false'
     );
   });
 

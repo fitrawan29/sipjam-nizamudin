@@ -123,20 +123,20 @@ console.log('  ✔ [PASS] 1.4: Berkas rusak/terlarang (0-byte, >25MB, exe, js, s
 // --- Suite 2: Penempatan File Upload di Folder SIPJAM Sesuai Nama Guru (R3) ---
 console.log('--- Suite 2: Penempatan Direktori Google Drive (R3) ---');
 
-// 2.1 Struktur direktori Presensi Guru: SIPJAM/Presensi_Guru/<Nama Guru>/
+// 2.1 Struktur direktori Presensi Guru: SIPJAM/<Nama Guru>/Presensi_Guru/ (commit c49abf8)
 const guruAhmad = 'Fitra Suryazana Mamonto';
 const presensiPath = buildDriveFolderPath('Presensi_Guru', guruAhmad);
 assert.strictEqual(presensiPath.rootFolder, 'SIPJAM', '2.1a: Root folder must be SIPJAM');
 assert.strictEqual(presensiPath.folderFitur, 'Presensi_Guru', '2.1b: Feature folder must be Presensi_Guru');
 assert.strictEqual(presensiPath.guruFolder, guruAhmad, '2.1c: Teacher subfolder must match exact teacher name');
-assert.strictEqual(presensiPath.folderPath, `SIPJAM/Presensi_Guru/${guruAhmad}`, '2.1d: Full path must be SIPJAM/Presensi_Guru/<Nama Guru>');
-console.log('  ✔ [PASS] 2.1: Dokumen presensi terarah ke SIPJAM/Presensi_Guru/<Nama Guru>/');
+assert.strictEqual(presensiPath.folderPath, `SIPJAM/${guruAhmad}/Presensi_Guru`, '2.1d: Full path must be SIPJAM/<Nama Guru>/Presensi_Guru');
+console.log('  ✔ [PASS] 2.1: Dokumen presensi terarah ke SIPJAM/<Nama Guru>/Presensi_Guru/');
 
 // 2.2 Penanganan nama guru dengan gelar dan spasi
 const guruGelar = '  Dra. Hj. Nur Aini, M.Pd.  ';
 const pathGelar = buildDriveFolderPath('Presensi_Guru', guruGelar);
 assert.strictEqual(pathGelar.guruFolder, 'Dra. Hj. Nur Aini, M.Pd.', '2.2a: Normalized teacher name trims whitespace');
-assert.strictEqual(pathGelar.folderPath, 'SIPJAM/Presensi_Guru/Dra. Hj. Nur Aini, M.Pd.', '2.2b: Path formats cleanly');
+assert.strictEqual(pathGelar.folderPath, 'SIPJAM/Dra. Hj. Nur Aini, M.Pd./Presensi_Guru', '2.2b: Path formats cleanly');
 
 // Path traversal attack in teacher name: ../../Fitra Suryazana Mamonto
 const guruTraversal = '../../Fitra Suryazana Mamonto';
@@ -150,9 +150,9 @@ assert.strictEqual(normalizeDriveFeatureFolder('izin'), 'Presensi_Guru', '2.2e: 
 assert.strictEqual(normalizeDriveFeatureFolder('sakit'), 'Presensi_Guru', '2.2f: sakit feature folder normalizes to Presensi_Guru');
 console.log('  ✔ [PASS] 2.2: Nama guru dengan gelar dan spasi dinormalisasi secara aman');
 
-// 2.3 Presensi Dinas Luar terpisah di Presensi_DinasLuar/<Nama Guru>
+// 2.3 Presensi Dinas Luar terpisah di <Nama Guru>/Presensi_DinasLuar
 const pathDinasLuar = buildDriveFolderPath('Presensi_DinasLuar', guruAhmad);
-assert.strictEqual(pathDinasLuar.folderPath, `SIPJAM/Presensi_DinasLuar/${guruAhmad}`, '2.3: Dinas Luar routes to Presensi_DinasLuar');
+assert.strictEqual(pathDinasLuar.folderPath, `SIPJAM/${guruAhmad}/Presensi_DinasLuar`, '2.3: Dinas Luar routes to <Nama Guru>/Presensi_DinasLuar');
 console.log('  ✔ [PASS] 2.3: Presensi Dinas Luar tersimpan di subfolder terpisah yang sesuai\n');
 
 // --- Suite 3: Indikator Progres & Alur Tanpa Refresh Prematur (R1 & R2) ---

@@ -255,7 +255,7 @@ assert(guruPresensiContent.includes('required={!file}'), 'GuruPresensi uses requ
 assert(guruPresensiContent.includes('Ganti Surat Izin?') && guruPresensiContent.includes('File surat izin terpasang'), 'GuruPresensi renders attached document status badge with confirmation modal');
 
 // 2.9 GuruPresensi.tsx background GAS upload warning toast
-assert(guruPresensiContent.includes("showToast('Sinkronisasi Tertunda'"), 'GuruPresensi notifies teacher with non-intrusive toast if background Google Drive upload fails');
+assert(guruPresensiContent.includes("showToast('Upload Foto Tertunda'"), 'GuruPresensi notifies teacher with non-intrusive toast if background Google Drive upload fails');
 
 // ----------------------------------------------------
 // Section 3: R3 - Mobile-Responsive Tables & Touch Experience

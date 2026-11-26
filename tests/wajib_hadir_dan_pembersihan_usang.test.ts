@@ -214,8 +214,8 @@ async function runTests() {
       );
       assert(adminHomeContent.includes('const hasPiketDuty = isPiket;'), 'Admin Home checks hasPiketDuty');
       assert(adminHomeContent.includes("isFreeFromPresence ? 'Bebas Hadir' : 'Belum Datang'"), 'Admin Home sets Bebas Hadir for Datang');
-      assert(adminHomeContent.includes("(isFreeFromPresence && !pDatang) ? 'Bebas Hadir' : 'Belum Pulang'"), 'Admin Home sets Bebas Hadir for Pulang when not present');
-      assert(adminHomeContent.includes('const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty && !pDatang);'), 'Admin Home calculates isLiburOrExempt incorporating piket duty and arrival');
+      assert(adminHomeContent.includes("isFreeFromPresence ? 'Bebas Hadir' : 'Belum Pulang'"), 'Admin Home sets Bebas Hadir for Pulang per commit f9ea207');
+      assert(adminHomeContent.includes('const isLiburOrExempt = isSchoolDayOff || (isExemptNonTeaching && !hasPiketDuty);'), 'Admin Home calculates isLiburOrExempt incorporating piket duty');
       pass('R1.8: HomeViewAdmin.tsx konsisten menampilkan status Bebas Hadir dan mendeteksi penugasan piket guru exempt');
     } catch (e: any) {
       fail('R1.8: HomeViewAdmin.tsx inkonsisten dalam status kehadiran guru exempt', e);

@@ -92,24 +92,24 @@ for (const mapel of regularSubjects) {
 console.log('\n--- Suite 4: Consolidated Menu Generation with isBk Flag ---');
 
 const bkMenusWithFlag = getConsolidatedMenuItems({ role: 'Guru', isBk: true });
-assert.strictEqual(bkMenusWithFlag.length, 5);
-const expectedIds = ['view-home', 'view-guru-presensi', 'view-jurnal-bk', 'view-informasi', 'view-pengaturan-akun'];
+assert.strictEqual(bkMenusWithFlag.length, 6);
+const expectedIds = ['view-home', 'view-guru-presensi', 'view-jurnal-bk', 'view-kolaborasi', 'view-informasi', 'view-pengaturan-akun'];
 assert.deepStrictEqual(bkMenusWithFlag.map(m => m.id), expectedIds);
-pass("getConsolidatedMenuItems({ role: 'Guru', isBk: true }) generates strictly 5 BK items");
+pass("getConsolidatedMenuItems({ role: 'Guru', isBk: true }) generates strictly 6 BK items");
 
 // 5. Menu Consolidation with mapelBkVariants (Constraint Fallback in Menu Generator)
 console.log('\n--- Suite 5: Consolidated Menu Generation with mata_pelajaran Variants ---');
 
 for (const mapel of mapelBkVariants) {
   const menus = getConsolidatedMenuItems({ role: 'Guru', mata_pelajaran: mapel });
-  assert.strictEqual(menus.length, 5, `Expected 5 items for mapel '${mapel}'`);
+  assert.strictEqual(menus.length, 6, `Expected 6 items for mapel '${mapel}'`);
   assert.deepStrictEqual(menus.map(m => m.id), expectedIds);
-  pass(`getConsolidatedMenuItems({ role: 'Guru', mata_pelajaran: '${mapel}' }) produces strictly 5 BK items`);
+  pass(`getConsolidatedMenuItems({ role: 'Guru', mata_pelajaran: '${mapel}' }) produces strictly 6 BK items`);
 
   // Also verify camelCase mataPelajaran
   const menusCamel = getConsolidatedMenuItems({ role: 'Guru', mataPelajaran: mapel });
-  assert.strictEqual(menusCamel.length, 5);
-  pass(`getConsolidatedMenuItems({ role: 'Guru', mataPelajaran: '${mapel}' }) produces strictly 5 BK items`);
+  assert.strictEqual(menusCamel.length, 6);
+  pass(`getConsolidatedMenuItems({ role: 'Guru', mataPelajaran: '${mapel}' }) produces strictly 6 BK items`);
 }
 
 // 6. Session Reversion Simulation (Clearing BK Mapel variants on Reversion to Guru)

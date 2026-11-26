@@ -281,10 +281,11 @@ runTest('R3.6: Multi-state checkout permits toggling between Hadir di Sekolah an
     'Dinas Luar option must be present'
   );
   assert.ok(
-    code.includes("tipeAbsen === 'Pulang' ? (") &&
+    !code.includes("tipeAbsen === 'Datang' && <option value=\"Dinas Luar\"") &&
+    code.includes("tipeAbsen === 'Datang' && <option value=\"Izin Terlambat\"") &&
     code.includes('<option value="Sekolah">Hadir di Sekolah</option>') &&
     code.includes('<option value="Dinas Luar">Dinas Luar</option>'),
-    'Both Sekolah and Dinas Luar must be selectable for Pulang'
+    'Both Sekolah and Dinas Luar must be selectable regardless of tipeAbsen (including Pulang), while Izin Terlambat stays Datang-only'
   );
 });
 

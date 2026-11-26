@@ -105,11 +105,11 @@ check('2.1: Tombol "Set Semua Hanya Hari KBM" di AdminConfigView hanya memilih g
   );
 });
 
-check('2.2: HomeViewAdmin menghitung isExemptNonTeaching berdasarkan jadwal KBM aktif yang tidak diblokir Sistem Blok', () => {
+check('2.2: HomeViewAdmin menghitung isExemptNonTeaching berdasarkan targetCount === 0 sesuai aturan final Bebas KBM & Sistem Blok (6cdf855)', () => {
   assert.ok(
     homeAdminSrc.includes('const activeTargetCount = targetClasses.filter((jk: any) => !jk.isBlocked).length;') &&
-    homeAdminSrc.includes('const isExemptNonTeaching = isTeacherExempt && activeTargetCount === 0;'),
-    'HomeViewAdmin harus mengevaluasi isExemptNonTeaching dengan activeTargetCount === 0'
+    homeAdminSrc.includes('const isExemptNonTeaching = isTeacherExempt && targetCount === 0;'),
+    'HomeViewAdmin harus mengevaluasi isExemptNonTeaching dengan targetCount === 0'
   );
 });
 

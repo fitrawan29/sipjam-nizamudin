@@ -57,12 +57,12 @@ try {
   fail('1.2: AdminVerifView listener realtime belum lengkap', e);
 }
 
-// 1.3 AdminVerifView excludes zero-schedule teachers from unsubmittedJurnal
+// 1.3 AdminVerifView excludes exempt zero-schedule teachers from unsubmittedJurnal (commit 6cdf855)
 try {
-  assert(adminVerifContent.includes('if (scheduledClasses.length === 0) return false;'), 'AdminVerifView must exclude teachers with 0 scheduled classes from unsubmittedJurnal');
-  pass('1.3: AdminVerifView unsubmittedJurnal tidak mencantumkan guru tanpa jadwal KBM hari ini');
+  assert(adminVerifContent.includes('if (isTeacherExempt && scheduledClasses.length === 0) return false;'), 'AdminVerifView must exclude exempt teachers with 0 scheduled classes from unsubmittedJurnal');
+  pass('1.3: AdminVerifView unsubmittedJurnal membebaskan guru exempt tanpa jadwal KBM hari ini');
 } catch (e) {
-  fail('1.3: AdminVerifView unsubmittedJurnal masih mencantumkan guru bebas KBM', e);
+  fail('1.3: AdminVerifView unsubmittedJurnal masih mencantumkan guru exempt bebas KBM', e);
 }
 
 // 1.4 AdminConfigView selects all schedule columns and filters invalid mapel
@@ -76,8 +76,8 @@ try {
 
 // 1.5 workflow.ts findJadwalForGuru handles day matching case-insensitively
 try {
-  assert(workflowContent.includes("const targetHari = (hari || '').trim().toLowerCase()"), 'workflow.ts findJadwalForGuru handles day matching case-insensitively');
-  assert(workflowContent.includes("(j.hari || '').trim().toLowerCase() === targetHari"), 'workflow.ts findJadwalForGuru filters day cleanly');
+  assert(workflowContent.includes('const targetHariLower = targetHari.toLowerCase();'), 'workflow.ts findJadwalForGuru normalizes day case-insensitively');
+  assert(workflowContent.includes("(j.hari || '').trim().toLowerCase() === targetHariLower"), 'workflow.ts findJadwalForGuru filters day cleanly');
   pass('1.5: workflow.ts findJadwalForGuru dan buildWorkflowState memiliki pencarian robust');
 } catch (e) {
   fail('1.5: workflow.ts pencocokan jadwal KBM belum optimal', e);

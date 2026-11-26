@@ -25,7 +25,7 @@ async function runAll() {
 
   const root = path.resolve(__dirname, '..');
   const guruJurnalPath = path.join(root, 'src', 'components', 'GuruJurnal.tsx');
-  const guruJurnalContent = fs.readFileSync(guruJurnalPath, 'utf8');
+  const guruJurnalContent = fs.readFileSync(guruJurnalPath, 'utf8').replace(/\r\n/g, '\n');
 
   // ==========================================================================
   // SECTION 1: INTEGRITAS STATE TANGGAL & VALIDITAS FORMAT DATE
@@ -62,10 +62,10 @@ async function runAll() {
   // ==========================================================================
   console.log('\n--- Section 2: Pencegahan Downgrade Tipe Jurnal ke Jurnal Kegiatan ---');
 
-  await runTest('2.1: checkState tidak memaksa Jurnal Kegiatan jika guru memiliki penugasan atau kelas/mapel terpilih', () => {
+  await runTest('2.1: checkState tidak memaksa Jurnal Kegiatan jika guru bebas KBM, belum punya kelas/mapel, atau sedang di KBM (commit 6cdf855)', () => {
     assert.ok(
-      guruJurnalContent.includes("else if (!kelas && !mapel && (myAssignments.length === 0 || (state as any).isNonKbmOrTu)) {\n        setTipeJurnal('Jurnal Kegiatan');"),
-      'checkState must check !kelas && !mapel && myAssignments.length === 0 before setting Jurnal Kegiatan'
+      guruJurnalContent.includes("!kelas &&\n        !mapel &&\n        !state.isNonTeachingDay &&\n        !(state.aturanKehadiran === 'Hari_Mengajar_Saja' && (!state.jadwalKBM || state.jadwalKBM.length === 0))"),
+      'checkState must check !kelas && !mapel && !state.isNonTeachingDay before setting Jurnal Kegiatan'
     );
   });
 

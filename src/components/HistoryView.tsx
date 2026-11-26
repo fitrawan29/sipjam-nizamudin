@@ -73,7 +73,7 @@ export default function HistoryView({
     if (activeTab === 'presensi') {
       let base = supabase
         .from('presensi_guru')
-        .select('id, timestamp, tanggal, nama_guru, tipe_absen, jenis_presensi, status_verifikasi, detail_izin, catatan_admin, link_bukti_foto, link_dokumen, foto_url, tanggal_mulai, tanggal_selesai, durasi_hari');
+        .select('id, timestamp, tanggal, nama_guru, tipe_absen, jenis_presensi, status_verifikasi, detail_izin, catatan_admin, link_bukti, link_bukti_foto, link_dokumen, foto_url, tanggal_mulai, tanggal_selesai, durasi_hari');
       if (user?.sekolah_id) base = base.eq('sekolah_id', user.sekolah_id);
       if (monthStart && monthEnd) {
         base = base.gte('timestamp', getWitaStartOfDay(monthStart)).lte('timestamp', getWitaEndOfDay(monthEnd));
@@ -147,16 +147,105 @@ export default function HistoryView({
   const paginatedData = filteredData.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
 
   const groupedData = activeTab === 'presensi' ? filteredData.reduce((acc, item) => {
-    const date = (item.timestamp || item.tanggal || '').split('T')[0];
+    const rawDate = String(item.tanggal || item.timestamp || item.tanggal_mulai || '').trim();
+    const date = rawDate ? rawDate.split('T')[0].split(' ')[0] : 'Tanpa Tanggal';
     if (!acc[date]) acc[date] = { date, datang: null, pulang: null };
-    if (item.tipe_absen === 'Presensi Datang') acc[date].datang = item;
-    else acc[date].pulang = item;
+    const tipe = String(item.tipe_absen || '').trim();
+    const pickBetter = (existing: any, candidate: any) =>
+      !existing || (existing.status_verifikasi === 'Ditolak' && candidate.status_verifikasi !== 'Ditolak') ? candidate : existing;
+
+    if (tipe === 'Datang' || tipe === 'Presensi Datang') {
+      acc[date].datang = pickBetter(acc[date].datang, item);
+    } else if (tipe === 'Pulang' || tipe === 'Presensi Pulang') {
+      acc[date].pulang = pickBetter(acc[date].pulang, item);
+    } else {
+      acc[date].datang = pickBetter(acc[date].datang, item);
+    }
     return acc;
   }, {} as Record<string, any>) : {};
 
   const sortedDates = Object.keys(groupedData).sort((a, b) => b.localeCompare(a));
   const paginatedDates = sortedDates.slice(page * ITEMS_PER_PAGE, (page + 1) * ITEMS_PER_PAGE);
-  const totalPages = Math.ceil(Object.keys(groupedData).length / ITEMS_PER_PAGE);
+  const totalCount = activeTab === 'presensi' ? sortedDates.length : filteredData.length;
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+
+  const renderPresensiSlot = (label: string, accentClass: string, item: any) => {
+    const bukti = (item?.link_bukti && item.link_bukti !== '-')
+      ? item.link_bukti
+      : (item?.link_bukti_foto && item.link_bukti_foto !== '-')
+      ? item.link_bukti_foto
+      : (item?.link_dokumen && item.link_dokumen !== '-')
+      ? item.link_dokumen
+      : (item?.foto_url && item.foto_url !== '-')
+      ? item.foto_url
+      : '';
+
+    const statusBadgeClass = !item ? '' :
+      item.status_verifikasi === 'Disetujui' ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300' :
+      (item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat') ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' :
+      (item.status_verifikasi === 'Ditolak' || item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-rose-500/15 text-rose-800 dark:text-rose-300' :
+      'bg-amber-500/15 text-amber-800 dark:text-amber-300';
+
+    return (
+      <div className="p-2.5 neu-inset rounded-xl space-y-1.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className={`text-[10px] font-bold ${accentClass}`}>{label}</p>
+          {item && (
+            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${statusBadgeClass}`}>
+              {item.status_verifikasi || 'Menunggu'}
+            </span>
+          )}
+        </div>
+        {item ? (
+          <div className="text-[10px] text-[#334155] dark:text-[#CBD5E1] space-y-1">
+            <p className="font-num">
+              {formatTimestampWita(item.timestamp)}
+              {item.jenis_presensi ? ` • ${item.jenis_presensi}` : ''}
+            </p>
+            {item.detail_izin && (
+              <p><span className="font-semibold text-[#0F172A] dark:text-[#F1F5F9]">Keterangan:</span> {item.detail_izin}</p>
+            )}
+            {item.catatan_admin && (
+              <div className="p-1.5 rounded-lg bg-slate-500/10 text-[9px]">
+                <span className="font-semibold text-[#0F172A] dark:text-[#F1F5F9]">Catatan Admin: </span>
+                <span className="italic">{item.catatan_admin}</span>
+              </div>
+            )}
+            {item.link_bukti === 'pending:uploading' ? (
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-lg">
+                <i className="fa-solid fa-cloud-arrow-up animate-pulse text-[9px]"></i>
+                <span>Sedang mengunggah dokumen... (Swipe ke bawah / F5 untuk pembaruan)</span>
+              </div>
+            ) : item.link_bukti === 'gagal_upload' ? (
+              <div className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-500/15 px-2 py-0.5 rounded-lg">
+                <i className="fa-solid fa-circle-exclamation text-[9px]"></i>
+                <span>Upload dokumen tertunda</span>
+              </div>
+            ) : bukti ? (
+              <div className="pt-1.5 mt-1 border-t border-slate-300/60 dark:border-slate-700/60 flex items-center gap-2">
+                <img
+                  src={transformGoogleDriveUrl(bukti)}
+                  alt="Bukti Presensi"
+                  className="w-7 h-7 object-cover rounded-lg shadow-xs shrink-0"
+                  onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                />
+                <a
+                  href={bukti}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="neu-btn inline-flex items-center gap-1.5 text-[10px] font-bold text-[#0F766E] dark:text-teal-300 px-2.5 py-1 rounded-lg transition"
+                >
+                  <i className="fa-solid fa-paperclip text-[9px]"></i> Lihat Bukti Presensi
+                </a>
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <p className="text-[10px] text-rose-600 dark:text-rose-400 italic">Belum absen</p>
+        )}
+      </div>
+    );
+  };
 
   const Wrapper = hideSectionWrapper ? 'div' : 'section';
   const wrapperProps = hideSectionWrapper 
@@ -257,22 +346,8 @@ export default function HistoryView({
                       <div key={date} className="neu-card-sm p-3.5 rounded-2xl flex flex-col justify-between gap-3 transition">
                         <h3 className="text-xs font-bold font-num text-[#0F172A] dark:text-[#F1F5F9] border-b border-slate-300/60 dark:border-slate-700/60 pb-2">{date}</h3>
                         <div className="space-y-2">
-                          <div className="p-2.5 neu-inset rounded-xl">
-                            <p className="text-[10px] font-bold text-[#0F766E] dark:text-teal-400">Presensi Datang</p>
-                            {datang ? (
-                              <p className="text-[10px] font-num text-[#334155] dark:text-[#CBD5E1]">{formatTimestampWita(datang.timestamp)} - {datang.status_verifikasi}</p>
-                            ) : (
-                              <p className="text-[10px] text-rose-600 dark:text-rose-400 italic">Belum absen</p>
-                            )}
-                          </div>
-                          <div className="p-2.5 neu-inset rounded-xl">
-                            <p className="text-[10px] font-bold text-[#D97706] dark:text-amber-400">Presensi Pulang</p>
-                            {pulang ? (
-                              <p className="text-[10px] font-num text-[#334155] dark:text-[#CBD5E1]">{formatTimestampWita(pulang.timestamp)} - {pulang.status_verifikasi}</p>
-                            ) : (
-                              <p className="text-[10px] text-rose-600 dark:text-rose-400 italic">Belum absen</p>
-                            )}
-                          </div>
+                          {renderPresensiSlot('Presensi Datang', 'text-[#0F766E] dark:text-teal-400', datang)}
+                          {renderPresensiSlot('Presensi Pulang', 'text-[#D97706] dark:text-amber-400', pulang)}
                         </div>
                       </div>
                     );
@@ -383,7 +458,7 @@ export default function HistoryView({
             </div>
             <div className="flex justify-between items-center mt-5 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
                 <span className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] font-medium">
-                  Menampilkan {paginatedData.length > 0 ? page * ITEMS_PER_PAGE + 1 : 0} - {Math.min((page + 1) * ITEMS_PER_PAGE, filteredData.length)} dari {filteredData.length} Data
+                  Menampilkan {totalCount > 0 ? page * ITEMS_PER_PAGE + 1 : 0} - {Math.min((page + 1) * ITEMS_PER_PAGE, totalCount)} dari {totalCount} Data
                 </span>
                 <div className="flex gap-2">
                     <button 

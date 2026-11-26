@@ -777,7 +777,7 @@ export default function GuruPresensi({
         setUploadProgress({
           active: true,
           percent: 30,
-          status: `Menyiapkan pengunggahan berkas ke folder SIPJAM/${folderName}/${normalizedTeacher}...`
+          status: `Menyiapkan pengunggahan berkas ke folder SIPJAM/${normalizedTeacher}/${folderName}...`
         });
         driveUrl = await uploadToDrive(
           fileToUpload,
