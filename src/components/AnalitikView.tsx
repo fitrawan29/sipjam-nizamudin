@@ -30,7 +30,7 @@ export default function AnalitikView({ user }: { user: any }) {
       const endDateStr = lastDayStr;
 
       // 0. Fetch data_guru & users untuk konsolidasi identitas guru (non-blocking)
-      let guruQ = supabase.from('data_guru').select('id, user_id, username, nip, nama_guru, mata_pelajaran, status');
+      let guruQ = supabase.from('data_guru').select('id, user_id, nip, nama_guru, mata_pelajaran, status');
       let usersQ = supabase.from('users').select('id, nama, username, role');
       if (user?.sekolah_id) {
         guruQ = guruQ.eq('sekolah_id', user.sekolah_id);
@@ -48,7 +48,7 @@ export default function AnalitikView({ user }: { user: any }) {
       // 1. Fetch Presensi
       let presensiQuery = supabase
         .from('presensi_guru')
-        .select('id, user_id, guru_id, nama_guru, nip, jenis_presensi, status_verifikasi, timestamp')
+        .select('id, user_id, nama_guru, jenis_presensi, status_verifikasi, timestamp')
         .gte('timestamp', start)
         .lte('timestamp', end)
         .eq('tipe_absen', 'Datang')
@@ -60,7 +60,7 @@ export default function AnalitikView({ user }: { user: any }) {
       // 2. Fetch Jurnal (KBM/Kegiatan + Jurnal BK)
       let jurnalQuery = supabase
         .from('jurnal_pembelajaran')
-        .select('id, user_id, guru_id, nama_guru, tanggal, status_verifikasi')
+        .select('id, user_id, nama_guru, tanggal, status_verifikasi')
         .gte('tanggal', startDateStr)
         .lte('tanggal', endDateStr)
         .in('status_verifikasi', ['Disetujui', 'Diverifikasi']);
@@ -93,15 +93,24 @@ export default function AnalitikView({ user }: { user: any }) {
         piketQuery = piketQuery.eq('sekolah_id', user.sekolah_id);
       }
 
-      const [guruList, usersList, { data: presensi }, { data: jurnal }, bkJurnal, { data: piket }] =
-        await Promise.all([
-          safeGuruPromise,
-          safeUsersPromise,
-          presensiQuery,
-          jurnalQuery,
-          safeBkPromise,
-          piketQuery
-        ]);
+      const [
+        guruList,
+        usersList,
+        { data: presensi, error: presensiErr },
+        { data: jurnal, error: jurnalErr },
+        bkJurnal,
+        { data: piket, error: piketErr }
+      ] = await Promise.all([
+        safeGuruPromise,
+        safeUsersPromise,
+        presensiQuery,
+        jurnalQuery,
+        safeBkPromise,
+        piketQuery
+      ]);
+      if (presensiErr) console.error('[AnalitikView] presensiQuery error:', presensiErr);
+      if (jurnalErr) console.error('[AnalitikView] jurnalQuery error:', jurnalErr);
+      if (piketErr) console.error('[AnalitikView] piketQuery error:', piketErr);
 
       const linkedUserIds = new Set(
         guruList
@@ -207,8 +216,8 @@ export default function AnalitikView({ user }: { user: any }) {
                 </h2>
             </div>
             <div className="neu-inset p-3 rounded-2xl mb-4 flex gap-2.5">
-                <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" />
-                <button type="button" onClick={loadAnalitik} disabled={loading} className="neu-btn neu-btn-primary btn-click text-white px-4 rounded-xl text-xs font-bold transition disabled:opacity-50">
+                <input type="month" aria-label="Pilih bulan statistik" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2 min-h-[40px] text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" />
+                <button type="button" aria-label="Proses statistik analitik" onClick={loadAnalitik} disabled={loading} className="neu-btn neu-btn-primary btn-click text-white px-4 min-h-[40px] rounded-xl text-xs font-bold transition disabled:opacity-50">
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-rotate-right"></i>}
                 </button>
             </div>

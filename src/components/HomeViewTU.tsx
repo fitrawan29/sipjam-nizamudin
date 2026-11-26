@@ -382,7 +382,7 @@ export default function HomeViewTU({
             .eq('tanggal', todayStr);
           if (user?.sekolah_id) lpQuery = lpQuery.eq('sekolah_id', user.sekolah_id);
           if (user?.id) {
-            lpQuery = lpQuery.or(`guru_id.eq.${user.id},guru_pelapor.ilike."%${cleanName}%"`);
+            lpQuery = lpQuery.or(`user_id.eq.${user.id},guru_pelapor.ilike."%${cleanName}%"`);
           } else {
             lpQuery = lpQuery.ilike('guru_pelapor', `%${cleanName}%`);
           }
@@ -651,9 +651,8 @@ export default function HomeViewTU({
         steps.push({
           label: 'Laporan Piket',
           status: 'active',
-          detail: '⚠️ Ditolak Admin — Silakan isi ulang',
-          icon: 'fa-shield-halved',
-          targetView: 'view-guru-piket'
+          detail: '⚠️ Ditolak Admin — Silakan hubungi Admin/Koordinator Piket',
+          icon: 'fa-shield-halved'
         });
       } else if (dailyState.laporanPiket) {
         steps.push({
@@ -667,8 +666,7 @@ export default function HomeViewTU({
           label: 'Laporan Piket',
           status: 'active',
           detail: 'Belum mengisi laporan piket hari ini',
-          icon: 'fa-shield-halved',
-          targetView: 'view-guru-piket'
+          icon: 'fa-shield-halved'
         });
       }
     }
@@ -782,37 +780,37 @@ export default function HomeViewTU({
   const getNextAction = () => {
     if (!dailyState) return null;
     if (dailyState.isLibur) {
-      return { text: `Hari ini libur: ${dailyState.keteranganLibur || 'Tidak ada jam kerja'}`, color: 'text-blue-600 dark:text-blue-400' };
+      return { text: `Hari ini libur: ${dailyState.keteranganLibur || 'Tidak ada jam kerja'}`, color: 'text-sky-700 dark:text-sky-400' };
     }
     if (dailyState.isIzinSakit) {
-      return { text: `Anda sedang ${dailyState.presensiDatang?.detail_izin || dailyState.presensiDatang?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas presensi/jurnal.`, color: 'text-blue-600 dark:text-blue-400' };
+      return { text: `Anda sedang ${dailyState.presensiDatang?.detail_izin || dailyState.presensiDatang?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas presensi/jurnal.`, color: 'text-sky-700 dark:text-sky-400' };
     }
     if (dailyState.isAlpa && dailyState.presensiDatang) {
-      return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang).', color: 'text-red-600 dark:text-red-400' };
+      return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang).', color: 'text-rose-600 dark:text-rose-400' };
     }
     if (dailyState.presensiDatangDitolak) {
-      return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan kirim ulang di menu Presensi TU.', color: 'text-red-600 dark:text-red-400' };
+      return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan kirim ulang di menu Presensi TU.', color: 'text-rose-600 dark:text-rose-400' };
     }
     if (!dailyState.presensiDatang) {
-      return { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
+      return { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-700 dark:text-amber-400' };
     }
     if (dailyState.isPiket && dailyState.laporanPiketDitolak) {
-      return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan periksa di menu Piket.', color: 'text-red-600 dark:text-red-400' };
+      return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan periksa di menu Piket.', color: 'text-rose-600 dark:text-rose-400' };
     }
     if (dailyState.isPiket && !dailyState.laporanPiket) {
-      return { text: 'Presensi datang berhasil. Anda memiliki tugas piket hari ini, silakan isi Laporan Piket.', color: 'text-amber-600 dark:text-amber-400' };
+      return { text: 'Presensi datang berhasil. Anda memiliki tugas piket hari ini, silakan isi Laporan Piket.', color: 'text-amber-700 dark:text-amber-400' };
     }
     if ((dailyState.jurnalDitolak?.length ?? 0) > 0) {
-      return { text: `⚠️ ${dailyState.jurnalDitolak.length} entri Jurnal Kegiatan ditolak admin. Silakan periksa di menu Jurnal Kegiatan.`, color: 'text-red-600 dark:text-red-400' };
+      return { text: `⚠️ ${dailyState.jurnalDitolak.length} entri Jurnal Kegiatan ditolak admin. Silakan periksa di menu Jurnal Kegiatan.`, color: 'text-rose-600 dark:text-rose-400' };
     }
     if (dailyState.presensiPulangDitolak) {
-      return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan kirim ulang di menu Presensi TU.', color: 'text-red-600 dark:text-red-400' };
+      return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan kirim ulang di menu Presensi TU.', color: 'text-rose-600 dark:text-rose-400' };
     }
     if (dailyState.presensiPulang && (dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat')) {
-      return { text: '⚠️ Anda tercatat Pulang Cepat hari ini karena tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
+      return { text: '⚠️ Anda tercatat Pulang Cepat hari ini karena tidak melakukan presensi pulang.', color: 'text-amber-700 dark:text-amber-300' };
     }
     if (!dailyState.jurnalKegiatan) {
-      return { text: 'Presensi datang berhasil. Silakan isi Jurnal Kegiatan administrasi hari ini.', color: 'text-amber-600 dark:text-amber-400' };
+      return { text: 'Presensi datang berhasil. Silakan isi Jurnal Kegiatan administrasi hari ini.', color: 'text-amber-700 dark:text-amber-400' };
     }
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) {
       const currentMinutes = parseTimeToMinutes(getWitaTimeStr());
@@ -822,15 +820,15 @@ export default function HomeViewTU({
       const isAfterPulang = currentMinutes > pulangAkhirMinutes;
 
       if (isBeforePulang) {
-        return { text: `Jurnal kegiatan dan piket telah lengkap! Presensi Pulang dibuka pukul ${jamPresensi.effectivePulangMulai} WITA.`, color: 'text-emerald-600 dark:text-emerald-400' };
+        return { text: `Jurnal kegiatan dan piket telah lengkap! Presensi Pulang dibuka pukul ${jamPresensi.effectivePulangMulai} WITA.`, color: 'text-[#0F766E] dark:text-teal-400' };
       }
       if (isAfterPulang) {
-        return { text: `Waktu Presensi Pulang hari ini telah berakhir (ditutup pukul ${jamPresensi.pulangAkhir} WITA).`, color: 'text-amber-600 dark:text-amber-400' };
+        return { text: `Waktu Presensi Pulang hari ini telah berakhir (ditutup pukul ${jamPresensi.pulangAkhir} WITA).`, color: 'text-amber-700 dark:text-amber-400' };
       }
-      return { text: 'Jurnal kegiatan dan piket telah lengkap! Silakan lakukan Presensi Pulang sebelum meninggalkan sekolah.', color: 'text-green-600 dark:text-green-400' };
+      return { text: 'Jurnal kegiatan dan piket telah lengkap! Silakan lakukan Presensi Pulang sebelum meninggalkan sekolah.', color: 'text-[#0F766E] dark:text-teal-400' };
     }
     if (dailyState.presensiPulang) {
-      return { text: 'Seluruh tugas administrasi dan presensi hari ini telah selesai. Terima kasih atas dedikasi Anda!', color: 'text-green-600 dark:text-green-400' };
+      return { text: 'Seluruh tugas administrasi dan presensi hari ini telah selesai. Terima kasih atas dedikasi Anda!', color: 'text-[#0F766E] dark:text-teal-400' };
     }
     return null;
   };
@@ -866,7 +864,8 @@ export default function HomeViewTU({
             <button
               type="button"
               onClick={onOpenAccountSettings}
-              className="neu-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
+              aria-label="Edit Akun"
+              className="neu-btn px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
               title="Ubah Username & Password"
             >
               <i className="fa-solid fa-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
@@ -926,7 +925,8 @@ export default function HomeViewTU({
             type="month" 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="neu-input text-[8px] sm:text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] px-2 sm:px-3 py-1 rounded-full cursor-pointer shrink-0 w-auto min-w-[100px] max-w-[140px]"
+            aria-label="Pilih Bulan Statistik Presensi"
+            className="neu-input text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] px-3 py-1.5 min-h-[40px] rounded-full cursor-pointer shrink-0 w-auto min-w-[130px] max-w-full"
             title="Pilih Bulan"
           />
         </div>
@@ -982,7 +982,7 @@ export default function HomeViewTU({
           </div>
 
           {/* Alpa (A) */}
-          <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3">
+          <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3 col-span-2 sm:col-span-1">
             <div className="w-10 h-10 rounded-xl neu-inset text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
               <i className="fa-solid fa-user-xmark"></i>
             </div>
@@ -1091,7 +1091,7 @@ export default function HomeViewTU({
                             e.stopPropagation();
                             setView(step.targetView!);
                           }}
-                          className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 transition"
+                          className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-3 py-1.5 min-h-[36px] rounded-xl flex items-center gap-1 shrink-0 transition"
                         >
                           Buka <i className="fa-solid fa-arrow-right text-[8px]"></i>
                         </button>
@@ -1154,7 +1154,7 @@ export default function HomeViewTU({
         <div className="p-4 rounded-2xl neu-inset mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-lg shadow-sm shrink-0 mt-0.5">
+              <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-lg shrink-0 mt-0.5">
                 <i className="fa-solid fa-book-journal-whills"></i>
               </div>
               <div>
@@ -1179,7 +1179,7 @@ export default function HomeViewTU({
                 <button
                   type="button"
                   onClick={() => setView('view-guru-jurnal')}
-                  className="neu-btn neu-btn-primary btn-click px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                  className="neu-btn neu-btn-primary btn-click px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <i className="fa-solid fa-eye"></i> Tinjau Jurnal
                 </button>
@@ -1187,7 +1187,7 @@ export default function HomeViewTU({
                 <button
                   type="button"
                   onClick={() => setView('view-guru-jurnal')}
-                  className="neu-btn neu-btn-primary btn-click px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                  className="neu-btn neu-btn-primary btn-click px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <i className="fa-solid fa-pen-to-square"></i> Isi Jurnal Sekarang
                 </button>
@@ -1200,11 +1200,12 @@ export default function HomeViewTU({
         <h4 className="text-[11px] font-bold text-[#475569] dark:text-[#CBD5E1] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
           <i className="fa-solid fa-shapes text-[#0F766E] dark:text-teal-400 text-[10px]"></i> Modul Operasional Tata Usaha
         </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {/* Module 1: Presensi TU */}
-          <div 
+          <button
+            type="button"
             onClick={() => setView('view-guru-presensi')}
-            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl neu-card-sm text-left cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-sm shrink-0">
@@ -1215,15 +1216,16 @@ export default function HomeViewTU({
                 <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Datang, pulang & riwayat</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-[#0F766E] dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
+            <div className="text-[9px] font-bold text-[#0F766E] dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Presensi <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
-          </div>
+          </button>
 
           {/* Module 2: Jurnal Kegiatan */}
-          <div 
+          <button
+            type="button"
             onClick={() => setView('view-guru-jurnal')}
-            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl neu-card-sm text-left cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm shrink-0">
@@ -1234,15 +1236,16 @@ export default function HomeViewTU({
                 <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan aktivitas TU</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
+            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Jurnal <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
-          </div>
+          </button>
 
           {/* Module 3: Asesmen */}
-          <div 
+          <button
+            type="button"
             onClick={() => setView('view-gradebook')}
-            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl neu-card-sm text-left cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl neu-inset text-teal-700 dark:text-teal-300 flex items-center justify-center text-sm shrink-0">
@@ -1253,15 +1256,16 @@ export default function HomeViewTU({
                 <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Rekap nilai & CP (Tinjau)</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-teal-700 dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
+            <div className="text-[9px] font-bold text-teal-700 dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Tinjau Nilai <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
-          </div>
+          </button>
 
           {/* Module 4: Rapor Siswa */}
-          <div 
+          <button
+            type="button"
             onClick={() => setView('view-rapor')}
-            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl neu-card-sm text-left cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm shrink-0">
@@ -1272,15 +1276,16 @@ export default function HomeViewTU({
                 <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Cetak & kelengkapan rapor</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
+            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Rapor <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
-          </div>
+          </button>
 
           {/* Module 5: Informasi Sekolah */}
-          <div 
+          <button
+            type="button"
             onClick={() => setView('view-informasi')}
-            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl neu-card-sm text-left cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm shrink-0">
@@ -1291,18 +1296,19 @@ export default function HomeViewTU({
                 <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Siaran & pengumuman</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
+            <div className="text-[9px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Info <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
-          </div>
+          </button>
 
           {/* Module 6: Pengaturan Akun */}
-          <div 
+          <button
+            type="button"
             onClick={() => {
               if (onOpenAccountSettings) onOpenAccountSettings();
               else setView('view-pengaturan-akun');
             }}
-            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
+            className="p-3.5 rounded-2xl neu-card-sm text-left cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl neu-inset text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center text-sm shrink-0">
@@ -1313,10 +1319,10 @@ export default function HomeViewTU({
                 <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Profil & kata sandi</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
+            <div className="text-[9px] font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Kelola Akun <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     </section>
