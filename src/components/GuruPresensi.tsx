@@ -327,7 +327,7 @@ export default function GuruPresensi({
           text: `Foto selfie yang telah diambil tidak dapat digunakan sebagai lampiran ${val}. Hapus foto selfie?`,
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: '#10B981',
+          confirmButtonColor: '#0F766E',
           cancelButtonColor: '#6B7280',
           confirmButtonText: 'Ya, Ganti',
           cancelButtonText: 'Batal',
@@ -352,7 +352,7 @@ export default function GuruPresensi({
           text: 'File dokumen tidak dapat digunakan sebagai foto selfie. Hapus file?',
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: '#10B981',
+          confirmButtonColor: '#0F766E',
           cancelButtonColor: '#6B7280',
           confirmButtonText: 'Ya, Ganti',
           cancelButtonText: 'Batal',
@@ -396,7 +396,7 @@ export default function GuruPresensi({
           text: 'File dokumen yang telah dilampirkan tidak dapat digunakan sebagai foto selfie. Hapus file?',
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: '#10B981',
+          confirmButtonColor: '#0F766E',
           cancelButtonColor: '#6B7280',
           confirmButtonText: 'Ya, Ganti',
           cancelButtonText: 'Batal',
@@ -419,7 +419,7 @@ export default function GuruPresensi({
           text: 'Foto selfie tidak dapat digunakan sebagai lampiran dokumen. Hapus foto selfie?',
           icon: 'warning',
           showCancelButton: true,
-          confirmButtonColor: '#10B981',
+          confirmButtonColor: '#0F766E',
           cancelButtonColor: '#6B7280',
           confirmButtonText: 'Ya, Ganti',
           cancelButtonText: 'Batal',
@@ -984,11 +984,11 @@ export default function GuruPresensi({
       {/* Sub-Navigasi ClayTabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
         <div>
-          <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-            <i className="fa-solid fa-clock-user text-emerald-600 dark:text-emerald-400"></i>
+          <h1 className="text-xl font-black text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+            <i className="fa-solid fa-clock-user text-[#0F766E] dark:text-teal-400"></i>
             <span>Presensi Kehadiran Guru</span>
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
             Pencatatan jam kerja, deteksi geofence GPS, dan pemantauan riwayat kehadiran
           </p>
         </div>
@@ -1006,25 +1006,25 @@ export default function GuruPresensi({
         aria-labelledby="tab-live"
         className={activeTab === 'live' ? 'block' : 'hidden'}
       >
-        <div className="clay-card p-5 sm:p-6 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2">
-                <i className="fa-solid fa-right-to-bracket text-green-500 dark:text-green-400"></i> Form Presensi
+        <div className="clay-card p-5 sm:p-6 rounded-3xl">
+            <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-5 flex items-center gap-2">
+                <i className="fa-solid fa-right-to-bracket text-[#0F766E] dark:text-teal-400"></i> Form Presensi
             </h2>
 
             {dailyState?.isLibur && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+              <div className="neu-inset border border-rose-500/30 text-rose-700 dark:text-rose-300 p-4 rounded-xl mb-4 text-sm font-bold">
                 <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {dailyState.lockedReason}
               </div>
             )}
 
             {/* Auto-Checkout (Lupa Checkout) Warning Banner */}
             {dailyState?.lastAutoCheckout && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl p-4 mb-4 space-y-1">
+              <div className="neu-inset border border-amber-500/30 rounded-xl p-4 mb-4 space-y-1">
                 <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
-                  <i className="fa-solid fa-triangle-exclamation text-base shrink-0 text-amber-500"></i>
+                  <i className="fa-solid fa-triangle-exclamation text-base shrink-0 text-[#D97706] dark:text-amber-400"></i>
                   <span>{(dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat' || dailyState.lastAutoCheckout.jenis_presensi === 'Pulang Cepat') ? 'Peringatan Presensi: Tercatat Pulang Cepat' : 'Peringatan Presensi: Tercatat Lupa Checkout'}</span>
                 </div>
-                <div className="pl-6 text-xs text-amber-700 dark:text-amber-400">
+                <div className="pl-6 text-xs text-amber-800 dark:text-amber-300/90">
                   {(dailyState.lastAutoCheckout.status_verifikasi === 'Pulang Cepat' || dailyState.lastAutoCheckout.jenis_presensi === 'Pulang Cepat') ? (
                     <>Anda tercatat tidak melakukan presensi pulang pada tanggal {dailyState.lastAutoCheckout.timestamp ? dailyState.lastAutoCheckout.timestamp.substring(0, 10) : 'sebelumnya'}. Sistem telah menandai status presensi Anda sebagai <span className="font-bold">Pulang Cepat</span>.</>
                   ) : (
@@ -1036,18 +1036,18 @@ export default function GuruPresensi({
 
             {/* Rejection Alert — Presensi Datang Ditolak */}
             {dailyState?.presensiDatangDitolak && (
-              <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+              <div className="neu-inset border border-rose-500/30 rounded-xl p-4 mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-sm">
                   <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
                   <span>Presensi Datang Anda Ditolak oleh Admin</span>
                 </div>
                 {(dailyState.presensiDatangDitolak.catatan_admin || dailyState.presensiDatangDitolak.alasan_penolakan) && (
-                  <div className="pl-6 text-xs text-red-700 dark:text-red-300/90 italic leading-relaxed">
+                  <div className="pl-6 text-xs text-rose-700 dark:text-rose-300/90 italic leading-relaxed">
                     <span className="font-semibold not-italic">Alasan: </span>
                     {dailyState.presensiDatangDitolak.catatan_admin || dailyState.presensiDatangDitolak.alasan_penolakan}
                   </div>
                 )}
-                <div className="pl-6 text-xs text-red-600 dark:text-red-400 font-semibold">
+                <div className="pl-6 text-xs text-rose-700 dark:text-rose-400 font-semibold">
                   <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang presensi datang Anda di bawah.
                 </div>
               </div>
@@ -1055,18 +1055,18 @@ export default function GuruPresensi({
 
             {/* Rejection Alert — Presensi Pulang Ditolak */}
             {dailyState?.presensiPulangDitolak && (
-              <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+              <div className="neu-inset border border-rose-500/30 rounded-xl p-4 mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-sm">
                   <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
                   <span>Presensi Pulang Anda Ditolak oleh Admin</span>
                 </div>
                 {(dailyState.presensiPulangDitolak.catatan_admin || dailyState.presensiPulangDitolak.alasan_penolakan) && (
-                  <div className="pl-6 text-xs text-red-700 dark:text-red-300/90 italic leading-relaxed">
+                  <div className="pl-6 text-xs text-rose-700 dark:text-rose-300/90 italic leading-relaxed">
                     <span className="font-semibold not-italic">Alasan: </span>
                     {dailyState.presensiPulangDitolak.catatan_admin || dailyState.presensiPulangDitolak.alasan_penolakan}
                   </div>
                 )}
-                <div className="pl-6 text-xs text-red-600 dark:text-red-400 font-semibold">
+                <div className="pl-6 text-xs text-rose-700 dark:text-rose-400 font-semibold">
                   <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang presensi pulang Anda di bawah.
                 </div>
               </div>
@@ -1074,16 +1074,16 @@ export default function GuruPresensi({
             
             {/* Status Izin/Sakit Banner */}
             {dailyState?.isIzinSakit && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 sm:p-5 mb-4 space-y-2">
+              <div className="neu-inset border border-amber-500/30 rounded-2xl p-4 sm:p-5 mb-4 space-y-2">
                 <div className="flex items-center gap-2.5 text-amber-800 dark:text-amber-300 font-bold text-sm">
-                  <i className="fa-solid fa-bed text-base shrink-0 text-amber-600 dark:text-amber-400"></i>
+                  <i className="fa-solid fa-bed text-base shrink-0 text-[#D97706] dark:text-amber-400"></i>
                   <span>Status Kehadiran Hari Ini: {dailyState.presensiDatang?.detail_izin || dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.detail_izin || 'Izin / Sakit'}</span>
                 </div>
-                <div className="pl-6 text-xs text-amber-700 dark:text-amber-300/90 leading-relaxed">
+                <div className="pl-6 text-xs text-amber-800 dark:text-amber-300/90 leading-relaxed">
                   {dailyState.lockedReason || 'Anda sedang Izin/Sakit hari ini. Tidak perlu melakukan presensi pulang, piket, atau mengisi jurnal kegiatan.'}
                 </div>
                 <div className="pl-6 pt-1 flex items-center gap-2 text-xs">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-200/60 text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-900 dark:text-amber-200">
                     <i className="fa-solid fa-circle-info text-[10px]"></i>
                     Status: {dailyState.presensiDatang?.status_verifikasi || dailyState.activeLeaveRecord?.status_verifikasi || 'Menunggu'}
                   </span>
@@ -1094,8 +1094,8 @@ export default function GuruPresensi({
                   if (proofUrl === 'pending:uploading') {
                     return (
                       <div className="pl-6 pt-1 text-xs">
-                        <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold bg-amber-100 dark:bg-amber-900/40 px-2.5 py-1 rounded-lg">
-                          <i className="fa-solid fa-cloud-arrow-up animate-pulse text-amber-600 dark:text-amber-400"></i> Dokumen bukti sedang diunggah ke Google Drive...
+                        <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold bg-amber-500/15 px-2.5 py-1 rounded-lg">
+                          <i className="fa-solid fa-cloud-arrow-up animate-pulse text-[#D97706] dark:text-amber-400"></i> Dokumen bukti sedang diunggah ke Google Drive...
                         </span>
                       </div>
                     );
@@ -1103,7 +1103,7 @@ export default function GuruPresensi({
                   if (proofUrl === 'gagal_upload') {
                     return (
                       <div className="pl-6 pt-1 text-xs">
-                        <span className="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-semibold bg-rose-100 dark:bg-rose-900/40 px-2.5 py-1 rounded-lg">
+                        <span className="inline-flex items-center gap-1.5 text-rose-700 dark:text-rose-300 font-semibold bg-rose-500/15 px-2.5 py-1 rounded-lg">
                           <i className="fa-solid fa-triangle-exclamation text-rose-500"></i> Dokumen bukti tersimpan lokal (akan diunggah ulang otomatis)
                         </span>
                       </div>
@@ -1115,9 +1115,9 @@ export default function GuruPresensi({
                         href={proofUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 text-emerald-800 dark:text-emerald-200 font-bold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg hover:underline transition"
+                        className="inline-flex items-center gap-1.5 text-[#0F766E] dark:text-teal-300 font-bold bg-teal-500/15 px-2.5 py-1 rounded-lg hover:underline transition"
                       >
-                        <i className="fa-solid fa-file-circle-check text-emerald-600 dark:text-emerald-400"></i> Dokumen Berhasil Terunggah (Buka Dokumen)
+                        <i className="fa-solid fa-file-circle-check text-[#0F766E] dark:text-teal-400"></i> Dokumen Berhasil Terunggah (Buka Dokumen)
                       </a>
                     </div>
                   );
@@ -1128,25 +1128,25 @@ export default function GuruPresensi({
 <form onSubmit={handlePresensiSubmit} className={`space-y-4 ${dailyState?.isLibur || dailyState?.isIzinSakit ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tipe Absen</label>
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Tipe Absen</label>
                         <select 
                           value={tipeAbsen} 
                           onChange={e => handleTipeAbsenChange(e.target.value)} 
                           required 
-                          className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-nizamudin-green dark:text-nizamudin-gold"
+                          className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-[#0F766E] dark:text-teal-300"
                         >
                             <option value="Datang" disabled={!!dailyState?.presensiDatang && !dailyState?.presensiDatangDitolak}>DATANG</option>
                             <option value="Pulang" disabled={!dailyState?.presensiDatang || (!!dailyState?.presensiPulang && !dailyState?.presensiPulangDitolak)}>PULANG</option>
                         </select>
                     </div>
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kondisi / Sifat</label>
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Kondisi / Sifat</label>
                         <select 
                           value={jenisPresensi} 
                           onChange={e => togglePresensiFields(e.target.value)} 
                           disabled={isJenisDropdownDisabled} 
                           required 
-                          className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-gray-900 dark:text-white"
+                          className="w-full px-3 py-3 text-sm rounded-xl input-premium disabled:opacity-50 text-[#0F172A] dark:text-[#F1F5F9]"
                         >
                             {/* R1: Integrated Sakit/Izin/Dinas Luar for Pulang */}
                             <option value="Sekolah">Hadir di Sekolah</option>
@@ -1159,16 +1159,16 @@ export default function GuruPresensi({
                 </div>
 
                 {tipeAbsen === 'Pulang' && (
-                  <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 p-3 rounded-xl text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                  <div className="neu-inset border border-teal-500/25 p-3 rounded-xl text-xs text-[#0F766E] dark:text-teal-300 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <i className="fa-regular fa-clock text-emerald-600 dark:text-emerald-400 text-sm"></i>
+                      <i className="fa-regular fa-clock text-[#0F766E] dark:text-teal-400 text-sm"></i>
                       <div>
                         <div className="font-bold">
                           {getWitaDayName(new Date()) === 'Jumat'
                             ? `Jadwal Pulang Khusus Jumat: ${jamPresensi.pulangJumat || jamPresensi.pulangMulai} - ${jamPresensi.pulangAkhir} WITA`
                             : `Jadwal Pulang Hari Ini: ${jamPresensi.pulangMulai} - ${jamPresensi.pulangAkhir} WITA`}
                         </div>
-                        <div className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                        <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                           {getWitaDayName(new Date()) === 'Jumat'
                             ? 'Ketentuan jam buka presensi pulang hari Jumat diterapkan otomatis.'
                             : 'Presensi pulang dibuka sesuai jam operasional sekolah.'}
@@ -1176,7 +1176,7 @@ export default function GuruPresensi({
                       </div>
                     </div>
                     {getWitaDayName(new Date()) === 'Jumat' && (
-                      <span className="bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0">
+                      <span className="bg-[#0F766E] text-white text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0">
                         Hari Jumat
                       </span>
                     )}
@@ -1184,14 +1184,14 @@ export default function GuruPresensi({
                 )}
 
                 {isPulangLocked && (
-                   <div className="bg-orange-50 text-orange-700 p-3 rounded-xl text-[11px] font-bold border border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800">
+                   <div className="neu-inset border border-amber-500/30 text-amber-800 dark:text-amber-300 p-3 rounded-xl text-[11px] font-bold">
                      <i className="fa-solid fa-triangle-exclamation mr-1"></i> {dailyState.lockedReason}
                    </div>
                 )}
 
                 {tipeAbsen === 'Pulang' && dailyState?.canPresensiPulang && isPulangBeforeTime && !isPulangLocked && (
-                   <div className="bg-amber-50 text-amber-800 p-3 rounded-xl text-[11px] font-bold border border-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800 flex items-center gap-2">
-                     <i className="fa-regular fa-clock text-amber-600 dark:text-amber-400 shrink-0"></i>
+                   <div className="neu-inset border border-amber-500/30 text-amber-800 dark:text-amber-300 p-3 rounded-xl text-[11px] font-bold flex items-center gap-2">
+                     <i className="fa-regular fa-clock text-[#D97706] dark:text-amber-400 shrink-0"></i>
                      <span>Semua tugas hari ini telah selesai. Presensi Pulang baru dibuka pukul {effectivePulangMulai} WITA{isJumatToday ? ' (Jadwal Khusus Hari Jumat)' : ''}.</span>
                    </div>
                 )}
@@ -1199,8 +1199,8 @@ export default function GuruPresensi({
                 {jenisPresensi === 'Izin' && tipeAbsen === 'Datang' && (
                   <div id="row-detail-izin" className="fade-in space-y-4">
                       <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Kategori Detail</label>
-                          <select value={detailIzin} onChange={e => { const val = e.target.value; setDetailIzin(val); saveDraft({ jenisPresensi: 'Izin', detailIzin: val }); }} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Kategori Detail</label>
+                          <select value={detailIzin} onChange={e => { const val = e.target.value; setDetailIzin(val); saveDraft({ jenisPresensi: 'Izin', detailIzin: val }); }} className="w-full px-3 py-3 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]">
                             <option value="Sakit">Sakit</option>
                             <option value="Izin Pribadi">Izin Pribadi</option>
                             <option value="Izin Khusus">Izin Khusus</option>
@@ -1208,9 +1208,9 @@ export default function GuruPresensi({
                       </div>
 
                       {/* Durasi & Tanggal Izin / Sakit */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 dark:bg-slate-900/40 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 neu-inset p-3.5 rounded-2xl">
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                             Durasi (Hari)
                           </label>
                           <input
@@ -1219,24 +1219,24 @@ export default function GuruPresensi({
                             max="60"
                             value={durasiHari}
                             onChange={e => handleDurasiChange(parseInt(e.target.value, 10) || 1)}
-                            className="w-full px-3 py-2 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium font-num text-[#0F172A] dark:text-[#F1F5F9]"
                             required
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                             Tanggal Mulai
                           </label>
                           <input
                             type="date"
                             value={tanggalMulai}
                             onChange={e => handleTanggalMulaiChange(e.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium font-num text-[#0F172A] dark:text-[#F1F5F9]"
                             required
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                             Tanggal Selesai
                           </label>
                           <input
@@ -1244,7 +1244,7 @@ export default function GuruPresensi({
                             value={tanggalSelesai}
                             min={tanggalMulai}
                             onChange={e => handleTanggalSelesaiChange(e.target.value)}
-                            className="w-full px-3 py-2 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            className="w-full px-3 py-2 text-sm rounded-xl input-premium font-num text-[#0F172A] dark:text-[#F1F5F9]"
                             required
                           />
                         </div>
@@ -1252,10 +1252,10 @@ export default function GuruPresensi({
 
                       {/* Informational Badge for Admin Approval Requirement */}
                       {memerlukanPersetujuanAdmin ? (
-                        <div className={`p-3 rounded-xl border flex items-center gap-2.5 text-xs font-semibold ${
+                        <div className={`p-3 rounded-xl neu-inset border flex items-center gap-2.5 text-xs font-semibold ${
                           detailIzin === 'Sakit'
-                            ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200'
-                            : 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-800 text-amber-800 dark:text-amber-200'
+                            ? 'border-rose-500/30 text-rose-800 dark:text-rose-200'
+                            : 'border-amber-500/30 text-amber-800 dark:text-amber-200'
                         }`}>
                           <i className={`fa-solid fa-triangle-exclamation text-base shrink-0 ${detailIzin === 'Sakit' ? 'text-rose-500' : 'text-amber-500'}`}></i>
                           <div>
@@ -1270,23 +1270,23 @@ export default function GuruPresensi({
                           </div>
                         </div>
                       ) : (
-                        <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-300 flex items-center gap-2 font-medium">
-                          <i className="fa-solid fa-circle-info text-blue-500"></i>
+                        <div className="p-2.5 rounded-xl neu-inset border border-sky-500/25 text-xs text-sky-800 dark:text-sky-300 flex items-center gap-2 font-medium">
+                          <i className="fa-solid fa-circle-info text-sky-600 dark:text-sky-400"></i>
                           <span>Pengajuan {detailIzin} selama {durasiHari} hari.</span>
                         </div>
                       )}
                       
-                      <div className="bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-800/50 p-4 rounded-2xl">
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-2 flex justify-between items-center">
-                              <span><i className="fa-solid fa-pen mr-1 text-yellow-600 dark:text-yellow-400"></i> Penjelasan Detail</span>
-                              <span className="text-[9px] text-red-500 dark:text-red-400 uppercase tracking-wide">Wajib Minimal</span>
+                      <div className="neu-inset border border-amber-500/25 p-4 rounded-2xl">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2 flex justify-between items-center">
+                              <span><i className="fa-solid fa-pen mr-1 text-[#D97706] dark:text-amber-400"></i> Penjelasan Detail</span>
+                              <span className="text-[9px] text-rose-600 dark:text-rose-400 uppercase tracking-wide">Wajib Minimal</span>
                           </label>
                           <textarea 
                             value={keterangan}
                             onChange={e => { setKeterangan(e.target.value); saveDraft({ keterangan: e.target.value }); }}
                             rows={3} 
                             required
-                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-nizamudin-green/20 outline-none transition resize-none placeholder-gray-400 dark:placeholder-gray-500" 
+                            className="neu-input w-full px-3 py-2.5 text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9] resize-none" 
                             placeholder="Jelaskan secara lengkap..."
                           ></textarea>
                       </div>
@@ -1295,16 +1295,16 @@ export default function GuruPresensi({
                 )}
 
                 {(jenisPresensi === 'Izin Terlambat' || jenisPresensi === 'Terlambat') && tipeAbsen === 'Datang' && (
-                  <div id="row-keterangan-terlambat" className="fade-in space-y-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-4 rounded-2xl">
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white flex justify-between items-center">
-                      <span><i className="fa-solid fa-clock mr-1 text-amber-600 dark:text-amber-400"></i> Alasan Keterlambatan (Opsional)</span>
-                      <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">Menunggu Verifikasi Admin</span>
+                  <div id="row-keterangan-terlambat" className="fade-in space-y-2 neu-inset border border-amber-500/25 p-4 rounded-2xl">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] flex justify-between items-center">
+                      <span><i className="fa-solid fa-clock mr-1 text-[#D97706] dark:text-amber-400"></i> Alasan Keterlambatan (Opsional)</span>
+                      <span className="text-[10px] text-[#D97706] dark:text-amber-400 font-medium">Menunggu Verifikasi Admin</span>
                     </label>
                     <textarea 
                       value={keterangan}
                       onChange={e => setKeterangan(e.target.value)}
                       rows={2} 
-                      className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-nizamudin-green/20 outline-none transition resize-none placeholder-gray-400 dark:placeholder-gray-500" 
+                      className="neu-input w-full px-3 py-2 text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9] resize-none" 
                       placeholder="Tuliskan keterangan/alasan keterlambatan jika diperlukan..."
                     ></textarea>
                   </div>
@@ -1348,21 +1348,21 @@ export default function GuruPresensi({
                           }
                         }} 
                         required={!file} 
-                        className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                        className="w-full px-3 py-2 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" 
                       />
                       {file && (
-                        <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between transition-all shadow-sm">
-                          <div className="flex items-center gap-2.5 text-xs font-semibold text-emerald-900 dark:text-emerald-100">
-                            <i className="fa-solid fa-file-circle-check text-emerald-600 dark:text-emerald-400 text-lg"></i>
+                        <div className="p-3.5 rounded-2xl neu-inset border border-teal-500/25 flex items-center justify-between transition-all">
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
+                            <i className="fa-solid fa-file-circle-check text-[#0F766E] dark:text-teal-400 text-lg"></i>
                             <div>
                               <div className="font-bold flex items-center gap-1.5">
                                 {/* File surat izin terpasang */}
                                 <span>File {requiredDocName} terpasang</span>
-                                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-200/60 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-200">
+                                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                                   Valid
                                 </span>
                               </div>
-                              <div className="text-[11px] text-slate-600 dark:text-slate-400 font-normal">
+                              <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] font-normal">
                                 {file.name} ({(file.size / 1024).toFixed(0)} KB) • Tujuan: SIPJAM/Presensi_Guru/{normalizeDriveTeacherFolder(user?.nama || 'Guru')}
                               </div>
                             </div>
@@ -1375,7 +1375,7 @@ export default function GuruPresensi({
                                 text: `Hapus file ${file.name} dan pilih dokumen lain?`,
                                 icon: 'question',
                                 showCancelButton: true,
-                                confirmButtonColor: '#10B981',
+                                confirmButtonColor: '#0F766E',
                                 cancelButtonColor: '#6B7280',
                                 confirmButtonText: 'Ya, Ganti',
                                 cancelButtonText: 'Batal',
@@ -1387,7 +1387,7 @@ export default function GuruPresensi({
                                 await clearPresensiFileDraft();
                               }
                             }}
-                            className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                            className="neu-btn px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 rounded-lg transition"
                           >
                             Ganti File
                           </button>
@@ -1399,14 +1399,14 @@ export default function GuruPresensi({
                 {/* Camera Selfie Capture for Datang and Pulang */}
                 {isSelfieRequired && (
                   <div id="row-camera-selfie" className="fade-in pt-1 space-y-2">
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white ml-1 flex items-center justify-between">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] ml-1 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
-                        <i className="fa-solid fa-camera text-emerald-500"></i>
+                        <i className="fa-solid fa-camera text-[#0F766E] dark:text-teal-400"></i>
                         {tipeAbsen === 'Pulang' 
                           ? (jenisPresensi === 'Dinas Luar' ? 'Foto Lokasi Presensi Pulang Dinas Luar (Wajib)' : 'Foto Kamera Langsung Presensi Pulang (Wajib)') 
                           : (jenisPresensi === 'Dinas Luar' ? 'Foto Lokasi Dinas Luar (Wajib dengan Watermark)' : 'Foto Selfie Kehadiran (Wajib dengan Watermark)')}
                       </span>
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-semibold">
                         {file ? '✓ Foto Terpasang' : 'Kamera Aktif'}
                       </span>
                     </label>
@@ -1436,12 +1436,12 @@ export default function GuruPresensi({
                     />
 
                     {file && (
-                      <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-between transition-all">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
-                          <i className="fa-solid fa-circle-check text-emerald-500 text-base"></i>
+                      <div className="p-3 rounded-xl neu-inset border border-teal-500/25 flex items-center justify-between transition-all">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
+                          <i className="fa-solid fa-circle-check text-[#0F766E] dark:text-teal-400 text-base"></i>
                           <div>
                             <div>{jenisPresensi === 'Dinas Luar' ? 'Foto lokasi siap digunakan' : 'Foto selfie siap digunakan'}</div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-normal">
                               {file.name} ({(file.size / 1024).toFixed(0)} KB)
                             </div>
                           </div>
@@ -1456,7 +1456,7 @@ export default function GuruPresensi({
                                 : 'Foto selfie yang telah diambil akan dihapus dan kamera dibuka kembali.',
                               icon: 'warning',
                               showCancelButton: true,
-                              confirmButtonColor: '#EF4444',
+                              confirmButtonColor: '#DC2626',
                               cancelButtonColor: '#6B7280',
                               confirmButtonText: 'Ya, Ganti',
                               cancelButtonText: 'Batal',
@@ -1466,7 +1466,7 @@ export default function GuruPresensi({
                               setPhotoPreviewUrl(null);
                             }
                           }}
-                          className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                          className="neu-btn px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 rounded-lg transition"
                         >
                           Ganti Foto
                         </button>
@@ -1476,15 +1476,15 @@ export default function GuruPresensi({
                 )}
 
                 <div id="row-tempat" className="fade-in pt-1">
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex justify-between">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1 flex justify-between">
                         <span>Titik Lokasi (Tempat)</span>
-                        <span className="text-[9px] text-blue-500 dark:text-blue-400 cursor-pointer btn-click" onClick={() => fetchLocation(gpsConfig)}>
+                        <span className="text-[9px] text-[#0F766E] dark:text-teal-400 cursor-pointer btn-click" onClick={() => fetchLocation(gpsConfig)}>
                           <i className="fa-solid fa-location-crosshairs"></i> Refresh API
                         </span>
                     </label>
-                    <input type="text" value={lokasi} readOnly className="w-full px-3 py-2 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed" />
+                    <input type="text" value={lokasi} readOnly className="w-full px-3 py-2 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] cursor-not-allowed" />
                     {jarakAktual !== null && jenisPresensi === 'Sekolah' && (
-                      <div className={`text-[10px] mt-1 ml-1 font-bold ${jarakAktual <= gpsConfig.radius ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                      <div className={`text-[10px] font-num mt-1 ml-1 font-bold ${jarakAktual <= gpsConfig.radius ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                         <i className={`fa-solid ${jarakAktual <= gpsConfig.radius ? 'fa-check-circle' : 'fa-triangle-exclamation'} mr-1`}></i> 
                         Jarak Anda: {jarakAktual} m (Batas: {gpsConfig.radius} m)
                       </div>
@@ -1493,23 +1493,23 @@ export default function GuruPresensi({
 
                 {/* Indikator Progres Pengunggahan Dokumen */}
                 {uploadProgress.active && (
-                  <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 space-y-2 fade-in shadow-sm">
-                    <div className="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-emerald-200">
+                  <div className="p-4 rounded-2xl neu-inset border border-teal-500/25 space-y-2 fade-in">
+                    <div className="flex items-center justify-between text-xs font-bold text-[#0F766E] dark:text-teal-300">
                       <span className="flex items-center gap-2">
-                        <i className="fa-solid fa-cloud-arrow-up text-emerald-600 dark:text-emerald-400 animate-pulse text-sm"></i>
+                        <i className="fa-solid fa-cloud-arrow-up text-[#0F766E] dark:text-teal-400 animate-pulse text-sm"></i>
                         <span>{uploadProgress.status}</span>
                       </span>
-                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-emerald-200/70 dark:bg-emerald-900/80 text-emerald-900 dark:text-emerald-100">
+                      <span className="font-mono font-num text-xs px-2 py-0.5 rounded-md bg-teal-500/15 text-[#0F766E] dark:text-teal-200">
                         {uploadProgress.percent}%
                       </span>
                     </div>
-                    <div className="w-full h-2.5 bg-emerald-100 dark:bg-emerald-900/50 rounded-full overflow-hidden p-0.5">
+                    <div className="w-full h-2.5 neu-inset rounded-full overflow-hidden p-0.5">
                       <div 
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-300 ease-out shadow-sm"
+                        className="h-full bg-[#0F766E] dark:bg-teal-400 rounded-full transition-all duration-300 ease-out"
                         style={{ width: `${uploadProgress.percent}%` }}
                       ></div>
                     </div>
-                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 text-right">
+                    <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] text-right">
                       Mohon tidak menutup aplikasi saat pengunggahan berkas berlangsung
                     </div>
                   </div>
@@ -1519,7 +1519,7 @@ export default function GuruPresensi({
                     <button 
                       type="submit" 
                       disabled={loading || isPulangLocked || dailyState?.isLibur} 
-                      className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                         {loading ? (uploadProgress.active ? (isSelfieRequired ? `Mengunggah Foto (${uploadProgress.percent}%)...` : `Mengunggah Dokumen (${uploadProgress.percent}%)...`) : 'Menyimpan & Mengunggah File...') : isPulangLocked ? 'Terkunci' : <><i className="fa-solid fa-paper-plane"></i> Kirim Presensi</>}
                     </button>

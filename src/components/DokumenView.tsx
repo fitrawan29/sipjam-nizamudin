@@ -695,7 +695,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         inputPlaceholder: 'Contoh: Perangkat pembelajaran telah sesuai standar kurikulum',
         showCancelButton: true,
         confirmButtonText: 'Ya, Setujui',
-        confirmButtonColor: '#16a34a',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal'
       });
       if (text === undefined) return;
@@ -790,7 +790,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
             <p class="text-gray-500 dark:text-gray-400">Sesuai kebijakan Kurikulum Merdeka, pengunggahan perangkat pembelajaran per mata pelajaran dibatasi hanya <strong>satu kali</strong> untuk kelas paralel pada tingkat yang sama dan otomatis berlaku untuk seluruh kelas paralel tingkat tersebut.</p>
           </div>
         `,
-        confirmButtonColor: '#0B4619'
+        confirmButtonColor: '#0F766E'
       });
       return;
     }
@@ -1709,8 +1709,8 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                         <td className="p-3">
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                             s.nama_mapel === 'Semua Mapel'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                              ? 'bg-teal-500/15 text-[#0F766E] dark:bg-teal-900/30 dark:text-teal-300'
+                              : 'bg-sky-500/15 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
                           }`}>
                             {s.nama_mapel}
                           </span>

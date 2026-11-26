@@ -444,17 +444,17 @@ export default function AccountSettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-      <div className="clay-card bg-[#FAF7F2] dark:bg-gray-900 border-2 border-white/90 dark:border-gray-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 dark:bg-black/65 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
+      <div className="clay-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/40">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-300/60 dark:border-slate-700/60">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full border border-blue-200 dark:border-blue-800 p-0.5 bg-blue-50 dark:bg-blue-900/30">
+            <div className="w-10 h-10 rounded-full neu-inset p-0.5">
               {renderUserAvatar(selectedAvatar, 'w-full h-full')}
             </div>
             <div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">Pengaturan Akun & Profil</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">Pengaturan Akun & Profil</h3>
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
                 {isAdmin ? `${user?.role || 'Pengguna'} • ${user?.username || ''}` : (user?.role || 'Guru')}
               </p>
             </div>
@@ -462,7 +462,7 @@ export default function AccountSettingsModal({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-800 transition"
+            className="neu-btn w-9 h-9 rounded-full flex items-center justify-center text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] transition"
           >
             <i className="fa-solid fa-times text-sm"></i>
           </button>
@@ -473,10 +473,10 @@ export default function AccountSettingsModal({
           {/* Section 1: Avatar Picker (12 Stylish Default Avatars + Custom Upload) */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
+              <label className="text-xs font-bold uppercase tracking-wider text-[#0F172A] dark:text-[#F1F5F9]">
                 Pilih Avatar Profil (12 Karakter Keren)
               </label>
-              <label className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/40 px-2.5 py-1 rounded-lg border border-blue-200 dark:border-blue-800 transition">
+              <label className="cursor-pointer neu-btn px-2.5 py-1 rounded-xl text-[11px] font-bold text-[#0F766E] dark:text-teal-400 flex items-center gap-1.5 transition">
                 <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
                 <span>Unggah Foto</span>
                 <input
@@ -490,26 +490,26 @@ export default function AccountSettingsModal({
 
             {/* Custom Avatar preview card if image data URL or URL */}
             {selectedAvatar && (selectedAvatar.startsWith('data:image') || selectedAvatar.startsWith('http://') || selectedAvatar.startsWith('https://') || selectedAvatar.startsWith('/')) && (
-              <div className="mb-2.5 p-2 bg-blue-50/60 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center justify-between">
+              <div className="mb-2.5 p-2.5 neu-inset rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-blue-500 shadow-sm shrink-0">
+                  <div className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-[#0F766E] shrink-0">
                     <img src={selectedAvatar} alt="Avatar Kustom" className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-blue-900 dark:text-blue-200 flex items-center gap-1">
-                      <i className="fa-solid fa-check-circle text-blue-600 dark:text-blue-400 text-xs"></i> Foto Kustom Terpilih
+                    <span className="text-xs font-bold text-[#0F766E] dark:text-teal-300 flex items-center gap-1">
+                      <i className="fa-solid fa-check-circle text-[#0F766E] dark:text-teal-400 text-xs"></i> Foto Kustom Terpilih
                     </span>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400">Foto profil kustom Anda siap disimpan.</p>
+                    <p className="text-[10px] text-[#475569] dark:text-[#94A3B8]">Foto profil kustom Anda siap disimpan.</p>
                   </div>
                 </div>
-                <label className="cursor-pointer text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline px-2 py-1 rounded bg-white dark:bg-gray-800 border border-blue-200 dark:border-gray-700">
+                <label className="cursor-pointer neu-btn text-[10px] font-semibold text-[#0F766E] dark:text-teal-400 px-2.5 py-1 rounded-lg">
                   Ganti
                   <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                 </label>
               </div>
             )}
 
-            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 p-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-800 rounded-xl">
+            <div className="grid grid-cols-4 sm:grid-cols-6 gap-2.5 p-3 neu-inset rounded-2xl">
               {AVATAR_LIST.map((item) => {
                 const isSelected = selectedAvatar === item.id;
                 return (
@@ -520,15 +520,15 @@ export default function AccountSettingsModal({
                     title={item.name}
                     className={`relative p-1.5 rounded-xl flex flex-col items-center justify-center transition-all aspect-square ${
                       isSelected
-                        ? 'ring-2 ring-blue-600 dark:ring-blue-400 bg-blue-50 dark:bg-blue-900/40 shadow-sm scale-105'
-                        : 'hover:bg-white dark:hover:bg-gray-700/60 opacity-85 hover:opacity-100'
+                        ? 'neu-card-sm ring-2 ring-[#0F766E] dark:ring-teal-400 scale-[1.03]'
+                        : 'hover:bg-white/35 dark:hover:bg-white/5 opacity-85 hover:opacity-100'
                     }`}
                   >
                     <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center">
                       {item.svg('w-full h-full')}
                     </div>
                     {isSelected && (
-                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full flex items-center justify-center text-[9px] shadow">
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#0F766E] text-white rounded-full flex items-center justify-center text-[9px] shadow">
                         <i className="fa-solid fa-check"></i>
                       </span>
                     )}
@@ -542,7 +542,7 @@ export default function AccountSettingsModal({
           <div className="space-y-3">
             <div className={isAdmin ? "grid grid-cols-1 sm:grid-cols-2 gap-3" : "space-y-3"}>
               <div>
-                <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1">
+                <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                   Nama Lengkap *
                 </label>
                 <input
@@ -553,12 +553,12 @@ export default function AccountSettingsModal({
                   }}
                   placeholder="Contoh: Fitri Aprilia Dotulong"
                   required
-                  className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                  className="neu-input w-full px-3 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                 />
               </div>
               {isAdmin && (
                 <div>
-                  <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1">
+                  <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                     Username (Login)
                   </label>
                   <input
@@ -566,7 +566,7 @@ export default function AccountSettingsModal({
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    className="neu-input w-full px-3 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
               )}
@@ -575,24 +575,24 @@ export default function AccountSettingsModal({
           </div>
 
           {/* Section 3: Change Password Toggle */}
-          <div className="border border-gray-200 dark:border-gray-800 rounded-xl p-3.5 bg-gray-50/50 dark:bg-gray-800/30">
+          <div className="neu-inset rounded-2xl p-3.5">
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={changePassword}
                   onChange={(e) => setChangePassword(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4"
+                  className="rounded border-slate-400 text-[#0F766E] focus:ring-[#0F766E] w-4 h-4"
                 />
-                <span className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                  <i className="fa-solid fa-key text-xs text-amber-500"></i> Ganti Password Akun
+                <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                  <i className="fa-solid fa-key text-xs text-amber-600 dark:text-amber-400"></i> Ganti Password Akun
                 </span>
               </label>
               {changePassword && (
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="text-[11px] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-1"
+                  className="text-[11px] text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] flex items-center gap-1"
                 >
                   <i className={`fa-solid ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                   {showPassword ? 'Sembunyikan' : 'Lihat'}
@@ -601,9 +601,9 @@ export default function AccountSettingsModal({
             </div>
 
             {changePassword && (
-              <div className="mt-3.5 space-y-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+              <div className="mt-3.5 space-y-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
                 <div>
-                  <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                  <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                     Password Saat Ini
                   </label>
                   <input
@@ -616,12 +616,12 @@ export default function AccountSettingsModal({
                     autoCorrect="off"
                     autoCapitalize="off"
                     spellCheck={false}
-                    className="w-full px-3 py-2 text-xs sm:text-xs text-[16px] sm:text-xs appearance-none border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                    className="neu-input w-full px-3 py-2 text-[16px] sm:text-xs appearance-none rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                       Password Baru
                     </label>
                     <input
@@ -634,11 +634,11 @@ export default function AccountSettingsModal({
                       autoCorrect="off"
                       autoCapitalize="off"
                       spellCheck={false}
-                      className="w-full px-3 py-2 text-xs sm:text-xs text-[16px] sm:text-xs appearance-none border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      className="neu-input w-full px-3 py-2 text-[16px] sm:text-xs appearance-none rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                       Konfirmasi Password Baru
                     </label>
                     <input
@@ -651,7 +651,7 @@ export default function AccountSettingsModal({
                       autoCorrect="off"
                       autoCapitalize="off"
                       spellCheck={false}
-                      className="w-full px-3 py-2 text-xs sm:text-xs text-[16px] sm:text-xs appearance-none border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+                      className="neu-input w-full px-3 py-2 text-[16px] sm:text-xs appearance-none rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                     />
                   </div>
                 </div>
@@ -660,15 +660,15 @@ export default function AccountSettingsModal({
           </div>
 
           {/* Section 4: Web Push Notification Control */}
-          <div className="border border-blue-100 dark:border-blue-900/40 rounded-xl p-3.5 bg-blue-50/40 dark:bg-blue-900/20">
+          <div className="neu-card-sm rounded-2xl p-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-800/60 text-blue-600 dark:text-blue-300 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="neu-inset w-9 h-9 rounded-xl text-sky-700 dark:text-sky-400 flex items-center justify-center shrink-0 mt-0.5">
                   <i className="fa-solid fa-bell text-sm"></i>
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Push Notifikasi Web (VAPID)</h4>
-                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Push Notifikasi Web (VAPID)</h4>
+                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                     {isPushSupported
                       ? isPushSubscribed
                         ? 'Perangkat ini terhubung ke layanan push SIPJAM.'
@@ -684,10 +684,10 @@ export default function AccountSettingsModal({
                     type="button"
                     disabled={pushLoading}
                     onClick={handleTogglePush}
-                    className={`px-3 py-1.5 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
+                    className={`neu-btn px-3 py-1.5 text-xs font-bold rounded-xl transition flex items-center gap-1.5 ${
                       isPushSubscribed
-                        ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 hover:bg-emerald-200'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'neu-btn-primary text-white'
                     }`}
                   >
                     {pushLoading ? (
@@ -707,8 +707,8 @@ export default function AccountSettingsModal({
             </div>
 
             {isPushSubscribed && (
-              <div className="mt-2.5 pt-2.5 border-t border-blue-200/60 dark:border-blue-800/40 flex items-center justify-between">
-                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-medium">
+              <div className="mt-2.5 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60 flex items-center justify-between">
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-medium">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                   Layanan push siap menerima pesan
                 </span>
@@ -716,7 +716,7 @@ export default function AccountSettingsModal({
                   type="button"
                   disabled={pushLoading}
                   onClick={handleTestPush}
-                  className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                  className="text-[11px] font-bold text-[#0F766E] dark:text-teal-400 hover:underline flex items-center gap-1"
                 >
                   <i className="fa-solid fa-paper-plane text-[10px]"></i> Kirim Uji Coba
                 </button>
@@ -725,19 +725,19 @@ export default function AccountSettingsModal({
           </div>
 
           {/* Section 5: Auto Reminder Control */}
-          <div className="border border-amber-200 dark:border-amber-800/40 rounded-xl p-3.5 bg-amber-50/40 dark:bg-amber-900/10">
+          <div className="neu-card-sm rounded-2xl p-3.5">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-2.5 w-full">
-                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-800/60 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="neu-inset w-9 h-9 rounded-xl text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
                   <i className="fa-solid fa-clock-rotate-left text-sm"></i>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Pengingat Otomatis (In-App)</h4>
-                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 mb-2.5">
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Pengingat Otomatis (In-App)</h4>
+                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5 mb-2.5">
                     Tampilkan pop-up pengingat presensi dan jurnal mengajar di dalam aplikasi.
                   </p>
                   
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-white dark:bg-gray-800/50 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800/60">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 neu-inset p-2.5 rounded-xl">
                     <label className="flex items-center gap-2 cursor-pointer select-none">
                       <div className="relative">
                         <input
@@ -746,22 +746,22 @@ export default function AccountSettingsModal({
                           onChange={(e) => handleToggleReminder(e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                        <div className="w-9 h-5 neu-inset rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-slate-200 after:rounded-full after:h-4 after:w-4 after:shadow-xs after:transition-all peer-checked:bg-amber-600 dark:peer-checked:bg-amber-500"></div>
                       </div>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                         {autoReminderEnabled ? 'Aktif' : 'Nonaktif'}
                       </span>
                     </label>
 
                     {autoReminderEnabled && (
                       <>
-                        <div className="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+                        <div className="hidden sm:block w-px h-6 bg-slate-300/70 dark:bg-slate-700/70"></div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">Jeda Waktu:</span>
+                          <span className="text-[11px] font-medium text-[#334155] dark:text-[#CBD5E1]">Jeda Waktu:</span>
                           <select
                             value={autoReminderInterval}
                             onChange={(e) => handleChangeReminderInterval(Number(e.target.value))}
-                            className="text-[11px] px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                            className="neu-input text-[11px] px-2.5 py-1 rounded-lg text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer"
                           >
                             <option value={1}>1 Menit</option>
                             <option value={3}>3 Menit</option>
@@ -776,15 +776,15 @@ export default function AccountSettingsModal({
                   </div>
 
                   {snoozeRemainingMinutes > 0 && (
-                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-lg bg-amber-100/70 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 mt-2.5">
-                      <div className="flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-200">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 p-2.5 rounded-xl neu-inset border border-amber-500/25 mt-2.5">
+                      <div className="flex items-center gap-2 text-[11px] text-amber-800 dark:text-amber-300">
                         <i className="fa-solid fa-clock-rotate-left text-amber-600 dark:text-amber-400"></i>
                         <span>Pengingat sedang ditunda (~{snoozeRemainingMinutes} menit tersisa)</span>
                       </div>
                       <button
                         type="button"
                         onClick={handleCancelSnoozeFromModal}
-                        className="px-2.5 py-1 rounded-md bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 text-amber-900 dark:text-amber-100 text-[10px] font-bold transition shadow-xs shrink-0 ml-auto sm:ml-0"
+                        className="neu-btn neu-btn-amber px-2.5 py-1 rounded-lg text-[10px] font-bold transition shrink-0 ml-auto sm:ml-0"
                         title="Batalkan status tunda pengingat"
                       >
                         Batalkan Tunda
@@ -797,15 +797,15 @@ export default function AccountSettingsModal({
           </div>
 
           {/* Section 6: AI Assistant Display Preference */}
-          <div className="border border-emerald-200 dark:border-emerald-800/40 rounded-xl p-3.5 bg-emerald-50/40 dark:bg-emerald-900/10">
+          <div className="neu-card-sm rounded-2xl p-3.5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-start gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-800/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="neu-inset w-9 h-9 rounded-xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center shrink-0 mt-0.5">
                   <i className="fa-solid fa-robot text-sm"></i>
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-gray-900 dark:text-white">Tombol Asisten AI</h4>
-                  <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Tombol Asisten AI</h4>
+                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                     Tampilkan tombol mengambang Asisten AI di sudut kanan bawah aplikasi.
                   </p>
                 </div>
@@ -826,13 +826,13 @@ export default function AccountSettingsModal({
                   }}
                   className="sr-only peer"
                 />
-                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-hidden rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                <div className="w-9 h-5 neu-inset rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-slate-200 after:rounded-full after:h-4 after:w-4 after:shadow-xs after:transition-all peer-checked:bg-[#0F766E] dark:peer-checked:bg-teal-500"></div>
               </label>
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
             <button
               type="button"
               onClick={onClose}
@@ -843,7 +843,7 @@ export default function AccountSettingsModal({
             <button
               type="submit"
               disabled={saving}
-              className="clay-btn clay-btn-primary px-5 py-2 text-xs font-bold text-white rounded-2xl transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+              className="clay-btn clay-btn-primary px-5 py-2 text-xs font-bold text-white rounded-2xl transition flex items-center gap-1.5 disabled:opacity-50"
             >
               {saving ? (
                 <>

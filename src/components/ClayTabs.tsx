@@ -66,27 +66,27 @@ function getBadgeClasses(variant: 'mint' | 'amber' | 'rose' | 'blue' = 'mint', i
   if (isActive) {
     switch (variant) {
       case 'amber':
-        return 'bg-amber-500 text-white dark:bg-amber-400 dark:text-gray-950';
+        return 'bg-amber-500 text-white dark:bg-amber-400 dark:text-slate-950';
       case 'rose':
-        return 'bg-rose-600 text-white dark:bg-rose-400 dark:text-gray-950';
+        return 'bg-rose-600 text-white dark:bg-rose-400 dark:text-slate-950';
       case 'blue':
-        return 'bg-blue-600 text-white dark:bg-blue-400 dark:text-gray-950';
+        return 'bg-sky-600 text-white dark:bg-sky-400 dark:text-slate-950';
       case 'mint':
       default:
-        return 'bg-emerald-700 text-white dark:bg-emerald-400 dark:text-emerald-950';
+        return 'bg-[#0F766E] text-white dark:bg-teal-400 dark:text-slate-950';
     }
   }
 
   switch (variant) {
     case 'amber':
-      return 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300';
+      return 'neu-inset text-amber-800 dark:text-amber-300';
     case 'rose':
-      return 'bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300';
+      return 'neu-inset text-rose-800 dark:text-rose-300';
     case 'blue':
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300';
+      return 'neu-inset text-sky-800 dark:text-sky-300';
     case 'mint':
     default:
-      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300';
+      return 'neu-inset text-[#0F766E] dark:text-teal-300';
   }
 }
 
@@ -139,8 +139,8 @@ export const ClayTabs: React.FC<ClayTabsProps> = ({
     return <span className="shrink-0 flex items-center" aria-hidden="true">{icon}</span>;
   };
 
-  const baseContainerClasses = `flex items-center gap-2 overflow-x-auto custom-scroll no-print select-none ${
-    borderBottom ? 'border-b border-gray-200/80 dark:border-gray-800 pb-3 mb-5' : 'pb-1'
+  const baseContainerClasses = `flex items-center gap-2.5 overflow-x-auto custom-scroll no-print select-none py-1.5 px-1 ${
+    borderBottom ? 'border-b border-slate-300/60 dark:border-slate-700/60 pb-3.5 mb-5' : 'pb-1.5'
   } ${className}`;
 
   return (
@@ -155,26 +155,26 @@ export const ClayTabs: React.FC<ClayTabsProps> = ({
         const tourId = tab.dataTour || tab['data-tour'] || tab.id;
 
         // Size Classes
-        let sizeClasses = 'text-xs px-4 py-2';
-        if (size === 'sm') sizeClasses = 'text-[11px] px-3 py-1.5 rounded-xl';
-        if (size === 'lg') sizeClasses = 'text-sm px-5 py-2.5 rounded-2xl';
+        let sizeClasses = 'text-xs px-4 py-2 min-h-[40px]';
+        if (size === 'sm') sizeClasses = 'text-[11px] px-3 py-1.5 min-h-[36px] rounded-xl';
+        if (size === 'lg') sizeClasses = 'text-sm px-5 py-2.5 min-h-[44px] rounded-2xl';
 
         // State & Variant Styling
         let stateClasses = '';
         if (isDisabled) {
-          stateClasses = 'clay-btn-secondary opacity-50 cursor-not-allowed pointer-events-none select-none text-gray-400 dark:text-gray-600';
+          stateClasses = 'clay-btn-secondary opacity-50 cursor-not-allowed pointer-events-none select-none text-slate-400 dark:text-slate-600';
         } else if (isActive) {
           if (variant === 'primary') {
-            stateClasses = 'clay-btn-primary text-white shadow-md';
+            stateClasses = 'clay-btn-primary text-white';
           } else {
-            // default mint
-            stateClasses = 'clay-btn-mint text-teal-800 dark:text-teal-300 shadow-md';
+            // default mint -> active concave soft-UI teal
+            stateClasses = 'clay-btn-mint neu-tab-active text-[#0F766E] dark:text-teal-300';
           }
         } else {
-          stateClasses = 'clay-btn-secondary text-gray-700 hover:text-gray-900 hover:bg-gray-50 dark:text-gray-300 dark:hover:text-white dark:hover:bg-gray-800/60';
+          stateClasses = 'clay-btn-secondary text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white';
         }
 
-        const buttonClasses = `clay-btn btn-click rounded-2xl font-bold whitespace-nowrap transition-all duration-200 inline-flex items-center gap-2 shrink-0 pill-interactive focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-900 ${sizeClasses} ${stateClasses}`;
+        const buttonClasses = `clay-btn btn-click rounded-2xl font-bold whitespace-nowrap transition-all duration-150 inline-flex items-center gap-2 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2 dark:focus-visible:ring-teal-400 dark:focus-visible:ring-offset-[#1F242D] ${sizeClasses} ${stateClasses}`;
 
         return (
           <button

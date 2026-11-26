@@ -430,25 +430,25 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-[#EDE9FE] text-[#5B21B6] border border-[#C4B5FD] shadow-xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider neu-inset text-[#0F766E] dark:text-teal-300">
                 <i className="fa-solid fa-building-columns text-[11px]"></i>
                 Dinas Pendidikan
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-900 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700/60 shadow-xs">
-                <i className="fa-solid fa-map-location-dot text-emerald-600 text-[11px]"></i>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold neu-inset text-emerald-800 dark:text-emerald-300">
+                <i className="fa-solid fa-map-location-dot text-[#0F766E] dark:text-teal-400 text-[11px]"></i>
                 Wilayah Binaan: <strong>{assignedRegion}</strong>
               </span>
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-gray-900 dark:text-white tracking-tight leading-tight">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#0F172A] dark:text-[#F1F5F9] tracking-tight leading-tight">
                 Dashboard Eksekutif Pemantauan Wilayah
               </h1>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-medium flex items-center gap-2 mt-0.5">
+              <p className="text-xs sm:text-sm text-[#475569] dark:text-[#CBD5E1] font-medium flex items-center gap-2 mt-0.5">
                 <span>{todayLong}</span>
                 {lastRefreshed && (
                   <>
                     <span>&bull;</span>
-                    <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                    <span className="text-[11px] font-num text-[#475569] dark:text-[#94A3B8]">
                       Diperbarui {lastRefreshed} WITA
                     </span>
                   </>
@@ -489,18 +489,18 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <ClayCard variant="mint" rounded="2xl" className="p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wider">
                 Total Sekolah
               </p>
-              <h3 className="text-2xl sm:text-3xl font-black text-emerald-950 dark:text-emerald-100 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-1">
                 {aggregates.totalSekolah}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shadow-xs border border-white/60">
+            <div className="w-10 h-10 rounded-2xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-lg">
               <i className="fa-solid fa-school"></i>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-emerald-200/60 dark:border-emerald-800/40 text-[11px] font-medium text-emerald-800 dark:text-emerald-300">
+          <div className="mt-3 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60 text-[11px] font-medium font-num text-[#475569] dark:text-[#94A3B8]">
             <span>{aggregates.activeSekolahCount} Aktif</span> &bull;{' '}
             <span>{aggregates.nonActiveSekolahCount} Nonaktif</span>
           </div>
@@ -510,25 +510,25 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <ClayCard variant="blue" rounded="2xl" className="p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[11px] font-bold text-blue-800 dark:text-blue-300 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">
                 Hadir Guru Hari Ini
               </p>
-              <h3 className="text-2xl sm:text-3xl font-black text-blue-950 dark:text-blue-100 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-1">
                 {aggregates.aggregateGuruPct}%
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 flex items-center justify-center text-lg shadow-xs border border-white/60">
+            <div className="w-10 h-10 rounded-2xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg">
               <i className="fa-solid fa-chalkboard-user"></i>
             </div>
           </div>
           <div className="mt-3 space-y-1.5">
-            <div className="w-full bg-blue-200/70 dark:bg-blue-950 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full neu-inset rounded-full h-2 overflow-hidden p-0.5">
               <div
-                className="bg-blue-600 dark:bg-blue-400 h-1.5 rounded-full transition-all duration-500"
+                className="bg-sky-600 dark:bg-sky-400 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, aggregates.aggregateGuruPct)}%` }}
               ></div>
             </div>
-            <p className="text-[11px] font-medium text-blue-900 dark:text-blue-300">
+            <p className="text-[11px] font-medium font-num text-[#475569] dark:text-[#94A3B8]">
               {aggregates.totalHadirGuru} dari {aggregates.totalSemuaGuru} Guru
             </p>
           </div>
@@ -538,25 +538,25 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <ClayCard variant="purple" rounded="2xl" className="p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[11px] font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wider">
                 Hadir Siswa Hari Ini
               </p>
-              <h3 className="text-2xl sm:text-3xl font-black text-purple-950 dark:text-purple-100 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-1">
                 {aggregates.aggregateSiswaPct}%
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 flex items-center justify-center text-lg shadow-xs border border-white/60">
+            <div className="w-10 h-10 rounded-2xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-lg">
               <i className="fa-solid fa-user-graduate"></i>
             </div>
           </div>
           <div className="mt-3 space-y-1.5">
-            <div className="w-full bg-purple-200/70 dark:bg-purple-950 rounded-full h-1.5 overflow-hidden">
+            <div className="w-full neu-inset rounded-full h-2 overflow-hidden p-0.5">
               <div
-                className="bg-purple-600 dark:bg-purple-400 h-1.5 rounded-full transition-all duration-500"
+                className="bg-[#0F766E] dark:bg-teal-400 h-full rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(100, aggregates.aggregateSiswaPct)}%` }}
               ></div>
             </div>
-            <p className="text-[11px] font-medium text-purple-900 dark:text-purple-300">
+            <p className="text-[11px] font-medium font-num text-[#475569] dark:text-[#94A3B8]">
               {aggregates.totalHadirSiswa} dari {aggregates.totalSemuaSiswa} Siswa
             </p>
           </div>
@@ -566,18 +566,18 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <ClayCard variant="peach" rounded="2xl" className="p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[11px] font-bold text-amber-900 dark:text-amber-300 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
                 Kesehatan Satelit
               </p>
-              <h3 className="text-2xl sm:text-3xl font-black text-amber-950 dark:text-amber-100 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-1">
                 {aggregates.onlineSatelitCount}/{aggregates.totalSekolah}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shadow-xs border border-white/60">
+            <div className="w-10 h-10 rounded-2xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg">
               <i className="fa-solid fa-satellite-dish"></i>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-amber-200/60 dark:border-amber-800/40 text-[11px] font-medium text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+          <div className="mt-3 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60 text-[11px] font-medium text-[#475569] dark:text-[#94A3B8] flex items-center gap-1.5">
             <span
               className={`w-2 h-2 rounded-full ${
                 aggregates.onlineSatelitCount === aggregates.totalSekolah
@@ -597,18 +597,18 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <ClayCard variant="rose" rounded="2xl" className="p-4 flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[11px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">
+              <p className="text-[11px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">
                 Perlu Perhatian
               </p>
-              <h3 className="text-2xl sm:text-3xl font-black text-rose-950 dark:text-rose-100 mt-1">
+              <h3 className="text-2xl sm:text-3xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-1">
                 {aggregates.attentionSchoolsCount}
               </h3>
             </div>
-            <div className="w-10 h-10 rounded-2xl bg-white/70 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shadow-xs border border-white/60">
+            <div className="w-10 h-10 rounded-2xl neu-inset text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg">
               <i className="fa-solid fa-triangle-exclamation"></i>
             </div>
           </div>
-          <div className="mt-3 pt-2.5 border-t border-rose-200/60 dark:border-rose-800/40 text-[11px] font-medium text-rose-900 dark:text-rose-300 truncate">
+          <div className="mt-3 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60 text-[11px] font-medium text-[#475569] dark:text-[#94A3B8] truncate">
             {aggregates.attentionSchoolsCount === 0
               ? 'Seluruh Sekolah Terkendali'
               : 'Alpa Tinggi / Guru Rendah'}
@@ -623,19 +623,19 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
         <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
           {/* Search Field */}
           <div className="relative flex-1">
-            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={`Cari nama sekolah / NPSN di ${assignedRegion}...`}
-              className="w-full pl-9 pr-4 py-2 text-xs sm:text-sm rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-xs"
+              className="neu-input w-full pl-9 pr-8 py-2 text-xs sm:text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] text-xs"
               >
                 <i className="fa-solid fa-circle-xmark"></i>
               </button>
@@ -647,10 +647,10 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
             <button
               type="button"
               onClick={() => setStatusFilter('semua')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`neu-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 statusFilter === 'semua'
-                  ? 'bg-indigo-600 text-white shadow-xs'
-                  : 'bg-white/80 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 border border-gray-200 dark:border-gray-700'
+                  ? 'neu-btn-primary text-white'
+                  : 'text-[#334155] dark:text-[#CBD5E1]'
               }`}
             >
               Semua ({schoolMetrics.length})
@@ -658,10 +658,10 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
             <button
               type="button"
               onClick={() => setStatusFilter('aktif')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`neu-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 statusFilter === 'aktif'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'bg-white/80 dark:bg-gray-800 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-50 border border-emerald-200 dark:border-emerald-800/40'
+                  ? 'neu-btn-primary text-white'
+                  : 'text-emerald-700 dark:text-emerald-300'
               }`}
             >
               Aktif ({aggregates.activeSekolahCount})
@@ -669,10 +669,10 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
             <button
               type="button"
               onClick={() => setStatusFilter('perhatian')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`neu-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 statusFilter === 'perhatian'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'bg-white/80 dark:bg-gray-800 text-rose-800 dark:text-rose-300 hover:bg-rose-50 border border-rose-200 dark:border-rose-800/40'
+                  ? 'neu-tab-active text-rose-700 dark:text-rose-300 ring-1 ring-rose-500/40'
+                  : 'text-rose-700 dark:text-rose-300'
               }`}
             >
               Perlu Perhatian ({aggregates.attentionSchoolsCount})
@@ -681,10 +681,10 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
               <button
                 type="button"
                 onClick={() => setStatusFilter('nonaktif')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                className={`neu-btn px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                   statusFilter === 'nonaktif'
-                    ? 'bg-gray-700 text-white shadow-xs'
-                    : 'bg-white/80 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 border border-gray-200 dark:border-gray-700'
+                    ? 'neu-tab-active text-[#0F766E] dark:text-teal-300'
+                    : 'text-[#475569] dark:text-[#94A3B8]'
                 }`}
               >
                 Nonaktif ({aggregates.nonActiveSekolahCount})
@@ -700,10 +700,10 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
       <ClayCard variant="default" rounded="3xl" className="p-4 sm:p-6 no-print space-y-4">
         <div className="flex justify-between items-center">
           <div>
-            <h2 className="text-base sm:text-lg font-black text-gray-900 dark:text-white">
+            <h2 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-[#F1F5F9]">
               Daftar Satuan Pendidikan Binaan
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
               Menampilkan {filteredMetrics.length} sekolah terdaftar di wilayah {assignedRegion}
             </p>
           </div>
@@ -711,22 +711,22 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
 
         {loading ? (
           <div className="py-16 text-center space-y-3">
-            <div className="inline-block animate-spin text-indigo-600 text-3xl">
+            <div className="inline-block animate-spin text-[#0F766E] dark:text-teal-400 text-3xl">
               <i className="fa-solid fa-circle-notch"></i>
             </div>
-            <p className="text-xs font-bold text-gray-600 dark:text-gray-400">
+            <p className="text-xs font-bold text-[#475569] dark:text-[#94A3B8]">
               Memuat data kehadiran sekolah binaan di {assignedRegion}...
             </p>
           </div>
         ) : filteredMetrics.length === 0 ? (
           <div className="py-12 text-center space-y-2">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 mx-auto flex items-center justify-center text-xl">
+            <div className="w-12 h-12 rounded-full neu-inset text-[#475569] dark:text-[#94A3B8] mx-auto flex items-center justify-center text-xl">
               <i className="fa-solid fa-school-circle-xmark"></i>
             </div>
-            <p className="text-sm font-bold text-gray-700 dark:text-gray-300">
+            <p className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
               Tidak ada data sekolah yang cocok
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
+            <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
               Periksa kembali kata kunci pencarian atau ganti filter status.
             </p>
           </div>
@@ -734,7 +734,7 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b-2 border-amber-900/10 dark:border-white/10 text-[11px] font-black uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider text-[#475569] dark:text-[#94A3B8]">
                   <th className="py-3 px-3">No</th>
                   <th className="py-3 px-3">Satuan Pendidikan</th>
                   <th className="py-3 px-3">Satelit</th>
@@ -745,18 +745,18 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
                   <th className="py-3 px-3 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+              <tbody className="divide-y divide-slate-300/50 dark:divide-slate-700/50 font-medium">
                 {filteredMetrics.map((item, idx) => (
                   <tr
                     key={item.school.id}
-                    className="hover:bg-amber-50/40 dark:hover:bg-gray-800/40 transition-colors"
+                    className="hover:bg-white/30 dark:hover:bg-white/5 transition-colors"
                   >
-                    <td className="py-3.5 px-3 font-bold text-gray-500">{idx + 1}</td>
+                    <td className="py-3.5 px-3 font-bold font-num text-[#475569] dark:text-[#94A3B8]">{idx + 1}</td>
                     <td className="py-3.5 px-3">
-                      <div className="font-bold text-gray-900 dark:text-white leading-tight">
+                      <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                         {item.school.nama}
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5">
+                      <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono mt-0.5">
                         NPSN: {item.school.npsn || '-'}
                       </div>
                     </td>
@@ -764,8 +764,8 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           item.isOnline
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+                            ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                            : 'bg-rose-500/15 text-rose-800 dark:text-rose-300'
                         }`}
                       >
                         <i
@@ -778,37 +778,37 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-16 neu-inset h-2 rounded-full overflow-hidden p-0.5">
                           <div
-                            className={`h-1.5 rounded-full ${
-                              item.guruPct >= 70 ? 'bg-blue-600' : 'bg-rose-500'
+                            className={`h-full rounded-full ${
+                              item.guruPct >= 70 ? 'bg-sky-600 dark:bg-sky-400' : 'bg-rose-500'
                             }`}
                             style={{ width: `${Math.min(100, item.guruPct)}%` }}
                           ></div>
                         </div>
-                        <span className="font-bold text-gray-900 dark:text-white">
+                        <span className="font-bold font-num text-[#0F172A] dark:text-[#F1F5F9]">
                           {item.guruPct}%
                         </span>
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      <div className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] mt-0.5">
                         {item.hadirGuru}/{item.totalGuru} Hadir
                       </div>
                     </td>
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                        <div className="w-16 neu-inset h-2 rounded-full overflow-hidden p-0.5">
                           <div
-                            className={`h-1.5 rounded-full ${
-                              item.siswaPct >= 75 ? 'bg-purple-600' : 'bg-rose-500'
+                            className={`h-full rounded-full ${
+                              item.siswaPct >= 75 ? 'bg-[#0F766E] dark:bg-teal-400' : 'bg-rose-500'
                             }`}
                             style={{ width: `${Math.min(100, item.siswaPct)}%` }}
                           ></div>
                         </div>
-                        <span className="font-bold text-gray-900 dark:text-white">
+                        <span className="font-bold font-num text-[#0F172A] dark:text-[#F1F5F9]">
                           {item.siswaPct}%
                         </span>
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                      <div className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] mt-0.5">
                         {item.hadirSiswa}/{item.totalSiswa} Hadir{' '}
                         {item.alpaSiswa > 0 && (
                           <span className="text-rose-600 dark:text-rose-400">
@@ -818,21 +818,21 @@ export const DinasDashboard: React.FC<DinasDashboardProps> = ({
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-center">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold font-num bg-amber-500/15 text-amber-800 dark:text-amber-300">
                         {item.jurnalCount} KBM
                       </span>
                     </td>
                     <td className="py-3.5 px-3">
                       {item.needsAttention ? (
                         <span
-                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-900 dark:bg-rose-950/60 dark:text-rose-200 border border-rose-300/50"
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-800 dark:text-rose-300"
                           title={item.attentionReason}
                         >
                           <i className="fa-solid fa-triangle-exclamation text-rose-600 text-[9px]"></i>
                           {item.attentionReason || 'Perlu Perhatian'}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200 border border-emerald-300/50">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
                           <i className="fa-solid fa-circle-check text-emerald-600 text-[9px]"></i>
                           Aman
                         </span>

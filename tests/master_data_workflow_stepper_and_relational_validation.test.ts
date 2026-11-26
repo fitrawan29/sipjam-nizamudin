@@ -578,7 +578,7 @@ async function runAllTests() {
     assert.ok(adminDataCode.includes('uploadProgress'), 'AdminDataView must declare uploadProgress state');
     assert.ok(adminDataCode.includes('uploadStage'), 'AdminDataView must declare uploadStage state');
     assert.ok(adminDataCode.includes('showMasterDataDiagnosticModal'), 'AdminDataView must declare showMasterDataDiagnosticModal helper');
-    assert.ok(adminDataCode.includes('bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500'), 'AdminDataView must render animated gradient progress bar');
+    assert.ok(adminDataCode.includes('bg-gradient-to-r from-[#0F766E] via-teal-500 to-emerald-500'), 'AdminDataView must render animated gradient progress bar');
   });
 
   await test('6.2: AdminKelasView contains class upload progress states, animated progress bar, and diagnostic modal', () => {
@@ -586,7 +586,7 @@ async function runAllTests() {
     assert.ok(adminKelasCode.includes('classUploadProgress'), 'AdminKelasView must declare classUploadProgress state');
     assert.ok(adminKelasCode.includes('classUploadStage'), 'AdminKelasView must declare classUploadStage state');
     assert.ok(adminKelasCode.includes('showMasterDataDiagnosticModal'), 'AdminKelasView must declare showMasterDataDiagnosticModal helper');
-    assert.ok(adminKelasCode.includes('bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500'), 'AdminKelasView must render animated class gradient progress bar');
+    assert.ok(adminKelasCode.includes('bg-gradient-to-r from-[#0F766E] via-teal-500 to-emerald-500'), 'AdminKelasView must render animated class gradient progress bar');
   });
 
   await test('6.3: buildMapelChecklistHtml and relational checks select(*) from data_mapel so schemas without nama_mapel column never fail with 42703', () => {

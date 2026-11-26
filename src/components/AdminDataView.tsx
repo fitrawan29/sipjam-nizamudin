@@ -757,7 +757,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             ${detail.column ? `
               <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
                 <span class="text-gray-400 text-[10px] block uppercase font-semibold">Kolom Terkait</span>
-                <span class="font-bold text-purple-600 dark:text-purple-400 font-mono">${escapeHtml(detail.column)}</span>
+                <span class="font-bold text-[#0F766E] dark:text-teal-400 font-mono">${escapeHtml(detail.column)}</span>
               </div>
             ` : ''}
             ${detail.receivedValue ? `
@@ -769,7 +769,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             ${detail.referenceTable ? `
               <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
                 <span class="text-gray-400 text-[10px] block uppercase font-semibold">Tabel Referensi</span>
-                <span class="font-semibold text-indigo-600 dark:text-indigo-400 font-mono text-[10.5px]">${escapeHtml(detail.referenceTable)}</span>
+                <span class="font-semibold text-sky-700 dark:text-sky-400 font-mono text-[10.5px]">${escapeHtml(detail.referenceTable)}</span>
               </div>
             ` : ''}
           </div>
@@ -789,7 +789,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         </div>
       `,
       confirmButtonText: 'Tutup & Perbaiki',
-      confirmButtonColor: '#7C3AED'
+      confirmButtonColor: '#0F766E'
     });
   };
 
@@ -991,7 +991,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             </div>
           `,
           confirmButtonText: 'Tutup & Perbaiki',
-          confirmButtonColor: '#7C3AED'
+          confirmButtonColor: '#0F766E'
         });
       }
     } finally {
@@ -1062,7 +1062,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Data',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nisn = (document.getElementById('swal-nisn') as HTMLInputElement)?.value?.trim();
@@ -1142,7 +1142,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Data',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nip = (document.getElementById('swal-nip') as HTMLInputElement)?.value?.trim() || '-';
@@ -1264,7 +1264,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Data',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const userGivenId = (document.getElementById('swal-id') as HTMLInputElement)?.value?.trim();
@@ -1326,7 +1326,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Data',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const tanggal = (document.getElementById('swal-tgl') as HTMLInputElement)?.value?.trim();
@@ -1422,7 +1422,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Data',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         didOpen: () => {
           const mapelEl = document.getElementById('swal-mapel') as HTMLSelectElement | null;
@@ -1552,7 +1552,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Tetapkan Wali Kelas',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const kelas = (document.getElementById('swal-wali-kelas') as HTMLInputElement)?.value?.trim();
@@ -1643,7 +1643,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Perubahan',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const kelasVal = (document.getElementById('swal-edit-wali-kelas') as HTMLInputElement)?.value?.trim();
@@ -1733,16 +1733,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
     const qrSvg = generateStudentQrSvg(qrIdentifier, { size: 180, fgColor: '#0B4619' });
 
     Swal.fire({
-      title: `<span class="text-base font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2"><i class="fa-solid fa-qrcode text-purple-600"></i> QR Presensi Siswa</span>`,
+      title: `<span class="text-base font-bold text-gray-900 dark:text-white flex items-center justify-center gap-2"><i class="fa-solid fa-qrcode text-[#0F766E]"></i> QR Presensi Siswa</span>`,
       html: `
         <div class="flex flex-col items-center justify-center space-y-3 p-2">
           <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-200 inline-block">
             ${qrSvg}
           </div>
           <div class="text-center space-y-1">
-            <div class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">${escapeHtml(schoolName)}</div>
+            <div class="text-[11px] font-bold text-[#0F766E] dark:text-teal-400 uppercase tracking-wider">${escapeHtml(schoolName)}</div>
             <h4 class="font-bold text-sm text-gray-900 dark:text-gray-100">${escapeHtml(student.nama_siswa || 'Siswa')}</h4>
-            <p class="text-xs text-gray-600 dark:text-gray-300">Kelas: <span class="font-bold text-purple-700 dark:text-purple-400">${escapeHtml(student.kelas || '-')}</span></p>
+            <p class="text-xs text-gray-600 dark:text-gray-300">Kelas: <span class="font-bold text-[#0F766E] dark:text-teal-400">${escapeHtml(student.kelas || '-')}</span></p>
             <p class="text-xs text-gray-600 dark:text-gray-300">NISN: <span class="font-mono font-bold">${escapeHtml(student.nisn || '-')}</span></p>
             <p class="text-[10px] text-gray-500 font-mono bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full inline-block mt-1">ID Scan: ${escapeHtml(qrIdentifier)}</p>
           </div>
@@ -1751,11 +1751,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       showCancelButton: true,
       showDenyButton: true,
       confirmButtonText: '<i class="fa-solid fa-print mr-1"></i> Cetak / Simpan PDF',
-      confirmButtonColor: '#0B4619',
+      confirmButtonColor: '#0F766E',
       denyButtonText: '<i class="fa-solid fa-download mr-1"></i> Download Gambar (PNG)',
-      denyButtonColor: '#059669',
+      denyButtonColor: '#115E59',
       cancelButtonText: 'Tutup',
-      cancelButtonColor: '#6B7280',
+      cancelButtonColor: '#64748b',
     }).then((result) => {
       if (result.isConfirmed) {
         printStudentQrCard(student, qrSvg, qrIdentifier);
@@ -1899,7 +1899,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Perubahan',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nisn = (document.getElementById('swal-edit-nisn') as HTMLInputElement)?.value?.trim();
@@ -1990,7 +1990,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Perubahan',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const nip = (document.getElementById('swal-edit-nip') as HTMLInputElement)?.value?.trim() || '-';
@@ -2127,7 +2127,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Perubahan',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const kode_mapel = (document.getElementById('swal-edit-kode') as HTMLInputElement)?.value?.trim() || item.id;
@@ -2198,7 +2198,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Perubahan',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         preConfirm: () => {
           const tanggal_mulai = (document.getElementById('swal-edit-tgl-mulai') as HTMLInputElement)?.value?.trim();
@@ -2332,7 +2332,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Simpan Perubahan',
-        confirmButtonColor: '#0B4619',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
         didOpen: () => {
           const mapelEl = document.getElementById('swal-edit-mapel') as HTMLSelectElement | null;
@@ -2623,34 +2623,34 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             <p><span className="font-semibold">Agama:</span> {item.agama || '-'}</p>
             {item.no_hp_ortu && <p><span className="font-semibold">HP Ortu:</span> {item.no_hp_ortu}</p>}
             <p className="flex items-center gap-1.5 pt-0.5">
-              <span className="font-semibold text-purple-700 dark:text-purple-400">QR Code:</span>
-              <span className="font-mono text-[10px] bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded border border-purple-200 dark:border-purple-800">
+              <span className="font-semibold text-[#0F766E] dark:text-teal-400">QR Code:</span>
+              <span className="font-mono text-[10px] bg-teal-500/15 text-[#0F766E] dark:text-teal-300 px-1.5 py-0.5 rounded">
                 {qrId}
               </span>
             </p>
           </div>
-          <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">{item.status || 'Aktif'}</div>
+          <div className="neu-inset absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded text-[#0F172A] dark:text-[#F1F5F9]">{item.status || 'Aktif'}</div>
         </>
       );
     } else if (activeTab === 'Data_Guru') {
       return (
         <>
-          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_guru || 'Tanpa Nama'}</h3>
-          <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
+          <h3 className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">{item.nama_guru || 'Tanpa Nama'}</h3>
+          <div className="text-xs text-[#334155] dark:text-[#CBD5E1] mt-1">
             <p><span className="font-semibold">NIP:</span> {item.nip || '-'}</p>
             <p><span className="font-semibold">Mapel:</span> {item.mata_pelajaran || '-'}</p>
             <p><span className="font-semibold">Kelas:</span> {item.kelasDisplay || (Array.isArray(item.assignedKelas) && item.assignedKelas.length > 0 ? item.assignedKelas.join(', ') : (item.kelas || '-'))}</p>
             <p><span className="font-semibold">Kontak:</span> {item.no_hp || '-'}</p>
             {item.email && <p className="truncate"><span className="font-semibold">Email:</span> {item.email}</p>}
           </div>
-          <div className="absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">{item.status || 'Aktif'}</div>
+          <div className="neu-inset absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded text-[#0F172A] dark:text-[#F1F5F9]">{item.status || 'Aktif'}</div>
         </>
       );
     } else if (activeTab === 'Data_Mapel') {
       return (
         <>
-          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.nama_mapel || item.nama_mata_pelajaran || 'Tanpa Nama'}</h3>
-          <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
+          <h3 className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">{item.nama_mapel || item.nama_mata_pelajaran || 'Tanpa Nama'}</h3>
+          <div className="text-xs text-[#334155] dark:text-[#CBD5E1] mt-1">
             <p><span className="font-semibold">Kode Mapel:</span> {item.kode_mapel || item.id || '-'}</p>
             <p><span className="font-semibold">Kelompok:</span> {item.kelompok || item.kategori || '-'}</p>
           </div>
@@ -2662,9 +2662,9 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         : (item.tanggal_mulai || item.tanggal || '-');
       return (
         <>
-          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{displayDate}</h3>
-          <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
-            <p className="font-semibold text-blue-600 dark:text-blue-400">{item.keterangan || '-'}</p>
+          <h3 className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">{displayDate}</h3>
+          <div className="text-xs text-[#334155] dark:text-[#CBD5E1] mt-1">
+            <p className="font-semibold text-sky-700 dark:text-sky-400">{item.keterangan || '-'}</p>
             <p><span className="font-semibold">Tipe:</span> {item.tipe || '-'}</p>
           </div>
         </>
@@ -2673,8 +2673,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       const jamStr = item.jam_mulai && item.jam_selesai ? ` (${item.jam_mulai} - ${item.jam_selesai})` : '';
       return (
         <>
-          <h3 className="font-bold text-xs text-gray-900 dark:text-white">{item.hari || '-'} - {item.kelas || '-'}</h3>
-          <div className="text-xs text-gray-700 dark:text-gray-200 mt-1">
+          <h3 className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">{item.hari || '-'} - {item.kelas || '-'}</h3>
+          <div className="text-xs text-[#334155] dark:text-[#CBD5E1] mt-1">
             <p><span className="font-semibold">Guru:</span> {item.nama_guru || '-'}</p>
             <p><span className="font-semibold">Mapel:</span> {item.mapel || item.mata_pelajaran || '-'}{jamStr}</p>
           </div>
@@ -2684,11 +2684,11 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
       return (
         <>
           <div className="flex items-center justify-between mb-1.5">
-            <h3 className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-1.5">
-              <i className="fa-solid fa-graduation-cap text-purple-600 dark:text-purple-400"></i>
+            <h3 className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+              <i className="fa-solid fa-graduation-cap text-[#0F766E] dark:text-teal-400"></i>
               Kelas {item.kelas || '-'}
             </h3>
-            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+            <span className="text-[9px] font-bold font-num px-2 py-0.5 rounded-full bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
               {item.tahun_ajaran || configuredTahunAjaran || '2024/2025'}
             </span>
           </div>
@@ -2719,8 +2719,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
         />
 
         <div className="glass-card p-4 w-full max-w-full overflow-hidden">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-              <i className="fa-solid fa-database text-purple-500 dark:text-purple-400"></i> Master Data
+            <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-4 flex items-center gap-2">
+              <i className="fa-solid fa-database text-[#0F766E] dark:text-teal-400"></i> Master Data
             </h2>
             {/* TABS */}
             <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1 max-w-full">
@@ -2731,16 +2731,16 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                       key={tab.id}
                       type="button" 
                       onClick={() => handleSwitchTab(tab.id)} 
-                      className={`btn-click master-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 border transition flex items-center gap-1.5 ${
+                      className={`btn-click master-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition flex items-center gap-1.5 ${
                         isTabActive 
-                          ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800' 
-                          : 'border-gray-200 text-gray-700 dark:text-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                          ? 'neu-btn-primary text-white shadow-sm' 
+                          : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
                       }`}
                     >
                       <i className={`fa-solid ${tab.icon} text-[11px]`}></i>
                       <span>{tab.label}</span>
                       {tab.optional && (
-                        <span className="text-[9px] text-amber-600 dark:text-amber-400 font-normal">(Opsional)</span>
+                        <span className={`text-[9px] font-normal ${isTabActive ? 'text-amber-200' : 'text-amber-600 dark:text-amber-400'}`}>(Opsional)</span>
                       )}
                     </button>
                   );
@@ -2749,29 +2749,29 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             {/* Animated Upload Progress Bar */}
             {isUploading && (
-              <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-sm animate-fade-in">
+              <div className="mb-4 p-4 neu-inset rounded-2xl animate-fade-in">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <i className="fa-solid fa-circle-notch fa-spin text-purple-600 dark:text-purple-400 text-sm"></i>
-                    <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                    <i className="fa-solid fa-circle-notch fa-spin text-[#0F766E] dark:text-teal-400 text-sm"></i>
+                    <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       {uploadStage || 'Sedang memproses unggahan...'}
                     </span>
                   </div>
-                  <span className="text-xs font-black text-purple-700 dark:text-purple-300 font-mono">
+                  <span className="text-xs font-black font-num text-[#0F766E] dark:text-teal-300">
                     {uploadProgress}%
                   </span>
                 </div>
 
                 {/* Progress Bar Container */}
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner p-0.5">
+                <div className="w-full neu-inset rounded-full h-3 overflow-hidden p-0.5">
                   <div
-                    className="bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
+                    className="bg-gradient-to-r from-[#0F766E] via-teal-500 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
                     style={{ width: `${Math.min(100, Math.max(0, uploadProgress))}%` }}
                   />
                 </div>
 
                 {uploadBatchInfo && uploadBatchInfo.totalRows > 0 && (
-                  <div className="flex justify-between items-center mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                  <div className="flex justify-between items-center mt-2 text-[11px] font-num text-[#475569] dark:text-[#94A3B8]">
                     <span>Batch {uploadBatchInfo.currentBatch} dari {uploadBatchInfo.totalBatches}</span>
                     <span>{uploadBatchInfo.processedRows} dari {uploadBatchInfo.totalRows} baris</span>
                   </div>
@@ -2802,40 +2802,40 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             {/* DEBUG INFO (small text at top) */}
             {debugInfo && !loading && (
-              <div className="text-[9px] text-gray-500 dark:text-gray-400 mb-2 px-1">
+              <div className="text-[9px] text-[#475569] dark:text-[#94A3B8] mb-2 px-1">
                 <i className="fa-solid fa-info-circle mr-1"></i>{debugInfo}
               </div>
             )}
 
-            <div className="bg-purple-50 dark:bg-purple-900/10 rounded-2xl p-3 border border-purple-100 dark:border-purple-900/30 mb-4">
+            <div className="neu-inset rounded-2xl p-3 mb-4">
                 <div className="flex flex-wrap sm:flex-nowrap justify-between items-center gap-2">
-                    <span className="text-xs font-bold text-purple-800 dark:text-purple-300 uppercase truncate">Impor & Kelola Data</span>
+                    <span className="text-xs font-bold text-[#0F766E] dark:text-teal-300 uppercase truncate">Impor & Kelola Data</span>
                     <div className="flex flex-wrap sm:flex-nowrap gap-1.5 shrink-0 ml-auto sm:ml-0">
                         <button 
                           type="button" 
                           onClick={handleDownloadTemplate} 
-                          className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
+                          className="btn-click neu-btn px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition cursor-pointer"
                           title="Unduh format template CSV"
                           aria-label="Unduh format template CSV"
                         >
-                          <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i> Template
+                          <i className="fa-solid fa-file-csv text-emerald-600 dark:text-emerald-400"></i> Template
                         </button>
                         <button 
                           type="button" 
                           onClick={handleExportCsv} 
                           disabled={loading}
-                          className="btn-click bg-white dark:bg-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-bold text-gray-700 dark:text-white shadow-sm border border-gray-300 dark:border-gray-600 flex items-center gap-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer disabled:opacity-50"
+                          className="btn-click neu-btn px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                           title="Ekspor data ke berkas CSV"
                           aria-label="Ekspor data ke berkas CSV"
                         >
-                          <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i> Export CSV
+                          <i className="fa-solid fa-file-export text-[#0F766E] dark:text-teal-400"></i> Export CSV
                         </button>
                         {canModify && (
                           <button 
                             type="button" 
                             onClick={() => fileInputRef.current?.click()} 
                             disabled={loading}
-                            className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
+                            className="btn-click neu-btn-primary text-white px-2.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50"
                           >
                             <i className="fa-solid fa-upload"></i> Unggah
                           </button>
@@ -2847,8 +2847,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             {/* SEARCH AND REFRESH */}
             <div className="flex flex-wrap sm:flex-nowrap justify-between items-center mb-3 gap-2">
                 <div className="relative flex-grow w-full sm:w-auto">
-                    <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-400 text-xs"></i>
-                    <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" />
+                    <i className="fa-solid fa-search absolute left-3 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
+                    <input type="text" value={search} onChange={e => { setSearch(e.target.value); setPage(0); }} placeholder="Cari data..." className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium neu-input text-[#0F172A] dark:text-[#F1F5F9] placeholder-[#64748B] dark:placeholder-[#94A3B8]" />
                 </div>
                 <div className="flex flex-wrap sm:flex-nowrap gap-1.5 shrink-0 ml-auto sm:ml-0 items-center">
                     {activeTab === 'Data_Siswa' && (
@@ -2856,17 +2856,17 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         <button
                           type="button"
                           onClick={toggleSelectAllStudents}
-                          className="btn-click bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white px-2.5 h-8 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition"
+                          className="btn-click neu-btn text-[#334155] dark:text-[#CBD5E1] px-2.5 h-8 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                           title="Pilih Semua Siswa"
                         >
-                          <i className={`fa-solid ${selectedStudentIds.length === filteredList.length && filteredList.length > 0 ? 'fa-square-check text-emerald-600 dark:text-emerald-400' : 'fa-square text-gray-400'}`}></i>
+                          <i className={`fa-solid ${selectedStudentIds.length === filteredList.length && filteredList.length > 0 ? 'fa-square-check text-[#0F766E] dark:text-teal-400' : 'fa-square text-slate-400'}`}></i>
                           <span className="hidden sm:inline">Pilih Semua</span>
                         </button>
                         {canModify && (
                           <button 
                             type="button" 
                             onClick={() => setIsNaikKelasOpen(true)}
-                            className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+                            className="btn-click neu-btn-primary text-white px-3 h-8 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                           >
                             <i className="fa-solid fa-arrow-up-right-dots"></i> Naik Kelas {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
                           </button>
@@ -2874,14 +2874,14 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         <button
                           type="button"
                           onClick={handlePrintBatchQrCards}
-                          className="btn-click bg-purple-600 hover:bg-purple-700 text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+                          className="btn-click neu-btn text-[#0F766E] dark:text-teal-300 px-3 h-8 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                           title="Cetak Kartu QR Siswa"
                         >
                           <i className="fa-solid fa-qrcode"></i> Cetak QR {selectedStudentIds.length > 0 ? `(${selectedStudentIds.length})` : ''}
                         </button>
                       </>
                     )}
-                    <button type="button" onClick={() => { void loadData(); }} disabled={loading} className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold border border-gray-200 dark:border-gray-700 disabled:opacity-50">
+                    <button type="button" onClick={() => { void loadData(); }} disabled={loading} className="btn-click neu-btn text-[#334155] dark:text-[#CBD5E1] w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold disabled:opacity-50">
                       <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                     </button>
                     {canModify && (
@@ -2889,7 +2889,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                         type="button" 
                         onClick={handleOpenCreateModal} 
                         disabled={loading}
-                        className="btn-click bg-nizamudin-green text-white px-3 h-8 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 border border-nizamudin-light hover:brightness-110 transition disabled:opacity-50"
+                        className="btn-click neu-btn-primary text-white px-3 h-8 rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50"
                       >
                         <i className="fa-solid fa-plus"></i> Baru
                       </button>
@@ -2899,8 +2899,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             {/* COLUMN DROPDOWN FILTERS (F15) */}
             <div className="flex flex-wrap items-center gap-2 mb-4">
-              <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                <i className="fa-solid fa-filter text-purple-600 dark:text-purple-400"></i> Filter:
+              <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] flex items-center gap-1">
+                <i className="fa-solid fa-filter text-[#0F766E] dark:text-teal-400"></i> Filter:
               </span>
 
               {activeTab === 'Data_Siswa' && (
@@ -2908,7 +2908,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Kelas"
                   >
                     <option value="ALL">Semua Kelas</option>
@@ -2920,7 +2920,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Status"
                   >
                     <option value="ALL">Semua Status</option>
@@ -2932,7 +2932,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filterMapelSiswa}
                     onChange={e => { setFilterMapelSiswa(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Mata Pelajaran / Agama"
                   >
                     <option value="ALL">Semua Mapel</option>
@@ -2947,7 +2947,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Status"
                   >
                     <option value="ALL">Semua Status</option>
@@ -2959,7 +2959,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium max-w-[200px] truncate"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium max-w-[200px] truncate"
                     title="Filter Mata Pelajaran"
                   >
                     <option value="ALL">Semua Mapel</option>
@@ -2974,7 +2974,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                 <select
                   value={filter1}
                   onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                  className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                  className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                   title="Filter Kategori"
                 >
                   <option value="ALL">Semua Kategori</option>
@@ -2989,7 +2989,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Tipe Agenda"
                   >
                     <option value="ALL">Semua Tipe</option>
@@ -3001,7 +3001,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Bulan"
                   >
                     <option value="ALL">Semua Bulan</option>
@@ -3026,7 +3026,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Hari"
                   >
                     <option value="ALL">Semua Hari</option>
@@ -3038,7 +3038,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Kelas"
                   >
                     <option value="ALL">Semua Kelas</option>
@@ -3054,7 +3054,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Kelas"
                   >
                     <option value="ALL">Semua Kelas</option>
@@ -3066,7 +3066,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   <select
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-purple-500 font-medium"
+                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
                     title="Filter Tahun Ajaran"
                   >
                     <option value="ALL">Semua Tahun Ajaran</option>
@@ -3097,12 +3097,12 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
             {/* DATA GRID */}
             <div id="master-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px] content-start w-full max-w-full overflow-hidden">
                 {loading ? (
-                  <div className="col-span-full flex flex-col items-center justify-center py-10 text-gray-500 dark:text-gray-400">
-                    <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-purple-500 dark:text-purple-400"></i>
+                  <div className="col-span-full flex flex-col items-center justify-center py-10 text-[#475569] dark:text-[#94A3B8]">
+                    <i className="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-[#0F766E] dark:text-teal-400"></i>
                     <span className="text-xs italic">Menarik data dari Supabase...</span>
                   </div>
                 ) : paginatedList.length === 0 ? (
-                  <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-gray-400">
+                  <div className="col-span-full text-center py-10 text-[#475569] text-xs italic dark:text-[#94A3B8]">
                     {errorMsg ? 'Gagal memuat data. Lihat pesan error di atas.' : (!dataList || dataList.length === 0) ? 'Tabel ini kosong atau data belum dapat dimuat.' : 'Tidak ditemukan data yang cocok dengan pencarian.'}
                   </div>
                 ) : (
@@ -3111,8 +3111,8 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                     return (
                       <div 
                         key={item?.id || item?.nisn || item?.nip || idx} 
-                        className={`bg-white dark:bg-gray-800 border p-3 rounded-xl shadow-sm relative hover:shadow-md transition flex flex-col justify-between ${
-                          isSelected ? 'border-emerald-500 ring-1 ring-emerald-500 dark:border-emerald-500 bg-emerald-50/20 dark:bg-emerald-950/20' : 'border-gray-100 dark:border-gray-700'
+                        className={`neu-card-sm p-3 rounded-2xl relative transition flex flex-col justify-between ${
+                          isSelected ? 'ring-2 ring-[#0F766E] dark:ring-teal-400' : ''
                         }`}
                       >
                         {activeTab === 'Data_Siswa' && (
@@ -3124,20 +3124,20 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                                 e.stopPropagation();
                                 toggleSelectStudent(item.id);
                               }}
-                              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-gray-300 dark:border-gray-600 cursor-pointer"
+                              className="w-4 h-4 rounded text-[#0F766E] focus:ring-teal-500 border-slate-300 dark:border-slate-600 cursor-pointer"
                             />
                           </div>
                         )}
                         <div className={activeTab === 'Data_Siswa' ? 'pl-6' : ''}>
                           {renderCard(item)}
                         </div>
-                        <div className="flex justify-between items-center mt-3 pt-2 border-t border-gray-100 dark:border-gray-700 gap-2">
+                        <div className="flex justify-between items-center mt-3 pt-2 border-t border-slate-200/70 dark:border-slate-700/60 gap-2">
                           {activeTab === 'Data_Siswa' && (
                             <>
                               <button 
                                 type="button" 
                                 onClick={() => handleDownloadStudentCard(item)} 
-                                className="btn-click text-[11px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1 transition"
+                                className="btn-click text-[11px] font-bold text-[#0F766E] hover:text-[#0D645D] dark:text-teal-400 flex items-center gap-1 transition"
                                 title="Download Kartu Presensi (PNG)"
                               >
                                 <i className="fa-solid fa-download text-[10px]"></i> Download Kartu
@@ -3145,7 +3145,7 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                               <button 
                                 type="button" 
                                 onClick={() => handleShowStudentQr(item)} 
-                                className="btn-click text-[11px] font-bold text-purple-600 hover:text-purple-700 dark:text-purple-400 flex items-center gap-1 transition"
+                                className="btn-click text-[11px] font-bold text-amber-700 hover:text-amber-800 dark:text-amber-400 flex items-center gap-1 transition"
                                 title="Lihat & Cetak QR Code Siswa"
                               >
                                 <i className="fa-solid fa-qrcode text-[10px]"></i> QR Code

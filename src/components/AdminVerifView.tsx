@@ -551,9 +551,9 @@ export default function AdminVerifView({
         inputPlaceholder: 'Contoh: BA-SIPJAM/012/X/2026 atau Alasan Sah',
         showCancelButton: true,
         confirmButtonText: 'Pulihkan Status',
-        confirmButtonColor: '#059669',
+        confirmButtonColor: '#0F766E',
         cancelButtonText: 'Batal',
-        cancelButtonColor: '#6b7280'
+        cancelButtonColor: '#64748b'
       });
 
       if (!isConfirmed) {
@@ -604,7 +604,7 @@ export default function AdminVerifView({
           text: isMissingVerifCol
             ? 'Kolom verifikasi pada tabel jurnal_bk belum tersedia di database. Jalankan migrasi supabase/migrations/20261110_add_verifikasi_to_jurnal_bk.sql di Supabase SQL Editor.'
             : error.message,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
       } else {
         if (isBkItem && typeof window !== 'undefined' && window.localStorage) {
@@ -709,8 +709,8 @@ export default function AdminVerifView({
       text: `Anda akan menyetujui ${pendingItems.length} data ${label} sekaligus.`,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#16a34a',
-      cancelButtonColor: '#6b7280',
+      confirmButtonColor: '#0F766E',
+      cancelButtonColor: '#64748b',
       confirmButtonText: 'Ya, Setujui Semua',
       cancelButtonText: 'Batal'
     });
@@ -1283,10 +1283,10 @@ export default function AdminVerifView({
           <button 
             type="button" 
             onClick={() => setActiveTab('Presensi')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
               activeTab === 'Presensi' 
-                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ? 'neu-btn-primary text-white shadow-sm' 
+                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
             }`}
           >
             Presensi
@@ -1294,10 +1294,10 @@ export default function AdminVerifView({
           <button 
             type="button" 
             onClick={() => setActiveTab('Jurnal')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
               activeTab === 'Jurnal' 
-                ? 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ? 'neu-btn-primary text-white shadow-sm' 
+                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
             }`}
           >
             Jurnal
@@ -1305,10 +1305,10 @@ export default function AdminVerifView({
           <button 
             type="button" 
             onClick={() => setActiveTab('Piket')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
               activeTab === 'Piket' 
-                ? 'bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 border-teal-200 dark:border-teal-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ? 'neu-btn-primary text-white shadow-sm' 
+                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
             }`}
           >
             <i className="fa-solid fa-shield-halved mr-1.5"></i> Piket
@@ -1316,10 +1316,10 @@ export default function AdminVerifView({
           <button 
             type="button" 
             onClick={() => setActiveTab('Dokumen')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shadow-sm border transition ${
+            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
               activeTab === 'Dokumen' 
-                ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800' 
-                : 'text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                ? 'neu-btn-primary text-white shadow-sm' 
+                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
             }`}
           >
             <i className="fa-solid fa-folder-open mr-1.5"></i> Perangkat
@@ -1627,7 +1627,7 @@ export default function AdminVerifView({
                 {activeTab === 'Presensi' ? (
                   <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
                     <p><span className="font-semibold">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
-                    <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-nizamudin-green dark:text-green-400">{item.tipe_absen}</span></p>
+                    <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-[#0F766E] dark:text-teal-400">{item.tipe_absen}</span></p>
                     <div className="flex items-center gap-1.5 flex-wrap my-1">
                       <span className="font-semibold">Kategori:</span>
                       {(() => {
@@ -1691,7 +1691,7 @@ export default function AdminVerifView({
                     )}
                     {(item.is_auto_checkout || item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'Lupa Checkout') && (
                       <div className="my-1.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-300 dark:border-purple-800 inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 inline-flex items-center gap-1">
                           <i className="fa-solid fa-robot text-[10px]"></i>
                           {item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat' ? 'Auto-Checkout (Pulang Cepat)' : 'Auto-Checkout (Lupa Checkout)'}
                         </span>

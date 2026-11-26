@@ -913,18 +913,18 @@ export default function SistemBlokView({ user }: { user: any }) {
               type="button"
               onClick={handleExportBlokCsv}
               disabled={loading}
-              className="btn-click px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition shadow-sm cursor-pointer disabled:opacity-50"
+              className="neu-btn btn-click px-3 py-1.5 text-[#334155] dark:text-[#F1F5F9] rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
               title="Ekspor seluruh Periode Sistem Blok ke berkas CSV"
               aria-label="Ekspor seluruh Periode Sistem Blok ke berkas CSV"
             >
-              <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
+              <i className="fa-solid fa-file-export text-[#0F766E] dark:text-teal-400"></i>
               <span>Export CSV</span>
             </button>
             <button
               type="button"
               onClick={loadBlokData}
               disabled={loading}
-              className="btn-click px-3 py-1.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-lg text-xs font-bold border border-gray-200 dark:border-gray-700 flex items-center gap-1.5 transition"
+              className="neu-btn btn-click px-3 py-1.5 text-[#334155] dark:text-[#F1F5F9] rounded-lg text-xs font-bold flex items-center gap-1.5 transition"
             >
               <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
               <span>Refresh</span>
@@ -935,19 +935,19 @@ export default function SistemBlokView({ user }: { user: any }) {
         {/* Search & Status Filters */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
           <div className="relative flex-1">
-            <i className="fa-solid fa-search absolute left-3.5 top-3 text-gray-400 text-xs"></i>
+            <i className="fa-solid fa-search absolute left-3.5 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Cari nama kegiatan atau deskripsi..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                className="absolute right-3 top-2.5 text-xs text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -960,10 +960,10 @@ export default function SistemBlokView({ user }: { user: any }) {
                 key={st}
                 type="button"
                 onClick={() => setFilterStatus(st)}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition border ${
+                className={`neu-btn px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                   filterStatus === st
-                    ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ? 'neu-btn-amber'
+                    : 'text-[#334155] dark:text-[#CBD5E1]'
                 }`}
               >
                 {st}
@@ -985,10 +985,10 @@ export default function SistemBlokView({ user }: { user: any }) {
               key={cat.id}
               type="button"
               onClick={() => setFilterKategori(cat.id as any)}
-              className={`px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition border flex items-center gap-1.5 ${
+              className={`neu-btn px-3 py-1 rounded-xl text-[11px] font-bold whitespace-nowrap transition flex items-center gap-1.5 ${
                 filterKategori === cat.id
-                  ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                  : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                  ? 'neu-btn-amber'
+                  : 'text-[#475569] dark:text-[#CBD5E1]'
               }`}
             >
               <i className={`fa-solid ${cat.icon} text-[10px]`}></i>
@@ -999,70 +999,70 @@ export default function SistemBlokView({ user }: { user: any }) {
 
         {/* Content List / Table */}
         {loading && blokList.length === 0 ? (
-          <div className="text-center py-12 text-xs text-gray-500 dark:text-gray-400">
-            <i className="fa-solid fa-circle-notch fa-spin mr-2 text-base text-amber-500"></i>
+          <div className="text-center py-12 text-xs text-[#475569] dark:text-[#94A3B8]">
+            <i className="fa-solid fa-circle-notch fa-spin mr-2 text-base text-[#D97706] dark:text-amber-400"></i>
             Memuat daftar periode blok...
           </div>
         ) : filteredList.length === 0 ? (
-          <div className="text-center py-10 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-            <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-2 text-sm">
+          <div className="text-center py-10 px-4 neu-inset rounded-2xl">
+            <div className="w-10 h-10 rounded-full neu-card-sm text-[#D97706] dark:text-amber-400 flex items-center justify-center mx-auto mb-2 text-sm">
               <i className="fa-solid fa-calendar-xmark"></i>
             </div>
-            <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <p className="text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
               {search || filterStatus !== 'Semua'
                 ? 'Tidak ada periode blok yang cocok dengan kriteria pencarian/filter.'
                 : 'Belum ada periode sistem blok yang dibuat.'}
             </p>
-            <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-1">
               Gunakan form di atas untuk menambahkan jadwal sistem blok baru.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {filteredList.map(item => {
               const status = getStatus(item.tanggal_mulai, item.tanggal_selesai);
               const duration = getDurationDays(item.tanggal_mulai, item.tanggal_selesai);
 
               const statusBadge =
                 status === 'Aktif'
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                  ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                   : status === 'Akan Datang'
-                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                  : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600';
+                  ? 'bg-sky-500/15 text-sky-800 dark:text-sky-300'
+                  : 'neu-inset text-[#475569] dark:text-[#CBD5E1]';
 
               return (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-2xl border transition shadow-sm flex flex-col justify-between gap-3 ${
+                  className={`p-4 rounded-2xl neu-card-sm transition flex flex-col justify-between gap-3 ${
                     status === 'Aktif'
-                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700/70 hover:border-amber-400'
-                      : 'bg-white dark:bg-gray-800/80 border-gray-200/80 dark:border-gray-700/80 hover:border-gray-300 dark:hover:border-gray-600'
+                      ? 'ring-2 ring-amber-500/45'
+                      : ''
                   }`}
                 >
                   <div className="space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
-                          <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${statusBadge} leading-none`}>
+                          <span className={`inline-flex items-center gap-1.5 text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full ${statusBadge} leading-none`}>
                             {status === 'Aktif' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>}
                             {status}
                           </span>
 
                           {/* Target Scope Badge */}
                           {(!item.tipe_target || item.tipe_target === 'sekolah') && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                               <i className="fa-solid fa-school text-[9px]"></i>
                               <span>Semua Sekolah</span>
                             </span>
                           )}
                           {item.tipe_target === 'angkatan' && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-800 dark:text-sky-300">
                               <i className="fa-solid fa-graduation-cap text-[9px]"></i>
                               <span>Angkatan {item.target_angkatan}</span>
                             </span>
                           )}
                           {item.tipe_target === 'kelas' && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-800 dark:text-teal-300">
                               <i className="fa-solid fa-chalkboard-user text-[9px]"></i>
                               <span>Kelas {item.target_kelas}</span>
                             </span>

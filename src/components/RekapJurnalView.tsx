@@ -1641,26 +1641,26 @@ export default function RekapJurnalView({
 
   return (
     <section id="view-guru-rekap-jurnal" className="view-section fade-in">
-        <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+        <div className="clay-card p-4 sm:p-5 rounded-3xl">
             <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             
             {/* View Header with Tab Toggle */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-5 no-print">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className={`fa-solid ${tabMode === 'pribadi' ? 'fa-book-open text-indigo-500 dark:text-indigo-400' : 'fa-chalkboard-user text-purple-500 dark:text-purple-400'} text-base`}></i>
+              <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                <i className={`fa-solid ${tabMode === 'pribadi' ? 'fa-book-open text-sky-600 dark:text-sky-400' : 'fa-chalkboard-user text-[#0F766E] dark:text-teal-400'} text-base`}></i>
                 {tabMode === 'pribadi' ? 'Rekap Jurnal Pribadi' : 'Rekapan Jurnal Per Kelas'}
               </h2>
 
               {/* Mode Toggle: Jurnal Guru Pribadi vs Rekapan Jurnal Per Kelas */}
               {!hideTabSwitch && (isAdmin || isKepalaSekolah || isWaliKelas || waliClasses.length > 0) && (
-                <div className="inline-flex rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 p-1 shadow-inner">
+                <div className="inline-flex rounded-xl neu-inset p-1 gap-1">
                   <button
                     type="button"
                     onClick={() => handleTabChange('pribadi')}
                     className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
                       tabMode === 'pribadi'
-                        ? 'bg-white dark:bg-gray-700 text-indigo-600 dark:text-indigo-300 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        ? 'neu-btn neu-btn-primary text-white'
+                        : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                     }`}
                   >
                     <i className="fa-solid fa-user text-[11px]"></i> Jurnal Guru Pribadi
@@ -1670,8 +1670,8 @@ export default function RekapJurnalView({
                     onClick={() => handleTabChange('kelas')}
                     className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
                       tabMode === 'kelas'
-                        ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-300 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                        ? 'neu-btn neu-btn-primary text-white'
+                        : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                     }`}
                   >
                     <i className="fa-solid fa-users text-[11px]"></i> Rekapan Jurnal Per Kelas
@@ -1683,29 +1683,29 @@ export default function RekapJurnalView({
             {/* Summary Metric Cards */}
             {jurnalData && (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4 no-print">
-                  <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
-                      <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Jurnal</div>
-                      <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalJurnal}</div>
+                  <div className="clay-card clay-card-blue p-3.5 rounded-2xl text-center">
+                      <div className="text-xs font-bold text-sky-700 dark:text-sky-300">Total Jurnal</div>
+                      <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalJurnal}</div>
                   </div>
-                  <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
-                      <div className="text-xs font-bold text-green-800 dark:text-green-300">Disetujui</div>
-                      <div className="text-xl font-black text-green-600 dark:text-green-400">{totalDisetujui}</div>
+                  <div className="clay-card clay-card-mint p-3.5 rounded-2xl text-center">
+                      <div className="text-xs font-bold text-[#0F766E] dark:text-teal-300">Disetujui</div>
+                      <div className="text-xl font-black font-num text-[#0F766E] dark:text-teal-400">{totalDisetujui}</div>
                   </div>
-                  <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
-                      <div className="text-xs font-bold text-amber-800 dark:text-amber-300">Menunggu</div>
-                      <div className="text-xl font-black text-amber-600 dark:text-amber-400">{totalMenunggu}</div>
+                  <div className="clay-card clay-card-amber p-3.5 rounded-2xl text-center">
+                      <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Menunggu</div>
+                      <div className="text-xl font-black font-num text-[#D97706] dark:text-amber-400">{totalMenunggu}</div>
                   </div>
-                  <div className="clay-card clay-card-rose p-3.5 rounded-2xl border-2 border-white/90 dark:border-rose-800/50 text-center shadow-sm">
-                      <div className="text-xs font-bold text-rose-800 dark:text-rose-300">Ditolak</div>
-                      <div className="text-xl font-black text-rose-600 dark:text-rose-400">{totalDitolak}</div>
+                  <div className="clay-card clay-card-rose p-3.5 rounded-2xl text-center">
+                      <div className="text-xs font-bold text-rose-700 dark:text-rose-300">Ditolak</div>
+                      <div className="text-xl font-black font-num text-rose-600 dark:text-rose-400">{totalDitolak}</div>
                   </div>
               </div>
             )}
 
-            <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
+            <div className="neu-inset p-4 rounded-2xl mb-4 space-y-3 no-print">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">PILIH BULAN</label>
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">PILIH BULAN</label>
                       <input
                         type="month"
                         value={bulan}
@@ -1714,11 +1714,11 @@ export default function RekapJurnalView({
                           setStartDate('');
                           setEndDate('');
                         }}
-                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                        className="w-full px-2.5 py-2 text-xs rounded-lg input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">DARI TANGGAL (OPSIONAL)</label>
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">DARI TANGGAL (OPSIONAL)</label>
                       <input
                         type="date"
                         value={startDate}
@@ -1836,7 +1836,7 @@ export default function RekapJurnalView({
                       </div>
                     </div>
                 </div>
-                <button type="button" onClick={() => tarikRekap()} disabled={loading} className="btn-click w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50">
+                <button type="button" onClick={() => tarikRekap()} disabled={loading} className="btn-click neu-btn-primary w-full text-white py-2.5 rounded-xl text-xs font-bold mt-2 flex items-center justify-center gap-2 transition disabled:opacity-50">
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin text-sm"></i> : <i className="fa-solid fa-search text-sm"></i>} Tampilkan Rekap
                 </button>
             </div>
@@ -1908,7 +1908,7 @@ export default function RekapJurnalView({
                     <button
                       type="button"
                       onClick={() => handleTabChange('pribadi')}
-                      className="btn-click px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold shadow hover:bg-indigo-700 transition"
+                      className="btn-click neu-btn-primary px-4 py-2 text-white rounded-xl text-xs font-bold transition"
                     >
                       Buka Jurnal Pribadi
                     </button>
@@ -2136,7 +2136,7 @@ export default function RekapJurnalView({
                                     <button
                                       type="button"
                                       onClick={() => setSelectedJurnal(j)}
-                                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                                      className="text-[10px] font-bold text-[#0F766E] dark:text-teal-400 hover:underline inline-flex items-center gap-1"
                                       title="Lihat Detail Lengkap Jurnal"
                                     >
                                       <i className="fa-solid fa-eye text-[9px]"></i> Detail
@@ -2330,7 +2330,7 @@ export default function RekapJurnalView({
                                     <button
                                       type="button"
                                       onClick={() => setSelectedJurnal(j)}
-                                      className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
+                                      className="text-[10px] font-bold text-[#0F766E] dark:text-teal-400 hover:underline inline-flex items-center gap-1"
                                       title="Lihat Detail Lengkap Jurnal"
                                     >
                                       <i className="fa-solid fa-eye text-[9px]"></i> Detail
@@ -2549,12 +2549,12 @@ export default function RekapJurnalView({
             onClick={() => setSelectedJurnal(null)}
           >
             <div 
-              className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 space-y-4"
+              className="glass-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-4"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg shadow-inner">
+                  <div className="neu-inset w-10 h-10 rounded-2xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-lg">
                     <i className="fa-solid fa-book-open"></i>
                   </div>
                   <div>

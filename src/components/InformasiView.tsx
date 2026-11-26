@@ -303,17 +303,17 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
   return (
     <section id="view-informasi" className="view-section page-enter">
-      <div className="glass-card p-4 sm:p-6 mb-6">
+      <div className="glass-card p-4 sm:p-6 mb-6 rounded-3xl">
         {/* Header Title & Actions */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-gray-100 dark:border-gray-800 pb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-slate-300/60 dark:border-slate-700/60 pb-4">
           <div>
-            <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              <span className="w-9 h-9 rounded-xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center shadow-sm">
+            <h2 className="text-xl font-black text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+              <span className="w-9 h-9 rounded-xl neu-inset text-[#0F766E] dark:text-teal-400 flex items-center justify-center">
                 <i className="fa-solid fa-bullhorn text-sm"></i>
               </span>
               Pusat Informasi & Siaran
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-1">
               Sistem broadcast terpadu KBM, kedinasan, dan komunikasi antar civitas sekolah.
             </p>
           </div>
@@ -323,7 +323,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
               <button
                 type="button"
                 onClick={handleOpenCreateModal}
-                className="btn-click flex-1 sm:flex-initial bg-nizamudin-green hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition-all"
+                className="neu-btn neu-btn-primary btn-click flex-1 sm:flex-initial text-white px-4 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all"
               >
                 <i className="fa-solid fa-plus text-xs"></i> Buat Siaran Baru
               </button>
@@ -332,7 +332,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
               type="button"
               onClick={loadData}
               title="Muat Ulang Data"
-              className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white rounded-xl text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+              className="neu-btn btn-click w-9 h-9 text-[#334155] dark:text-[#F1F5F9] rounded-xl text-xs font-bold flex justify-center items-center"
             >
               <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
             </button>
@@ -342,13 +342,13 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
         {/* Search & Audience Filters */}
         <div className="flex flex-col md:flex-row gap-3 mb-6">
           <div className="relative flex-1">
-            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-gray-400 text-xs"></i>
+            <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Cari siaran berdasarkan judul atau isi..."
-              className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400"
+              className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
             />
           </div>
 
@@ -358,10 +358,10 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                 key={tab}
                 type="button"
                 onClick={() => setActiveFilter(tab)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                className={`neu-btn px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
                   activeFilter === tab
-                    ? 'bg-teal-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+                    ? 'neu-btn-primary text-white'
+                    : 'text-[#334155] dark:text-[#CBD5E1]'
                 }`}
               >
                 {tab === 'Semua' ? 'Semua Sasaran' : tab}
@@ -372,17 +372,17 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
         {/* Feed List */}
         {loading ? (
-          <div className="text-center py-16 text-gray-500 dark:text-gray-400 text-xs">
-            <i className="fa-solid fa-circle-notch fa-spin text-2xl text-teal-600 mb-2 block"></i>
+          <div className="text-center py-16 text-[#475569] dark:text-[#94A3B8] text-xs">
+            <i className="fa-solid fa-circle-notch fa-spin text-2xl text-[#0F766E] dark:text-teal-400 mb-2 block"></i>
             Memuat siaran dan pengumuman...
           </div>
         ) : filteredList.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center mx-auto mb-3 text-lg">
+          <div className="text-center py-16 neu-inset rounded-2xl">
+            <div className="w-12 h-12 rounded-full neu-card-sm text-[#475569] dark:text-[#94A3B8] flex items-center justify-center mx-auto mb-3 text-lg">
               <i className="fa-solid fa-bullhorn"></i>
             </div>
-            <p className="text-xs font-bold text-gray-700 dark:text-gray-300">Belum ada pengumuman untuk sasaran ini</p>
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Belum ada pengumuman untuk sasaran ini</p>
+            <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-1">
               {isAdmin ? 'Klik tombol "Buat Siaran Baru" di atas untuk mengirim pengumuman.' : 'Pengumuman resmi akan muncul di sini.'}
             </p>
           </div>
@@ -396,28 +396,28 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
               return (
                 <article
                   key={p.id}
-                  className={`card-interactive rounded-2xl border transition-all p-4 sm:p-5 relative ${
+                  className={`card-interactive rounded-2xl transition-all p-4 sm:p-5 relative ${
                     p.is_pinned
-                      ? 'bg-amber-50/40 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-700/60 shadow-sm'
-                      : 'bg-white dark:bg-gray-800/90 border-gray-100 dark:border-gray-700 shadow-sm'
+                      ? 'neu-card-sm ring-2 ring-amber-500/40'
+                      : 'neu-card-sm'
                   }`}
                 >
                   {/* Top Bar: Badges, Date, Pin, Actions */}
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                     <div className="flex flex-wrap items-center gap-1.5">
                       {p.is_pinned && (
-                        <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1">
                           <i className="fa-solid fa-thumbtack text-[9px]"></i> Disematkan
                         </span>
                       )}
-                      <span className="bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-teal-200 dark:border-teal-800">
+                      <span className="bg-teal-500/15 text-[#0F766E] dark:text-teal-300 text-[10px] font-bold px-2 py-0.5 rounded-md">
                         🎯 {p.sasaran}
                       </span>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                           isTwoWay
-                            ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                            ? 'bg-sky-500/15 text-sky-800 dark:text-sky-300'
+                            : 'neu-inset text-[#475569] dark:text-[#94A3B8]'
                         }`}
                       >
                         <i className={`fa-solid ${isTwoWay ? 'fa-comments' : 'fa-bullhorn'} text-[9px] mr-1`}></i>
@@ -425,18 +425,18 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1 text-[11px] text-[#475569] dark:text-[#94A3B8]">
                       <span>{p.created_at ? formatTimestampWita(p.created_at) : ''}</span>
 
                       {/* Admin Quick Action dropdown/buttons */}
                       {isAdmin && (
-                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-slate-300/60 dark:border-slate-700/60">
                           <button
                             type="button"
                             onClick={() => handleTogglePin(p)}
                             title={p.is_pinned ? 'Cabut Sematan' : 'Sematkan ke Atas'}
-                            className={`p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-xs transition ${
-                              p.is_pinned ? 'text-amber-500 font-bold' : 'text-gray-400'
+                            className={`neu-btn p-1.5 rounded-lg text-xs transition ${
+                              p.is_pinned ? 'text-[#D97706] dark:text-amber-400 font-bold' : 'text-[#475569] dark:text-[#94A3B8]'
                             }`}
                           >
                             <i className="fa-solid fa-thumbtack"></i>
@@ -445,7 +445,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                             type="button"
                             onClick={() => handleOpenEditModal(p)}
                             title="Edit Pengumuman"
-                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-blue-500 text-xs transition"
+                            className="neu-btn p-1.5 rounded-lg text-sky-600 dark:text-sky-400 text-xs transition"
                           >
                             <i className="fa-solid fa-pen-to-square"></i>
                           </button>
@@ -453,7 +453,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                             type="button"
                             onClick={() => handleDeleteAnnouncement(p.id, p.judul)}
                             title="Hapus Pengumuman"
-                            className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-red-500 text-xs transition"
+                            className="neu-btn p-1.5 rounded-lg text-rose-600 dark:text-rose-400 text-xs transition"
                           >
                             <i className="fa-solid fa-trash"></i>
                           </button>
@@ -463,22 +463,22 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                   </div>
 
                   {/* Title & Author */}
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-snug mb-1.5">
+                  <h3 className="text-base sm:text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-snug mb-1.5">
                     {p.judul}
                   </h3>
-                  <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-3 flex items-center gap-1.5">
-                    <span className="font-semibold text-gray-800 dark:text-gray-200">
-                      <i className="fa-solid fa-user-tie mr-1 text-teal-600 dark:text-teal-400"></i>
+                  <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] mb-3 flex items-center gap-1.5">
+                    <span className="font-semibold text-[#334155] dark:text-[#CBD5E1]">
+                      <i className="fa-solid fa-user-tie mr-1 text-[#0F766E] dark:text-teal-400"></i>
                       {p.penulis_nama}
                     </span>
                     <span>•</span>
-                    <span className="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.2 rounded font-medium">
+                    <span className="text-[10px] neu-inset px-2 py-0.5 rounded font-medium">
                       {p.penulis_role}
                     </span>
                   </div>
 
                   {/* Body Content */}
-                  <div className="text-xs sm:text-sm text-gray-700 dark:text-gray-200 whitespace-pre-line leading-relaxed mb-4">
+                  <div className="text-xs sm:text-sm text-[#334155] dark:text-[#CBD5E1] whitespace-pre-line leading-relaxed mb-4">
                     {p.konten}
                   </div>
 
@@ -489,7 +489,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                         href={p.lampiran_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-xl text-xs font-bold transition border border-blue-200 dark:border-blue-800"
+                        className="neu-btn inline-flex items-center gap-2 text-sky-700 dark:text-sky-300 px-3 py-1.5 rounded-xl text-xs font-bold transition"
                       >
                         <i className="fa-solid fa-paperclip"></i> Buka Dokumen Lampiran
                       </a>
@@ -497,13 +497,13 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                   )}
 
                   {/* Footer Action Bar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100 dark:border-gray-700/80">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
                     <button
                       type="button"
                       onClick={() => handleShareWhatsApp(p)}
-                      className="btn-click inline-flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-800/60 px-3 py-1.5 rounded-xl text-xs font-bold transition"
+                      className="neu-btn btn-click inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 px-3 py-1.5 rounded-xl text-xs font-bold transition"
                     >
-                      <i className="fa-brands fa-whatsapp text-sm text-emerald-500"></i> Kirim via WhatsApp
+                      <i className="fa-brands fa-whatsapp text-sm text-emerald-600 dark:text-emerald-400"></i> Kirim via WhatsApp
                     </button>
 
                     {/* Two-Way Comment Toggle */}
@@ -511,10 +511,10 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                       <button
                         type="button"
                         onClick={() => setOpenCommentsId(commentsOpen ? null : p.id)}
-                        className={`btn-click inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                        className={`neu-btn btn-click inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition ${
                           commentsOpen
-                            ? 'bg-purple-600 text-white shadow-sm'
-                            : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                            ? 'neu-btn-primary text-white'
+                            : 'text-[#0F766E] dark:text-teal-300'
                         }`}
                       >
                         <i className="fa-solid fa-comments"></i>
@@ -522,7 +522,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                         <i className={`fa-solid fa-chevron-${commentsOpen ? 'up' : 'down'} text-[10px] ml-1`}></i>
                       </button>
                     ) : (
-                      <span className="text-[11px] text-gray-400 italic">
+                      <span className="text-[11px] text-[#475569] dark:text-[#94A3B8] italic">
                         <i className="fa-solid fa-lock text-[10px] mr-1"></i> Siaran Satu Arah
                       </span>
                     )}
@@ -530,9 +530,9 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
                   {/* Two-Way Discussion Thread */}
                   {isTwoWay && commentsOpen && (
-                    <div className="mt-4 pt-4 border-t border-purple-100 dark:border-purple-900/40 space-y-3 fade-in bg-purple-50/30 dark:bg-purple-950/10 p-3 sm:p-4 rounded-xl">
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                        <i className="fa-solid fa-comments text-purple-600 dark:text-purple-400"></i>
+                    <div className="mt-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60 space-y-3 fade-in neu-inset p-3 sm:p-4 rounded-xl">
+                      <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                        <i className="fa-solid fa-comments text-[#0F766E] dark:text-teal-400"></i>
                         Diskusi & Tanggapan ({responses.length})
                       </h4>
 
@@ -543,13 +543,13 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                           value={newCommentText[p.id] || ''}
                           onChange={e => setNewCommentText({ ...newCommentText, [p.id]: e.target.value })}
                           placeholder="Tulis tanggapan atau konfirmasi Anda..."
-                          className="flex-1 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 resize-none"
+                          className="flex-1 px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] resize-none"
                         />
                         <button
                           type="button"
                           disabled={sendingCommentId === p.id || !newCommentText[p.id]?.trim()}
                           onClick={() => handleSubmitComment(p.id)}
-                          className="btn-click bg-purple-600 hover:bg-purple-700 text-white font-bold px-3 py-2.5 rounded-xl text-xs shadow-sm flex items-center gap-1.5 disabled:opacity-50 shrink-0"
+                          className="neu-btn neu-btn-primary btn-click text-white font-bold px-3 py-2.5 rounded-xl text-xs flex items-center gap-1.5 disabled:opacity-50 shrink-0"
                         >
                           {sendingCommentId === p.id ? (
                             <i className="fa-solid fa-spinner animate-spin"></i>
@@ -564,7 +564,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
                       {/* Comments stream */}
                       {responses.length === 0 ? (
-                        <div className="text-center py-3 text-[11px] text-gray-400 italic">
+                        <div className="text-center py-3 text-[11px] text-[#475569] dark:text-[#94A3B8] italic">
                           Belum ada tanggapan untuk siaran ini. Jadilah yang pertama memberikan masukan.
                         </div>
                       ) : (
@@ -575,21 +575,21 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                             return (
                               <div
                                 key={resp.id}
-                                className="bg-white dark:bg-gray-800 p-2.5 rounded-xl border border-purple-100 dark:border-gray-700 shadow-2xs flex justify-between items-start gap-2"
+                                className="neu-card-sm p-2.5 rounded-xl flex justify-between items-start gap-2"
                               >
                                 <div className="space-y-1 flex-1">
                                   <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className="font-bold text-xs text-gray-900 dark:text-white">
+                                    <span className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">
                                       {resp.user_nama}
                                     </span>
-                                    <span className="text-[9px] bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300 px-1.5 py-0.2 rounded font-semibold">
+                                    <span className="text-[9px] bg-teal-500/15 text-[#0F766E] dark:text-teal-300 px-1.5 py-0.5 rounded font-semibold">
                                       {resp.user_role}
                                     </span>
-                                    <span className="text-[10px] text-gray-400">
+                                    <span className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                                       {resp.created_at ? formatTimestampWita(resp.created_at) : ''}
                                     </span>
                                   </div>
-                                  <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                                  <p className="text-xs text-[#334155] dark:text-[#CBD5E1] leading-relaxed whitespace-pre-wrap">
                                     {resp.komentar}
                                   </p>
                                 </div>
@@ -599,7 +599,7 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                                     type="button"
                                     onClick={() => handleDeleteComment(resp.id, p.id)}
                                     title="Hapus tanggapan"
-                                    className="text-gray-400 hover:text-red-500 text-xs p-1 transition"
+                                    className="text-[#475569] hover:text-rose-500 text-xs p-1 transition"
                                   >
                                     <i className="fa-solid fa-xmark"></i>
                                   </button>
@@ -620,17 +620,17 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
       {/* Compose / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-gray-800 modal-pop max-h-[90vh] overflow-y-auto custom-scroll">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800 mb-4">
-              <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-bullhorn text-teal-600 dark:text-teal-400"></i>
+        <div className="fixed inset-0 bg-[#0F172A]/45 dark:bg-black/65 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="clay-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-lg p-5 sm:p-6 modal-pop max-h-[90vh] overflow-y-auto custom-scroll">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60 mb-4">
+              <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                <i className="fa-solid fa-bullhorn text-[#0F766E] dark:text-teal-400"></i>
                 {modalMode === 'create' ? 'Buat Siaran / Pengumuman Baru' : 'Edit Siaran Pengumuman'}
               </h3>
               <button
                 type="button"
                 onClick={() => setShowModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition"
+                className="neu-btn w-8 h-8 rounded-full flex items-center justify-center text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] transition"
               >
                 <i className="fa-solid fa-xmark text-sm"></i>
               </button>
@@ -638,8 +638,8 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
             <form onSubmit={handleSubmitAnnouncement} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Judul Pengumuman <span className="text-red-500">*</span>
+                <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                  Judul Pengumuman <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -647,19 +647,19 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                   value={judul}
                   onChange={e => setJudul(e.target.value)}
                   placeholder="Contoh: Jadwal Ujian Akhir Semester Ganjil 2026/2027"
-                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                     Sasaran Audiens
                   </label>
                   <select
                     value={sasaran}
                     onChange={e => setSasaran(e.target.value as any)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   >
                     <option value="Semua">Semua Civitas</option>
                     <option value="Guru">Khusus Dewan Guru</option>
@@ -669,13 +669,13 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                     Mode Komunikasi
                   </label>
                   <select
                     value={mode}
                     onChange={e => setMode(e.target.value as any)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   >
                     <option value="Satu Arah">Satu Arah (Broadcast Only)</option>
                     <option value="Dua Arah">Dua Arah (Diskusi & Tanggapan)</option>
@@ -684,8 +684,8 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Isi Pengumuman <span className="text-red-500">*</span>
+                <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                  Isi Pengumuman <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   required
@@ -693,12 +693,12 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                   value={konten}
                   onChange={e => setKonten(e.target.value)}
                   placeholder="Tuliskan detail pengumuman secara rinci, lugas, dan jelas..."
-                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 resize-none leading-relaxed"
+                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] resize-none leading-relaxed"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Link Lampiran / Surat Edaran (Opsional)
                 </label>
                 <input
@@ -706,35 +706,35 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
                   value={lampiranUrl}
                   onChange={e => setLampiranUrl(e.target.value)}
                   placeholder="https://drive.google.com/file/... atau link dokumen lainnya"
-                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                  className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                 />
               </div>
 
-              <div className="flex items-center gap-2 p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40 rounded-xl">
+              <div className="flex items-center gap-2 p-3 neu-inset border border-amber-500/25 rounded-xl">
                 <input
                   type="checkbox"
                   id="pinCheck"
                   checked={isPinned}
                   onChange={e => setIsPinned(e.target.checked)}
-                  className="w-4 h-4 text-amber-600 rounded focus:ring-amber-500"
+                  className="w-4 h-4 text-[#D97706] rounded focus:ring-amber-500"
                 />
-                <label htmlFor="pinCheck" className="text-xs font-bold text-gray-800 dark:text-gray-200 cursor-pointer">
+                <label htmlFor="pinCheck" className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer">
                   📌 Sematkan ke Paling Atas (Pin Announcement)
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  className="neu-btn px-4 py-2.5 rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1] transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-click bg-nizamudin-green hover:bg-teal-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition disabled:opacity-50"
+                  className="neu-btn neu-btn-primary btn-click text-white px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
                 >
                   {submitting ? (
                     <>

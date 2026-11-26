@@ -172,7 +172,7 @@ export async function triggerParentWhatsApp(
         icon: 'warning',
         title: 'Nomor Tidak Valid',
         text: 'Format nomor telepon tidak dikenali. Gunakan format seperti 081234567890.',
-        confirmButtonColor: '#0d9488'
+        confirmButtonColor: '#0F766E'
       });
     }
   } else if (result.isDenied) {

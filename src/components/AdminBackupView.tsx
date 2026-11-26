@@ -40,7 +40,7 @@ export default function AdminBackupView({ user }: { user: any }) {
       text: 'Sistem akan mengekspor seluruh 33 entitas database dan aset foto ke dalam berkas ZIP mandiri tanpa menghapus data database.',
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#4f46e5',
+      confirmButtonColor: '#0F766E',
       cancelButtonColor: '#6b7280',
       confirmButtonText: 'Ya, Buat Berkas ZIP',
       cancelButtonText: 'Batal'
@@ -244,23 +244,23 @@ export default function AdminBackupView({ user }: { user: any }) {
   return (
     <div id="view-admin-backup" className="space-y-4 fade-in">
       <div className="flex justify-between items-center mb-2">
-        <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-          <i className="fa-solid fa-hard-drive text-indigo-500 dark:text-indigo-400"></i> Akses Data &amp; Backup
+        <h2 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+          <i className="fa-solid fa-hard-drive text-[#0F766E] dark:text-teal-400"></i> Akses Data &amp; Backup
         </h2>
         <button
           type="button"
           onClick={fetchRiwayat}
-          className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+          className="neu-btn btn-click text-[#334155] dark:text-[#F1F5F9] w-8 h-8 rounded-lg text-xs font-bold flex justify-center items-center"
         >
           <i className="fa-solid fa-rotate-right"></i>
         </button>
       </div>
 
-      <div className="bg-indigo-50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl mb-4 text-center">
-        <h3 className="text-xs font-bold text-indigo-900 dark:text-indigo-300 mb-2">
+      <div className="neu-inset p-4 rounded-2xl mb-4 text-center">
+        <h3 className="text-xs font-bold text-[#0F766E] dark:text-teal-300 mb-2">
           Lakukan Backup &amp; Restore
         </h3>
-        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+        <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mb-3">
           Fitur pencadangan mengemas seluruh 33 entitas database dan aset foto ke dalam berkas ZIP mandiri tanpa menghapus data database. Fitur pemulihan membaca kembali berkas ZIP untuk sinkronisasi database berdasarkan urutan topologis relasional (Level 0 - Level 5).
         </p>
         <input
@@ -275,7 +275,7 @@ export default function AdminBackupView({ user }: { user: any }) {
             type="number"
             value={tahun}
             onChange={(e) => setTahun(e.target.value)}
-            className="w-full sm:w-24 px-3 py-2.5 text-sm rounded-xl input-premium text-center text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+            className="w-full sm:w-24 px-3 py-2.5 text-sm rounded-xl input-premium font-num text-center text-[#0F172A] dark:text-[#F1F5F9]"
             placeholder="Tahun"
           />
           <div className="flex gap-2 flex-grow">
@@ -283,7 +283,7 @@ export default function AdminBackupView({ user }: { user: any }) {
               type="button"
               onClick={handleBackup}
               disabled={loading}
-              className="btn-click flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+              className="neu-btn neu-btn-primary btn-click flex-1 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition disabled:opacity-50"
             >
               {loading ? (
                 'Proses...'
@@ -297,7 +297,7 @@ export default function AdminBackupView({ user }: { user: any }) {
               type="button"
               onClick={handleTriggerRestore}
               disabled={loading}
-              className="btn-click flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+              className="neu-btn btn-click flex-1 text-[#0F766E] dark:text-teal-300 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition disabled:opacity-50"
             >
               {loading ? (
                 'Proses...'
@@ -311,81 +311,81 @@ export default function AdminBackupView({ user }: { user: any }) {
         </div>
       </div>
 
-      <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50 p-4 rounded-2xl mb-4 text-center">
-        <h3 className="text-xs font-bold text-amber-900 dark:text-amber-300 mb-1.5">
+      <div className="neu-inset border border-amber-500/25 p-4 rounded-2xl mb-4 text-center">
+        <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-1.5">
           <i className="fa-solid fa-broom mr-1"></i> Arsipkan &amp; Pangkas Data Tahun Lalu
         </h3>
-        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">
+        <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mb-3">
           Agar kapasitas database Supabase tetap lega selamanya, setelah mengunduh Cadangan ZIP untuk tahun ajaran lama, Anda dapat memangkas data transaksi tahun tersebut dari database aktif (data master guru, siswa, dan akun tetap aman).
         </p>
         <button
           type="button"
           onClick={handlePruneOldYear}
           disabled={loading}
-          className="btn-click bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-sm inline-flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+          className="neu-btn neu-btn-amber btn-click px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-1.5 transition disabled:opacity-50"
         >
           <i className="fa-solid fa-box-archive"></i> Pangkas Transaksi Tahun {tahun || '...'}
         </button>
       </div>
 
       <div>
-        <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-1.5">
-          <i className="fa-solid fa-clock-rotate-left text-indigo-500 dark:text-indigo-400"></i> Riwayat Backup
+        <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-3 flex items-center gap-1.5">
+          <i className="fa-solid fa-clock-rotate-left text-[#0F766E] dark:text-teal-400"></i> Riwayat Backup
         </h3>
         <div
           id="list-backup-area"
           className="space-y-3 min-h-[150px] max-h-[300px] overflow-y-auto custom-scroll pr-1"
         >
           {riwayat.length === 0 ? (
-            <div className="text-center py-5 text-gray-500 text-xs italic dark:text-gray-400">
+            <div className="text-center py-5 text-[#475569] text-xs italic dark:text-[#94A3B8]">
               Belum ada riwayat backup.
             </div>
           ) : (
             riwayat.map((item) => (
               <div
                 key={item.id}
-                className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2"
+                className="neu-card-sm p-3 rounded-xl flex flex-col gap-2"
               >
                 <div className="flex justify-between items-start">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-gray-900 dark:text-white">
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                         Backup {item.tahun_backup || item.periode || 'Data'}
                       </span>
                       {item.status && (
                         <span
                           className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                             item.status === 'Sukses'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                              : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                              ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                              : 'neu-inset text-[#475569] dark:text-[#CBD5E1]'
                           }`}
                         >
                           {item.status}
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-300">
+                    <div className="text-xs text-[#475569] dark:text-[#CBD5E1]">
                       {item.keterangan || (item.admin ? `Oleh: ${item.admin}` : 'Backup Transaksi')}
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400 text-right shrink-0">
+                  <div className="text-xs font-num text-[#475569] dark:text-[#94A3B8] text-right shrink-0">
                     {formatTimestampWita(item.timestamp)}
                   </div>
                 </div>
                 {item.link_file && item.link_file !== '-' && (
-                  <div className="pt-1 border-t border-gray-100 dark:border-gray-700">
+                  <div className="pt-1 border-t border-slate-300/60 dark:border-slate-700/60">
                     {item.link_file.startsWith('http://') || item.link_file.startsWith('https://') ? (
                       <a
                         href={item.link_file}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="inline-flex items-center gap-1 text-[10px] font-bold text-[#0F766E] dark:text-teal-400 hover:underline"
                       >
                         <i className="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> Tautan File / Webhook
                       </a>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                        <i className="fa-solid fa-file-zipper text-[9px] text-indigo-500"></i> {item.link_file}
+                      <span className="inline-flex items-center gap-1 text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono">
+                        <i className="fa-solid fa-file-zipper text-[9px] text-[#0F766E] dark:text-teal-400"></i> {item.link_file}
                       </span>
                     )}
                   </div>

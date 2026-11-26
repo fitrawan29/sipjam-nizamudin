@@ -248,7 +248,7 @@ export function AIAssistant({
             }}
             title="Sembunyikan tombol asisten"
             aria-label="Sembunyikan tombol asisten"
-            className="absolute -top-1.5 -right-1.5 z-10 w-5 h-5 rounded-full bg-gray-900/90 hover:bg-red-600 text-gray-200 hover:text-white flex items-center justify-center text-[10px] shadow border border-white/20 transition-all opacity-0 group-hover/ai-btn:opacity-100 focus:opacity-100 cursor-pointer"
+            className="neu-btn absolute -top-1.5 -right-1.5 z-10 w-6 h-6 rounded-full hover:text-rose-600 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] transition-all opacity-0 group-hover/ai-btn:opacity-100 focus:opacity-100 cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -259,12 +259,12 @@ export function AIAssistant({
             aria-label="Buka Asisten AI SIPJAM"
             title="Tanya Asisten AI SIPJAM"
             onClick={() => setIsOpen(prev => !prev)}
-            className="w-14 h-14 rounded-full bg-gradient-to-r from-emerald-600 via-emerald-700 to-emerald-800 hover:from-emerald-700 hover:to-emerald-900 text-white shadow-xl shadow-emerald-900/30 flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 group focus:outline-none focus:ring-4 focus:ring-emerald-400/50"
+            className="neu-btn neu-btn-primary w-14 h-14 rounded-full flex items-center justify-center group"
           >
-            <i className="fa-solid fa-robot text-2xl text-amber-300 drop-shadow group-hover:rotate-12 transition-transform duration-300"></i>
+            <i className="fa-solid fa-robot text-2xl text-amber-300 group-hover:rotate-12 transition-transform duration-300"></i>
 
             {/* Hover tooltip for desktop */}
-            <span className="hidden sm:block absolute right-16 px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-xl shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <span className="neu-card-sm hidden sm:block absolute right-16 px-3 py-1.5 text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
               🤖 Bantuan AI SIPJAM
             </span>
           </button>
@@ -276,20 +276,20 @@ export function AIAssistant({
         <div
           role="dialog"
           aria-label="Panel Asisten AI SIPJAM"
-          className="fixed bottom-20 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] h-[480px] z-[45] flex flex-col bg-white dark:bg-[#1e1e1e] border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 no-print print:hidden"
+          className="neu-card fixed bottom-20 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] h-[480px] z-[45] flex flex-col rounded-3xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 no-print print:hidden"
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-800 via-emerald-900 to-emerald-950 text-white px-4 py-3 flex items-center justify-between shadow-md border-b border-emerald-700/40">
+          <div className="bg-gradient-to-r from-[#0F766E] to-[#115E59] text-white px-4 py-3 flex items-center justify-between border-b border-white/15">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-amber-300 border border-amber-300/30">
+              <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-amber-300 border border-white/25">
                 <i className="fa-solid fa-robot text-sm"></i>
               </div>
               <div>
                 <h3 className="font-bold text-sm leading-tight text-white flex items-center gap-1.5">
                   Asisten AI SIPJAM
                 </h3>
-                <div className="flex items-center gap-1.5 text-[10px] text-emerald-200 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <div className="flex items-center gap-1.5 text-[10px] text-teal-100 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-teal-300 animate-pulse"></span>
                   <span>100% Offline FAQ</span>
                 </div>
               </div>
@@ -301,7 +301,7 @@ export function AIAssistant({
                 onClick={initChat}
                 title="Mulai ulang percakapan"
                 aria-label="Mulai ulang percakapan"
-                className="w-7 h-7 rounded-lg hover:bg-white/10 text-emerald-200 hover:text-white flex items-center justify-center transition-colors text-xs"
+                className="w-7 h-7 rounded-lg hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-xs cursor-pointer"
               >
                 <i className="fa-solid fa-rotate-right"></i>
               </button>
@@ -310,7 +310,7 @@ export function AIAssistant({
                 onClick={() => handleToggleVisibility(false)}
                 title="Sembunyikan tombol asisten"
                 aria-label="Sembunyikan tombol asisten"
-                className="w-7 h-7 rounded-lg hover:bg-white/10 text-emerald-200 hover:text-white flex items-center justify-center transition-colors text-xs"
+                className="w-7 h-7 rounded-lg hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-xs cursor-pointer"
               >
                 <i className="fa-solid fa-eye-slash"></i>
               </button>
@@ -319,7 +319,7 @@ export function AIAssistant({
                 onClick={() => setIsOpen(false)}
                 title="Tutup asisten"
                 aria-label="Tutup asisten"
-                className="w-7 h-7 rounded-lg hover:bg-white/10 text-emerald-200 hover:text-white flex items-center justify-center transition-colors text-sm"
+                className="w-7 h-7 rounded-lg hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-sm cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -327,7 +327,7 @@ export function AIAssistant({
           </div>
 
           {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-gray-50/60 dark:bg-gray-950/40 text-xs">
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-[#E6ECF2] dark:bg-[#1F242D] text-xs custom-scroll">
             {messages.map(msg => (
               <div
                 key={msg.id}
@@ -335,16 +335,16 @@ export function AIAssistant({
               >
                 {/* Bubble Container */}
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 shadow-sm ${
+                  className={`max-w-[85%] rounded-2xl p-3 ${
                     msg.sender === 'user'
-                      ? 'bg-emerald-600 text-white rounded-br-none'
-                      : 'bg-white dark:bg-[#252525] text-gray-800 dark:text-gray-100 border border-gray-100 dark:border-gray-800 rounded-bl-none'
+                      ? 'bg-[#0F766E] text-white rounded-br-none shadow-sm'
+                      : 'neu-card-sm text-[#0F172A] dark:text-[#F1F5F9] rounded-bl-none'
                   }`}
                 >
                   {/* Category Pill for AI Answers */}
                   {msg.category && (
                     <div className="mb-1.5 flex items-center gap-1">
-                      <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <span className="neu-inset inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold text-[#0F766E] dark:text-teal-300">
                         📁 {msg.category}
                       </span>
                     </div>
@@ -352,7 +352,7 @@ export function AIAssistant({
 
                   {/* Matched Question Title */}
                   {msg.matchedQuestion && (
-                    <p className="font-semibold text-xs text-emerald-700 dark:text-emerald-400 mb-1 border-b border-gray-100 dark:border-gray-800 pb-1">
+                    <p className="font-bold text-xs text-[#0F766E] dark:text-teal-300 mb-1 border-b border-slate-300/60 dark:border-slate-700/60 pb-1">
                       {msg.matchedQuestion}
                     </p>
                   )}
@@ -362,7 +362,7 @@ export function AIAssistant({
 
                   <span
                     className={`block mt-1 text-[9px] text-right ${
-                      msg.sender === 'user' ? 'text-emerald-200' : 'text-gray-400 dark:text-gray-500'
+                      msg.sender === 'user' ? 'text-teal-100' : 'text-slate-500 dark:text-slate-400'
                     }`}
                   >
                     {msg.time}
@@ -371,8 +371,8 @@ export function AIAssistant({
 
                 {/* Secondary Matches */}
                 {msg.secondaryMatches && msg.secondaryMatches.length > 0 && (
-                  <div className="mt-2 pl-1 max-w-[90%] space-y-1">
-                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400">
+                  <div className="mt-2 pl-1 max-w-[90%] space-y-1.5">
+                    <p className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">
                       Topik Terkait Lainnya:
                     </p>
                     {msg.secondaryMatches.map(item => (
@@ -380,9 +380,9 @@ export function AIAssistant({
                         key={item.id}
                         type="button"
                         onClick={() => handleSuggestionClick(item.question)}
-                        className="text-left w-full block px-2.5 py-1.5 rounded-xl bg-white dark:bg-[#252525] border border-gray-200 dark:border-gray-800 hover:border-emerald-400 dark:hover:border-emerald-500 text-emerald-800 dark:text-emerald-300 text-[11px] transition-colors shadow-2xs"
+                        className="neu-btn text-left w-full justify-start px-2.5 py-1.5 rounded-xl text-[#0F766E] dark:text-teal-300 text-[11px]"
                       >
-                        <i className="fa-solid fa-arrow-turn-down-right mr-1.5 text-emerald-500 text-[9px]"></i>
+                        <i className="fa-solid fa-arrow-turn-down-right mr-1.5 text-[9px]"></i>
                         {item.question}
                       </button>
                     ))}
@@ -392,16 +392,16 @@ export function AIAssistant({
                 {/* Category Chips for Fallback */}
                 {msg.availableCategories && msg.availableCategories.length > 0 && (
                   <div className="mt-2 pl-1 max-w-[95%]">
-                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-1">
+                    <p className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                       Kategori Pilihan:
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {msg.availableCategories.map(cat => (
                         <button
                           key={cat}
                           type="button"
                           onClick={() => handleCategoryClick(cat)}
-                          className="px-2 py-1 rounded-lg text-[10px] font-medium bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 transition-colors"
+                          className="neu-btn px-2.5 py-1 rounded-lg text-[10px] font-semibold text-[#0F766E] dark:text-teal-300"
                         >
                           {cat}
                         </button>
@@ -412,8 +412,8 @@ export function AIAssistant({
 
                 {/* Suggestion Chips */}
                 {msg.suggestions && msg.suggestions.length > 0 && (
-                  <div className="mt-2 pl-1 max-w-[95%] space-y-1">
-                    <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                  <div className="mt-2 pl-1 max-w-[95%] space-y-1.5">
+                    <p className="text-[10px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1">
                       <i className="fa-solid fa-lightbulb text-amber-500 text-[10px]"></i>
                       Rekomendasi Pertanyaan:
                     </p>
@@ -422,9 +422,9 @@ export function AIAssistant({
                         key={s.id}
                         type="button"
                         onClick={() => handleSuggestionClick(s.question)}
-                        className="text-left w-full block px-2.5 py-1.5 rounded-xl bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/60 border border-emerald-200/80 dark:border-emerald-800/80 text-emerald-900 dark:text-emerald-200 text-[11px] transition-all hover:translate-x-0.5"
+                        className="neu-btn text-left w-full justify-start px-2.5 py-1.5 rounded-xl text-[#0F766E] dark:text-teal-300 text-[11px]"
                       >
-                        <i className="fa-solid fa-circle-question mr-1.5 text-emerald-600 dark:text-emerald-400 text-[10px]"></i>
+                        <i className="fa-solid fa-circle-question mr-1.5 text-[10px]"></i>
                         {s.question}
                       </button>
                     ))}
@@ -436,7 +436,7 @@ export function AIAssistant({
           </div>
 
           {/* Input Footer */}
-          <div className="p-2.5 bg-white dark:bg-[#1e1e1e] border-t border-gray-100 dark:border-gray-800 flex items-center gap-2">
+          <div className="p-2.5 bg-[#E6ECF2] dark:bg-[#1F242D] border-t border-slate-300/60 dark:border-slate-700/60 flex items-center gap-2">
             <input
               ref={inputRef}
               type="text"
@@ -445,14 +445,14 @@ export function AIAssistant({
               onKeyDown={handleKeyDown}
               placeholder="Ketik pertanyaan seputar SIPJAM..."
               aria-label="Ketik pertanyaan"
-              className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 text-xs rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+              className="neu-input flex-1 text-xs rounded-xl px-3 py-2"
             />
             <button
               type="button"
               onClick={() => handleSendMessage()}
               disabled={!inputText.trim()}
               aria-label="Kirim pertanyaan"
-              className="w-8 h-8 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white flex items-center justify-center transition-all active:scale-95 shadow"
+              className="neu-btn neu-btn-primary w-9 h-9 rounded-xl disabled:opacity-40 flex items-center justify-center shrink-0"
             >
               <i className="fa-solid fa-paper-plane text-xs"></i>
             </button>

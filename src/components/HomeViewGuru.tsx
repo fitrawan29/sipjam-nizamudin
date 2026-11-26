@@ -723,22 +723,22 @@ export default function HomeViewGuru({
   return (
     <section id="view-home" className="fade-in block space-y-4">
             {/* Header Banner */}
-      <div className="clay-card bg-gradient-to-br from-[#0B4619] via-[#0F5A22] to-[#17732D] rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden border-2 border-white/30 shadow-[8px_8px_20px_rgba(11,70,25,0.3),-4px_-4px_12px_rgba(255,255,255,0.9),inset_2px_2px_4px_rgba(255,255,255,0.35),inset_-2px_-2px_4px_rgba(0,0,0,0.25)]">
-        <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
+      <div className="clay-card rounded-3xl p-4 sm:p-5 relative overflow-hidden">
+        <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-15deg] pointer-events-none"></i>
         
-        <div className="relative z-10 flex items-center justify-between gap-3 mb-2.5">
+        <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shrink-0 overflow-hidden">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 neu-inset rounded-full flex items-center justify-center ring-2 ring-[#0F766E]/30 dark:ring-teal-400/30 shrink-0 overflow-hidden p-0.5">
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{user?.nama || 'Guru'}</h2>
-                <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
+                <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Guru'}</h2>
+                <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
                   {user?.role || 'Guru'}
                 </span>
               </div>
-              <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
+              <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
                 <span>{user?.username || ''}</span>
                 <span className="truncate font-sans font-medium">{schoolName}</span>
               </p>
@@ -749,27 +749,27 @@ export default function HomeViewGuru({
             <button
               type="button"
               onClick={onOpenAccountSettings}
-              className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-xs border border-white/20 flex items-center gap-1.5 transition ml-auto shrink-0 shadow-sm cursor-pointer"
+              className="neu-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
               title="Ubah Username & Password"
             >
-              <i className="fa-solid fa-gear text-xs"></i>
+              <i className="fa-solid fa-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
               <span className="hidden sm:inline">Edit Akun</span>
             </button>
           )}
         </div>
 
-        <div className="relative z-10 grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/10">
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Status</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white truncate">Aktif</p>
+        <div className="relative z-10 grid grid-cols-3 gap-2.5 text-center pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
+            <p className="text-[10px] sm:text-xs font-bold text-[#0F766E] dark:text-teal-400 truncate">Aktif</p>
           </div>
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+            <p className="text-[10px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Jam</p>
-            <p className="text-xs sm:text-sm font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
+            <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
       </div>
@@ -777,32 +777,32 @@ export default function HomeViewGuru({
                 {/* Monthly Stats Summary */}
           {teacherWarnings?.stats && (
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
-              <div className="clay-card clay-card-mint p-2.5 rounded-2xl border-2 border-white/90 dark:border-emerald-900/40 flex flex-col items-center text-center shadow-sm">
-                <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Presensi</span>
-                <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{teacherWarnings.stats.presensi?.filled ?? 0} <span className="text-[10px] sm:text-xs text-emerald-500 dark:text-emerald-600 font-bold">/ {teacherWarnings.stats.presensi?.required ?? 0}</span></span>
+              <div className="clay-card clay-card-mint p-2.5 rounded-2xl flex flex-col items-center text-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wide">Presensi</span>
+                <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{teacherWarnings.stats.presensi?.filled ?? 0} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">/ {teacherWarnings.stats.presensi?.required ?? 0}</span></span>
               </div>
-              <div className="clay-card clay-card-blue p-2.5 rounded-2xl border-2 border-white/90 dark:border-indigo-900/40 flex flex-col items-center text-center shadow-sm">
-                <span className="text-[9px] sm:text-[10px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wide">Jurnal</span>
-                <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">{teacherWarnings.stats.jurnal?.filled ?? 0} <span className="text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-600 font-bold">/ {teacherWarnings.stats.jurnal?.required ?? 0}</span></span>
+              <div className="clay-card clay-card-blue p-2.5 rounded-2xl flex flex-col items-center text-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">Jurnal</span>
+                <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{teacherWarnings.stats.jurnal?.filled ?? 0} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">/ {teacherWarnings.stats.jurnal?.required ?? 0}</span></span>
               </div>
-              <div className="clay-card clay-card-purple p-2.5 rounded-2xl border-2 border-white/90 dark:border-teal-900/40 flex flex-col items-center text-center shadow-sm">
-                <span className="text-[9px] sm:text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide">Piket</span>
-                <span className="text-base sm:text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">{teacherWarnings.stats.piket?.filled ?? 0} <span className="text-[10px] sm:text-xs text-teal-500 dark:text-teal-600 font-bold">/ {teacherWarnings.stats.piket?.required ?? 0}</span></span>
+              <div className="clay-card clay-card-purple p-2.5 rounded-2xl flex flex-col items-center text-center">
+                <span className="text-[9px] sm:text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Piket</span>
+                <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{teacherWarnings.stats.piket?.filled ?? 0} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">/ {teacherWarnings.stats.piket?.required ?? 0}</span></span>
               </div>
             </div>
           )}
 
           {/* Section 1: Personal Attendance Stat Cards (H, TL, Izin, Sakit) */}
-          <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-chart-pie text-emerald-600 dark:text-emerald-400"></i> Statistik Presensi Pribadi
+                <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                  <i className="fa-solid fa-chart-pie text-[#0F766E] dark:text-teal-400"></i> Statistik Presensi Pribadi
                 </h3>
                 <input 
                   type="month" 
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="text-[8px] sm:text-[11px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-1.5 sm:px-2.5 py-1 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer shrink-0 w-auto min-w-[100px] max-w-[140px]"
+                  className="neu-input text-[8px] sm:text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] px-2 sm:px-3 py-1 rounded-full cursor-pointer shrink-0 w-auto min-w-[100px] max-w-[140px]"
                   title="Pilih Bulan"
                 />
               </div>
@@ -810,62 +810,62 @@ export default function HomeViewGuru({
             {/* Statistik Presensi Pribadi (Hadir, Dinas Luar, Izin, Sakit, Alpa; Terlambat (TL) / Pulang Cepat / Lupa Checkout dihilangkan) */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
               {/* Hadir (H) */}
-              <div className="clay-card-mint p-3 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
+              <div className="clay-card-mint p-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-user-check"></i>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Hadir (H)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.hadir}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Kehadiran sekolah</p>
+                  <p className="text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wider">Hadir (H)</p>
+                  <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.hadir}</p>
+                  <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Kehadiran sekolah</p>
                 </div>
               </div>
 
               {/* Dinas Luar (DL) */}
-              <div className="clay-card-purple p-3 rounded-2xl border-2 border-white/90 dark:border-indigo-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg shrink-0">
+              <div className="clay-card-purple p-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl neu-inset text-teal-700 dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-briefcase"></i>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">Dinas Luar (DL)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.dinasLuar}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tugas kedinasan</p>
+                  <p className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">Dinas Luar (DL)</p>
+                  <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.dinasLuar}</p>
+                  <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Tugas kedinasan</p>
                 </div>
               </div>
 
               {/* Izin */}
-              <div className="clay-card-blue p-3 rounded-2xl border-2 border-white/90 dark:border-sky-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg shrink-0">
+              <div className="clay-card-blue p-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-envelope-open-text"></i>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Izin (I)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.izin}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Izin resmi</p>
+                  <p className="text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">Izin (I)</p>
+                  <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.izin}</p>
+                  <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Izin resmi</p>
                 </div>
               </div>
 
               {/* Sakit */}
-              <div className="clay-card-rose p-3 rounded-2xl border-2 border-white/90 dark:border-rose-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
+              <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-heart-pulse"></i>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Sakit (S)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.sakit}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Dengan surat</p>
+                  <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Sakit (S)</p>
+                  <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.sakit}</p>
+                  <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Dengan surat</p>
                 </div>
               </div>
 
               {/* Alpa (A) */}
-              <div className="clay-card-rose p-3 rounded-2xl border-2 border-white/90 dark:border-red-800/50 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 flex items-center justify-center text-lg shrink-0">
+              <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl neu-inset text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-user-xmark"></i>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Alpa (A)</p>
-                  <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.alpa}</p>
-                  <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tanpa keterangan</p>
+                  <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Alpa (A)</p>
+                  <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.alpa}</p>
+                  <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Tanpa keterangan</p>
                 </div>
               </div>
             </div>
@@ -873,25 +873,25 @@ export default function HomeViewGuru({
             {/* Akumulasi Keterlambatan Info */}
             <div className="mt-3 clay-inset rounded-2xl p-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-white">
+                <div className="w-8 h-8 rounded-full neu-card-sm flex items-center justify-center text-[#0F766E] dark:text-teal-300">
                   <i className="fa-solid fa-stopwatch text-sm"></i>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-slate-600 dark:text-white">
+                  <p className="text-[10px] font-bold text-[#334155] dark:text-[#F1F5F9]">
                     Akumulasi Keterlambatan Bulan Ini{' '}
-                    <span className="font-normal text-slate-500 dark:text-slate-300">
+                    <span className="font-normal text-[#475569] dark:text-[#94A3B8]">
                       ({telatConfig.aktif ? `Penalti: ${telatConfig.batasJam} Jam = ${telatConfig.penaltiHari} Hari Alpa` : 'Penalti Alpa Nonaktif'})
                     </span>
                   </p>
-                  <p className="text-xs font-black text-gray-900 dark:text-white">
+                  <p className="text-xs font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                     {Math.floor(akumulasiTelat.detik / 3600)} Jam {Math.floor((akumulasiTelat.detik % 3600) / 60)} Menit {akumulasiTelat.detik % 60} Detik
                   </p>
                 </div>
               </div>
               {akumulasiTelat.alpa > 0 && (
                 <div className="text-right">
-                  <p className="text-[9px] font-bold text-red-500 uppercase">Potongan Alpa</p>
-                  <p className="text-sm font-black text-red-600">{akumulasiTelat.alpa} Hari</p>
+                  <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase">Potongan Alpa</p>
+                  <p className="text-sm font-black font-num text-rose-600 dark:text-rose-400">{akumulasiTelat.alpa} Hari</p>
                 </div>
               )}
             </div>
@@ -899,27 +899,27 @@ export default function HomeViewGuru({
 
           {/* Kartu Akses Cepat Presensi Siswa untuk Wali Kelas */}
           {isWaliKelas && (
-            <div className="glass-card clay-card-mint p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-emerald-800/60 shadow-[6px_6px_16px_rgba(180,210,190,0.35)]">
+            <div className="glass-card clay-card-mint p-4 sm:p-5 rounded-3xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-lg shadow-sm shrink-0">
                     <i className="fa-solid fa-user-shield"></i>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-xs sm:text-sm font-bold text-emerald-950 dark:text-emerald-200">
+                      <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                         Presensi Siswa Kelas {assignedKelas || ''}
                       </h3>
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         isWaliIntervensiExpired 
-                           ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' 
-                          : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                           ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' 
+                          : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                       }`}>
                         <i className={`fa-solid ${isWaliIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
                         {waliStatus.label}
                       </span>
                     </div>
-                    <p className="text-[11px] text-emerald-700 dark:text-emerald-300 mt-0.5">
+                    <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1] mt-0.5">
                       {waliStatus.pesan}
                     </p>
                   </div>
@@ -927,7 +927,7 @@ export default function HomeViewGuru({
                 <button
                   type="button"
                   onClick={() => setView('view-rekap-siswa')}
-                  className="clay-btn clay-btn-primary btn-click px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition shrink-0"
+                  className="clay-btn clay-btn-primary btn-click px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shrink-0"
                 >
                   <i className="fa-solid fa-pen-to-square"></i>
                   <span>Input Presensi Siswa</span>
@@ -938,17 +938,17 @@ export default function HomeViewGuru({
 
           {/* Kartu Akses Cepat Layanan BK untuk Guru BK */}
           {isBk && (
-            <div className="glass-card clay-card-rose p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-rose-800/60 shadow-[6px_6px_16px_rgba(255,180,190,0.35)]">
+            <div className="glass-card clay-card-rose p-4 sm:p-5 rounded-3xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
                     <i className="fa-solid fa-heart-pulse"></i>
                   </div>
                   <div>
-                    <h3 className="text-xs sm:text-sm font-bold text-rose-950 dark:text-rose-200">
+                    <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Layanan Bimbingan & Konseling (Guru BK)
                     </h3>
-                    <p className="text-[11px] text-rose-700 dark:text-rose-300 mt-0.5">
+                    <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1] mt-0.5">
                       Kelola catatan konseling siswa lintas kelas & administrasi bimbingan tanpa keterikatan kelas reguler.
                     </p>
                   </div>
@@ -956,7 +956,7 @@ export default function HomeViewGuru({
                 <button
                   type="button"
                   onClick={() => setView('view-jurnal-bk')}
-                  className="clay-btn btn-click px-4 py-2.5 rounded-2xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition shrink-0 bg-rose-600 hover:bg-rose-700 text-white border border-rose-400/50 cursor-pointer"
+                  className="clay-btn neu-btn-rose btn-click px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shrink-0 cursor-pointer"
                 >
                   <i className="fa-solid fa-pen-to-square"></i>
                   <span>Input Jurnal BK</span>
@@ -971,18 +971,18 @@ export default function HomeViewGuru({
           */}
 
           {/* Section 2: Workflow Status Tracker (Status Tugas Hari Ini) */}
-          <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
-            <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-              <i className="fa-solid fa-list-check text-emerald-500"></i> Status Tugas Hari Ini
+          <div className="clay-card p-4 sm:p-5 rounded-3xl">
+            <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-3 flex items-center gap-2">
+              <i className="fa-solid fa-list-check text-[#0F766E] dark:text-teal-400"></i> Status Tugas Hari Ini
             </h3>
 
             {loadingState && !dailyState ? (
-              <div className="flex items-center justify-center py-6 text-gray-500 dark:text-white">
-                <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2"></i>
+              <div className="flex items-center justify-center py-6 text-[#475569] dark:text-[#CBD5E1]">
+                <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2 text-[#0F766E] dark:text-teal-400"></i>
                 <span className="text-xs">Memeriksa status...</span>
               </div>
             ) : steps.length === 0 ? (
-              <div className="text-center py-4 text-gray-500 dark:text-white text-xs italic">
+              <div className="text-center py-4 text-[#475569] dark:text-[#94A3B8] text-xs italic">
                 Tidak ada data status hari ini.
               </div>
             ) : (
@@ -994,9 +994,9 @@ export default function HomeViewGuru({
                   return (
                     <div 
                       key={idx} 
-                      className={`flex items-start gap-3 relative rounded-xl p-2 transition-all ${
+                      className={`flex items-start gap-3 relative rounded-2xl p-2.5 transition-all ${
                         isClickable 
-                          ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99] border-2 border-amber-300/80 dark:border-amber-800/50 bg-amber-50/70 dark:bg-amber-950/30 shadow-[4px_4px_10px_rgba(230,200,160,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] rounded-2xl' 
+                          ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99] neu-card-sm ring-1 ring-amber-500/45' 
                           : 'border border-transparent'
                       }`}
                       onClick={() => {
@@ -1006,16 +1006,16 @@ export default function HomeViewGuru({
                       }}
                     >
                       {idx < steps.length - 1 && (
-                        <div className={`absolute left-[19px] top-[34px] w-0.5 h-[calc(100%-8px)] ${
-                          step.status === 'done' ? 'bg-green-300 dark:bg-green-700' : 'bg-gray-200 dark:bg-gray-700'
+                        <div className={`absolute left-[21px] top-[36px] w-0.5 h-[calc(100%-8px)] ${
+                          step.status === 'done' ? 'bg-emerald-500/50 dark:bg-emerald-400/40' : 'bg-slate-300/80 dark:bg-slate-700'
                         }`} />
                       )}
                       
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs z-10 mt-0.5 ${
-                        step.status === 'done' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' :
-                        step.status === 'active' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 ring-2 ring-amber-300 dark:ring-amber-700' :
-                        step.status === 'skipped' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
-                        'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-400'
+                      <div className={`w-7 h-7 rounded-full neu-inset flex items-center justify-center shrink-0 text-xs z-10 mt-0.5 ${
+                        step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
+                        step.status === 'active' ? 'text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/50' :
+                        step.status === 'skipped' ? 'text-sky-600 dark:text-sky-400' :
+                        'text-[#475569] dark:text-[#94A3B8]'
                       }`}>
                         {step.status === 'done' ? <i className="fa-solid fa-check" /> :
                          step.status === 'active' ? <i className={`fa-solid ${step.icon}`} /> :
@@ -1026,10 +1026,10 @@ export default function HomeViewGuru({
                       <div className="flex-grow min-w-0 pb-1">
                         <div className="flex items-center justify-between gap-2">
                           <p className={`text-[11px] font-bold ${
-                            step.status === 'done' ? 'text-green-700 dark:text-green-400' :
+                            step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
                             step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
-                            step.status === 'skipped' ? 'text-blue-600 dark:text-blue-400' :
-                            'text-gray-500 dark:text-white'
+                            step.status === 'skipped' ? 'text-sky-700 dark:text-sky-400' :
+                            'text-[#475569] dark:text-[#94A3B8]'
                           }`}>
                             {step.label}
                           </p>
@@ -1041,17 +1041,17 @@ export default function HomeViewGuru({
                                 e.stopPropagation();
                                 setView(targetView);
                               }}
-                              className="btn-click text-[10px] font-bold text-amber-800 dark:text-amber-200 bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0 shadow-sm transition"
+                              className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 transition"
                             >
                               Buka <i className="fa-solid fa-arrow-right text-[8px]"></i>
                             </button>
                           )}
                         </div>
                         <p className={`text-[10px] mt-0.5 ${
-                          step.status === 'done' ? 'text-green-600 dark:text-green-400' :
+                          step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
                           step.status === 'active' ? 'text-amber-700 dark:text-amber-300' :
-                          step.status === 'skipped' ? 'text-blue-500 dark:text-blue-400' :
-                          'text-gray-500 dark:text-white'
+                          step.status === 'skipped' ? 'text-sky-600 dark:text-sky-400' :
+                          'text-[#475569] dark:text-[#94A3B8]'
                         }`}>
                           {step.detail}
                         </p>
@@ -1063,7 +1063,7 @@ export default function HomeViewGuru({
             )}
 
             {nextAction && (
-              <div className={`mt-2 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2 ${nextAction.color}`}>
+              <div className={`mt-2 pt-3 border-t border-slate-300/60 dark:border-slate-700/60 flex items-start gap-2 ${nextAction.color}`}>
                 <i className="fa-solid fa-circle-info text-xs mt-0.5 shrink-0"></i>
                 <p className="text-[11px] font-semibold leading-snug">{nextAction.text}</p>
               </div>
@@ -1077,17 +1077,17 @@ export default function HomeViewGuru({
           */}
 
           {/* Section 3: Jadwal Mengajar Hari Ini Widget */}
-          <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm shadow-sm">
+                <div className="w-8 h-8 rounded-xl neu-inset text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-calendar-day"></i>
                 </div>
                 <div>
-                  <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white leading-none">
+                  <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-none">
                     Jadwal Mengajar Hari Ini
                   </h3>
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1">
                     {dashboardDateStr}
                   </p>
                 </div>
@@ -1095,22 +1095,22 @@ export default function HomeViewGuru({
 
               <div className="flex items-center gap-1.5 shrink-0">
                 {dailyState?.isBlok ? (
-                  <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                  <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
                     <i className="fa-solid fa-layer-group text-[9px]"></i> Sistem Blok
                   </span>
                 ) : dailyState?.isDinasLuar ? (
-                  <span className="bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-sky-200 dark:border-sky-800">
+                  <span className="bg-sky-500/15 text-sky-800 dark:text-sky-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
                     <i className="fa-solid fa-briefcase mr-1 text-[8px]"></i> Dinas Luar
                   </span>
                 ) : null}
                 {!dailyState?.isBlok && dailyState && dailyState.jadwalKBM && dailyState.jadwalKBM.length > 0 && (
                   <>
                     {dailyState.hasBlockedSchedule && (
-                      <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700 flex items-center gap-1">
+                      <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
                         <i className="fa-solid fa-layer-group text-[9px]"></i> Campuran
                       </span>
                     )}
-                    <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    <span className="bg-teal-500/15 text-[#0F766E] dark:text-teal-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full font-num">
                       {dailyState.jadwalKBM.length} Kelas
                     </span>
                   </>
@@ -1119,33 +1119,33 @@ export default function HomeViewGuru({
             </div>
 
             {loadingState && !dailyState ? (
-              <div className="flex items-center justify-center py-6 text-gray-500 dark:text-gray-400">
-                <i className="fa-solid fa-circle-notch fa-spin text-base mr-2 text-emerald-600 dark:text-emerald-400"></i>
+              <div className="flex items-center justify-center py-6 text-[#475569] dark:text-[#94A3B8]">
+                <i className="fa-solid fa-circle-notch fa-spin text-base mr-2 text-[#0F766E] dark:text-teal-400"></i>
                 <span className="text-xs">Memuat jadwal pelajaran...</span>
               </div>
             ) : dailyState?.isLibur ? (
-              <div className="p-3.5 rounded-2xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-center">
-                <i className="fa-solid fa-umbrella-beach text-blue-500 text-xl mb-1.5"></i>
-                <p className="text-xs font-bold text-blue-800 dark:text-blue-300">
+              <div className="p-4 rounded-2xl neu-inset text-center">
+                <i className="fa-solid fa-umbrella-beach text-sky-600 dark:text-sky-400 text-xl mb-1.5"></i>
+                <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   Hari Ini Libur: {dailyState.keteranganLibur || 'Tidak ada kegiatan KBM'}
                 </p>
-                <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                <p className="text-[10px] text-sky-700 dark:text-sky-300 mt-0.5">
                   Selamat menikmati hari libur Anda.
                 </p>
               </div>
             ) : isBk ? (
-              <div className="p-4 rounded-2xl bg-rose-50/70 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 text-center space-y-2">
-                <div className="w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-base">
+              <div className="p-4 rounded-2xl neu-inset text-center space-y-2">
+                <div className="w-10 h-10 rounded-full neu-card-sm text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-base">
                   <i className="fa-solid fa-heart-pulse"></i>
                 </div>
-                <p className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   Layanan Bimbingan & Konseling Terbuka
                 </p>
-                <p className="text-[11px] text-rose-700 dark:text-rose-300 max-w-md mx-auto">
+                <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1] max-w-md mx-auto">
                   Sebagai Guru BK, Anda memberikan pendampingan dan konseling siswa lintas kelas tanpa jadwal mengajar KBM reguler.
                 </p>
                 {(dailyState?.jurnalBK?.length ?? 0) > 0 && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-700">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 text-[11px] font-bold">
                     <i className="fa-solid fa-circle-check"></i>
                     <span>Sudah mengisi {dailyState?.jurnalBK?.length} Jurnal BK hari ini</span>
                   </div>
@@ -1154,7 +1154,7 @@ export default function HomeViewGuru({
                   <button
                     type="button"
                     onClick={() => setView('view-jurnal-bk')}
-                    className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="neu-btn neu-btn-rose btn-click text-xs font-bold px-3.5 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer"
                   >
                     <i className="fa-solid fa-book-medical text-xs"></i>
                     <span>Buka Jurnal BK</span>
@@ -1162,7 +1162,7 @@ export default function HomeViewGuru({
                   <button
                     type="button"
                     onClick={() => setView('view-guru-presensi')}
-                    className="btn-click text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                    className="neu-btn btn-click text-xs font-bold px-3.5 py-1.5 rounded-xl text-[#334155] dark:text-[#F1F5F9] flex items-center gap-1.5 cursor-pointer"
                   >
                     <i className="fa-solid fa-clock text-xs"></i>
                     <span>Presensi BK</span>
@@ -1170,53 +1170,53 @@ export default function HomeViewGuru({
                 </div>
               </div>
             ) : dailyState?.isNonTeachingDay ? (
-              <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-center space-y-1.5">
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto text-base">
+              <div className="p-4 rounded-2xl neu-inset text-center space-y-1.5">
+                <div className="w-10 h-10 rounded-full neu-card-sm text-sky-600 dark:text-sky-400 flex items-center justify-center mx-auto text-base">
                   <i className="fa-solid fa-calendar-check"></i>
                 </div>
-                <p className="text-xs font-bold text-blue-900 dark:text-blue-200">
+                <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   {dailyState?.presensiDatang ? 'Kehadiran Sukarela · Bebas Jurnal' : 'Bebas Kehadiran & Jurnal'}
                 </p>
-                <p className="text-[11px] text-blue-700 dark:text-blue-300">
+                <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1]">
                   {dailyState?.presensiDatang
                     ? 'Hari ini Anda hadir sukarela tanpa jadwal mengajar wajib, sehingga dibebaskan dari pengisian jurnal dan tugas piket.'
                     : 'Hari ini Anda tidak memiliki jadwal mengajar, sehingga dibebaskan dari presensi, jurnal, dan tugas piket.'}
                 </p>
               </div>
             ) : dailyState?.isBlok ? (
-              <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-800 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-amber-200/80 dark:border-amber-800/60">
+              <div className="p-4 rounded-2xl neu-inset border border-amber-500/25 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-300/60 dark:border-slate-700/60">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center text-sm shadow-sm shrink-0">
+                    <span className="w-9 h-9 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-sm shadow-sm shrink-0">
                       <i className="fa-solid fa-layer-group"></i>
                     </span>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 dark:bg-amber-900 dark:text-amber-200 leading-none">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-300 leading-none">
                           Sistem Blok Aktif
                         </span>
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                        <span className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                           {dailyState.blokInfo?.tanggal_mulai} s/d {dailyState.blokInfo?.tanggal_selesai}
                         </span>
                       </div>
-                      <h4 className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
+                      <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
                         {dailyState.blokInfo?.nama_kegiatan}
                       </h4>
                     </div>
                   </div>
 
-                  <span className="self-start sm:self-auto text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/50 px-2.5 py-1 rounded-full border border-amber-300 dark:border-amber-700">
+                  <span className="self-start sm:self-auto text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-full">
                     <i className="fa-solid fa-calendar-xmark mr-1"></i> KBM Reguler Ditiadakan
                   </span>
                 </div>
 
                 {dailyState.blokInfo?.deskripsi && (
-                  <p className="text-xs text-gray-700 dark:text-gray-300 bg-white/80 dark:bg-gray-800/80 p-3 rounded-xl border border-amber-200/60 dark:border-amber-800/40 leading-relaxed">
+                  <p className="text-xs text-[#334155] dark:text-[#CBD5E1] neu-card-sm p-3 rounded-xl leading-relaxed">
                     {dailyState.blokInfo.deskripsi}
                   </p>
                 )}
 
-                <div className="p-3 rounded-xl bg-amber-100/50 dark:bg-amber-900/30 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
+                <div className="p-3 rounded-xl bg-amber-500/10 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2">
                   <i className="fa-solid fa-circle-info text-amber-600 dark:text-amber-400 mt-0.5 shrink-0"></i>
                   <span className="leading-relaxed">
                     Selama periode sistem blok ini, jadwal mengajar reguler disembunyikan. Anda hanya bertugas melaksanakan kegiatan khusus dan mengisi <strong>Jurnal Kegiatan</strong>.
@@ -1224,23 +1224,23 @@ export default function HomeViewGuru({
                 </div>
 
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
-                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                  <span className="text-xs text-[#475569] dark:text-[#94A3B8]">
                     Status Jurnal: {dailyState.jurnalKegiatan ? (
-                      <strong className="text-emerald-600 dark:text-emerald-400">Sudah Diisi ✓</strong>
+                      <strong className="text-[#0F766E] dark:text-teal-400">Sudah Diisi ✓</strong>
                     ) : (
                       <strong className="text-amber-600 dark:text-amber-400">Belum Diisi</strong>
                     )}
                   </span>
 
                   {dailyState.jurnalKegiatan ? (
-                    <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700">
+                    <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
                       <i className="fa-solid fa-circle-check"></i> Jurnal Kegiatan Selesai
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setView('view-guru-jurnal')}
-                      className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
+                      className="neu-btn neu-btn-primary btn-click px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-pen-to-square"></i> Isi Jurnal Kegiatan Sekarang
                     </button>
@@ -1248,16 +1248,16 @@ export default function HomeViewGuru({
                 </div>
               </div>
             ) : (!dailyState?.jadwalKBM || dailyState.jadwalKBM.length === 0) ? (
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/60 space-y-3">
+              <div className="p-4 rounded-2xl neu-inset space-y-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm shrink-0">
+                  <div className="w-9 h-9 rounded-xl neu-card-sm text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-sm shrink-0">
                     <i className="fa-solid fa-clipboard-list"></i>
                   </div>
                   <div>
-                    <h4 className="text-xs font-bold text-gray-900 dark:text-white">
+                    <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Tidak Ada Jadwal Mengajar KBM Hari Ini
                     </h4>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                    <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                       {hariIni === 'Minggu' 
                         ? 'Hari Minggu merupakan hari libur akhir pekan.' 
                         : 'Anda tetap wajib hadir dan mengisi Jurnal Kegiatan administrasi harian.'}
@@ -1266,24 +1266,24 @@ export default function HomeViewGuru({
                 </div>
 
                 {hariIni !== 'Minggu' && !dailyState?.isLibur && (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-                    <span className="text-xs text-gray-600 dark:text-gray-400">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+                    <span className="text-xs text-[#475569] dark:text-[#94A3B8]">
                       Status Jurnal Kegiatan:{' '}
                       {dailyState?.jurnalKegiatan ? (
-                        <strong className="text-emerald-600 dark:text-emerald-400">Sudah Diisi ✓</strong>
+                        <strong className="text-[#0F766E] dark:text-teal-400">Sudah Diisi ✓</strong>
                       ) : (
                         <strong className="text-amber-600 dark:text-amber-400">Belum Diisi</strong>
                       )}
                     </span>
                     {dailyState?.jurnalKegiatan ? (
-                      <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-emerald-300 dark:border-emerald-700">
+                      <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5">
                         <i className="fa-solid fa-circle-check"></i> Jurnal Kegiatan Selesai
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => setView('view-guru-jurnal')}
-                        className="btn-click bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+                        className="neu-btn neu-btn-primary btn-click px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                       >
                         <i className="fa-solid fa-pen-to-square"></i> Isi Jurnal Kegiatan
                       </button>
@@ -1293,7 +1293,7 @@ export default function HomeViewGuru({
               </div>
             ) : (
               <div className="space-y-2.5">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {dailyState.jadwalKBM.map((jk: any, idx: number) => {
                     const isBlocked = Boolean(jk.isBlocked);
                     const isFilled = isBlocked
@@ -1301,28 +1301,28 @@ export default function HomeViewGuru({
                       : (dailyState.jurnalKBM || []).some(j => isJurnalMatchJadwal(j, jk));
                     const kelasStr = (jk.kelas || '').trim();
                     const gradeBadge = kelasStr.startsWith('X ') || kelasStr === 'X'
-                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                      ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                       : kelasStr.startsWith('XI ') || kelasStr === 'XI'
-                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                      : 'bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 border-purple-300 dark:border-purple-700';
+                      ? 'bg-sky-500/15 text-sky-800 dark:text-sky-300'
+                      : 'bg-amber-500/15 text-amber-800 dark:text-amber-300';
 
                     if (isBlocked) {
                       return (
                         <div 
                           key={jk.id || `${jk.kelas}-${jk.mata_pelajaran}-${idx}`}
-                          className="p-3 rounded-2xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-300/80 dark:border-amber-800/60 shadow-sm flex flex-col justify-between gap-2 transition"
+                          className="p-3 rounded-2xl neu-inset border border-amber-500/25 flex flex-col justify-between gap-2 transition"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${gradeBadge} leading-none`}>
+                                <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md ${gradeBadge} leading-none`}>
                                   {jk.kelas}
                                 </span>
-                                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200/80 text-amber-900 dark:bg-amber-900 dark:text-amber-200 border border-amber-300/80 dark:border-amber-700 leading-none">
+                                <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-900 dark:text-amber-200 leading-none">
                                   <i className="fa-solid fa-layer-group text-[8px]"></i> Kegiatan Blok
                                 </span>
                               </div>
-                              <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate" title={jk.mata_pelajaran}>
+                              <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate" title={jk.mata_pelajaran}>
                                 {jk.mata_pelajaran}
                               </h4>
                               <p className="text-[10px] text-amber-800 dark:text-amber-300 font-medium mt-0.5 truncate">
@@ -1331,25 +1331,25 @@ export default function HomeViewGuru({
                             </div>
                             
                             {isFilled ? (
-                              <span className="shrink-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border border-emerald-300 dark:border-emerald-700">
+                              <span className="shrink-0 bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1">
                                 <i className="fa-solid fa-circle-check text-[8px]"></i> Jurnal Selesai
                               </span>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setView('view-guru-jurnal')}
-                                className="btn-click shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 shadow-sm transition"
+                                className="neu-btn neu-btn-amber btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 transition"
                               >
                                 <i className="fa-solid fa-pen-to-square text-[8px]"></i> Isi Jurnal Kegiatan
                               </button>
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1.5 border-t border-amber-200/50 dark:border-amber-800/40">
-                            <span className="flex items-center gap-1 truncate text-amber-900/80 dark:text-amber-300/80">
+                          <div className="flex items-center justify-between text-[10px] text-[#475569] dark:text-[#94A3B8] pt-1.5 border-t border-slate-300/50 dark:border-slate-700/50">
+                            <span className="flex items-center gap-1 truncate text-amber-800 dark:text-amber-300">
                               <i className="fa-solid fa-clock text-[9px]"></i> {jk.jam_mulai && jk.jam_selesai ? `${jk.jam_mulai} - ${jk.jam_selesai}` : 'Jam KBM'} (Terblokir)
                             </span>
-                            <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">
+                            <span className="text-[9px] font-mono font-bold text-[#475569] dark:text-[#94A3B8] shrink-0">
                               {hariIni}
                             </span>
                           </div>
@@ -1374,14 +1374,14 @@ export default function HomeViewGuru({
                     return (
                       <div 
                         key={jk.id || `${jk.kelas}-${jk.mata_pelajaran}-${idx}`}
-                        className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-sm flex flex-col justify-between gap-2.5 transition hover:border-emerald-300 dark:hover:border-emerald-700"
+                        className="p-3.5 rounded-2xl neu-card-sm flex flex-col justify-between gap-2.5 transition"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md border ${gradeBadge} mb-1 leading-none`}>
+                            <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md ${gradeBadge} mb-1 leading-none`}>
                               {jk.kelas}
                             </span>
-                            <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate" title={jk.mata_pelajaran}>
+                            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate" title={jk.mata_pelajaran}>
                               {jk.mata_pelajaran}
                             </h4>
                           </div>
@@ -1390,10 +1390,10 @@ export default function HomeViewGuru({
                             <button
                               type="button"
                               onClick={() => handleOpenKbmSession(jk, 'absensi')}
-                              className={`btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border shadow-xs transition ${
+                              className={`neu-btn btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 transition ${
                                 isAbsensiFilled
-                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                                  : 'bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:hover:bg-blue-900/60 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                                  ? 'text-emerald-700 dark:text-emerald-300'
+                                  : 'text-sky-700 dark:text-sky-300'
                               }`}
                               title="Pengisian Absensi Siswa mapel terkait"
                             >
@@ -1404,10 +1404,10 @@ export default function HomeViewGuru({
                             <button
                               type="button"
                               onClick={() => handleOpenKbmSession(jk, 'jurnal')}
-                              className={`btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 border shadow-xs transition ${
+                              className={`neu-btn btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 transition ${
                                 isJurnalFilled
-                                  ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/80 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                                  : 'bg-amber-100 hover:bg-amber-200 text-amber-800 dark:bg-amber-900/50 dark:hover:bg-amber-900/80 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+                                  ? 'text-[#0F766E] dark:text-teal-300'
+                                  : 'text-amber-700 dark:text-amber-300'
                               }`}
                               title="Pengisian Jurnal KBM mapel terkait"
                             >
@@ -1417,11 +1417,11 @@ export default function HomeViewGuru({
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-gray-400 pt-1.5 border-t border-gray-100 dark:border-gray-700/60">
+                        <div className="flex items-center justify-between text-[10px] text-[#475569] dark:text-[#94A3B8] pt-1.5 border-t border-slate-300/50 dark:border-slate-700/50">
                           <span className="flex items-center gap-1 truncate">
                             <i className="fa-solid fa-user-tie text-[9px]"></i> {jk.nama_guru}
                           </span>
-                          <span className="text-[9px] font-mono font-bold text-gray-400 dark:text-gray-500 shrink-0">
+                          <span className="text-[9px] font-mono font-bold text-[#475569] dark:text-[#94A3B8] shrink-0">
                             {hariIni}
                           </span>
                         </div>
@@ -1430,19 +1430,19 @@ export default function HomeViewGuru({
                   })}
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-2 px-1 text-[11px] text-gray-500 dark:text-gray-400">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pt-2 px-1 text-[11px] text-[#475569] dark:text-[#94A3B8]">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span>
-                      Progres Jurnal: <strong className="text-gray-900 dark:text-white">
+                      Progres Jurnal: <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">
                         {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => {
                           if (!isJurnalMatchJadwal(j, jk)) return false;
                           const mat = (j.materi && j.materi !== '-') ? j.materi : ((j.materi_pembelajaran && j.materi_pembelajaran !== '-') ? j.materi_pembelajaran : ((j.konten && j.konten !== '-') ? j.konten : null));
                           return Boolean(mat && j.kegiatan && j.kegiatan !== '-');
                         })).length}
-                      </strong> dari <strong className="text-gray-900 dark:text-white">{(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked).length}</strong> kelas reguler
+                      </strong> dari <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked).length}</strong> kelas reguler
                     </span>
                     <span>
-                      · Absensi: <strong className="text-gray-900 dark:text-white">
+                      · Absensi: <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">
                         {(dailyState.jadwalKBM || []).filter(jk => !jk.isBlocked && (dailyState.jurnalKBM || []).some(j => {
                           if (!isJurnalMatchJadwal(j, jk)) return false;
                           const ab = j.absensi_siswa;
@@ -1459,7 +1459,7 @@ export default function HomeViewGuru({
                   <button
                     type="button"
                     onClick={() => setView('view-guru-jurnal')}
-                    className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 text-[10px] shrink-0"
+                    className="font-bold text-[#0F766E] dark:text-teal-400 hover:underline flex items-center gap-1 text-[10px] shrink-0"
                   >
                     Buka Jurnal <i className="fa-solid fa-arrow-right text-[8px]"></i>
                   </button>

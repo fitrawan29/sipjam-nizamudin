@@ -938,10 +938,10 @@ export default function RekapSiswaView({
 
   return (
     <section id="view-rekap-siswa" className="view-section fade-in">
-        <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+        <div className="clay-card p-4 sm:p-5 rounded-3xl">
             {isGlobalReadOnly && (
-              <div data-testid="readonly-notice" className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 no-print">
-                <i className="fa-solid fa-eye text-amber-600 text-sm"></i>
+              <div data-testid="readonly-notice" className="mb-4 p-3 neu-inset border border-amber-500/25 rounded-xl flex items-center gap-2 text-xs text-amber-800 dark:text-amber-200 no-print">
+                <i className="fa-solid fa-eye text-[#D97706] dark:text-amber-400 text-sm"></i>
                 <span>
                   {isOwnHomeroomClass ? (
                     <><strong>Mode Penugasan Wali Kelas ({activeWaliKelas?.kelas}):</strong> Anda dapat mengelola presensi siswa kelas binaan Anda. Untuk kelas lainnya, akses Anda adalah peninjauan (read-only).</>
@@ -954,14 +954,14 @@ export default function RekapSiswaView({
             <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+              <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] print:text-black uppercase tracking-wider">
                 {activeTab === 'gerbang' 
                   ? 'Laporan Presensi Datang & Pulang Siswa' 
                   : mapel 
                     ? `Rekapitulasi Presensi Mata Pelajaran: ${mapel}` 
                     : 'Rekapitulasi Absensi Kelas (Harian)'}
               </h3>
-              <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+              <div className="text-xs text-[#475569] dark:text-[#94A3B8] print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
                 {activeTab === 'gerbang' ? (
                   <>
                     <span>Kelas: <strong>{gerbangKelas || '-'}</strong></span>
@@ -980,14 +980,14 @@ export default function RekapSiswaView({
             </div>
 
             {/* TAB NAVIGATION: Dedicated Panel / Tab for Presensi Gerbang Piket vs Rekap Absen Siswa */}
-            <div className="flex items-center gap-2 border-b border-gray-200 dark:border-gray-700 pb-3 mb-4 no-print">
+            <div className="flex items-center gap-2 border-b border-slate-300/60 dark:border-slate-700/60 pb-3 mb-4 no-print">
               <button
                 type="button"
                 onClick={() => setActiveTab('gerbang')}
                 className={`clay-btn btn-click px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
                   activeTab === 'gerbang'
-                    ? 'clay-btn-mint bg-emerald-600 text-white shadow-md'
-                    : 'clay-btn-secondary text-gray-700 hover:bg-gray-200 dark:text-gray-300'
+                    ? 'clay-btn-mint neu-btn-primary text-white'
+                    : 'clay-btn-secondary text-[#334155] dark:text-[#CBD5E1]'
                 }`}
               >
                 {/* AST preservation: Presensi Gerbang Piket */}
@@ -999,8 +999,8 @@ export default function RekapSiswaView({
                 onClick={() => setActiveTab('rekap')}
                 className={`clay-btn btn-click px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
                   activeTab === 'rekap'
-                    ? 'clay-btn-mint bg-teal-600 text-white shadow-md'
-                    : 'clay-btn-secondary text-gray-700 hover:bg-gray-200 dark:text-gray-300'
+                    ? 'clay-btn-mint neu-btn-primary text-white'
+                    : 'clay-btn-secondary text-[#334155] dark:text-[#CBD5E1]'
                 }`}
               >
                 <i className="fa-solid fa-users-viewfinder"></i>
@@ -1010,10 +1010,10 @@ export default function RekapSiswaView({
 
             {/* WALI KELAS BANNER & TOGGLE */}
             {waliKelasList.length > 0 && (
-              <div className="clay-card clay-card-mint border-2 border-white/90 dark:border-emerald-800/60 p-4 rounded-3xl mb-5 no-print shadow-sm">
+              <div className="clay-card clay-card-mint p-4 rounded-3xl mb-5 no-print">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shadow-sm shrink-0">
+                    <span className="w-9 h-9 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-base shadow-sm shrink-0">
                       <i className="fa-solid fa-user-shield"></i>
                     </span>
                     <div>
@@ -1373,34 +1373,34 @@ export default function RekapSiswaView({
                     <div className="text-2xl font-black text-sky-600 dark:text-sky-400">{totalGerbangPulang}</div>
                   </div>
 
-                  <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/50 p-3 rounded-xl text-center shadow-sm">
-                    <div className="text-xs font-bold text-purple-800 dark:text-purple-300 flex items-center justify-center gap-1.5 mb-1">
-                      <i className="fa-solid fa-triangle-exclamation text-purple-500"></i>
+                  <div className="neu-card-sm p-3 rounded-xl text-center">
+                    <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center gap-1.5 mb-1">
+                      <i className="fa-solid fa-triangle-exclamation text-[#D97706] dark:text-amber-400"></i>
                       <span>Bolos</span>
                     </div>
-                    <div className="text-2xl font-black text-purple-600 dark:text-purple-400">{totalGerbangBolos}</div>
+                    <div className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalGerbangBolos}</div>
                   </div>
 
-                  <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 p-3 rounded-xl text-center shadow-sm">
+                  <div className="neu-card-sm p-3 rounded-xl text-center">
                     <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center justify-center gap-1.5 mb-1" title="Belum Presensi / Belum Scan">
-                      <i className="fa-solid fa-clock-rotate-left text-amber-500"></i>
+                      <i className="fa-solid fa-clock-rotate-left text-[#D97706] dark:text-amber-400"></i>
                       <span>Belum Presensi</span>
                     </div>
-                    <div className="text-2xl font-black text-amber-600 dark:text-amber-400">{totalGerbangBelumPresensi}</div>
+                    <div className="text-2xl font-black font-num text-[#D97706] dark:text-amber-400">{totalGerbangBelumPresensi}</div>
                   </div>
                 </div>
 
                 {/* Quick filter pills & Orientation Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-2 no-print">
                   <div className="flex items-center gap-1.5 text-xs">
-                    <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 mr-1">Filter:</span>
+                    <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] mr-1">Filter:</span>
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('semua')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
                         gerbangFilterStatus === 'semua'
-                          ? 'bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+                          ? 'neu-btn-primary text-white'
+                          : 'text-[#334155] dark:text-[#CBD5E1]'
                       }`}
                     >
                       Semua ({totalGerbangSiswa})
@@ -1408,10 +1408,10 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('datang')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
                         gerbangFilterStatus === 'datang'
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300'
+                          ? 'neu-btn-primary text-white'
+                          : 'text-[#0F766E] dark:text-teal-300'
                       }`}
                     >
                       Hadir ({totalGerbangDatang})
@@ -1419,10 +1419,10 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('pulang')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
                         gerbangFilterStatus === 'pulang'
                           ? 'bg-sky-600 text-white'
-                          : 'bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/40 dark:text-sky-300'
+                          : 'text-sky-700 dark:text-sky-300'
                       }`}
                     >
                       Pulang ({totalGerbangPulang})
@@ -1430,10 +1430,10 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('bolos')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
                         gerbangFilterStatus === 'bolos'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300'
+                          ? 'bg-slate-700 text-white'
+                          : 'text-[#334155] dark:text-[#CBD5E1]'
                       }`}
                     >
                       Bolos ({totalGerbangBolos})
@@ -1441,10 +1441,10 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('belum')}
-                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
                         gerbangFilterStatus === 'belum'
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300'
+                          ? 'neu-btn-amber'
+                          : 'text-amber-700 dark:text-amber-300'
                       }`}
                     >
                       Belum Presensi ({totalGerbangBelumPresensi})
@@ -1497,9 +1497,9 @@ export default function RekapSiswaView({
                                 <span className="text-gray-400 dark:text-gray-500 italic text-[11px]">-</span>
                               )}
                             </td>
-                            <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center">
+                            <td className="px-2 py-1.5 border border-slate-300/60 dark:border-slate-700/60 print:border-black text-center">
                               {siswa.isBolos ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-500/15 text-[#334155] dark:bg-slate-700/40 dark:text-[#CBD5E1] border border-slate-400/30 dark:border-slate-600/40 print:border-black print:bg-transparent print:text-black">
                                   <i className="fa-solid fa-triangle-exclamation text-[9px]"></i> Pulang: Bolos
                                 </span>
                               ) : siswa.hasPulang ? (
@@ -1690,9 +1690,9 @@ export default function RekapSiswaView({
                               <div className="text-xs font-bold text-red-800 dark:text-red-300">Alpa</div>
                               <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
                           </div>
-                          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800/50 p-2.5 rounded-xl text-center">
-                              <div className="text-xs font-bold text-purple-800 dark:text-purple-300">Bolos</div>
-                              <div className="text-lg font-black text-purple-600 dark:text-purple-400">{totalBolos}</div>
+                          <div className="neu-inset p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">Bolos</div>
+                              <div className="text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalBolos}</div>
                           </div>
                         </>
                       ) : (
@@ -1741,34 +1741,34 @@ export default function RekapSiswaView({
                                   <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-orange-700 dark:text-orange-400 print:text-black">Izin</th>
                                 </>
                               )}
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-red-700 dark:text-red-400 print:text-black">{mapel ? 'Alfa' : 'Alpa'}</th>
+                              <th className="px-2 py-1.5 border border-slate-300/70 dark:border-slate-600/70 print:border-black text-center w-16 text-red-700 dark:text-red-400 print:text-black">{mapel ? 'Alfa' : 'Alpa'}</th>
                               {!mapel && (
-                                <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-16 text-purple-700 dark:text-purple-400 print:text-black">Bolos</th>
+                                <th className="px-2 py-1.5 border border-slate-300/70 dark:border-slate-600/70 print:border-black text-center w-16 text-[#334155] dark:text-[#CBD5E1] print:text-black">Bolos</th>
                               )}
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center w-24 text-blue-700 dark:text-blue-400 print:text-black">
+                              <th className="px-2 py-1.5 border border-slate-300/70 dark:border-slate-600/70 print:border-black text-center w-24 text-sky-700 dark:text-sky-400 print:text-black">
                                 {mapel ? '% Keaktifan KBM' : '% Kehadiran'}
                               </th>
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:hidden text-center w-20">WA Ortu</th>
+                              <th className="px-2 py-1.5 border border-slate-300/70 dark:border-slate-600/70 print:hidden text-center w-20">WA Ortu</th>
                             </tr>
                           </thead>
                           <tbody>
                             {filteredData.map((s, i) => (
-                              <tr key={i} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-900 dark:text-white">
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center">{i + 1}</td>
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-mono text-[11px] print:text-[8pt]">{s.nisn || '-'}</td>
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold">{s.nama_siswa}</td>
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-emerald-700 dark:text-emerald-400 print:text-black">{s.hadir > 0 ? s.hadir : '-'}</td>
+                              <tr key={i} className="border-b border-slate-200/70 dark:border-slate-700/70 print:border-black hover:bg-slate-500/5 dark:hover:bg-slate-700/20 text-[#0F172A] dark:text-[#F1F5F9]">
+                                <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-num">{i + 1}</td>
+                                <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black font-mono text-[11px] print:text-[8pt]">{s.nisn || '-'}</td>
+                                <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black font-semibold">{s.nama_siswa}</td>
+                                <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-medium font-num text-[#0F766E] dark:text-teal-400 print:text-black">{s.hadir > 0 ? s.hadir : '-'}</td>
                                 {!mapel && (
                                   <>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-yellow-700 dark:text-yellow-400 print:text-black">{s.sakit > 0 ? s.sakit : '-'}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-orange-700 dark:text-orange-400 print:text-black">{s.izin > 0 ? s.izin : '-'}</td>
+                                    <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-medium font-num text-amber-700 dark:text-amber-400 print:text-black">{s.sakit > 0 ? s.sakit : '-'}</td>
+                                    <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-medium font-num text-orange-700 dark:text-orange-400 print:text-black">{s.izin > 0 ? s.izin : '-'}</td>
                                   </>
                                 )}
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-red-700 dark:text-red-400 print:text-black">{s.alpa > 0 ? s.alpa : '-'}</td>
+                                <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-medium font-num text-red-700 dark:text-red-400 print:text-black">{s.alpa > 0 ? s.alpa : '-'}</td>
                                 {!mapel && (
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium text-purple-700 dark:text-purple-400 print:text-black">{s.bolos > 0 ? s.bolos : '-'}</td>
+                                  <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-medium font-num text-[#334155] dark:text-[#CBD5E1] print:text-black">{s.bolos > 0 ? s.bolos : '-'}</td>
                                 )}
-                                <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-blue-700 dark:text-blue-400 print:text-black">
+                                <td className="px-2 py-1.5 border border-slate-200/70 dark:border-slate-700/70 print:border-black text-center font-bold font-num text-sky-700 dark:text-sky-400 print:text-black">
                                   {s.total > 0 ? `${s.persentase}%` : '-'}
                                 </td>
                                 <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:hidden text-center">

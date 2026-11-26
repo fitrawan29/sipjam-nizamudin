@@ -1132,7 +1132,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
       text: `Hapus status presensi ${status} untuk ${namaSiswa}?`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#d33',
+      confirmButtonColor: '#DC2626',
       cancelButtonColor: '#6b7280',
       confirmButtonText: 'Ya, Batalkan',
       cancelButtonText: 'Kembali'
@@ -2017,15 +2017,15 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
   if (isGuru && dailyState && !dailyState.isPiket && !isAdmin) {
     return (
       <section id="view-piket" className="view-section page-enter w-full max-w-full">
-        <div className="clay-card clay-card-amber p-8 text-center max-w-lg mx-auto mt-6 rounded-3xl border-2 border-white/90 dark:border-amber-900/50 shadow-md">
-          <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+        <div className="clay-card clay-card-amber p-8 text-center max-w-lg mx-auto mt-6 rounded-3xl">
+          <div className="w-16 h-16 neu-inset text-[#D97706] dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
             <i className="fa-solid fa-shield-halved"></i>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Bukan Jadwal Piket Hari Ini</h2>
-          <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+          <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Bukan Jadwal Piket Hari Ini</h2>
+          <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mb-6 leading-relaxed">
             Modul <strong>Piket</strong> (termasuk fitur Presensi Siswa dan Laporan Piket) secara eksklusif hanya dapat diakses oleh Guru yang memiliki jadwal piket pada hari ini. Anda tidak tercatat dalam jadwal piket hari ini.
           </p>
-          <div className="p-3 bg-white/80 dark:bg-gray-800/80 rounded-xl border border-amber-200/60 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-300 font-medium">
+          <div className="p-3 neu-inset rounded-xl border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 font-medium">
             <i className="fa-solid fa-circle-info mr-1.5"></i> Hubungi Administrator jika jadwal penugasan piket Anda belum tercatat di sistem.
           </div>
         </div>
@@ -2575,8 +2575,8 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             {/* Avatar */}
                             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-md shrink-0 ${
                               lastScanResult.status === 'datang'
-                                ? 'bg-gradient-to-tr from-emerald-600 to-teal-500'
-                                : 'bg-gradient-to-tr from-blue-600 to-indigo-500'
+                                ? 'bg-gradient-to-tr from-[#0F766E] to-teal-500'
+                                : 'bg-gradient-to-tr from-sky-600 to-cyan-600'
                             }`}>
                               {lastScanResult.student.nama_siswa.charAt(0).toUpperCase()}
                             </div>

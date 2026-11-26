@@ -718,26 +718,26 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     <div
       role="region"
       aria-label="Pengingat Tugas Harian Guru"
-      className="fixed bottom-20 left-4 sm:left-6 z-40 max-w-sm w-[calc(100vw-2rem)] sm:w-96 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-600/50 rounded-2xl shadow-2xl p-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+      className="neu-card fixed bottom-20 left-4 sm:left-6 z-40 max-w-sm w-[calc(100vw-2rem)] sm:w-96 rounded-2xl p-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/60 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+        <div className="neu-inset w-10 h-10 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
           <i className="fa-solid fa-bell text-lg animate-bounce"></i>
         </div>
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
               Pengingat Otomatis
             </span>
             {hasMultiple && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-semibold">
+              <span className="neu-inset text-[10px] px-2 py-0.5 rounded-full text-slate-700 dark:text-slate-300 font-semibold font-num">
                 {currentIndex + 1} dari {reminders.length}
               </span>
             )}
           </div>
 
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white mt-0.5 truncate">
+          <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mt-0.5 truncate">
             {activeItem.title}
           </h4>
 
@@ -745,11 +745,11 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
             {activeItem.message}
           </p>
 
-          <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60 flex-wrap sm:flex-nowrap">
             <button
               type="button"
               onClick={handleAction}
-              className="flex-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-semibold shadow-sm transition-all flex items-center justify-center gap-1.5 min-w-[90px]"
+              className="neu-btn neu-btn-primary flex-1 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 min-w-[90px]"
             >
               <i className="fa-solid fa-arrow-right text-[10px]"></i>
               Buka Menu
@@ -759,7 +759,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
               type="button"
               onClick={handleSnooze}
               title="Tunda pengingat selama 30 menit"
-              className="px-2.5 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/70 hover:bg-amber-200 dark:hover:bg-amber-900/80 text-amber-800 dark:text-amber-200 text-xs font-semibold transition-all flex items-center gap-1 shrink-0"
+              className="neu-btn neu-btn-amber px-2.5 py-1.5 min-h-[36px] rounded-xl text-xs font-semibold flex items-center gap-1 shrink-0"
             >
               <i className="fa-solid fa-clock-rotate-left text-[10px]"></i>
               Tunda 30 Menit
@@ -770,7 +770,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
                 type="button"
                 onClick={handleNext}
                 title="Lihat pengingat berikutnya"
-                className="px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition-all shrink-0"
+                className="neu-btn neu-btn-secondary px-2.5 py-1.5 min-h-[36px] rounded-xl text-xs font-semibold shrink-0"
               >
                 Lanjut
               </button>
@@ -780,7 +780,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
               type="button"
               onClick={handleDismiss}
               title="Tutup pengingat untuk 5 menit"
-              className="px-2.5 py-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs transition-all shrink-0"
+              className="px-2.5 py-1.5 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 text-xs font-semibold transition-all shrink-0 cursor-pointer"
             >
               Nanti
             </button>

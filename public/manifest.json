@@ -6,8 +6,8 @@
   "id": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
-  "background_color": "#0B4619",
-  "theme_color": "#0B4619",
+  "background_color": "#E6ECF2",
+  "theme_color": "#0F766E",
   "orientation": "portrait-primary",
   "categories": ["education", "productivity"],
   "icons": [

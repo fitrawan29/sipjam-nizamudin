@@ -40,7 +40,7 @@ export async function triggerPrintWithGps(options: PrintWithGpsOptions = {}): Pr
         icon: 'error',
         title: 'GPS Tidak Didukung',
         text: errorMsg,
-        confirmButtonColor: '#0B4619'
+        confirmButtonColor: '#0F766E'
       });
     }
     return false;
@@ -91,7 +91,7 @@ export async function triggerPrintWithGps(options: PrintWithGpsOptions = {}): Pr
             icon: 'warning',
             title: errorTitle,
             text: errorMessage,
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
         }
         resolve(false);

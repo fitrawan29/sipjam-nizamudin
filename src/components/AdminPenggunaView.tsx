@@ -956,8 +956,8 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       width: '520px',
       html: `
         <div class="text-left space-y-3 text-xs">
-          <div class="p-3 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl">
-            <div class="font-bold text-purple-900 dark:text-purple-300 text-sm mb-1">${item.nama}</div>
+          <div class="p-3 bg-teal-500/10 border border-teal-500/30 rounded-xl">
+            <div class="font-bold text-[#0F766E] dark:text-teal-300 text-sm mb-1">${item.nama}</div>
             <div class="text-[11px] text-gray-600 dark:text-gray-400">
               <span class="font-semibold">NIP:</span> <span class="font-mono">${item.nip}</span> &bull; 
               <span class="font-semibold">Mapel:</span> ${item.mataPelajaran}
@@ -1014,12 +1014,12 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
             </div>
             <div class="flex items-center justify-between mt-1">
               <span class="text-[10px] text-gray-500 dark:text-gray-400">
-                Default: <span class="font-mono font-bold text-purple-700 dark:text-purple-300">${defaultPwd}</span>
+                Default: <span class="font-mono font-bold text-[#0F766E] dark:text-teal-300">${defaultPwd}</span>
               </span>
               <button 
                 type="button" 
                 id="swal-btn-default-pwd" 
-                class="text-[10px] text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
+                class="text-[10px] text-[#0F766E] dark:text-teal-400 hover:underline font-bold cursor-pointer"
               >
                 Gunakan Password Default (${defaultPwd})
               </button>
@@ -1031,7 +1031,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               <input 
                 id="swal-sync-nip" 
                 type="checkbox" 
-                class="rounded text-purple-600 focus:ring-purple-500"
+                class="rounded text-[#0F766E] focus:ring-teal-500"
                 ${/^\d{8,25}$/.test((item.nip !== '-' ? item.nip : item.username).replace(/[-.\s]/g, '')) ? 'checked' : ''}
               >
               <span>Sinkronkan username ke NIP di Data Guru</span>
@@ -1069,7 +1069,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Simpan Kredensial',
-      confirmButtonColor: '#7C3AED',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const usernameVal = (document.getElementById('swal-username') as HTMLInputElement)?.value?.trim();
@@ -1138,8 +1138,8 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       `,
       icon: 'question',
       showCancelButton: true,
-      confirmButtonColor: '#7C3AED',
-      cancelButtonColor: '#6B7280',
+      confirmButtonColor: '#0F766E',
+      cancelButtonColor: '#64748b',
       confirmButtonText: 'Ya, Reset Password',
       cancelButtonText: 'Batal'
     });
@@ -1183,20 +1183,20 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
   return (
     <div id="sub-menu-pengguna" className="space-y-4 fade-in">
       {/* Information & Automatic Pull Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-blue-950/20 border-2 border-purple-200/80 dark:border-purple-800/60 shadow-xs">
+      <div className="neu-card-sm p-4 rounded-2xl">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-sm">
               <i className="fa-solid fa-users-gear text-lg"></i>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-purple-950 dark:text-purple-200 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                 <span>Manajemen Kredensial Akun Guru</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-300/60">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                   Sinkron Otomatis
                 </span>
               </h3>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5 leading-relaxed">
                 Data akun ditarik otomatis dari <strong>Data Guru</strong>. Username awal sesuai <strong>NIP</strong> dan password default berupa <strong>NIP27</strong>.
               </p>
             </div>
@@ -1206,7 +1206,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               type="button"
               onClick={handleCreateTuUser}
               disabled={syncing || loading}
-              className="clay-btn px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn px-3 py-2 rounded-xl text-[#0F766E] dark:text-teal-300 text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Tambah akun pengguna Tata Usaha baru"
             >
               <i className="fa-solid fa-user-plus"></i>
@@ -1216,7 +1216,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               type="button"
               onClick={handleCreateBkUser}
               disabled={syncing || loading}
-              className="clay-btn px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Tambah akun pengguna Guru BK baru"
             >
               <i className="fa-solid fa-user-plus"></i>
@@ -1226,7 +1226,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               type="button"
               onClick={handleCreateOrtuUser}
               disabled={syncing || loading}
-              className="clay-btn px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn px-3 py-2 rounded-xl text-sky-700 dark:text-sky-300 text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Tambah akun Orang Tua / Wali Murid"
             >
               <i className="fa-solid fa-user-plus"></i>
@@ -1236,7 +1236,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               type="button"
               onClick={() => handleLoadAndSync(true)}
               disabled={syncing || loading}
-              className="clay-btn px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn-primary px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Sinkronkan ulang seluruh guru ke akun pengguna"
             >
               <i className={`fa-solid fa-arrows-rotate ${syncing ? 'animate-spin' : ''}`}></i>
@@ -1246,31 +1246,31 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
               type="button"
               onClick={handleExportUsersCsv}
               disabled={loading}
-              className="clay-btn px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn px-3 py-2 rounded-xl text-[#334155] dark:text-[#CBD5E1] text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Ekspor daftar pengguna ke berkas CSV"
               aria-label="Ekspor daftar pengguna ke berkas CSV"
             >
-              <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
+              <i className="fa-solid fa-file-export text-[#0F766E] dark:text-teal-400"></i>
               <span>Export CSV</span>
             </button>
           </div>
         </div>
 
         {/* Quick Metric Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-purple-200/60 dark:border-purple-800/40">
-          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-1.5 rounded-xl border border-purple-100 dark:border-gray-700 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Total Guru</span>
-            <span className="text-xs font-black text-purple-900 dark:text-purple-300">{accounts.length}</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
+          <div className="neu-inset px-3 py-1.5 rounded-xl flex items-center justify-between">
+            <span className="text-[11px] font-medium text-[#475569] dark:text-[#94A3B8]">Total Guru</span>
+            <span className="text-xs font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{accounts.length}</span>
           </div>
-          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-1.5 rounded-xl border border-purple-100 dark:border-gray-700 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Akun Terdaftar</span>
-            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+          <div className="neu-inset px-3 py-1.5 rounded-xl flex items-center justify-between">
+            <span className="text-[11px] font-medium text-[#475569] dark:text-[#94A3B8]">Akun Terdaftar</span>
+            <span className="text-xs font-black font-num text-[#0F766E] dark:text-teal-400">
               {accounts.filter(a => a.hasAccount).length}
             </span>
           </div>
-          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-1.5 rounded-xl border border-purple-100 dark:border-gray-700 col-span-2 sm:col-span-1 flex items-center justify-between">
-            <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Format Password</span>
-            <span className="text-[11px] font-mono font-bold text-indigo-700 dark:text-indigo-300">NIP + 27</span>
+          <div className="neu-inset px-3 py-1.5 rounded-xl col-span-2 sm:col-span-1 flex items-center justify-between">
+            <span className="text-[11px] font-medium text-[#475569] dark:text-[#94A3B8]">Format Password</span>
+            <span className="text-[11px] font-mono font-bold text-[#0F766E] dark:text-teal-300">NIP + 27</span>
           </div>
         </div>
       </div>
@@ -1328,22 +1328,22 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       </div>
 
       {/* Accounts Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="neu-card-sm rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-xs text-gray-500 dark:text-gray-400">
-            <i className="fa-solid fa-spinner animate-spin text-purple-600 text-lg mb-2 block"></i>
+          <div className="p-8 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
+            <i className="fa-solid fa-spinner animate-spin text-[#0F766E] dark:text-teal-400 text-lg mb-2 block"></i>
             Memuat dan menyinkronkan akun guru...
           </div>
         ) : paginatedAccounts.length === 0 ? (
-          <div className="p-8 text-center text-xs text-gray-500 dark:text-gray-400">
-            <i className="fa-solid fa-user-slash text-2xl text-gray-300 dark:text-gray-600 mb-2 block"></i>
+          <div className="p-8 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
+            <i className="fa-solid fa-user-slash text-2xl text-slate-400 dark:text-slate-600 mb-2 block"></i>
             Tidak ada akun guru yang ditemukan.
           </div>
         ) : (
           <div className="overflow-x-auto custom-scroll">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-purple-50/70 dark:bg-gray-800/60 text-purple-900 dark:text-purple-300 font-bold border-b border-gray-200 dark:border-gray-800">
+                <tr className="bg-slate-500/10 dark:bg-slate-900/40 text-[#0F172A] dark:text-[#F1F5F9] font-bold border-b border-slate-300/60 dark:border-slate-700/60">
                   <th className="py-2.5 px-3 w-12 text-center">No</th>
                   <th className="py-2.5 px-3">Nama Guru</th>
                   <th className="py-2.5 px-3">NIP</th>
@@ -1354,7 +1354,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                   <th className="py-2.5 px-3 text-center w-36">Aksi Admin</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60">
                 {paginatedAccounts.map((item, idx) => {
                   const rowNumber = page * ITEMS_PER_PAGE + idx + 1;
                   const isItemBk =
@@ -1368,47 +1368,47 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                   return (
                     <tr
                       key={item.guruId}
-                      className="hover:bg-purple-50/40 dark:hover:bg-gray-800/40 transition"
+                      className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition"
                     >
-                      <td className="py-2.5 px-3 text-center font-semibold text-gray-500 text-[11px]">
+                      <td className="py-2.5 px-3 text-center font-semibold font-num text-[#475569] dark:text-[#94A3B8] text-[11px]">
                         {rowNumber}
                       </td>
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center shrink-0 border border-purple-200 dark:border-purple-800">
+                          <div className="neu-inset w-7 h-7 rounded-full flex items-center justify-center shrink-0">
                             {renderUserAvatar(undefined, 'w-6 h-6')}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900 dark:text-white leading-tight">
+                            <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                               {item.nama}
                             </div>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400">
-                              Role: <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{isItemBk ? 'Guru BK' : item.role === 'tata_usaha' ? 'Tata Usaha' : item.role}</span>
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
+                              Role: <span className="text-[#0F766E] dark:text-teal-400 font-semibold">{isItemBk ? 'Guru BK' : item.role === 'tata_usaha' ? 'Tata Usaha' : item.role}</span>
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 font-mono text-[11px] text-gray-700 dark:text-gray-300">
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-[#334155] dark:text-[#CBD5E1]">
                         {item.nip}
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="font-mono text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-2 py-0.5 rounded-md border border-purple-200/60 dark:border-purple-800/50">
+                        <span className="font-mono text-xs font-bold text-[#0F766E] dark:text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded-md">
                           {item.username}
                         </span>
                       </td>
                       <td className="py-2.5 px-3">
-                        <span className="font-mono text-[11px] text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md" title="Password default: NIP + 27">
+                        <span className="neu-inset font-mono text-[11px] text-[#475569] dark:text-[#CBD5E1] px-2 py-0.5 rounded-md" title="Password default: NIP + 27">
                           {item.defaultPassword}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-gray-700 dark:text-gray-300">
+                      <td className="py-2.5 px-3 text-[#334155] dark:text-[#CBD5E1]">
                         {item.mataPelajaran}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           item.status === 'Aktif'
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-slate-400/15 text-[#475569] dark:text-[#94A3B8]'
                         }`}>
                           {item.status}
                         </span>
@@ -1418,10 +1418,10 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                           <button
                             type="button"
                             onClick={() => handleToggleTuAssignment(item)}
-                            className={`btn-click px-2 py-1 rounded-lg font-bold text-[11px] border transition flex items-center gap-1 ${
+                            className={`btn-click neu-btn px-2 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1 ${
                               (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha'
-                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/60'
-                                : 'bg-teal-100 hover:bg-teal-200 text-teal-900 dark:bg-teal-900/40 dark:text-teal-300 border-teal-300/60'
+                                ? 'text-sky-700 dark:text-sky-300'
+                                : 'text-[#0F766E] dark:text-teal-300'
                             }`}
                             title={
                               (item.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha'
@@ -1435,10 +1435,10 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                           <button
                             type="button"
                             onClick={() => handleToggleBkAssignment(item)}
-                            className={`btn-click px-2 py-1 rounded-lg font-bold text-[11px] border transition flex items-center gap-1 ${
+                            className={`btn-click neu-btn px-2 py-1 rounded-lg font-bold text-[11px] transition flex items-center gap-1 ${
                               isItemBk
-                                ? 'bg-blue-100 hover:bg-blue-200 text-blue-900 dark:bg-blue-900/40 dark:text-blue-300 border-blue-300/60'
-                                : 'bg-rose-100 hover:bg-rose-200 text-rose-900 dark:bg-rose-900/40 dark:text-rose-300 border-rose-300/60'
+                                ? 'text-sky-700 dark:text-sky-300'
+                                : 'text-rose-700 dark:text-rose-300'
                             }`}
                             title={
                               isItemBk
@@ -1452,7 +1452,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                           <button
                             type="button"
                             onClick={() => handleOpenEditModal(item)}
-                            className="btn-click px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] shadow-xs flex items-center gap-1 transition"
+                            className="btn-click neu-btn-primary px-2.5 py-1 rounded-lg text-white font-bold text-[11px] flex items-center gap-1 transition"
                             title="Ubah Username & Password"
                           >
                             <i className="fa-solid fa-key text-[10px]"></i>
@@ -1462,7 +1462,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                             <button
                               type="button"
                               onClick={() => handleDeleteTu(item)}
-                              className="btn-click px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300 font-bold text-[11px] border border-red-300/60 transition"
+                              className="btn-click neu-btn px-2 py-1 rounded-lg text-rose-700 dark:text-rose-300 font-bold text-[11px] transition"
                               title="Hapus akun Tata Usaha"
                             >
                               <i className="fa-solid fa-trash-can text-[10px]"></i>
@@ -1472,7 +1472,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                             <button
                               type="button"
                               onClick={() => handleDeleteBk(item)}
-                              className="btn-click px-2 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300 font-bold text-[11px] border border-red-300/60 transition"
+                              className="btn-click neu-btn px-2 py-1 rounded-lg text-rose-700 dark:text-rose-300 font-bold text-[11px] transition"
                               title="Hapus akun Guru BK"
                             >
                               <i className="fa-solid fa-trash-can text-[10px]"></i>
@@ -1482,7 +1482,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
                             <button
                               type="button"
                               onClick={() => handleQuickReset(item)}
-                              className="btn-click px-2 py-1 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 dark:bg-amber-900/40 dark:text-amber-300 font-bold text-[11px] border border-amber-300/60 transition"
+                              className="btn-click neu-btn px-2 py-1 rounded-lg text-amber-700 dark:text-amber-300 font-bold text-[11px] transition"
                               title="Reset password ke default NIP27"
                             >
                               <i className="fa-solid fa-rotate-left text-[10px]"></i>
@@ -1501,27 +1501,27 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="p-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
+          <div className="p-3 border-t border-slate-300/60 dark:border-slate-700/60 flex items-center justify-between text-xs text-[#475569] dark:text-[#94A3B8]">
             <span>
-              Menampilkan {page * ITEMS_PER_PAGE + 1} - {Math.min((page + 1) * ITEMS_PER_PAGE, filteredAccounts.length)} dari {filteredAccounts.length} akun guru
+              Menampilkan <span className="font-num">{page * ITEMS_PER_PAGE + 1} - {Math.min((page + 1) * ITEMS_PER_PAGE, filteredAccounts.length)}</span> dari <span className="font-num">{filteredAccounts.length}</span> akun guru
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => setPage(p => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40"
+                className="neu-btn px-2.5 py-1 rounded-lg disabled:opacity-40"
               >
                 Sebelumnya
               </button>
-              <span className="px-2 font-bold text-gray-800 dark:text-gray-200">
+              <span className="px-2 font-bold font-num text-[#0F172A] dark:text-[#F1F5F9]">
                 {page + 1} / {totalPages}
               </span>
               <button
                 type="button"
                 onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                 disabled={page >= totalPages - 1}
-                className="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 disabled:opacity-40"
+                className="neu-btn px-2.5 py-1 rounded-lg disabled:opacity-40"
               >
                 Selanjutnya
               </button>

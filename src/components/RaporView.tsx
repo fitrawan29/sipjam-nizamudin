@@ -1295,7 +1295,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
             icon: 'warning',
             title: 'Izin Lokasi Diperlukan',
             text: `${msg} Dokumen rapor resmi memerlukan penanda koordinat GPS sebagai keabsahan cetak.`,
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
         }
       });

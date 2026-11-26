@@ -29,13 +29,13 @@ const variantStyles: Record<ClayButtonVariant, string> = {
   amber: 'clay-btn-amber',
   rose: 'clay-btn-rose',
   blue: 'clay-btn-blue',
-  ghost: 'bg-transparent text-gray-700 dark:text-gray-200 hover:bg-white/40 dark:hover:bg-white/10 border border-transparent hover:border-white/60 active:scale-95 shadow-none',
+  ghost: 'bg-transparent text-slate-700 dark:text-slate-200 hover:bg-slate-900/5 dark:hover:bg-white/5 border border-transparent active:scale-95 shadow-none',
 };
 
 const sizeStyles: Record<ClayButtonSize, string> = {
-  sm: 'text-xs px-3 py-1.5 rounded-xl gap-1.5',
-  md: 'text-xs sm:text-sm px-4 py-2.5 rounded-2xl gap-2',
-  lg: 'text-sm sm:text-base px-6 py-3 rounded-2xl gap-2.5',
+  sm: 'text-xs px-3 py-1.5 min-h-[36px] rounded-xl gap-1.5',
+  md: 'text-xs sm:text-sm px-4 py-2.5 min-h-[44px] rounded-2xl gap-2',
+  lg: 'text-sm sm:text-base px-6 py-3 min-h-[48px] rounded-2xl gap-2.5',
 };
 
 export const ClayButton: React.FC<ClayButtonProps> = ({

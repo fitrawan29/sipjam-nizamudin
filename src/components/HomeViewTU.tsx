@@ -839,23 +839,23 @@ export default function HomeViewTU({
 
   return (
     <section id="view-home" className="fade-in block space-y-4">
-      {/* Header Banner - Matching Guru Design with Gold Accents */}
-      <div className="clay-card bg-gradient-to-br from-[#0B4619] via-[#0F5A22] to-[#17732D] rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden border-2 border-white/30 shadow-[8px_8px_20px_rgba(11,70,25,0.3),-4px_-4px_12px_rgba(255,255,255,0.9),inset_2px_2px_4px_rgba(255,255,255,0.35),inset_-2px_-2px_4px_rgba(0,0,0,0.25)]">
-        <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
+      {/* Header Banner */}
+      <div className="clay-card rounded-3xl p-4 sm:p-5 relative overflow-hidden">
+        <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-15deg] pointer-events-none"></i>
         
-        <div className="relative z-10 flex items-center justify-between gap-3 mb-2.5">
+        <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shrink-0 overflow-hidden">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 neu-inset rounded-full flex items-center justify-center ring-2 ring-[#0F766E]/30 dark:ring-teal-400/30 shrink-0 overflow-hidden p-0.5">
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{user?.nama || 'Staf Tata Usaha'}</h2>
-                <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
+                <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Staf Tata Usaha'}</h2>
+                <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
                   Tata Usaha
                 </span>
               </div>
-              <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
+              <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
                 <span>{user?.username || ''}</span>
                 <span className="truncate font-sans font-medium">{schoolName}</span>
               </p>
@@ -866,67 +866,67 @@ export default function HomeViewTU({
             <button
               type="button"
               onClick={onOpenAccountSettings}
-              className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-xs border border-white/20 flex items-center gap-1.5 transition ml-auto shrink-0 shadow-sm cursor-pointer"
+              className="neu-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
               title="Ubah Username & Password"
             >
-              <i className="fa-solid fa-gear text-xs"></i>
+              <i className="fa-solid fa-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
               <span className="hidden sm:inline">Edit Akun</span>
             </button>
           )}
         </div>
 
-        <div className="relative z-10 grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/10">
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Status</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white truncate">Aktif</p>
+        <div className="relative z-10 grid grid-cols-3 gap-2.5 text-center pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
+            <p className="text-[10px] sm:text-xs font-bold text-[#0F766E] dark:text-teal-400 truncate">Aktif</p>
           </div>
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+            <p className="text-[10px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Jam</p>
-            <p className="text-xs sm:text-sm font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
+            <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
       </div>
 
       {/* Monthly Summary Cards for TU */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
-        <div className="clay-card clay-card-mint p-2.5 rounded-2xl border-2 border-white/90 dark:border-emerald-900/40 flex flex-col items-center text-center shadow-sm">
-          <span className="text-[9px] sm:text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">Presensi TU</span>
-          <span className="text-base sm:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5">
-            {attendanceStats.hadir} <span className="text-[10px] sm:text-xs text-emerald-500 dark:text-emerald-600 font-bold">Hari</span>
+        <div className="clay-card clay-card-mint p-2.5 rounded-2xl flex flex-col items-center text-center">
+          <span className="text-[9px] sm:text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wide">Presensi TU</span>
+          <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
+            {attendanceStats.hadir} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">Hari</span>
           </span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-0.5">Kehadiran Bulan Ini</span>
+          <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Kehadiran Bulan Ini</span>
         </div>
-        <div className="clay-card clay-card-blue p-2.5 rounded-2xl border-2 border-white/90 dark:border-indigo-900/40 flex flex-col items-center text-center shadow-sm">
-          <span className="text-[9px] sm:text-[10px] font-bold text-indigo-800 dark:text-indigo-400 uppercase tracking-wide">Jurnal Kegiatan</span>
-          <span className="text-base sm:text-lg font-black text-indigo-700 dark:text-indigo-300 mt-0.5">
-            {monthlyJurnalCount} <span className="text-[10px] sm:text-xs text-indigo-500 dark:text-indigo-600 font-bold">Laporan</span>
+        <div className="clay-card clay-card-blue p-2.5 rounded-2xl flex flex-col items-center text-center">
+          <span className="text-[9px] sm:text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">Jurnal Kegiatan</span>
+          <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
+            {monthlyJurnalCount} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">Laporan</span>
           </span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-0.5">Agenda Administrasi</span>
+          <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Agenda Administrasi</span>
         </div>
-        <div className="clay-card clay-card-purple p-2.5 rounded-2xl border-2 border-white/90 dark:border-teal-900/40 flex flex-col items-center text-center shadow-sm">
-          <span className="text-[9px] sm:text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide">Status Kerja</span>
-          <span className="text-base sm:text-lg font-black text-teal-700 dark:text-teal-300 mt-0.5">
+        <div className="clay-card clay-card-purple p-2.5 rounded-2xl flex flex-col items-center text-center">
+          <span className="text-[9px] sm:text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Status Kerja</span>
+          <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {attendanceStats.alpa === 0 ? 'Tertib' : `${attendanceStats.alpa} Alpa`}
           </span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate mt-0.5">Disiplin Tenaga TU</span>
+          <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Disiplin Tenaga TU</span>
         </div>
       </div>
 
       {/* Section 1: Personal Attendance Stat Cards (H, DL, Izin, Sakit, Alpa) */}
-      <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+      <div className="clay-card p-4 sm:p-5 rounded-3xl">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-          <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <i className="fa-solid fa-chart-pie text-emerald-600 dark:text-emerald-400"></i> Statistik Presensi Pribadi
+          <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+            <i className="fa-solid fa-chart-pie text-[#0F766E] dark:text-teal-400"></i> Statistik Presensi Pribadi
           </h3>
           <input 
             type="month" 
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="text-[8px] sm:text-[11px] font-bold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 px-1.5 sm:px-2.5 py-1 rounded-full outline-none border border-gray-200 dark:border-gray-700 cursor-pointer shrink-0 w-auto min-w-[100px] max-w-[140px]"
+            className="neu-input text-[8px] sm:text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] px-2 sm:px-3 py-1 rounded-full cursor-pointer shrink-0 w-auto min-w-[100px] max-w-[140px]"
             title="Pilih Bulan"
           />
         </div>
@@ -934,62 +934,62 @@ export default function HomeViewTU({
         {/* 5 Personal Stat Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
           {/* Hadir (H) */}
-          <div className="clay-card-mint p-3 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
+          <div className="clay-card-mint p-3 rounded-2xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
               <i className="fa-solid fa-user-check"></i>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">Hadir (H)</p>
-              <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.hadir}</p>
-              <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Kehadiran kantor</p>
+              <p className="text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wider">Hadir (H)</p>
+              <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.hadir}</p>
+              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Kehadiran kantor</p>
             </div>
           </div>
 
           {/* Dinas Luar (DL) */}
-          <div className="clay-card-purple p-3 rounded-2xl border-2 border-white/90 dark:border-indigo-800/50 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg shrink-0">
+          <div className="clay-card-purple p-3 rounded-2xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl neu-inset text-teal-700 dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
               <i className="fa-solid fa-briefcase"></i>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-indigo-800 dark:text-indigo-300 uppercase tracking-wider">Dinas Luar (DL)</p>
-              <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.dinasLuar}</p>
-              <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tugas kedinasan</p>
+              <p className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">Dinas Luar (DL)</p>
+              <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.dinasLuar}</p>
+              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Tugas kedinasan</p>
             </div>
           </div>
 
           {/* Izin (I) */}
-          <div className="clay-card-blue p-3 rounded-2xl border-2 border-white/90 dark:border-sky-800/50 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-sky-100 dark:bg-sky-900/50 text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg shrink-0">
+          <div className="clay-card-blue p-3 rounded-2xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-lg shrink-0">
               <i className="fa-solid fa-envelope-open-text"></i>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-sky-800 dark:text-sky-300 uppercase tracking-wider">Izin (I)</p>
-              <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.izin}</p>
-              <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Izin resmi</p>
+              <p className="text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">Izin (I)</p>
+              <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.izin}</p>
+              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Izin resmi</p>
             </div>
           </div>
 
           {/* Sakit (S) */}
-          <div className="clay-card-rose p-3 rounded-2xl border-2 border-white/90 dark:border-rose-800/50 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
+          <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
               <i className="fa-solid fa-heart-pulse"></i>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-rose-800 dark:text-rose-300 uppercase tracking-wider">Sakit (S)</p>
-              <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.sakit}</p>
-              <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Dengan surat</p>
+              <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Sakit (S)</p>
+              <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.sakit}</p>
+              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Dengan surat</p>
             </div>
           </div>
 
           {/* Alpa (A) */}
-          <div className="clay-card-rose p-3 rounded-2xl border-2 border-white/90 dark:border-red-800/50 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 flex items-center justify-center text-lg shrink-0">
+          <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl neu-inset text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
               <i className="fa-solid fa-user-xmark"></i>
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Alpa (A)</p>
-              <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{attendanceStats.alpa}</p>
-              <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Tanpa keterangan</p>
+              <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Alpa (A)</p>
+              <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.alpa}</p>
+              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Tanpa keterangan</p>
             </div>
           </div>
         </div>
@@ -997,43 +997,43 @@ export default function HomeViewTU({
         {/* Akumulasi Keterlambatan Info */}
         <div className="mt-3 clay-inset rounded-2xl p-3 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-white">
+            <div className="w-8 h-8 rounded-full neu-card-sm flex items-center justify-center text-[#0F766E] dark:text-teal-300">
               <i className="fa-solid fa-stopwatch text-sm"></i>
             </div>
             <div>
-              <p className="text-[10px] font-bold text-slate-600 dark:text-white">
+              <p className="text-[10px] font-bold text-[#334155] dark:text-[#F1F5F9]">
                 Akumulasi Keterlambatan Bulan Ini{' '}
-                <span className="font-normal text-slate-500 dark:text-slate-300">
+                <span className="font-normal text-[#475569] dark:text-[#94A3B8]">
                   ({telatConfig.aktif ? `Penalti: ${telatConfig.batasJam} Jam = ${telatConfig.penaltiHari} Hari Alpa` : 'Penalti Alpa Nonaktif'})
                 </span>
               </p>
-              <p className="text-xs font-black text-gray-900 dark:text-white">
+              <p className="text-xs font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                 {Math.floor(akumulasiTelat.detik / 3600)} Jam {Math.floor((akumulasiTelat.detik % 3600) / 60)} Menit {akumulasiTelat.detik % 60} Detik
               </p>
             </div>
           </div>
           {akumulasiTelat.alpa > 0 && (
             <div className="text-right">
-              <p className="text-[9px] font-bold text-red-500 uppercase">Potongan Alpa</p>
-              <p className="text-sm font-black text-red-600">{akumulasiTelat.alpa} Hari</p>
+              <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase">Potongan Alpa</p>
+              <p className="text-sm font-black font-num text-rose-600 dark:text-rose-400">{akumulasiTelat.alpa} Hari</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Section 2: Status Tugas Hari Ini (Workflow Status Tracker) */}
-      <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
-        <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-          <i className="fa-solid fa-list-check text-emerald-500"></i> Status Tugas Hari Ini
+      <div className="clay-card p-4 sm:p-5 rounded-3xl">
+        <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-3 flex items-center gap-2">
+          <i className="fa-solid fa-list-check text-[#0F766E] dark:text-teal-400"></i> Status Tugas Hari Ini
         </h3>
 
         {loadingState ? (
-          <div className="flex items-center justify-center py-6 text-gray-500 dark:text-white">
-            <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2"></i>
+          <div className="flex items-center justify-center py-6 text-[#475569] dark:text-[#CBD5E1]">
+            <i className="fa-solid fa-circle-notch fa-spin text-lg mr-2 text-[#0F766E] dark:text-teal-400"></i>
             <span className="text-xs">Memeriksa status tugas administrasi...</span>
           </div>
         ) : steps.length === 0 ? (
-          <div className="text-center py-4 text-gray-500 dark:text-white text-xs italic">
+          <div className="text-center py-4 text-[#475569] dark:text-[#94A3B8] text-xs italic">
             Tidak ada data status hari ini.
           </div>
         ) : (
@@ -1044,9 +1044,9 @@ export default function HomeViewTU({
               return (
                 <div 
                   key={idx} 
-                  className={`flex items-start gap-3 relative rounded-xl p-2 transition-all ${
+                  className={`flex items-start gap-3 relative rounded-2xl p-2.5 transition-all ${
                     isClickable 
-                      ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99] border-2 border-amber-300/80 dark:border-amber-800/50 bg-amber-50/70 dark:bg-amber-950/30 shadow-[4px_4px_10px_rgba(230,200,160,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] rounded-2xl' 
+                      ? 'cursor-pointer hover:scale-[1.01] active:scale-[0.99] neu-card-sm ring-1 ring-amber-500/45' 
                       : 'border border-transparent'
                   }`}
                   onClick={() => {
@@ -1056,16 +1056,16 @@ export default function HomeViewTU({
                   }}
                 >
                   {idx < steps.length - 1 && (
-                    <div className={`absolute left-[19px] top-[34px] w-0.5 h-[calc(100%-8px)] ${
-                      step.status === 'done' ? 'bg-green-300 dark:bg-green-700' : 'bg-gray-200 dark:bg-gray-700'
+                    <div className={`absolute left-[21px] top-[36px] w-0.5 h-[calc(100%-8px)] ${
+                      step.status === 'done' ? 'bg-emerald-500/50 dark:bg-emerald-400/40' : 'bg-slate-300/80 dark:bg-slate-700'
                     }`} />
                   )}
                   
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs z-10 mt-0.5 ${
-                    step.status === 'done' ? 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-400' :
-                    step.status === 'active' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400 ring-2 ring-amber-300 dark:ring-amber-700' :
-                    step.status === 'skipped' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400' :
-                    'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-400'
+                  <div className={`w-7 h-7 rounded-full neu-inset flex items-center justify-center shrink-0 text-xs z-10 mt-0.5 ${
+                    step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
+                    step.status === 'active' ? 'text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/50' :
+                    step.status === 'skipped' ? 'text-sky-600 dark:text-sky-400' :
+                    'text-[#475569] dark:text-[#94A3B8]'
                   }`}>
                     {step.status === 'done' ? <i className="fa-solid fa-check" /> :
                      step.status === 'active' ? <i className={`fa-solid ${step.icon}`} /> :
@@ -1076,10 +1076,10 @@ export default function HomeViewTU({
                   <div className="flex-grow min-w-0 pb-1">
                     <div className="flex items-center justify-between gap-2">
                       <p className={`text-[11px] font-bold ${
-                        step.status === 'done' ? 'text-green-700 dark:text-green-400' :
+                        step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
                         step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
-                        step.status === 'skipped' ? 'text-blue-600 dark:text-blue-400' :
-                        'text-gray-500 dark:text-white'
+                        step.status === 'skipped' ? 'text-sky-700 dark:text-sky-400' :
+                        'text-[#475569] dark:text-[#94A3B8]'
                       }`}>
                         {step.label}
                       </p>
@@ -1091,17 +1091,17 @@ export default function HomeViewTU({
                             e.stopPropagation();
                             setView(step.targetView!);
                           }}
-                          className="btn-click text-[10px] font-bold text-amber-800 dark:text-amber-200 bg-amber-200/70 hover:bg-amber-300 dark:bg-amber-900/60 dark:hover:bg-amber-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0 shadow-sm transition"
+                          className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 transition"
                         >
                           Buka <i className="fa-solid fa-arrow-right text-[8px]"></i>
                         </button>
                       )}
                     </div>
                     <p className={`text-[10px] mt-0.5 ${
-                      step.status === 'done' ? 'text-green-600 dark:text-green-400' :
+                      step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
                       step.status === 'active' ? 'text-amber-700 dark:text-amber-300' :
-                      step.status === 'skipped' ? 'text-blue-500 dark:text-blue-400' :
-                      'text-gray-500 dark:text-white'
+                      step.status === 'skipped' ? 'text-sky-600 dark:text-sky-400' :
+                      'text-[#475569] dark:text-[#94A3B8]'
                     }`}>
                       {step.detail}
                     </p>
@@ -1113,7 +1113,7 @@ export default function HomeViewTU({
         )}
 
         {nextAction && (
-          <div className={`mt-2 pt-3 border-t border-gray-100 dark:border-gray-700 flex items-start gap-2 ${nextAction.color}`}>
+          <div className={`mt-2 pt-3 border-t border-slate-300/60 dark:border-slate-700/60 flex items-start gap-2 ${nextAction.color}`}>
             <i className="fa-solid fa-circle-info text-xs mt-0.5 shrink-0"></i>
             <p className="text-[11px] font-semibold leading-snug">{nextAction.text}</p>
           </div>
@@ -1121,17 +1121,17 @@ export default function HomeViewTU({
       </div>
 
       {/* Section 3: Aktivitas & Layanan Administrasi Tata Usaha */}
-      <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+      <div className="clay-card p-4 sm:p-5 rounded-3xl">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm shadow-sm">
+            <div className="w-8 h-8 rounded-xl neu-inset text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-sm">
               <i className="fa-solid fa-briefcase"></i>
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white leading-none">
+              <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-none">
                 Layanan & Aktivitas Administrasi Hari Ini
               </h3>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1">
                 {dashboardDateStr}
               </p>
             </div>
@@ -1139,11 +1139,11 @@ export default function HomeViewTU({
 
           <div className="flex items-center gap-1.5 shrink-0">
             {dailyState?.jurnalKegiatan ? (
-              <span className="bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+              <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
                 <i className="fa-solid fa-circle-check text-[9px]"></i> Jurnal Terisi
               </span>
             ) : (
-              <span className="bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+              <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
                 <i className="fa-solid fa-clock text-[9px]"></i> Menunggu Pengisian
               </span>
             )}
@@ -1151,23 +1151,23 @@ export default function HomeViewTU({
         </div>
 
         {/* Today's Jurnal Kegiatan Status Card */}
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/70 to-teal-50/50 dark:from-emerald-950/20 dark:to-teal-950/10 border border-emerald-200/80 dark:border-emerald-800/60 shadow-sm mb-4">
+        <div className="p-4 rounded-2xl neu-inset mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0 mt-0.5">
+              <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-lg shadow-sm shrink-0 mt-0.5">
                 <i className="fa-solid fa-book-journal-whills"></i>
               </div>
               <div>
-                <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white">
+                <h4 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   Jurnal Kegiatan Administrasi
                 </h4>
-                <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1] mt-0.5 leading-relaxed">
                   {dailyState?.jurnalKegiatan
                     ? `Sudah dicatat: "${dailyState.jurnalKegiatan.materi || dailyState.jurnalKegiatan.kegiatan || 'Aktivitas administrasi harian'}"`
                     : 'Dokumentasikan pekerjaan administrasi, persuratan, verifikasi data, atau layanan sekolah hari ini.'}
                 </p>
                 {dailyState?.jurnalKegiatan?.jam_ke && (
-                  <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono mt-1">
+                  <p className="text-[10px] text-[#0F766E] dark:text-teal-400 font-mono mt-1">
                     <i className="fa-solid fa-clock mr-1"></i> Jam: {dailyState.jurnalKegiatan.jam_ke}
                   </p>
                 )}
@@ -1179,7 +1179,7 @@ export default function HomeViewTU({
                 <button
                   type="button"
                   onClick={() => setView('view-guru-jurnal')}
-                  className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+                  className="neu-btn neu-btn-primary btn-click px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <i className="fa-solid fa-eye"></i> Tinjau Jurnal
                 </button>
@@ -1187,7 +1187,7 @@ export default function HomeViewTU({
                 <button
                   type="button"
                   onClick={() => setView('view-guru-jurnal')}
-                  className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition"
+                  className="neu-btn neu-btn-primary btn-click px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <i className="fa-solid fa-pen-to-square"></i> Isi Jurnal Sekarang
                 </button>
@@ -1197,25 +1197,25 @@ export default function HomeViewTU({
         </div>
 
         {/* Quick Access to Tata Usaha Operational Modules */}
-        <h4 className="text-[11px] font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-          <i className="fa-solid fa-shapes text-emerald-600 text-[10px]"></i> Modul Operasional Tata Usaha
+        <h4 className="text-[11px] font-bold text-[#475569] dark:text-[#CBD5E1] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <i className="fa-solid fa-shapes text-[#0F766E] dark:text-teal-400 text-[10px]"></i> Modul Operasional Tata Usaha
         </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {/* Module 1: Presensi TU */}
           <div 
             onClick={() => setView('view-guru-presensi')}
-            className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-sm cursor-pointer transition flex flex-col justify-between gap-2"
+            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm shrink-0">
+              <div className="w-8 h-8 rounded-xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-sm shrink-0">
                 <i className="fa-solid fa-clock"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white truncate">Presensi TU</h5>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Datang, pulang & riwayat</p>
+                <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Presensi TU</h5>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Datang, pulang & riwayat</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center justify-end gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+            <div className="text-[9px] font-bold text-[#0F766E] dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
               Buka Presensi <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </div>
@@ -1223,18 +1223,18 @@ export default function HomeViewTU({
           {/* Module 2: Jurnal Kegiatan */}
           <div 
             onClick={() => setView('view-guru-jurnal')}
-            className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-sm cursor-pointer transition flex flex-col justify-between gap-2"
+            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-sm shrink-0">
+              <div className="w-8 h-8 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm shrink-0">
                 <i className="fa-solid fa-book-open"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white truncate">Jurnal Kegiatan</h5>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Laporan aktivitas TU</p>
+                <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Jurnal Kegiatan</h5>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan aktivitas TU</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 flex items-center justify-end gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
               Buka Jurnal <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </div>
@@ -1242,18 +1242,18 @@ export default function HomeViewTU({
           {/* Module 3: Asesmen */}
           <div 
             onClick={() => setView('view-gradebook')}
-            className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-sm cursor-pointer transition flex flex-col justify-between gap-2"
+            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-sm shrink-0">
+              <div className="w-8 h-8 rounded-xl neu-inset text-teal-700 dark:text-teal-300 flex items-center justify-center text-sm shrink-0">
                 <i className="fa-solid fa-graduation-cap"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white truncate">Asesmen</h5>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Rekap nilai & CP (Tinjau)</p>
+                <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Asesmen</h5>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Rekap nilai & CP (Tinjau)</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-purple-600 dark:text-purple-400 flex items-center justify-end gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+            <div className="text-[9px] font-bold text-teal-700 dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
               Tinjau Nilai <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </div>
@@ -1261,18 +1261,18 @@ export default function HomeViewTU({
           {/* Module 4: Rapor Siswa */}
           <div 
             onClick={() => setView('view-rapor')}
-            className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:border-sky-400 dark:hover:border-sky-600 hover:shadow-sm cursor-pointer transition flex flex-col justify-between gap-2"
+            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm shrink-0">
+              <div className="w-8 h-8 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm shrink-0">
                 <i className="fa-solid fa-file-lines"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white truncate">Rapor Siswa</h5>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Cetak & kelengkapan rapor</p>
+                <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Rapor Siswa</h5>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Cetak & kelengkapan rapor</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-sky-600 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
               Buka Rapor <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </div>
@@ -1280,18 +1280,18 @@ export default function HomeViewTU({
           {/* Module 5: Informasi Sekolah */}
           <div 
             onClick={() => setView('view-informasi')}
-            className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:border-amber-400 dark:hover:border-amber-600 hover:shadow-sm cursor-pointer transition flex flex-col justify-between gap-2"
+            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm shrink-0">
+              <div className="w-8 h-8 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm shrink-0">
                 <i className="fa-solid fa-bullhorn"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white truncate">Informasi Sekolah</h5>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Siaran & pengumuman</p>
+                <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Informasi Sekolah</h5>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Siaran & pengumuman</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-amber-600 dark:text-amber-400 flex items-center justify-end gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+            <div className="text-[9px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
               Buka Info <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </div>
@@ -1302,18 +1302,18 @@ export default function HomeViewTU({
               if (onOpenAccountSettings) onOpenAccountSettings();
               else setView('view-pengaturan-akun');
             }}
-            className="p-3 rounded-2xl bg-white dark:bg-gray-800/80 border border-gray-200/80 dark:border-gray-700/80 shadow-xs hover:border-slate-400 dark:hover:border-slate-600 hover:shadow-sm cursor-pointer transition flex flex-col justify-between gap-2"
+            className="p-3 rounded-2xl neu-card-sm cursor-pointer transition hover:-translate-y-0.5 flex flex-col justify-between gap-2"
           >
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center text-sm shrink-0">
+              <div className="w-8 h-8 rounded-xl neu-inset text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center text-sm shrink-0">
                 <i className="fa-solid fa-user-gear"></i>
               </div>
               <div className="min-w-0">
-                <h5 className="text-xs font-bold text-gray-900 dark:text-white truncate">Pengaturan Akun</h5>
-                <p className="text-[9px] text-gray-500 dark:text-gray-400 truncate">Profil & kata sandi</p>
+                <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Pengaturan Akun</h5>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Profil & kata sandi</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-slate-600 dark:text-slate-400 flex items-center justify-end gap-1 pt-1 border-t border-gray-100 dark:border-gray-700/60">
+            <div className="text-[9px] font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50">
               Kelola Akun <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </div>

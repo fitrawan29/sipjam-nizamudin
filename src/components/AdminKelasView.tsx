@@ -133,7 +133,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             ${detail.column ? `
               <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
                 <span class="text-gray-400 text-[10px] block uppercase font-semibold">Kolom Terkait</span>
-                <span class="font-bold text-purple-600 dark:text-purple-400 font-mono">${escapeHtml(detail.column)}</span>
+                <span class="font-bold text-[#0F766E] dark:text-teal-400 font-mono">${escapeHtml(detail.column)}</span>
               </div>
             ` : ''}
             ${detail.receivedValue ? `
@@ -145,7 +145,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             ${detail.referenceTable ? `
               <div class="bg-gray-50 dark:bg-gray-800/60 p-2 rounded-lg border border-gray-200 dark:border-gray-700 col-span-2">
                 <span class="text-gray-400 text-[10px] block uppercase font-semibold">Tabel Referensi</span>
-                <span class="font-semibold text-indigo-600 dark:text-indigo-400 font-mono text-[10.5px]">${escapeHtml(detail.referenceTable)}</span>
+                <span class="font-semibold text-sky-700 dark:text-sky-400 font-mono text-[10.5px]">${escapeHtml(detail.referenceTable)}</span>
               </div>
             ` : ''}
           </div>
@@ -165,7 +165,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         </div>
       `,
       confirmButtonText: 'Tutup & Perbaiki',
-      confirmButtonColor: '#7C3AED'
+      confirmButtonColor: '#0F766E'
     });
   };
 
@@ -736,7 +736,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       `,
       showCancelButton: true,
       confirmButtonText: '<i class="fa-solid fa-plus mr-1"></i> Simpan Kelas',
-      confirmButtonColor: '#7C3AED',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       focusConfirm: false,
       preConfirm: () => {
@@ -805,7 +805,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       inputLabel: 'Masukkan nama kelas baru:',
       showCancelButton: true,
       confirmButtonText: 'Simpan Perubahan',
-      confirmButtonColor: '#7C3AED',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       inputValidator: val => {
         if (!val || !val.trim()) return 'Nama kelas tidak boleh kosong!';
@@ -904,7 +904,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         icon: 'warning',
         title: 'Kelas Tidak Dapat Dihapus',
         html: `Kelas <b>${cls.nama_kelas}</b> masih memiliki <b>${cls.totalSiswa} siswa</b> aktif.<br/><br/>Harap pindahkan seluruh siswa ke kelas lain terlebih dahulu sebelum menghapus kelas ini.`,
-        confirmButtonColor: '#7C3AED'
+        confirmButtonColor: '#0F766E'
       });
     }
 
@@ -977,7 +977,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Ya, Pindahkan',
-      confirmButtonColor: '#059669',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal'
     });
 
@@ -1110,20 +1110,20 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* ======================================================== */}
       {/* 1. EXECUTIVE STATISTICS & HEADER BANNER */}
       {/* ======================================================== */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/40 dark:via-indigo-950/30 dark:to-blue-950/20 border-2 border-purple-200/80 dark:border-purple-800/60 shadow-xs">
+      <div className="neu-card-sm p-4 rounded-2xl">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-sm">
               <i className="fa-solid fa-chalkboard-user text-lg"></i>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-purple-950 dark:text-purple-200 flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                 <span>Manajemen Direktori & Alokasi Kelas Siswa</span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300 border border-purple-300/60">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                   Terpusat
                 </span>
               </h3>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5 leading-relaxed">
                 Kelola direktori rombongan belajar dan lakukan alokasi, mutasi, serta pemindahan siswa antar kelas secara terpusat dari sub menu ini.
               </p>
             </div>
@@ -1133,7 +1133,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
               type="button"
               onClick={() => loadAllData(true)}
               disabled={refreshing || loading || actionLoading}
-              className="clay-btn px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn-primary px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Segarkan data kelas dan alokasi siswa"
             >
               <i className={`fa-solid fa-arrows-rotate ${refreshing ? 'animate-spin' : ''}`}></i>
@@ -1143,43 +1143,43 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         </div>
 
         {/* Executive Metric Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-3 pt-3 border-t border-purple-200/60 dark:border-purple-800/40">
-          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-2 rounded-xl border border-purple-100 dark:border-gray-700 flex items-center justify-between">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
+          <div className="neu-inset px-3 py-2 rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <i className="fa-solid fa-school text-purple-600 dark:text-purple-400 text-xs"></i>
-              <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Total Kelas</span>
+              <i className="fa-solid fa-school text-[#0F766E] dark:text-teal-400 text-xs"></i>
+              <span className="text-[11px] font-medium text-[#475569] dark:text-[#94A3B8]">Total Kelas</span>
             </div>
-            <span className="text-xs font-black text-purple-900 dark:text-purple-300">{stats.totalClasses}</span>
+            <span className="text-xs font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{stats.totalClasses}</span>
           </div>
 
-          <div className="bg-white/80 dark:bg-gray-800/80 px-3 py-2 rounded-xl border border-purple-100 dark:border-gray-700 flex items-center justify-between">
+          <div className="neu-inset px-3 py-2 rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-2">
               <i className="fa-solid fa-user-check text-emerald-600 dark:text-emerald-400 text-xs"></i>
-              <span className="text-[11px] font-medium text-gray-600 dark:text-gray-400">Siswa Teralokasi</span>
+              <span className="text-[11px] font-medium text-[#475569] dark:text-[#94A3B8]">Siswa Teralokasi</span>
             </div>
-            <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{stats.totalAllocated}</span>
+            <span className="text-xs font-black font-num text-[#0F766E] dark:text-teal-400">{stats.totalAllocated}</span>
           </div>
 
           <button
             type="button"
             onClick={() => setIsUnassignedDrawerOpen(true)}
-            className={`col-span-2 sm:col-span-1 px-3 py-2 rounded-xl border flex items-center justify-between transition text-left cursor-pointer ${
+            className={`col-span-2 sm:col-span-1 px-3 py-2 rounded-xl flex items-center justify-between transition text-left cursor-pointer ${
               stats.totalUnassigned > 0
-                ? 'bg-amber-100/90 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700/70 hover:bg-amber-200/80'
-                : 'bg-white/80 dark:bg-gray-800/80 border-purple-100 dark:border-gray-700'
+                ? 'neu-card-sm bg-amber-500/15 ring-1 ring-amber-500/40'
+                : 'neu-inset'
             }`}
             title="Klik untuk meninjau siswa tanpa kelas"
           >
             <div className="flex items-center gap-2">
-              <i className={`fa-solid fa-user-xmark text-xs ${stats.totalUnassigned > 0 ? 'text-amber-600 dark:text-amber-400 animate-pulse' : 'text-gray-400'}`}></i>
-              <span className="text-[11px] font-medium text-gray-700 dark:text-gray-300">Siswa Tanpa Kelas</span>
+              <i className={`fa-solid fa-user-xmark text-xs ${stats.totalUnassigned > 0 ? 'text-amber-600 dark:text-amber-400 animate-pulse' : 'text-[#475569]'}`}></i>
+              <span className="text-[11px] font-medium text-[#334155] dark:text-[#CBD5E1]">Siswa Tanpa Kelas</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`text-xs font-black ${stats.totalUnassigned > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-gray-500'}`}>
+              <span className={`text-xs font-black font-num ${stats.totalUnassigned > 0 ? 'text-amber-700 dark:text-amber-300' : 'text-[#475569]'}`}>
                 {stats.totalUnassigned}
               </span>
               {stats.totalUnassigned > 0 && (
-                <span className="text-[10px] text-amber-800 dark:text-amber-400 font-semibold underline">Alokasikan</span>
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 font-semibold underline">Alokasikan</span>
               )}
             </div>
           </button>
@@ -1190,16 +1190,16 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* 2. UNALLOCATED STUDENTS ALERT WARNING BANNER */}
       {/* ======================================================== */}
       {unassignedStudents.length > 0 && (
-        <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-300/80 dark:border-amber-800/60 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shadow-xs animate-fadeIn">
+        <div className="neu-card-sm p-3.5 rounded-2xl ring-1 ring-amber-500/40 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 animate-fadeIn">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-xs">
               <i className="fa-solid fa-triangle-exclamation text-base"></i>
             </div>
             <div>
-              <div className="text-xs font-bold text-amber-950 dark:text-amber-200">
+              <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                 Perhatian: Terdapat {unassignedStudents.length} Siswa Belum Memiliki Kelas!
               </div>
-              <p className="text-[11px] text-amber-800 dark:text-amber-300/90 leading-tight mt-0.5">
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] leading-tight mt-0.5">
                 Siswa tanpa rombel tidak akan muncul pada daftar presensi harian maupun jurnal kelas guru mata pelajaran.
               </p>
             </div>
@@ -1230,19 +1230,19 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         <div className="flex flex-wrap items-center gap-2 flex-1">
           {/* Search Box */}
           <div className="relative flex-1 min-w-[200px] max-w-md">
-            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+            <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Cari nama kelas, wali kelas, atau jurusan..."
-              className="input-premium w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="input-premium neu-input w-full pl-8 pr-3 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#475569] hover:text-[#0F172A] dark:hover:text-white text-xs"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -1250,7 +1250,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           </div>
 
           {/* Filter Tingkat Pills */}
-          <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200 dark:border-gray-700 shrink-0">
+          <div className="neu-inset flex items-center gap-1 p-1 rounded-xl shrink-0">
             {(['ALL', '10', '11', '12'] as TingkatFilter[]).map(t => (
               <button
                 key={t}
@@ -1258,8 +1258,8 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                 onClick={() => setFilterTingkat(t)}
                 className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
                   filterTingkat === t
-                    ? 'bg-purple-600 text-white shadow-xs'
-                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    ? 'neu-btn-primary text-white shadow-xs'
+                    : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                 }`}
               >
                 {t === 'ALL' ? 'Semua' : `Tingkat ${t}`}
@@ -1281,11 +1281,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           <button
             type="button"
             onClick={handleDownloadClassTemplate}
-            className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+            className="clay-btn neu-btn px-2.5 sm:px-3 py-2 rounded-xl text-[#334155] dark:text-[#CBD5E1] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             title="Unduh format template CSV Data Kelas"
             aria-label="Unduh format template CSV Data Kelas"
           >
-            <i className="fa-solid fa-file-csv text-green-600 dark:text-green-400"></i>
+            <i className="fa-solid fa-file-csv text-emerald-600 dark:text-emerald-400"></i>
             <span>Template CSV</span>
           </button>
 
@@ -1293,11 +1293,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             type="button"
             onClick={handleExportClassCsv}
             disabled={loading}
-            className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+            className="clay-btn neu-btn px-2.5 sm:px-3 py-2 rounded-xl text-[#334155] dark:text-[#CBD5E1] text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
             title="Ekspor seluruh Data Kelas ke berkas CSV"
             aria-label="Ekspor seluruh Data Kelas ke berkas CSV"
           >
-            <i className="fa-solid fa-file-export text-purple-600 dark:text-purple-400"></i>
+            <i className="fa-solid fa-file-export text-[#0F766E] dark:text-teal-400"></i>
             <span>Export CSV</span>
           </button>
 
@@ -1306,7 +1306,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
               type="button"
               onClick={() => classFileInputRef.current?.click()}
               disabled={actionLoading}
-              className="clay-btn px-2.5 sm:px-3 py-2 rounded-xl bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+              className="clay-btn neu-btn px-2.5 sm:px-3 py-2 rounded-xl text-[#0F766E] dark:text-teal-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
               title="Unggah berkas CSV Data Kelas"
             >
               <i className="fa-solid fa-upload"></i>
@@ -1318,7 +1318,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             type="button"
             onClick={handleAddClass}
             disabled={actionLoading}
-            className="clay-btn px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+            className="clay-btn neu-btn-primary px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
           >
             <i className="fa-solid fa-plus"></i>
             <span>Tambah Kelas</span>
@@ -1327,7 +1327,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
           <button
             type="button"
             onClick={() => setIsNaikKelasOpen(true)}
-            className="clay-btn px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+            className="clay-btn neu-btn px-3 py-2 rounded-xl text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
             title="Buka panduan kenaikan kelas dan kelulusan satu angkatan"
           >
             <i className="fa-solid fa-graduation-cap"></i>
@@ -1338,23 +1338,23 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
       {/* Animated Class Upload Progress Bar */}
       {isClassUploading && (
-        <div className="mb-4 p-4 bg-gradient-to-r from-purple-50 via-indigo-50 to-purple-50 dark:from-purple-950/40 dark:via-indigo-950/40 dark:to-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800 shadow-sm animate-fade-in">
+        <div className="mb-4 p-4 neu-inset rounded-2xl animate-fade-in">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <i className="fa-solid fa-circle-notch fa-spin text-purple-600 dark:text-purple-400 text-sm"></i>
-              <span className="text-xs font-bold text-gray-800 dark:text-gray-200">
+              <i className="fa-solid fa-circle-notch fa-spin text-[#0F766E] dark:text-teal-400 text-sm"></i>
+              <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                 {classUploadStage || 'Sedang memproses unggahan kelas...'}
               </span>
             </div>
-            <span className="text-xs font-black text-purple-700 dark:text-purple-300 font-mono">
+            <span className="text-xs font-black font-num text-[#0F766E] dark:text-teal-300">
               {classUploadProgress}%
             </span>
           </div>
 
           {/* Progress Bar Container */}
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden shadow-inner p-0.5">
+          <div className="w-full neu-inset rounded-full h-3 overflow-hidden p-0.5">
             <div
-              className="bg-gradient-to-r from-purple-600 via-indigo-600 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
+              className="bg-gradient-to-r from-[#0F766E] via-teal-500 to-emerald-500 h-full rounded-full transition-all duration-300 ease-out"
               style={{ width: `${Math.min(100, Math.max(0, classUploadProgress))}%` }}
             />
           </div>
@@ -1372,19 +1372,19 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* 4. RESPONSIVE GRID OF CLASS DIRECTORY CARDS */}
       {/* ======================================================== */}
       {loading ? (
-        <div className="p-12 text-center bg-white dark:bg-gray-800/50 rounded-2xl border border-gray-200 dark:border-gray-700">
-          <i className="fa-solid fa-circle-notch fa-spin text-purple-600 text-2xl mb-2"></i>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Memuat data direktori kelas...</p>
+        <div className="p-12 text-center neu-card-sm rounded-2xl">
+          <i className="fa-solid fa-circle-notch fa-spin text-[#0F766E] dark:text-teal-400 text-2xl mb-2"></i>
+          <p className="text-xs text-[#475569] dark:text-[#94A3B8]">Memuat data direktori kelas...</p>
         </div>
       ) : filteredClasses.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-gray-800/50 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-          <div className="w-12 h-12 rounded-2xl bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mx-auto mb-3">
+        <div className="p-12 text-center neu-card-sm rounded-2xl">
+          <div className="neu-inset w-12 h-12 rounded-2xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center mx-auto mb-3">
             <i className="fa-solid fa-school text-xl"></i>
           </div>
-          <h4 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+          <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1">
             {searchQuery || filterTingkat !== 'ALL' ? 'Tidak Ada Kelas yang Cocok' : 'Belum Ada Data Kelas'}
           </h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-4">
+          <p className="text-xs text-[#475569] dark:text-[#94A3B8] max-w-sm mx-auto mb-4">
             {searchQuery || filterTingkat !== 'ALL'
               ? 'Coba sesuaikan kata kunci pencarian atau ubah filter tingkat kelas.'
               : 'Tambahkan kelas baru atau alokasikan siswa ke kelas untuk memulai.'}
@@ -1393,7 +1393,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             <button
               type="button"
               onClick={handleAddClass}
-              className="clay-btn px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-sm inline-flex items-center gap-1.5 cursor-pointer"
+              className="clay-btn neu-btn-primary px-4 py-2 rounded-xl text-white text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
             >
               <i className="fa-solid fa-plus"></i>
               <span>Buat Kelas Pertama</span>
@@ -1407,17 +1407,17 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
             return (
               <div
                 key={cls.nama_kelas}
-                className="bg-white dark:bg-gray-800 rounded-2xl p-4 border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-600 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                className="neu-card-sm rounded-2xl p-4 transition-all flex flex-col justify-between"
               >
                 {/* Card Top: Title & Badges */}
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div>
-                      <h4 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
                         <span>{cls.nama_kelas}</span>
                       </h4>
                       {cls.jurusan && (
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                        <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-medium">
                           {cls.jurusan}
                         </span>
                       )}
@@ -1425,12 +1425,12 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                     <span
                       className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                         cls.tingkat === '10'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
+                          ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
                           : cls.tingkat === '11'
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                          ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                           : cls.tingkat === '12'
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                          : 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
+                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                          : 'bg-teal-500/15 text-[#0F766E] dark:text-teal-300'
                       }`}
                     >
                       {cls.tingkat === 'Lainnya' ? 'Umum' : `Kelas ${cls.tingkat}`}
@@ -1438,37 +1438,37 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                   </div>
 
                   {/* Homeroom Teacher */}
-                  <div className="flex items-center gap-2 p-2 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-800 mb-3">
+                  <div className="neu-inset flex items-center gap-2 p-2 rounded-xl mb-3">
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs ${
                         hasWali
-                          ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
-                          : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
+                          ? 'bg-teal-500/15 text-[#0F766E] dark:text-teal-300'
+                          : 'bg-slate-400/15 text-[#64748B]'
                       }`}
                     >
                       <i className={`fa-solid ${hasWali ? 'fa-user-tie' : 'fa-user-xmark'}`}></i>
                     </div>
                     <div className="overflow-hidden">
-                      <div className="text-[10px] text-gray-400 uppercase font-bold tracking-wider leading-none">
+                      <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider leading-none">
                         Wali Kelas
                       </div>
-                      <div className="text-xs font-semibold text-gray-800 dark:text-gray-200 truncate mt-0.5" title={cls.wali_kelas?.nama_guru || 'Belum ditentukan'}>
-                        {cls.wali_kelas?.nama_guru || <span className="text-gray-400 italic">Belum ditentukan</span>}
+                      <div className="text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] truncate mt-0.5" title={cls.wali_kelas?.nama_guru || 'Belum ditentukan'}>
+                        {cls.wali_kelas?.nama_guru || <span className="text-[#64748B] italic">Belum ditentukan</span>}
                       </div>
                     </div>
                   </div>
 
                   {/* Student Count & Gender Metrics */}
-                  <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700/60 mb-3 text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-300/60 dark:border-slate-700/60 mb-3 text-xs">
                     <div>
-                      <span className="text-gray-500 dark:text-gray-400 text-[11px]">Total Siswa: </span>
-                      <strong className="text-gray-900 dark:text-white font-bold">{cls.totalSiswa}</strong>
+                      <span className="text-[#475569] dark:text-[#94A3B8] text-[11px]">Total Siswa: </span>
+                      <strong className="text-[#0F172A] dark:text-[#F1F5F9] font-bold font-num">{cls.totalSiswa}</strong>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold" title="Siswa Laki-laki">
+                    <div className="flex items-center gap-1.5 text-[11px] font-num">
+                      <span className="px-1.5 py-0.5 rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold" title="Siswa Laki-laki">
                         <i className="fa-solid fa-mars mr-1"></i>{cls.siswaLaki}
                       </span>
-                      <span className="px-1.5 py-0.5 rounded-md bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300 font-semibold" title="Siswa Perempuan">
+                      <span className="px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300 font-semibold" title="Siswa Perempuan">
                         <i className="fa-solid fa-venus mr-1"></i>{cls.siswaPerempuan}
                       </span>
                     </div>
@@ -1476,7 +1476,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                 </div>
 
                 {/* Card Bottom: Primary & Quick Actions */}
-                <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-700/60">
+                <div className="space-y-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
                   <button
                     type="button"
                     onClick={() => {
@@ -1489,7 +1489,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                       setInboundSearch('');
                       setTargetTransferClass('');
                     }}
-                    className="w-full clay-btn py-2 px-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="w-full clay-btn neu-btn-primary py-2 px-3 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <i className="fa-solid fa-users-rectangle"></i>
                     <span>Kelola Siswa & Roster ({cls.totalSiswa})</span>
@@ -1534,25 +1534,25 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* ======================================================== */}
       {selectedClassForWorkspace && (
         <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fadeIn">
-          <div className="w-full max-w-2xl bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col border-l border-gray-200 dark:border-gray-800 animate-slideLeft">
+          <div className="w-full max-w-2xl bg-[#E6ECF2] dark:bg-[#1F242D] h-full shadow-2xl flex flex-col border-l border-slate-300/60 dark:border-slate-700/60 animate-slideLeft">
             {/* Drawer Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/40 dark:to-indigo-950/30 flex items-start justify-between gap-3">
+            <div className="p-4 border-b border-slate-300/60 dark:border-slate-700/60 bg-slate-500/5 dark:bg-slate-900/30 flex items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                  <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                     Kelas {selectedClassForWorkspace.nama_kelas}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-900/60 dark:text-purple-300">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                     Tingkat {selectedClassForWorkspace.tingkat}
                   </span>
                 </div>
-                <div className="text-xs text-gray-600 dark:text-gray-300 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div className="text-xs text-[#475569] dark:text-[#94A3B8] mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>
-                    <i className="fa-solid fa-user-tie mr-1 text-purple-600"></i>
+                    <i className="fa-solid fa-user-tie mr-1 text-[#0F766E] dark:text-teal-400"></i>
                     Wali: {selectedClassForWorkspace.wali_kelas?.nama_guru || 'Belum ditentukan'}
                   </span>
                   <span>•</span>
-                  <span>
+                  <span className="font-num">
                     Total: <b>{selectedClassForWorkspace.totalSiswa} Siswa</b> (L: {selectedClassForWorkspace.siswaLaki}, P: {selectedClassForWorkspace.siswaPerempuan})
                   </span>
                 </div>
@@ -1560,26 +1560,26 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
               <button
                 type="button"
                 onClick={() => setSelectedClassForWorkspace(null)}
-                className="w-8 h-8 rounded-xl bg-white/80 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center shrink-0 border border-gray-200 dark:border-gray-700 cursor-pointer"
+                className="neu-btn w-8 h-8 rounded-xl text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
 
             {/* Workspace Drawer Tabs */}
-            <div className="flex items-center border-b border-gray-200 dark:border-gray-800 px-4 bg-gray-50 dark:bg-gray-900/50">
+            <div className="flex items-center border-b border-slate-300/60 dark:border-slate-700/60 px-4">
               <button
                 type="button"
                 onClick={() => setWorkspaceTab('roster')}
                 className={`py-3 px-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer ${
                   workspaceTab === 'roster'
-                    ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'border-[#0F766E] text-[#0F766E] dark:text-teal-400'
+                    : 'border-transparent text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                 }`}
               >
                 <i className="fa-solid fa-users"></i>
                 <span>Roster Siswa Kelas Ini</span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300 font-bold">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-num bg-teal-500/15 text-[#0F766E] dark:text-teal-300 font-bold">
                   {selectedClassForWorkspace.students.length}
                 </span>
               </button>
@@ -1589,8 +1589,8 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                 onClick={() => setWorkspaceTab('inbound')}
                 className={`py-3 px-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer ${
                   workspaceTab === 'inbound'
-                    ? 'border-purple-600 text-purple-600 dark:text-purple-400'
-                    : 'border-transparent text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                    ? 'border-[#0F766E] text-[#0F766E] dark:text-teal-400'
+                    : 'border-transparent text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                 }`}
               >
                 <i className="fa-solid fa-user-plus"></i>
@@ -1638,8 +1638,8 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
                   {/* Batch Selection Action Bar */}
                   {selectedRosterStudentIds.length > 0 && (
-                    <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 flex flex-wrap items-center justify-between gap-2 animate-fadeIn">
-                      <div className="text-xs font-bold text-purple-900 dark:text-purple-200 flex items-center gap-1.5">
+                    <div className="neu-inset p-2.5 rounded-xl flex flex-wrap items-center justify-between gap-2 animate-fadeIn">
+                      <div className="text-xs font-bold text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5">
                         <i className="fa-solid fa-check-double"></i>
                         <span>{selectedRosterStudentIds.length} Siswa Dipilih</span>
                       </div>
@@ -1647,7 +1647,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                         <select
                           value={targetTransferClass}
                           onChange={e => setTargetTransferClass(e.target.value)}
-                          className="text-xs py-1.5 px-2 rounded-lg border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                          className="neu-input text-xs py-1.5 px-2 rounded-lg text-[#0F172A] dark:text-[#F1F5F9]"
                         >
                           <option value="">-- Pilih Kelas Tujuan --</option>
                           <option value="Tanpa Kelas">Keluarkan (Jadikan Tanpa Kelas)</option>
@@ -1666,7 +1666,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                           type="button"
                           onClick={() => handleBatchTransfer(selectedRosterStudentIds, targetTransferClass)}
                           disabled={!targetTransferClass || actionLoading}
-                          className="clay-btn px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                          className="clay-btn neu-btn-primary px-3 py-1.5 rounded-lg text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
                         >
                           Pindahkan
                         </button>
@@ -1690,7 +1690,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
                     if (filteredRoster.length === 0) {
                       return (
-                        <div className="p-8 text-center bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+                        <div className="neu-inset p-8 text-center rounded-xl text-xs text-[#475569] dark:text-[#94A3B8]">
                           {rosterSearch ? 'Tidak ada siswa yang cocok dengan pencarian.' : 'Belum ada siswa yang terdaftar di kelas ini.'}
                         </div>
                       );
@@ -1700,9 +1700,9 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                     const isAllSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selectedRosterStudentIds.includes(id));
 
                     return (
-                      <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                        <table className="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                          <thead className="bg-gray-50 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                      <div className="overflow-x-auto rounded-xl border border-slate-300/60 dark:border-slate-700/60">
+                        <table className="w-full text-left text-xs text-[#334155] dark:text-[#CBD5E1]">
+                          <thead className="bg-slate-500/10 dark:bg-slate-900/40 text-[11px] uppercase font-bold text-[#475569] dark:text-[#94A3B8] border-b border-slate-300/60 dark:border-slate-700/60">
                             <tr>
                               <th className="p-2.5 w-8 text-center">
                                 <input
@@ -1715,7 +1715,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                       setSelectedRosterStudentIds(selectedRosterStudentIds.filter(id => !allFilteredIds.includes(id)));
                                     }
                                   }}
-                                  className="rounded text-purple-600 cursor-pointer"
+                                  className="rounded text-[#0F766E] cursor-pointer"
                                 />
                               </th>
                               <th className="p-2.5">Siswa</th>
@@ -1724,14 +1724,14 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                               <th className="p-2.5 text-right">Aksi</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                          <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60">
                             {filteredRoster.map(s => {
                               const isChecked = selectedRosterStudentIds.includes(s.id);
                               return (
                                 <tr
                                   key={s.id}
-                                  className={`hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition ${
-                                    isChecked ? 'bg-purple-50/70 dark:bg-purple-950/30' : ''
+                                  className={`hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition ${
+                                    isChecked ? 'bg-teal-500/10 dark:bg-teal-500/15' : ''
                                   }`}
                                 >
                                   <td className="p-2.5 text-center">
@@ -1745,33 +1745,33 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                           setSelectedRosterStudentIds(selectedRosterStudentIds.filter(id => id !== s.id));
                                         }
                                       }}
-                                      className="rounded text-purple-600 cursor-pointer"
+                                      className="rounded text-[#0F766E] cursor-pointer"
                                     />
                                   </td>
                                   <td className="p-2.5">
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
+                                      <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{s.nama_siswa}</span>
                                       {s.agama && (
-                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300">
                                           {s.agama}
                                         </span>
                                       )}
                                     </div>
-                                    <div className="text-[10px] text-gray-400">NISN: {s.nisn || '-'}</div>
+                                    <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">NISN: {s.nisn || '-'}</div>
                                   </td>
                                   <td className="p-2.5">
                                     <span
                                       className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
                                         (s.gender || '').toUpperCase().startsWith('L')
-                                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                                          : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                                          ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                                          : 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
                                       }`}
                                     >
                                       {s.gender || '-'}
                                     </span>
                                   </td>
                                   <td className="p-2.5">
-                                    <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <span className="text-[10px] font-semibold text-[#0F766E] dark:text-teal-400">
                                       {s.status || 'Aktif'}
                                     </span>
                                   </td>
@@ -1794,14 +1794,14 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                           },
                                           showCancelButton: true,
                                           confirmButtonText: 'Pindahkan',
-                                          confirmButtonColor: '#059669',
+                                          confirmButtonColor: '#0F766E',
                                           cancelButtonText: 'Batal'
                                         });
                                         if (target) {
                                           handleBatchTransfer([s.id], target);
                                         }
                                       }}
-                                      className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-semibold cursor-pointer"
+                                      className="text-xs text-[#0F766E] dark:text-teal-400 hover:underline font-semibold cursor-pointer"
                                     >
                                       Pindah
                                     </button>
@@ -1822,7 +1822,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
               {/* ======================================================== */}
               {workspaceTab === 'inbound' && (
                 <div className="space-y-3">
-                  <div className="p-3 rounded-xl bg-purple-50/60 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-800 text-xs text-purple-950 dark:text-purple-200">
+                  <div className="neu-inset p-3 rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]">
                     Pilih siswa dari kelompok tanpa rombel atau dari kelas lain untuk dimasukkan langsung ke <b>Kelas {selectedClassForWorkspace.nama_kelas}</b>.
                   </div>
 
@@ -1835,7 +1835,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                           setInboundSourceClass(e.target.value);
                           setSelectedInboundStudentIds([]);
                         }}
-                        className="text-xs py-1.5 px-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200"
+                        className="neu-input text-xs py-1.5 px-2.5 rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       >
                         <option value="UNASSIGNED">Siswa Tanpa Kelas ({unassignedStudents.length})</option>
                         <option value="ALL_OTHER">Semua Siswa Dari Kelas Lain</option>
@@ -1852,13 +1852,13 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                     </div>
 
                     <div className="relative flex-1">
-                      <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                      <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                       <input
                         type="text"
                         value={inboundSearch}
                         onChange={e => setInboundSearch(e.target.value)}
                         placeholder="Cari siswa masuk..."
-                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                        className="neu-input w-full pl-8 pr-3 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                   </div>
@@ -1890,7 +1890,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
                     if (candidates.length === 0) {
                       return (
-                        <div className="p-8 text-center bg-gray-50 dark:bg-gray-800/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 text-xs text-gray-500">
+                        <div className="neu-inset p-8 text-center rounded-xl text-xs text-[#475569] dark:text-[#94A3B8]">
                           Tidak ada siswa yang sesuai kriteria sumber atau pencarian.
                         </div>
                       );
@@ -1903,7 +1903,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                       <div className="space-y-2">
                         {/* Batch Action Confirmation Bar */}
                         {selectedInboundStudentIds.length > 0 && (
-                          <div className="p-2.5 rounded-xl bg-purple-600 text-white flex items-center justify-between gap-2 shadow-sm animate-fadeIn">
+                          <div className="p-2.5 rounded-xl bg-[#0F766E] text-white flex items-center justify-between gap-2 shadow-sm animate-fadeIn">
                             <span className="text-xs font-bold">
                               {selectedInboundStudentIds.length} Siswa Terpilih
                             </span>
@@ -1911,7 +1911,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                               type="button"
                               onClick={() => handleInboundAllocate(selectedInboundStudentIds, selectedClassForWorkspace.nama_kelas)}
                               disabled={actionLoading}
-                              className="px-3 py-1.5 rounded-lg bg-white text-purple-700 text-xs font-black shadow-xs hover:bg-purple-50 transition cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-[#E6ECF2] text-[#0F766E] text-xs font-black shadow-xs hover:bg-white transition cursor-pointer"
                             >
                               <i className="fa-solid fa-arrow-down mr-1"></i>
                               Masukkan ke {selectedClassForWorkspace.nama_kelas}
@@ -1919,9 +1919,9 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                           </div>
                         )}
 
-                        <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
-                          <table className="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                            <thead className="bg-gray-50 dark:bg-gray-800/80 text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                        <div className="overflow-x-auto rounded-xl border border-slate-300/60 dark:border-slate-700/60">
+                          <table className="w-full text-left text-xs text-[#334155] dark:text-[#CBD5E1]">
+                            <thead className="bg-slate-500/10 dark:bg-slate-900/40 text-[11px] uppercase font-bold text-[#475569] dark:text-[#94A3B8] border-b border-slate-300/60 dark:border-slate-700/60">
                               <tr>
                                 <th className="p-2.5 w-8 text-center">
                                   <input
@@ -1934,7 +1934,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                         setSelectedInboundStudentIds(selectedInboundStudentIds.filter(id => !candidateIds.includes(id)));
                                       }
                                     }}
-                                    className="rounded text-purple-600 cursor-pointer"
+                                    className="rounded text-[#0F766E] cursor-pointer"
                                   />
                                 </th>
                                 <th className="p-2.5">Siswa</th>
@@ -1943,14 +1943,14 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                 <th className="p-2.5 text-right">Aksi</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                            <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60">
                               {candidates.map(s => {
                                 const isChecked = selectedInboundStudentIds.includes(s.id);
                                 return (
                                   <tr
                                     key={s.id}
-                                    className={`hover:bg-purple-50/50 dark:hover:bg-purple-950/20 transition ${
-                                      isChecked ? 'bg-purple-50/70 dark:bg-purple-950/30' : ''
+                                    className={`hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition ${
+                                      isChecked ? 'bg-teal-500/10 dark:bg-teal-500/15' : ''
                                     }`}
                                   >
                                     <td className="p-2.5 text-center">
@@ -1964,26 +1964,26 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                             setSelectedInboundStudentIds(selectedInboundStudentIds.filter(id => id !== s.id));
                                           }
                                         }}
-                                        className="rounded text-purple-600 cursor-pointer"
+                                        className="rounded text-[#0F766E] cursor-pointer"
                                       />
                                     </td>
                                     <td className="p-2.5">
-                                      <div className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</div>
-                                      <div className="text-[10px] text-gray-400">NISN: {s.nisn || '-'}</div>
+                                      <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{s.nama_siswa}</div>
+                                      <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">NISN: {s.nisn || '-'}</div>
                                     </td>
                                     <td className="p-2.5">
                                       {isUnassignedClass(s.kelas) ? (
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300">
                                           Tanpa Rombel
                                         </span>
                                       ) : (
-                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
+                                        <span className="neu-inset px-1.5 py-0.5 rounded text-[10px] font-semibold text-[#334155] dark:text-[#CBD5E1]">
                                           {s.kelas}
                                         </span>
                                       )}
                                     </td>
                                     <td className="p-2.5">
-                                      <span className="text-[10px] font-bold text-gray-500">
+                                      <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8]">
                                         {s.gender || '-'}
                                       </span>
                                     </td>
@@ -1991,7 +1991,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                       <button
                                         type="button"
                                         onClick={() => handleInboundAllocate([s.id], selectedClassForWorkspace.nama_kelas)}
-                                        className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
+                                        className="text-xs text-[#0F766E] dark:text-teal-400 hover:underline font-bold cursor-pointer"
                                       >
                                         + Masukkan
                                       </button>
@@ -2017,17 +2017,17 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* ======================================================== */}
       {isUnassignedDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fadeIn">
-          <div className="w-full max-w-xl bg-white dark:bg-gray-900 h-full shadow-2xl flex flex-col border-l border-gray-200 dark:border-gray-800 animate-slideLeft">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-amber-50 dark:bg-amber-950/40 flex items-start justify-between gap-3">
+          <div className="w-full max-w-xl bg-[#E6ECF2] dark:bg-[#1F242D] h-full shadow-2xl flex flex-col border-l border-slate-300/60 dark:border-slate-700/60 animate-slideLeft">
+            <div className="p-4 border-b border-slate-300/60 dark:border-slate-700/60 bg-amber-500/10 flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
                   <i className="fa-solid fa-user-xmark"></i>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                     Alokasi Siswa Tanpa Kelas
                   </h3>
-                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                     Total {unassignedStudents.length} siswa aktif belum terdaftar di rombel manapun.
                   </p>
                 </div>
@@ -2038,36 +2038,36 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                   setIsUnassignedDrawerOpen(false);
                   setSelectedUnassignedStudentIds([]);
                 }}
-                className="w-8 h-8 rounded-xl bg-white dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center shrink-0 border border-gray-200 dark:border-gray-700 cursor-pointer"
+                className="neu-btn w-8 h-8 rounded-xl text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
 
-            <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-2">
+            <div className="p-4 border-b border-slate-300/60 dark:border-slate-700/60 flex items-center gap-2">
               <div className="relative flex-1">
-                <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                 <input
                   type="text"
                   value={unassignedSearch}
                   onChange={e => setUnassignedSearch(e.target.value)}
                   placeholder="Cari nama siswa atau NISN..."
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                  className="neu-input w-full pl-8 pr-3 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                 />
               </div>
             </div>
 
             {/* Target Class Selection & Batch Button */}
             {selectedUnassignedStudentIds.length > 0 && (
-              <div className="p-3 bg-purple-50 dark:bg-purple-950/40 border-b border-purple-200 dark:border-purple-800 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-bold text-purple-900 dark:text-purple-200">
+              <div className="neu-inset p-3 border-b border-slate-300/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs font-bold text-[#0F766E] dark:text-teal-300">
                   {selectedUnassignedStudentIds.length} Siswa Dipilih
                 </span>
                 <div className="flex items-center gap-1.5">
                   <select
                     value={unassignedTargetClass}
                     onChange={e => setUnassignedTargetClass(e.target.value)}
-                    className="text-xs py-1.5 px-2.5 rounded-lg border border-purple-300 dark:border-purple-700 bg-white dark:bg-gray-800"
+                    className="neu-input text-xs py-1.5 px-2.5 rounded-lg text-[#0F172A] dark:text-[#F1F5F9]"
                   >
                     <option value="">-- Pilih Kelas Target --</option>
                     {allClassNames.map(c => (
@@ -2080,7 +2080,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                     type="button"
                     onClick={() => handleInboundAllocate(selectedUnassignedStudentIds, unassignedTargetClass)}
                     disabled={!unassignedTargetClass || actionLoading}
-                    className="clay-btn px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
+                    className="clay-btn neu-btn-primary px-3 py-1.5 rounded-lg text-white text-xs font-bold transition disabled:opacity-50 cursor-pointer"
                   >
                     Alokasikan
                   </button>
@@ -2101,7 +2101,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
                 if (filtered.length === 0) {
                   return (
-                    <div className="p-8 text-center text-xs text-gray-500">
+                    <div className="p-8 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
                       {unassignedSearch ? 'Tidak ada siswa yang cocok dengan pencarian.' : 'Seluruh siswa telah memiliki kelas!'}
                     </div>
                   );
@@ -2111,9 +2111,9 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                 const isAllSelected = filteredIds.length > 0 && filteredIds.every(id => selectedUnassignedStudentIds.includes(id));
 
                 return (
-                  <div className="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <table className="w-full text-left text-xs text-gray-700 dark:text-gray-300">
-                      <thead className="bg-gray-50 dark:bg-gray-800 text-[11px] uppercase font-bold text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-700">
+                  <div className="rounded-xl border border-slate-300/60 dark:border-slate-700/60 overflow-hidden">
+                    <table className="w-full text-left text-xs text-[#334155] dark:text-[#CBD5E1]">
+                      <thead className="bg-slate-500/10 dark:bg-slate-900/40 text-[11px] uppercase font-bold text-[#475569] dark:text-[#94A3B8] border-b border-slate-300/60 dark:border-slate-700/60">
                         <tr>
                           <th className="p-2.5 w-8 text-center">
                             <input
@@ -2126,7 +2126,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                   setSelectedUnassignedStudentIds(selectedUnassignedStudentIds.filter(id => !filteredIds.includes(id)));
                                 }
                               }}
-                              className="rounded text-purple-600 cursor-pointer"
+                              className="rounded text-[#0F766E] cursor-pointer"
                             />
                           </th>
                           <th className="p-2.5">Nama Siswa</th>
@@ -2134,11 +2134,11 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                           <th className="p-2.5 text-right">Aksi Cepat</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60">
                         {filtered.map(s => {
                           const isChecked = selectedUnassignedStudentIds.includes(s.id);
                           return (
-                            <tr key={s.id} className={`hover:bg-purple-50/50 ${isChecked ? 'bg-purple-50/70' : ''}`}>
+                            <tr key={s.id} className={`hover:bg-teal-500/5 transition ${isChecked ? 'bg-teal-500/10' : ''}`}>
                               <td className="p-2.5 text-center">
                                 <input
                                   type="checkbox"
@@ -2150,15 +2150,15 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                       setSelectedUnassignedStudentIds(selectedUnassignedStudentIds.filter(id => id !== s.id));
                                     }
                                   }}
-                                  className="rounded text-purple-600 cursor-pointer"
+                                  className="rounded text-[#0F766E] cursor-pointer"
                                 />
                               </td>
                               <td className="p-2.5">
-                                <div className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</div>
-                                <div className="text-[10px] text-gray-400">NISN: {s.nisn || '-'}</div>
+                                <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{s.nama_siswa}</div>
+                                <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">NISN: {s.nisn || '-'}</div>
                               </td>
                               <td className="p-2.5">
-                                <span className="text-[10px] font-bold text-gray-600 dark:text-gray-400">
+                                <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8]">
                                   {s.gender || '-'}
                                 </span>
                               </td>
@@ -2175,14 +2175,14 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                                       ),
                                       showCancelButton: true,
                                       confirmButtonText: 'Tetapkan',
-                                      confirmButtonColor: '#7C3AED',
+                                      confirmButtonColor: '#0F766E',
                                       cancelButtonText: 'Batal'
                                     });
                                     if (target) {
                                       handleInboundAllocate([s.id], target);
                                     }
                                   }}
-                                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline font-bold cursor-pointer"
+                                  className="text-xs text-[#0F766E] dark:text-teal-400 hover:underline font-bold cursor-pointer"
                                 >
                                   Pilih Kelas
                                 </button>

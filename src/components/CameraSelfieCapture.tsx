@@ -384,18 +384,18 @@ export default function CameraSelfieCapture({
   };
 
   return (
-    <div className="w-full bg-slate-50 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-700/60 p-4 shadow-sm transition-all">
+    <div className="w-full neu-card-sm rounded-2xl p-4 transition-all">
       {/* Header status bar */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-300/60 dark:border-slate-700/60">
         <div className="flex items-center gap-2 min-w-0">
           <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+          <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">
             {capturedImage ? 'Preview Foto Kamera (Watermarked)' : 'Kamera Langsung Perangkat'}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0 max-w-full">
-          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 min-w-0">
-            <i className="fa-solid fa-location-dot text-emerald-500 shrink-0"></i>
+          <div className="flex items-center gap-1.5 text-[11px] text-[#475569] dark:text-[#94A3B8] min-w-0">
+            <i className="fa-solid fa-location-dot text-[#0F766E] dark:text-teal-400 shrink-0"></i>
             <span className="truncate max-w-[150px] sm:max-w-none">{gpsStatus}</span>
           </div>
           {onCancel && (
@@ -405,7 +405,7 @@ export default function CameraSelfieCapture({
                 stopCamera();
                 onCancel();
               }}
-              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs px-1.5 py-0.5 rounded transition shrink-0"
+              className="neu-btn w-7 h-7 rounded-full flex items-center justify-center text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] text-xs transition shrink-0"
               title="Batal"
             >
               <i className="fa-solid fa-xmark"></i>
@@ -417,7 +417,7 @@ export default function CameraSelfieCapture({
       {/* Main View Area - strictly locked to 4:3 (portrait 3:4, landscape 4:3) */}
       <div className={`relative w-full min-h-[200px] ${
         ''
-      } rounded-xl overflow-hidden bg-black flex items-center justify-center border border-slate-300 dark:border-slate-700`}>
+      } rounded-xl overflow-hidden bg-black flex items-center justify-center neu-inset`}>
         {/* Captured Image Preview */}
         {capturedImage ? (
           <div className="relative w-full h-auto flex items-center justify-center overflow-hidden">
@@ -429,8 +429,8 @@ export default function CameraSelfieCapture({
                 ''
               } object-contain`}
             />
-            <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
-              <i className="fa-solid fa-check text-emerald-400 shrink-0"></i>
+            <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
+              <i className="fa-solid fa-check text-teal-400 shrink-0"></i>
               <span className="shrink-0">Foto Terverifikasi</span>
               {locationName && <span className="text-slate-300 ml-1 max-w-[120px] sm:max-w-[200px] truncate">| {locationName}</span>}
             </div>
@@ -452,8 +452,8 @@ export default function CameraSelfieCapture({
 
             {/* Video loading state */}
             {!isStreaming && !cameraError && (
-              <div className="flex flex-col items-center justify-center text-slate-400 gap-2 p-4 text-center">
-                <i className="fa-solid fa-spinner fa-spin text-2xl text-emerald-500"></i>
+              <div className="flex flex-col items-center justify-center text-slate-300 gap-2 p-4 text-center">
+                <i className="fa-solid fa-spinner fa-spin text-2xl text-teal-400"></i>
                 <span className="text-xs font-medium">Menghubungkan ke kamera perangkat...</span>
               </div>
             )}
@@ -474,7 +474,7 @@ export default function CameraSelfieCapture({
                   <button
                     type="button"
                     onClick={toggleFacingMode}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                    className="px-3 py-1.5 bg-[#0F766E] hover:bg-[#0D645D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
                   >
                     <i className="fa-solid fa-camera-rotate"></i> Ganti Kamera ({facingMode === 'user' ? 'Belakang' : 'Depan'})
                   </button>
@@ -494,7 +494,7 @@ export default function CameraSelfieCapture({
                     onClick={toggleFacingMode}
                     className="pointer-events-auto bg-black/60 hover:bg-black/80 backdrop-blur-sm text-[11px] text-slate-100 px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 transition"
                   >
-                    <i className="fa-solid fa-camera-rotate text-emerald-400"></i>
+                    <i className="fa-solid fa-camera-rotate text-teal-400"></i>
                     <span>{facingMode === 'user' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                   </button>
                 </div>
@@ -511,19 +511,19 @@ export default function CameraSelfieCapture({
       <div className="mt-3.5">
         {capturedImage ? (
           /* Preview Mode Action Buttons */
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <button
               type="button"
               onClick={handleRetake}
-              className="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition"
+              className="neu-btn flex-1 py-2.5 px-4 rounded-xl text-[#334155] dark:text-[#CBD5E1] text-xs font-bold flex items-center justify-center gap-2 transition"
             >
-              <i className="fa-solid fa-camera-rotate text-slate-500"></i>
+              <i className="fa-solid fa-camera-rotate text-[#475569] dark:text-[#94A3B8]"></i>
               Foto Ulang
             </button>
             <button
               type="button"
               onClick={handleConfirmPhoto}
-              className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition"
+              className="neu-btn neu-btn-primary flex-1 py-2.5 px-4 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 transition"
             >
               <i className="fa-solid fa-check"></i>
               Gunakan Foto
@@ -531,15 +531,15 @@ export default function CameraSelfieCapture({
           </div>
         ) : (
           /* Live Camera Controls */
-          <div className="flex items-center justify-center gap-2.5 sm:gap-3 flex-wrap">
+          <div className="flex items-center justify-center gap-3 flex-wrap">
             {/* Camera switch toggle button */}
             <button
               type="button"
               onClick={toggleFacingMode}
               title="Ganti Kamera Depan / Belakang"
-              className="p-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 transition shadow-sm flex items-center gap-1.5"
+              className="neu-btn w-11 h-11 rounded-full text-[#334155] dark:text-[#CBD5E1] transition flex items-center justify-center"
             >
-              <i className="fa-solid fa-camera-rotate text-emerald-500 text-base"></i>
+              <i className="fa-solid fa-camera-rotate text-[#0F766E] dark:text-teal-400 text-base"></i>
             </button>
 
             {/* Visual Capture Button */}
@@ -547,7 +547,7 @@ export default function CameraSelfieCapture({
               type="button"
               onClick={handleCapturePhoto}
               disabled={!isStreaming}
-              className="py-3 px-4 sm:px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:pointer-events-none text-white font-bold text-xs flex items-center justify-center gap-2.5 shadow-md shadow-emerald-700/20 transition transform active:scale-95"
+              className="neu-btn neu-btn-primary py-3 px-5 sm:px-6 rounded-2xl disabled:opacity-50 disabled:pointer-events-none text-white font-bold text-xs flex items-center justify-center gap-2.5 transition"
             >
               <span className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center">
                 <span className="w-2.5 h-2.5 rounded-full bg-white"></span>
@@ -560,9 +560,9 @@ export default function CameraSelfieCapture({
               type="button"
               onClick={requestLocation}
               title="Perbarui koordinat GPS"
-              className="p-3 rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition"
+              className="neu-btn w-11 h-11 rounded-full text-[#334155] dark:text-[#CBD5E1] transition flex items-center justify-center"
             >
-              <i className="fa-solid fa-location-crosshairs text-base text-emerald-500"></i>
+              <i className="fa-solid fa-location-crosshairs text-base text-[#0F766E] dark:text-teal-400"></i>
             </button>
           </div>
         )}

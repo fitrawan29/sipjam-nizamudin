@@ -108,30 +108,30 @@ export default function PWAInstallPrompt() {
       aria-label="Install SIPJAM"
       className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 print:hidden no-print animate-in fade-in slide-in-from-bottom-5 duration-300"
     >
-      <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border border-emerald-300 dark:border-emerald-700/80 shadow-2xl rounded-2xl p-4 flex items-center gap-3.5">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-nizamudin-green to-emerald-600 flex items-center justify-center text-white text-xl shadow-md shrink-0">
+      <div className="neu-card rounded-2xl p-4 flex items-center gap-3.5">
+        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0F766E] to-[#14B8A6] flex items-center justify-center text-white text-xl shadow-md shrink-0">
           <i className="fa-solid fa-mobile-screen-button"></i>
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white leading-tight">
+          <h4 className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
             Install Aplikasi SIPJAM
           </h4>
-          <p className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 mt-0.5 leading-snug">
+          <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5 leading-snug">
             Pasang aplikasi untuk akses cepat dan pengalaman terbaik di perangkat Anda.
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
+        <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handleInstall}
-            className="btn-click px-3 py-1.5 bg-nizamudin-green hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-all"
+            className="neu-btn neu-btn-primary btn-click px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-1.5"
           >
             <i className="fa-solid fa-download text-[10px]"></i> Install
           </button>
           <button
             type="button"
             onClick={handleDismiss}
-            className="btn-click px-2.5 py-1.5 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 text-xs font-medium rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
+            className="neu-btn neu-btn-secondary btn-click px-3 py-2 min-h-[38px] text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-xl"
           >
             Nanti Saja
           </button>

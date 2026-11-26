@@ -1038,25 +1038,25 @@ export default function HomeViewAdmin({
   return (
     <section id="view-home" className="fade-in block space-y-4">
             {/* Header Banner */}
-      <div className="clay-card bg-gradient-to-br from-[#0B4619] via-[#0F5A22] to-[#17732D] rounded-3xl p-4 sm:p-5 text-white relative overflow-hidden border-2 border-white/30 shadow-[8px_8px_20px_rgba(11,70,25,0.3),-4px_-4px_12px_rgba(255,255,255,0.9),inset_2px_2px_4px_rgba(255,255,255,0.35),inset_-2px_-2px_4px_rgba(0,0,0,0.25)]">
-        <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-white opacity-5 rotate-[-15deg] pointer-events-none"></i>
+      <div className="clay-card rounded-3xl p-4 sm:p-5 relative overflow-hidden">
+        <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-15deg] pointer-events-none"></i>
         
-        <div className="relative z-10 flex items-center justify-between gap-3 mb-2.5">
+        <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/20 shrink-0 overflow-hidden">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 neu-inset rounded-full flex items-center justify-center ring-2 ring-[#0F766E]/30 dark:ring-teal-400/30 shrink-0 overflow-hidden p-0.5">
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base leading-tight truncate">{adminDisplayName}</h2>
+                <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{adminDisplayName}</h2>
                 {user?.role && user.role.toLowerCase() !== 'admin' && !adminDisplayName.toLowerCase().includes('admin') && (
-                  <span className="bg-nizamudin-gold/90 text-green-900 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shadow-sm shrink-0">
+                  <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
                     {user.role}
                   </span>
                 )}
               </div>
               {user?.username && user.username.toLowerCase() !== 'admin' && (
-                <p className="text-[10px] text-green-100/80 font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
+                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
                   <span>{user.username}</span>
                 </p>
               )}
@@ -1067,29 +1067,29 @@ export default function HomeViewAdmin({
             <button
               type="button"
               onClick={onOpenAccountSettings}
-              className="bg-white/15 hover:bg-white/25 text-white px-2.5 py-1.5 rounded-xl text-xs font-semibold backdrop-blur-xs border border-white/20 flex items-center gap-1.5 transition ml-auto shrink-0 shadow-sm cursor-pointer"
+              className="neu-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
               title="Ubah Username & Password"
             >
-              <i className="fa-solid fa-gear text-xs"></i>
+              <i className="fa-solid fa-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
               <span className="hidden sm:inline">Edit Akun</span>
             </button>
           )}
         </div>
 
-        <div className="relative z-10 grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/10">
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Status</p>
-            <p className={`text-[10px] sm:text-xs font-bold truncate ${holidayInfo?.isHoliday ? 'text-amber-300' : 'text-white'}`}>
+        <div className="relative z-10 grid grid-cols-3 gap-2.5 text-center pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
+            <p className={`text-[10px] sm:text-xs font-bold truncate ${holidayInfo?.isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-[#0F766E] dark:text-teal-400'}`}>
               {holidayInfo?.isHoliday ? 'Hari Libur' : 'Hari Kerja'}
             </p>
           </div>
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-white leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+            <p className="text-[10px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
-          <div className="bg-white/10 px-2 py-1.5 rounded-lg backdrop-blur-sm">
-            <p className="text-[8px] sm:text-[9px] text-green-200/80 uppercase font-bold tracking-wider mb-0.5">Jam</p>
-            <p className="text-xs sm:text-sm font-black text-nizamudin-gold font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
+          <div className="neu-inset px-2 py-2 rounded-xl">
+            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
+            <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
       </div>
@@ -1098,70 +1098,70 @@ export default function HomeViewAdmin({
           {/* Summary KPI Counter Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
             {/* Total Guru */}
-            <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-gray-700/80 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-lg shrink-0">
+            <div className="clay-card clay-card-blue p-3.5 rounded-2xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl neu-inset text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-users"></i>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Guru</p>
-                <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">{adminKPIs.totalGuru}</p>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Terdaftar</p>
+                <p className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider">Total Guru</p>
+                <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{adminKPIs.totalGuru}</p>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Terdaftar</p>
               </div>
             </div>
 
             {/* Presensi Datang */}
-            <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-lg shrink-0">
+            <div className="clay-card clay-card-mint p-3.5 rounded-2xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-right-to-bracket"></i>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Presensi Datang</p>
-                <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.sudahDatang} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.wajibDatang}</span>
+                <p className="text-[10px] font-bold text-[#0F766E] dark:text-teal-400 uppercase tracking-wider">Presensi Datang</p>
+                <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
+                  {adminKPIs.sudahDatang} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.wajibDatang}</span>
                 </p>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Hadir / Izin / TL</p>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Hadir / Izin / TL</p>
               </div>
             </div>
 
             {/* Jurnal Lengkap */}
-            <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-indigo-800/50 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 flex items-center justify-center text-lg shrink-0">
+            <div className="clay-card clay-card-peach p-3.5 rounded-2xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl neu-inset text-sky-700 dark:text-sky-400 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-book-journal-whills"></i>
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-400 uppercase tracking-wider">Jurnal Lengkap</p>
-                <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.jurnalLengkap} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.wajibJurnal}</span>
+                <p className="text-[10px] font-bold text-sky-700 dark:text-sky-400 uppercase tracking-wider">Jurnal Lengkap</p>
+                <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
+                  {adminKPIs.jurnalLengkap} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.wajibJurnal}</span>
                 </p>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Selesai / Mengisi Penuh</p>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Selesai / Mengisi Penuh</p>
               </div>
             </div>
 
             {/* Piket Selesai */}
-            <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 shadow-sm flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
+            <div className="clay-card clay-card-purple p-3.5 rounded-2xl flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl neu-inset text-teal-700 dark:text-teal-300 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-shield-halved"></i>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-teal-700 dark:text-teal-400 uppercase tracking-wider">Piket Selesai</p>
-                <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.piketSelesai} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.totalPiket || 0}</span>
+                <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
+                  {adminKPIs.piketSelesai} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.totalPiket || 0}</span>
                 </p>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Laporan masuk</p>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan masuk</p>
               </div>
             </div>
 
             {/* Presensi Pulang */}
-            <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 shadow-sm flex items-center gap-3 col-span-2 sm:col-span-1">
-              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center text-lg shrink-0">
+            <div className="clay-card clay-card-amber p-3.5 rounded-2xl flex items-center gap-3 col-span-2 sm:col-span-1">
+              <div className="w-10 h-10 rounded-xl neu-inset text-amber-700 dark:text-amber-400 flex items-center justify-center text-lg shrink-0">
                 <i className="fa-solid fa-right-from-bracket"></i>
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Presensi Pulang</p>
-                <p className="text-lg sm:text-xl font-black text-gray-900 dark:text-white leading-tight">
-                  {adminKPIs.sudahPulang} <span className="text-xs text-gray-400 font-normal">/ {adminKPIs.wajibPulang}</span>
+                <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
+                  {adminKPIs.sudahPulang} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.wajibPulang}</span>
                 </p>
-                <p className="text-[9px] text-gray-400 dark:text-gray-500 truncate">Sudah checkout</p>
+                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Sudah checkout</p>
               </div>
             </div>
           </div>
@@ -1170,9 +1170,9 @@ export default function HomeViewAdmin({
           {holidayInfo?.isHoliday && (
             <div
               data-testid="holiday-banner"
-              className="clay-card p-3.5 sm:p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3 shadow-sm"
+              className="clay-card alert-banner-amber p-3.5 sm:p-4 rounded-2xl text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3"
             >
-              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-umbrella-beach text-base"></i>
               </div>
               <div className="flex-1 min-w-0">
@@ -1186,45 +1186,45 @@ export default function HomeViewAdmin({
 
           {/* Active Blok Alert for Admin */}
           {activeBlokToday && (
-            <div className="clay-card clay-card-amber p-4 rounded-2xl border-2 border-white/90 dark:border-amber-800/60 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="clay-card clay-card-amber alert-banner-amber p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-lg shadow-sm shrink-0">
                   <i className="fa-solid fa-layer-group"></i>
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 dark:bg-amber-900 dark:text-amber-200">
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-900 dark:text-amber-200">
                       Sistem Blok Aktif
                     </span>
                     {(!activeBlokToday.tipe_target || activeBlokToday.tipe_target === 'sekolah') && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                         Seluruh Sekolah
                       </span>
                     )}
                     {activeBlokToday.tipe_target === 'angkatan' && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-800 dark:text-sky-300">
                         Angkatan {activeBlokToday.target_angkatan}
                       </span>
                     )}
                     {activeBlokToday.tipe_target === 'kelas' && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-teal-800 dark:text-teal-300">
                         Dispen Kelas {activeBlokToday.target_kelas}
                       </span>
                     )}
                     {activeBlokToday.tipe_target === 'guru' && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-800 dark:text-sky-300">
                         Khusus Guru: {activeBlokToday.target_guru_nama || 'Guru Terpilih'}{activeBlokToday.target_guru_nip ? ` (NIP: ${activeBlokToday.target_guru_nip})` : ''}
                       </span>
                     )}
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-xs text-[#475569] dark:text-[#94A3B8]">
                       {activeBlokToday.tanggal_mulai} s/d {activeBlokToday.tanggal_selesai}
                     </span>
                   </div>
-                  <h4 className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">
+                  <h4 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
                     {activeBlokToday.nama_kegiatan}
                   </h4>
                   {activeBlokToday.deskripsi && (
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                    <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mt-0.5">
                       {activeBlokToday.deskripsi}
                     </p>
                   )}
@@ -1234,7 +1234,7 @@ export default function HomeViewAdmin({
               <button
                 type="button"
                 onClick={() => setView('view-sistem-blok')}
-                className="clay-btn clay-btn-amber btn-click self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-bold text-amber-950 dark:text-amber-100 shadow-sm flex items-center gap-1.5 transition"
+                className="clay-btn clay-btn-amber btn-click self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
               >
                 <i className="fa-solid fa-gear text-[11px]"></i> Kelola Sistem Blok
               </button>
@@ -1242,19 +1242,19 @@ export default function HomeViewAdmin({
           )}
 
           {/* Matrix Controls: Search & Filter Pills */}
-          <div className="clay-card p-4 sm:p-5 space-y-3 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+          <div className="clay-card p-4 sm:p-5 space-y-3 rounded-3xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-table-cells text-emerald-600 dark:text-emerald-400"></i> Matriks Status Harian Guru
+                <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                  <i className="fa-solid fa-table-cells text-[#0F766E] dark:text-teal-400"></i> Matriks Status Harian Guru
                 </h3>
-                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full whitespace-normal break-words">
+                <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] neu-inset px-2.5 py-0.5 rounded-full whitespace-normal break-words">
                   {dashboardDateStr}
                 </span>
                 {holidayInfo?.isHoliday && (
                   <span
                     data-testid="matrix-holiday-badge"
-                    className="text-[10px] font-bold text-sky-800 dark:text-sky-200 bg-sky-100 dark:bg-sky-900/50 border border-sky-200 dark:border-sky-800 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"
+                    className="text-[10px] font-bold text-sky-800 dark:text-sky-200 neu-inset px-2.5 py-0.5 rounded-full inline-flex items-center gap-1"
                   >
                     <i className="fa-solid fa-umbrella-beach text-[9px]"></i>
                     Libur: {holidayInfo.keterangan}
@@ -1267,7 +1267,7 @@ export default function HomeViewAdmin({
                   type="button"
                   onClick={loadAdminMatrix}
                   disabled={adminLoading}
-                  className="clay-btn btn-click px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-white rounded-xl text-xs font-bold border border-gray-200 dark:border-gray-700 shadow-xs flex items-center gap-1.5 transition"
+                  className="clay-btn btn-click px-3 py-1.5 text-[#334155] dark:text-[#F1F5F9] rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <i className={`fa-solid fa-rotate-right ${adminLoading ? 'animate-spin' : ''}`}></i>
                   <span>Refresh</span>
@@ -1279,18 +1279,18 @@ export default function HomeViewAdmin({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
               {/* Search Box */}
               <div className="relative flex-1">
-                <i className="fa-solid fa-search absolute left-3.5 top-3 text-gray-400 text-xs"></i>
+                <i className="fa-solid fa-search absolute left-3.5 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                 <input 
                   type="text"
                   value={matrixSearch}
                   onChange={e => setMatrixSearch(e.target.value)}
                   placeholder="Cari nama guru, NIP, atau mata pelajaran..."
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                 />
                 {matrixSearch && (
                   <button 
                     onClick={() => setMatrixSearch('')}
-                    className="absolute right-3 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                    className="absolute right-3 top-2.5 text-xs text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]"
                   >
                     <i className="fa-solid fa-xmark"></i>
                   </button>
@@ -1304,10 +1304,10 @@ export default function HomeViewAdmin({
                     key={f}
                     type="button"
                     onClick={() => setMatrixFilter(f)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition border ${
+                    className={`neu-btn px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
                       matrixFilter === f
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        ? 'neu-btn-primary text-white'
+                        : 'text-[#334155] dark:text-[#CBD5E1]'
                     }`}
                   >
                     {f}
@@ -1318,21 +1318,21 @@ export default function HomeViewAdmin({
 
             {/* Matrix Table / List */}
             {adminLoading && matrixList.length === 0 ? (
-              <div className="text-center py-12 text-xs text-gray-500 dark:text-gray-400">
-                <i className="fa-solid fa-circle-notch fa-spin mr-2 text-base text-emerald-600"></i>
+              <div className="text-center py-12 text-xs text-[#475569] dark:text-[#94A3B8]">
+                <i className="fa-solid fa-circle-notch fa-spin mr-2 text-base text-[#0F766E] dark:text-teal-400"></i>
                 Memuat data matriks status guru...
               </div>
             ) : filteredMatrix.length === 0 ? (
-              <div className="text-center py-10 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 my-2">
-                <i className="fa-solid fa-clipboard-user text-2xl text-gray-400 mb-2"></i>
-                <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+              <div className="text-center py-10 px-4 neu-inset rounded-2xl my-2">
+                <i className="fa-solid fa-clipboard-user text-2xl text-[#475569] dark:text-[#94A3B8] mb-2"></i>
+                <p className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1]">
                   {matrixSearch ? `Tidak ada guru yang cocok dengan pencarian "${matrixSearch}".` : 'Tidak ada data matriks.'}
                 </p>
                 {matrixSearch && (
                   <button
                     type="button"
                     onClick={() => setMatrixSearch('')}
-                    className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-medium inline-flex items-center gap-1"
+                    className="mt-2 text-xs text-[#0F766E] dark:text-teal-400 hover:underline font-medium inline-flex items-center gap-1"
                   >
                     <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
                   </button>
@@ -1341,41 +1341,41 @@ export default function HomeViewAdmin({
             ) : (
               <div className="overflow-x-auto custom-scroll -mx-4 sm:mx-0">
                 <div className="inline-block min-w-full align-middle px-4 sm:px-0">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-xs">
+                  <table className="min-w-full divide-y divide-slate-300/60 dark:divide-slate-700/60 text-xs">
                     <thead>
-                      <tr className="bg-gray-50/80 dark:bg-gray-800/80 text-gray-600 dark:text-gray-300 text-[10px] uppercase font-extrabold tracking-wider">
-                        <th scope="col" className="py-2.5 px-3 text-left rounded-l-lg">Guru & Mapel</th>
+                      <tr className="neu-inset text-[#475569] dark:text-[#CBD5E1] text-[10px] uppercase font-extrabold tracking-wider">
+                        <th scope="col" className="py-2.5 px-3 text-left rounded-l-xl">Guru & Mapel</th>
                         <th scope="col" className="py-2.5 px-3 text-center">1. Presensi Datang</th>
                         <th scope="col" className="py-2.5 px-3 text-center">2. Pengisian Jurnal</th>
                         <th scope="col" className="py-2.5 px-3 text-center">3. Laporan Piket</th>
                         <th scope="col" className="py-2.5 px-3 text-center">4. Presensi Pulang</th>
-                        <th scope="col" className="py-2.5 px-3 text-center rounded-r-lg">Status Akhir</th>
+                        <th scope="col" className="py-2.5 px-3 text-center rounded-r-xl">Status Akhir</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800 bg-white dark:bg-gray-800/40">
+                    <tbody className="divide-y divide-slate-300/50 dark:divide-slate-700/50">
                       {filteredMatrix.map((row) => {
                         // Badge color helpers
                         const getBadgeClass = (color: string) => {
-                          if (color === 'green') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 border-green-200 dark:border-green-800';
-                          if (color === 'amber') return 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-200 dark:border-amber-800';
-                          if (color === 'blue') return 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300 border-sky-200 dark:border-sky-800';
-                          if (color === 'rose') return 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border-rose-200 dark:border-rose-800';
-                          return 'bg-gray-100 text-gray-600 dark:bg-gray-700/60 dark:text-gray-400 border-gray-200 dark:border-gray-700';
+                          if (color === 'green') return 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30';
+                          if (color === 'amber') return 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30';
+                          if (color === 'blue') return 'bg-sky-500/15 text-sky-800 dark:text-sky-300 border-sky-500/30';
+                          if (color === 'rose') return 'bg-rose-500/15 text-rose-800 dark:text-rose-300 border-rose-500/30';
+                          return 'bg-slate-500/10 text-[#475569] dark:text-[#94A3B8] border-slate-400/25';
                         };
 
                         return (
-                          <tr key={row.id} className="hover:bg-gray-50/70 dark:hover:bg-gray-700/30 transition">
+                          <tr key={row.id} className="hover:bg-white/25 dark:hover:bg-white/5 transition">
                             {/* Guru Info */}
                             <td className="py-3 px-3 whitespace-nowrap">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 flex items-center justify-center font-bold text-xs shrink-0">
+                                <div className="w-8 h-8 rounded-full neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center font-bold text-xs shrink-0">
                                   {row.nama_guru.charAt(0)}
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="font-bold text-gray-900 dark:text-white leading-tight truncate">
+                                  <p className="font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">
                                     {row.nama_guru}
                                   </p>
-                                  <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate">
+                                  <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono truncate">
                                     {row.nip !== '-' ? row.nip : row.mata_pelajaran}
                                   </p>
                                 </div>
@@ -1414,14 +1414,14 @@ export default function HomeViewAdmin({
                             <td className="py-3 px-3 text-center whitespace-nowrap">
                               <div className="flex flex-col items-center gap-0.5">
                                 {row.isLibur ? (
-                                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-sm bg-sky-50 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300 border-sky-300 dark:border-sky-700">
+                                  <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border border-sky-500/30 bg-sky-500/15 text-sky-800 dark:text-sky-300">
                                     <i className="fa-solid fa-umbrella-beach mr-1"></i> Libur
                                   </span>
                                 ) : (
-                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border shadow-sm ${
+                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
                                     row.isTugasLengkap
-                                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                                      : 'bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                                      ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border-emerald-500/30'
+                                      : 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30'
                                   }`}>
                                     {row.isTugasLengkap ? (
                                       <><i className="fa-solid fa-check mr-1"></i> Lengkap</>
@@ -1450,13 +1450,13 @@ export default function HomeViewAdmin({
             )}
 
             {/* Matrix Summary Footer */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
-              <span>Menampilkan <strong>{filteredMatrix.length}</strong> dari <strong>{matrixList.length}</strong> guru</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-300/60 dark:border-slate-700/60 text-[11px] text-[#475569] dark:text-[#94A3B8]">
+              <span>Menampilkan <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{filteredMatrix.length}</strong> dari <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{matrixList.length}</strong> guru</span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setView('view-admin-verif')}
-                  className="font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                  className="font-bold text-[#0F766E] dark:text-teal-400 hover:underline flex items-center gap-1"
                 >
                   Buka Menu Verifikasi <i className="fa-solid fa-arrow-right text-[9px]"></i>
                 </button>

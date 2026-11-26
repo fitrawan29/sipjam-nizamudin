@@ -344,7 +344,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
       {targetRect && (
         <div
           data-testid="spotlight-box"
-          className="fixed pointer-events-none z-[70] transition-all duration-300 ease-out rounded-xl border-2 border-amber-400 shadow-[0_0_20px_rgba(212,175,55,0.6)] ring-4 ring-amber-400/20"
+          className="fixed pointer-events-none z-[70] transition-all duration-300 ease-out rounded-xl border-2 border-teal-400 shadow-[0_0_20px_rgba(20,184,166,0.55)] ring-4 ring-teal-400/20"
           style={{
             top: `${Math.max(0, targetRect.top - padding)}px`,
             left: `${Math.max(0, targetRect.left - padding)}px`,
@@ -359,12 +359,12 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         ref={tooltipRef}
         data-testid="tooltip-card"
         style={calculateTooltipStyle()}
-        className="bg-white dark:bg-gray-900 border border-amber-200 dark:border-amber-800/60 rounded-2xl shadow-2xl p-5 transition-all duration-300 ease-out animate-fadeIn max-h-[calc(100vh-32px)] overflow-y-auto custom-scroll"
+        className="neu-card rounded-2xl p-5 transition-all duration-300 ease-out animate-fadeIn max-h-[calc(100vh-32px)] overflow-y-auto custom-scroll"
       >
         {/* Top Header: Badge, Progress Dots, & Close Button */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-amber-100 text-amber-900 dark:bg-amber-950/70 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/50 flex items-center gap-1.5 shadow-sm">
+            <span className="neu-inset px-2.5 py-1 text-[11px] font-bold rounded-full text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5">
               <i className="fa-solid fa-sparkles text-amber-500"></i>
               {`Langkah ${currentStepIndex + 1} dari ${steps.length}`}
             </span>
@@ -374,10 +374,10 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
                   key={idx}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     idx === currentStepIndex
-                      ? 'w-4 bg-amber-500'
+                      ? 'w-4 bg-[#0F766E] dark:bg-teal-400'
                       : idx < currentStepIndex
-                      ? 'w-1.5 bg-emerald-500'
-                      : 'w-1.5 bg-gray-300 dark:bg-gray-700'
+                      ? 'w-1.5 bg-teal-500/70'
+                      : 'w-1.5 bg-slate-400/50 dark:bg-slate-600'
                   }`}
                 />
               ))}
@@ -386,7 +386,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
           <button
             type="button"
             onClick={handleSkip}
-            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-200 p-1 rounded-lg transition-colors"
+            className="neu-btn w-7 h-7 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center"
             title="Tutup tutorial"
             aria-label="Tutup tutorial"
           >
@@ -396,20 +396,20 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
 
         {/* Title and Description */}
         <div className="mb-3">
-          <h4 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <h4 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
             {currentStep.title}
           </h4>
-          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1.5 leading-relaxed">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-1.5 leading-relaxed">
             {currentStep.description}
           </p>
         </div>
 
         {/* Consolidated Sub-Tabs Indicator (ClayTabs Pointer) */}
         {currentStep.subTabs && currentStep.subTabs.length > 0 && (
-          <div data-testid="subtab-pointer" className="mb-4 pt-2.5 border-t border-amber-100 dark:border-amber-900/40">
+          <div data-testid="subtab-pointer" className="mb-4 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
             <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
-              <span className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5 shrink-0">
-                <i className="fa-solid fa-layer-group text-xs text-emerald-600 dark:text-emerald-400"></i>
+              <span className="text-[11px] font-bold text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5 shrink-0">
+                <i className="fa-solid fa-layer-group text-xs"></i>
                 <span>Sub-Tab Terpadu (ClayTabs):</span>
               </span>
               {currentStep.activeSubTab && (
@@ -426,11 +426,11 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
                     key={idx}
                     className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
                       isActive
-                        ? 'bg-emerald-100 dark:bg-emerald-950/70 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600 shadow-xs'
-                        : 'bg-gray-100 dark:bg-gray-800/80 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700'
+                        ? 'neu-inset text-[#0F766E] dark:text-teal-300 border border-[#0F766E]/30 dark:border-teal-400/30'
+                        : 'neu-card-sm text-slate-600 dark:text-slate-400'
                     }`}
                   >
-                    <i className={`fa-solid ${isActive ? 'fa-circle-dot text-emerald-600 dark:text-emerald-400' : 'fa-circle text-gray-400 dark:text-gray-600'} text-[7px]`}></i>
+                    <i className={`fa-solid ${isActive ? 'fa-circle-dot text-[#0F766E] dark:text-teal-400' : 'fa-circle text-slate-400 dark:text-slate-600'} text-[7px]`}></i>
                     {tab}
                   </span>
                 );
@@ -440,11 +440,11 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         )}
 
         {/* Bottom Actions: Skip, Previous, Next / Finish */}
-        <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-800">
+        <div className="flex items-center justify-between pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
           <button
             type="button"
             onClick={handleSkip}
-            className="text-xs font-semibold text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 py-1.5 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white py-1.5 px-2.5 rounded-lg transition-colors cursor-pointer"
           >
             Lewati
           </button>
@@ -454,7 +454,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
               <button
                 type="button"
                 onClick={handlePrev}
-                className="px-3 py-1.5 text-xs font-semibold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 transition-all flex items-center gap-1.5"
+                className="neu-btn neu-btn-secondary px-3 py-1.5 min-h-[36px] text-xs font-semibold rounded-xl flex items-center gap-1.5"
               >
                 <i className="fa-solid fa-arrow-left text-[10px]"></i>
                 Kembali
@@ -464,11 +464,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
             <button
               type="button"
               onClick={handleNext}
-              className={`px-4 py-1.5 text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5 ${
-                isLastStep
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-amber-500/25'
-                  : 'bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white shadow-emerald-600/25'
-              }`}
+              className="neu-btn neu-btn-primary px-4 py-1.5 min-h-[36px] text-xs font-bold rounded-xl flex items-center gap-1.5"
             >
               {isLastStep ? (
                 <>

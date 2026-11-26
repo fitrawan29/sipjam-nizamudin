@@ -174,11 +174,11 @@ export default function SuperadminPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen min-h-dvh w-full items-center justify-center bg-gray-100 dark:bg-black">
-        <div className="w-48 bg-gray-200 rounded-full h-2 dark:bg-gray-700 overflow-hidden">
-          <div className="bg-emerald-600 dark:bg-emerald-400 h-2 rounded-full w-full animate-pulse"></div>
+      <div className="flex flex-col min-h-screen min-h-dvh w-full items-center justify-center bg-[#E6ECF2] dark:bg-[#1F242D]">
+        <div className="w-48 neu-inset rounded-full h-2.5 p-0.5 overflow-hidden">
+          <div className="bg-[#0F766E] dark:bg-teal-400 h-full rounded-full w-full animate-pulse"></div>
         </div>
-        <p className="mt-3 text-xs font-bold text-emerald-800 dark:text-emerald-400 tracking-wide">
+        <p className="mt-3 text-xs font-bold text-[#0F766E] dark:text-teal-300 tracking-wide">
           Memeriksa Otorisasi Superadmin...
         </p>
       </div>

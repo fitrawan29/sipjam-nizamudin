@@ -174,7 +174,7 @@ export default function AppScreen({
           icon: 'error',
           title: 'Akses Satelit Ditolak (401)',
           html: `Koneksi ke instance Supabase <b>${errSchool.nama}</b> ditolak (401 Unauthorized). Kredensial anon key mungkin tidak valid atau kedaluwarsa.`,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
       }
     };
@@ -540,7 +540,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akun Orang Tua hanya memiliki akses ke Ruang Kolaborasi, Informasi Sekolah, dan Pengaturan Akun.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -561,7 +561,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -572,7 +572,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: rbacCheck.reason || 'Akses Terblokir: Role Tata Usaha tidak memiliki izin akses ke modul ini.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -605,7 +605,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Role Guru BK tidak memiliki izin akses ke modul ini.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -621,7 +621,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: rbacCheck.reason || 'Akses Terblokir: Role Guru BK tidak memiliki izin akses ke modul ini.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -661,7 +661,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Akun Dinas Pendidikan hanya memiliki wewenang monitoring read-only pada wilayah binaan.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -684,7 +684,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Jurnal BK bersifat rahasia dan hanya dapat diakses oleh Guru BK, Administrator, dan Kepala Sekolah.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -699,7 +699,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Halaman Jurnal Kelas secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -711,7 +711,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Halaman Manajemen Sistem Blok secara eksklusif hanya dapat diakses oleh Administrator.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -723,7 +723,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Modul Piket hanya dapat diakses oleh Guru yang bertugas piket pada hari ini.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -735,7 +735,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Halaman Presensi Siswa secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -747,7 +747,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Halaman Rapor secara eksklusif hanya dapat diakses oleh Administrator dan Wali Kelas yang ditugaskan.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -759,7 +759,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: `Akses Terblokir: Fitur monitoring administrasi hanya dapat diakses oleh Administrator dan ${formatKepalaSekolahLabel(statusKepalaSekolah)}.`,
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -771,7 +771,7 @@ export default function AppScreen({
             icon: 'warning',
             title: 'Akses Ditolak',
             text: 'Akses Terblokir: Halaman Konfigurasi dan Manajemen Data secara eksklusif hanya dapat diakses oleh Administrator.',
-            confirmButtonColor: '#0B4619'
+            confirmButtonColor: '#0F766E'
           });
           return;
         }
@@ -792,7 +792,7 @@ export default function AppScreen({
           icon: 'warning',
           title: 'Akses Ditolak',
           text: rbacCheck.reason || 'Anda tidak memiliki hak akses untuk membuka sub-tab ini.',
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
         return;
       }
@@ -815,7 +815,7 @@ export default function AppScreen({
               icon: 'warning',
               title: 'Akses Ditolak',
               text: 'Akses Terblokir: Modul Piket hanya dapat diakses oleh Guru yang bertugas piket pada hari ini.',
-              confirmButtonColor: '#0B4619'
+              confirmButtonColor: '#0F766E'
             });
             return;
           }
@@ -955,13 +955,13 @@ export default function AppScreen({
 
   return (
     <div className="flex-col h-full w-full flex">
-      <header className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-sm border-b border-gray-100 dark:border-gray-800 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
-        <div className="flex items-center gap-2 sm:gap-3">
-            <button type="button" data-tour="hamburger-btn" onClick={toggleSidebar} className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
+      <header className="bg-[#E6ECF2]/95 dark:bg-[#1F242D]/95 backdrop-blur-md px-4 sm:px-6 py-3 flex justify-between items-center shrink-0 z-40 fixed top-0 w-full shadow-[0_6px_16px_rgba(163,177,198,0.45)] dark:shadow-[0_6px_18px_rgba(0,0,0,0.6)] border-b border-white/50 dark:border-white/5 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+            <button type="button" data-tour="hamburger-btn" onClick={toggleSidebar} aria-label="Buka Menu Navigasi" className="clay-btn btn-click w-10 h-10 rounded-2xl flex items-center justify-center text-[#0F172A] dark:text-[#F1F5F9]">
                 <i className="fa-solid fa-bars text-sm"></i>
             </button>
-            <div className="text-sm md:text-base font-bold text-gray-900 dark:text-white cursor-pointer" onClick={() => handleNavigation(defaultHomeView)}>
-              SIPJAM <span className="text-nizamudin-green dark:text-nizamudin-gold font-black">
+            <div className="text-sm md:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer tracking-tight" onClick={() => handleNavigation(defaultHomeView)}>
+              SIPJAM <span className="text-[#0F766E] dark:text-teal-400 font-black">
                 {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : (schoolData?.nama || 'Sekolah')}
               </span>
             </div>
@@ -983,7 +983,7 @@ export default function AppScreen({
                       }
                     }
                   }}
-                  className="text-[11px] font-semibold py-1 px-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200 cursor-pointer max-w-[170px] truncate"
+                  className="neu-input text-[11px] font-semibold py-1.5 px-2.5 rounded-xl cursor-pointer max-w-[180px] truncate"
                   title="Ganti Sekolah yang Dipantau"
                 >
                   <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform'}</option>
@@ -1004,21 +1004,22 @@ export default function AppScreen({
             )}
         </div>
 
-        <div className="flex items-center gap-2">
-            {/* Broadcast Bell with Shake Animation and Red Unread Count Badge */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Broadcast Bell with Shake Animation and Unread Count Badge */}
             <button
               type="button"
               onClick={() => setBroadcastModalOpen(true)}
-              className="clay-btn btn-click relative w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700"
+              className="clay-btn btn-click relative w-10 h-10 rounded-2xl flex items-center justify-center text-[#0F172A] dark:text-[#F1F5F9]"
               title="Pengumuman Siaran"
+              aria-label="Pengumuman Siaran"
             >
               <i
                 className={`fa-solid fa-bell text-sm ${
-                  unreadCount > 0 ? 'text-amber-500 animate-bell-shake' : 'text-gray-700 dark:text-gray-300'
+                  unreadCount > 0 ? 'text-amber-600 dark:text-amber-400 animate-bell-shake' : 'text-slate-700 dark:text-slate-300'
                 }`}
               ></i>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-md">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center shadow-sm font-num">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -1026,15 +1027,22 @@ export default function AppScreen({
             <button
               type="button"
               onClick={() => setIsAccountModalOpen(true)}
-              className="clay-btn btn-click w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden p-0.5"
+              className="clay-btn btn-click w-10 h-10 rounded-2xl flex items-center justify-center overflow-hidden p-1"
               title="Pengaturan Akun & Profil"
+              aria-label="Pengaturan Akun & Profil"
             >
               {renderUserAvatar(currentUser?.avatar, 'w-7 h-7')}
             </button>
-            <button type="button" onClick={toggleTheme} className="clay-btn btn-click w-9 h-9 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-700">
-                <i className={`fa-solid ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-sm`}></i>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+              aria-label={theme === 'dark' ? 'Beralih ke Mode Terang' : 'Beralih ke Mode Gelap'}
+              className="clay-btn btn-click w-10 h-10 rounded-2xl flex items-center justify-center text-[#0F172A] dark:text-[#F1F5F9]"
+            >
+                <i className={`fa-solid ${theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon text-slate-700'} text-sm`}></i>
             </button>
-            <ClayButton variant="rose" size="sm" onClick={onLogout} className="btn-click text-red-600 dark:text-white border border-red-200 dark:border-red-800/50 shadow-sm" icon={<i className="fa-solid fa-power-off text-xs"></i>}>
+            <ClayButton variant="rose" size="sm" onClick={onLogout} className="btn-click min-h-[40px]" icon={<i className="fa-solid fa-power-off text-xs"></i>}>
                 <span className="hidden sm:inline">Keluar</span>
             </ClayButton>
         </div>
@@ -1042,62 +1050,62 @@ export default function AppScreen({
 
       {/* Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 transition-opacity" onClick={toggleSidebar}>
-          <div className="w-72 max-w-[85%] bg-white dark:bg-gray-900 border-r border-gray-100 dark:border-gray-800 h-full shadow-xl p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
-            <div>
-              <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-nizamudin-green rounded-lg flex items-center justify-center text-nizamudin-gold font-bold">
-                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-mosque'}`}></i>
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs z-50 transition-opacity" onClick={toggleSidebar}>
+          <div className="w-72 max-w-[85%] bg-[#E6ECF2] dark:bg-[#1F242D] border-r border-white/55 dark:border-white/5 h-full shadow-[12px_0_28px_rgba(163,177,198,0.55)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
+            <div className="flex flex-col h-full overflow-hidden">
+              <div className="flex justify-between items-center pb-4 mb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-gradient-to-br from-[#0F766E] to-[#115E59] rounded-2xl flex items-center justify-center text-white shadow-sm font-bold">
+                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-graduation-cap'}`}></i>
                     </div>
-                    <span className="font-bold text-sm text-gray-900 dark:text-white">
+                    <span className="font-extrabold text-sm text-[#0F172A] dark:text-[#F1F5F9] tracking-tight">
                       {isSuperadmin ? 'Portal Superadmin' : isDinas ? 'Dinas Pendidikan' : 'SIPJAM Menu'}
                     </span>
                 </div>
-                <button type="button" onClick={toggleSidebar} className="clay-btn w-8 h-8 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white border border-gray-200 dark:border-gray-700 shadow-xs">
+                <button type="button" onClick={toggleSidebar} aria-label="Tutup Menu" className="clay-btn w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white">
                     <i className="fa-solid fa-xmark text-sm"></i>
                 </button>
               </div>
 
               {/* User Identity Card */}
-              <ClayCard variant="mint" rounded="2xl" className="mb-3 p-3 bg-gradient-to-br from-emerald-50/90 to-green-50/40 dark:from-gray-800/90 dark:to-gray-800/40 border-2 border-white/90 dark:border-gray-700/60 shadow-[4px_4px_12px_rgba(180,210,190,0.35),inset_1px_1px_2px_rgba(255,255,255,0.9)] flex items-center gap-3">
-                <div className="relative w-11 h-11 rounded-full bg-white dark:bg-gray-700 p-0.5 shadow-xs shrink-0 overflow-hidden border border-emerald-200 dark:border-gray-600 flex items-center justify-center">
+              <ClayCard variant="mint" rounded="2xl" className="mb-3 p-3 flex items-center gap-3">
+                <div className="relative w-11 h-11 rounded-full neu-inset p-0.5 shrink-0 overflow-hidden flex items-center justify-center">
                   {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
-                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-800" title="Aktif"></span>
+                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-teal-500 border-2 border-[#E6ECF2] dark:border-[#1F242D]" title="Aktif"></span>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-xs sm:text-sm text-gray-900 dark:text-white truncate" title={user?.nama || 'Pengguna SIPJAM'}>
+                  <h3 className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F1F5F9] truncate" title={user?.nama || 'Pengguna SIPJAM'}>
                     {user?.nama || 'Pengguna SIPJAM'}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       isSuperadmin
-                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200/50'
+                        ? 'neu-inset text-amber-700 dark:text-amber-300'
                         : isDinas
-                        ? 'bg-[#EDE9FE] text-[#5B21B6] dark:bg-indigo-900/50 dark:text-indigo-300 border border-[#C4B5FD] dark:border-indigo-700/60'
+                        ? 'neu-inset text-sky-800 dark:text-sky-300'
                         : isAdmin
-                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'
+                        ? 'neu-inset text-blue-800 dark:text-blue-300'
                         : isTataUsaha
-                        ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
+                        ? 'neu-inset text-teal-800 dark:text-teal-300'
                         : isBk
-                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/50 dark:text-rose-300 border border-rose-300/60'
+                        ? 'neu-inset text-rose-800 dark:text-rose-300'
                         : isKepalaSekolah
-                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 border border-amber-200/50'
+                        ? 'neu-inset text-amber-800 dark:text-amber-300'
                         : isWaliKelas
-                        ? 'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'
-                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'
+                        ? 'neu-inset text-teal-800 dark:text-teal-300'
+                        : 'neu-inset text-[#0F766E] dark:text-teal-300'
                     }`}>
                       <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isBk ? 'fa-heart-pulse' : isKepalaSekolah ? 'fa-user-tie' : isWaliKelas ? 'fa-chalkboard-user' : 'fa-chalkboard-user'} text-[8px]`}></i>
                       {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isBk ? 'Guru BK' : isKepalaSekolah ? formatKepalaSekolahLabel(statusKepalaSekolah) : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
                     </span>
                     {(user?.username || user?.nip) && (
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
+                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
                         {user?.username || user?.nip}
                       </span>
                     )}
                     {isDinas && user?.kota_kabupaten && (
-                      <div className="w-full text-[10px] text-indigo-700 dark:text-indigo-300 font-semibold truncate mt-1 flex items-center gap-1">
-                        <i className="fa-solid fa-map-location-dot text-[9px] text-indigo-600 dark:text-indigo-400"></i>
+                      <div className="w-full text-[10px] text-sky-700 dark:text-sky-300 font-semibold truncate mt-1 flex items-center gap-1">
+                        <i className="fa-solid fa-map-location-dot text-[9px] text-[#0F766E] dark:text-teal-400"></i>
                         <span>Wilayah: {user.kota_kabupaten}</span>
                       </div>
                     )}
@@ -1106,9 +1114,9 @@ export default function AppScreen({
               </ClayCard>
 
               {(isSuperadmin || isDinas) && (
-                <div className="mb-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 border border-emerald-200 dark:border-emerald-800">
-                  <div className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <i className="fa-solid fa-satellite-dish text-emerald-600"></i> {isDinas ? 'Sekolah Binaan:' : 'Sekolah yang Dipantau:'}
+                <div className="mb-3 p-2.5 rounded-2xl neu-inset">
+                  <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <i className="fa-solid fa-satellite-dish text-[#0F766E] dark:text-teal-400"></i> {isDinas ? 'Sekolah Binaan:' : 'Sekolah yang Dipantau:'}
                   </div>
                   <select
                     aria-label="Ganti Sekolah yang Dipantau di Sidebar"
@@ -1126,7 +1134,7 @@ export default function AppScreen({
                         }
                       }
                     }}
-                    className="w-full text-xs font-semibold py-1.5 px-2 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white cursor-pointer"
+                    className="w-full text-xs font-semibold py-1.5 px-2.5 rounded-xl neu-input cursor-pointer"
                   >
                     <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform (Semua)'}</option>
                     {(isDinas
@@ -1145,7 +1153,7 @@ export default function AppScreen({
                 </div>
               )}
 
-              <div className="space-y-1.5 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] custom-scroll">
+              <div className="space-y-2 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] pr-1 py-1 custom-scroll">
                 {consolidatedMenuItems.map(item => (
                   <React.Fragment key={item.id}>
                     {/* AST preservation: data-tour={item.id} */}
@@ -1153,13 +1161,20 @@ export default function AppScreen({
                       key={item.id}
                       data-tour={(item as any).dataTour || item.id}
                       onClick={() => handleNavigation(item.id)}
-                      className={`w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-200 select-none ${
+                      className={`w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-150 select-none cursor-pointer ${
                         currentView === item.id 
-                          ? 'bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-950 dark:from-emerald-900/40 dark:to-green-900/30 dark:text-amber-300 border-2 border-white dark:border-emerald-700/50 shadow-[3px_3px_8px_rgba(180,210,190,0.5),inset_1px_1px_2px_rgba(255,255,255,0.9)] transform translate-x-1' 
-                          : 'text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 hover:shadow-xs border-2 border-transparent'
+                          ? 'neu-inset text-[#0F766E] dark:text-teal-300 border-l-4 border-l-[#0F766E] dark:border-l-teal-400' 
+                          : 'text-slate-700 hover:bg-white/35 dark:text-slate-200 dark:hover:bg-white/5 border border-transparent'
                       }`}
                     >
-                      <i className={`fa-solid ${item.icon} w-5 text-center`}></i> {item.label}
+                      <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
+                        currentView === item.id
+                          ? 'bg-[#0F766E] text-white dark:bg-teal-500 dark:text-slate-950'
+                          : 'neu-card-sm text-slate-600 dark:text-slate-300'
+                      }`}>
+                        <i className={`fa-solid ${item.icon} text-xs`}></i>
+                      </span>
+                      <span className="truncate">{item.label}</span>
                     </button>
                   </React.Fragment>
                 ))}
@@ -1168,30 +1183,37 @@ export default function AppScreen({
                   <button
                     type="button"
                     onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
-                    className="w-full text-left px-3.5 py-2.5 text-xs font-bold rounded-2xl flex items-center gap-2.5 text-gray-700 hover:bg-white/80 dark:text-gray-200 dark:hover:bg-gray-800/80 border-2 border-transparent transition-all"
+                    className="w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 text-slate-700 hover:bg-white/35 dark:text-slate-200 dark:hover:bg-white/5 transition-all cursor-pointer"
                   >
-                    <i className="fa-solid fa-user-gear w-5 text-center text-blue-500"></i> Pengaturan Akun
+                    <span className="w-7 h-7 rounded-xl neu-card-sm flex items-center justify-center text-sky-700 dark:text-sky-300">
+                      <i className="fa-solid fa-user-gear text-xs"></i>
+                    </span>
+                    <span>Pengaturan Akun</span>
                   </button>
                 )}
                 {!isTataUsaha && (
                   <button
                     type="button"
                     onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
-                    className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold text-emerald-800 dark:text-emerald-300 bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100/90 transition-all border-2 border-emerald-200/60 dark:border-emerald-800/60 mt-2 mb-1 shadow-xs cursor-pointer"
+                    className="clay-btn clay-btn-mint w-full justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-bold mt-2 mb-1"
                     title="Buka panduan & tutorial lengkap seluruh menu"
                   >
-                    <i className="fa-solid fa-book-bookmark text-sm"></i>
-                    <span>Panduan & Tutorial Lengkap</span>
+                    <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-teal-300">
+                      <i className="fa-solid fa-book-bookmark text-xs"></i>
+                    </span>
+                    <span>Panduan &amp; Tutorial Lengkap</span>
                   </button>
                 )}
                 {!isSuperadmin && !isTataUsaha && (
                   <button
                     type="button"
                     onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
-                    className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-amber-800 dark:text-amber-400 hover:bg-amber-100/60 transition-all border-2 border-amber-200/70 dark:border-amber-800/40 mt-1 mb-2 shadow-xs cursor-pointer"
+                    className="clay-btn clay-btn-amber w-full justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold mt-1 mb-2"
                     title="Buka kembali panduan tutorial interaktif"
                   >
-                    <i className="fa-solid fa-graduation-cap text-sm"></i>
+                    <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-amber-700 dark:text-amber-300">
+                      <i className="fa-solid fa-graduation-cap text-xs"></i>
+                    </span>
                     <span>Lihat Tutorial Lagi</span>
                   </button>
                 )}
@@ -1207,10 +1229,12 @@ export default function AppScreen({
                       window.dispatchEvent(new CustomEvent('sipjam:ai_assistant_visibility', { detail: { visible: nextVal } }));
                     }
                   }}
-                  className="clay-btn w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-gray-700 dark:text-gray-200 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all border-2 border-emerald-200/50 dark:border-emerald-800/40 mt-1 mb-1 shadow-xs cursor-pointer"
+                  className="clay-btn clay-btn-secondary w-full justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold mt-1 mb-1"
                   title={showAiAssistant ? 'Sembunyikan tombol asisten AI di layar' : 'Tampilkan tombol asisten AI di layar'}
                 >
-                  <i className={`fa-solid ${showAiAssistant ? 'fa-eye-slash text-gray-500' : 'fa-robot text-emerald-600'} w-5 text-center text-sm`}></i>
+                  <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-teal-300">
+                    <i className={`fa-solid ${showAiAssistant ? 'fa-eye-slash text-slate-500 dark:text-slate-400' : 'fa-robot'} text-xs`}></i>
+                  </span>
                   <span>{showAiAssistant ? 'Sembunyikan Tombol AI' : 'Tampilkan Tombol AI'}</span>
                 </button>
               </div>
@@ -1222,9 +1246,11 @@ export default function AppScreen({
       <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-4 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
         {/* Active Target School Banner for Dinas Drilldown */}
         {isDinas && activeTargetSchool && currentView !== 'view-dinas-overview' && (
-          <div className="bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 rounded-2xl p-3 mb-4 flex items-center justify-between no-print shadow-xs">
-            <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-              <i className="fa-solid fa-eye text-indigo-600 dark:text-indigo-400"></i>
+          <div className="neu-card-sm rounded-2xl p-3.5 mb-4 flex items-center justify-between gap-3 no-print">
+            <div className="flex items-center gap-2.5 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
+              <span className="neu-inset w-8 h-8 rounded-xl flex items-center justify-center text-[#0F766E] dark:text-teal-400 shrink-0">
+                <i className="fa-solid fa-eye"></i>
+              </span>
               <span>Memantau Sekolah: <b>{activeTargetSchool.nama}</b> ({activeTargetSchool.kota_kabupaten || user?.kota_kabupaten || 'Wilayah Binaan'}) &bull; Mode Peninjau (Read-Only)</span>
             </div>
             <button
@@ -1234,9 +1260,9 @@ export default function AppScreen({
                 setActiveTargetSchoolState(null);
                 handleNavigation('view-dinas-overview');
               }}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition flex items-center gap-1 shadow-xs"
+              className="neu-btn neu-btn-primary px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0"
             >
-              <i className="fa-solid fa-arrow-left mr-1"></i> Kembali ke Dashboard
+              <i className="fa-solid fa-arrow-left"></i> Kembali ke Dashboard
             </button>
           </div>
         )}
@@ -1314,18 +1340,18 @@ export default function AppScreen({
                     initialTab={(urlTab as any) || undefined}
                   />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Jurnal BK</strong> bersifat rahasia dan secara eksklusif hanya dapat diakses oleh Guru BK, Administrator, dan Kepala Sekolah. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1336,18 +1362,18 @@ export default function AppScreen({
                 isAdmin || isSuperadmin || isPiketHariIni ? (
                   <PiketView user={user} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Modul <strong>Piket</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang memiliki <strong>jadwal piket pada hari ini</strong>. Anda tidak bertugas piket hari ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1358,18 +1384,18 @@ export default function AppScreen({
                 !isTataUsaha ? (
                   <DokumenView user={user} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Role Tata Usaha tidak memiliki hak akses ke Bank Dokumen / Persuratan.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1396,18 +1422,18 @@ export default function AppScreen({
                 ) : isKepalaSekolah ? (
                   <RekapJurnalView user={user} initialMode="kelas" assignedKelas={assignedKelas} isKepalaSekolah={true} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Jurnal Kelas</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1420,18 +1446,18 @@ export default function AppScreen({
                 ) : isKepalaSekolah ? (
                   <RekapSiswaView user={user} assignedKelas={assignedKelas} isReadOnly={true} initialTab={(urlTab as any) || undefined} statusKepalaSekolah={statusKepalaSekolah} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Presensi Siswa</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1445,18 +1471,18 @@ export default function AppScreen({
                   /* AST preservation: isAdmin || isSuperadmin || isWaliKelas ? ( */
                   <RaporView user={user} assignedKelas={assignedKelas} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Rapor</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1467,18 +1493,18 @@ export default function AppScreen({
                 isAdmin || isSuperadmin || isKepalaSekolah ? (
                   <AdminVerifView user={user} isReadOnly={isKepalaSekolah && !isAdmin && !isSuperadmin} initialTab={urlTab || undefined} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Verifikasi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1496,18 +1522,18 @@ export default function AppScreen({
                     statusKepalaSekolah={statusKepalaSekolah}
                   />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Rekap Presensi</strong> secara eksklusif hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1525,18 +1551,18 @@ export default function AppScreen({
                     statusKepalaSekolah={statusKepalaSekolah}
                   />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Rekap Presensi Guru</strong> secara eksklusif hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1547,18 +1573,18 @@ export default function AppScreen({
                 isAdmin || isSuperadmin ? (
                   <AdminDataView user={user} initialTab={urlTab || undefined} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Data Master</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1569,18 +1595,18 @@ export default function AppScreen({
                 isAdmin || isSuperadmin ? (
                   <AdminBackupView user={user} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Backup Data</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1603,18 +1629,18 @@ export default function AppScreen({
                     }}
                   />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Pengaturan Sistem</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1625,18 +1651,18 @@ export default function AppScreen({
                 isAdmin || isSuperadmin ? (
                   <SistemBlokView user={user} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Manajemen Sistem Blok</strong> secara eksklusif hanya dapat diakses oleh Administrator. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1647,18 +1673,18 @@ export default function AppScreen({
                 isAdmin || isSuperadmin || isKepalaSekolah ? (
                   <AnalitikView user={user} />
                 ) : (
-                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+                  <div className="glass-card p-8 text-center max-w-lg mx-auto mt-10 rounded-2xl">
+                    <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
                       <i className="fa-solid fa-lock"></i>
                     </div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 mb-6 leading-relaxed">
                       Halaman <strong>Analitik</strong> hanya dapat diakses oleh Administrator dan {formatKepalaSekolahLabel(statusKepalaSekolah)}. Anda tidak memiliki hak akses untuk membuka halaman ini.
                     </p>
                     <button
                       type="button"
                       onClick={() => { window.history.pushState(null, '', '?view=' + defaultHomeView); setCurrentView(defaultHomeView); }}
-                      className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+                      className="clay-btn clay-btn-primary btn-click text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
                     >
                       <i className="fa-solid fa-house text-xs"></i> Kembali ke Dashboard
                     </button>
@@ -1675,17 +1701,17 @@ export default function AppScreen({
 
       {/* Broadcast Modal / Drawer */}
       {broadcastModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-          <ClayCard rounded="3xl" className="bg-[#FAF7F2] dark:bg-slate-900 shadow-2xl border-2 border-white/90 dark:border-slate-800 w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm animate-in fade-in">
+          <ClayCard rounded="3xl" className="w-full max-w-lg overflow-hidden flex flex-col max-h-[85vh]">
             {/* Modal Header */}
-            <div className="px-5 py-4 bg-gradient-to-r from-nizamudin-green to-emerald-800 text-white flex items-center justify-between">
+            <div className="px-5 py-4 bg-gradient-to-r from-[#0F766E] to-[#115E59] text-white flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white text-sm">
+                <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center text-white text-sm">
                   <i className="fa-solid fa-bullhorn"></i>
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm leading-tight">Pengumuman & Siaran</h3>
-                  <p className="text-[11px] text-emerald-100/90">
+                  <h3 className="font-bold text-sm leading-tight">Pengumuman &amp; Siaran</h3>
+                  <p className="text-[11px] text-teal-100/90">
                     {unreadCount > 0 ? `${unreadCount} pengumuman belum dibaca` : 'Semua pengumuman sudah dibaca'}
                   </p>
                 </div>
@@ -1693,7 +1719,8 @@ export default function AppScreen({
               <button
                 type="button"
                 onClick={() => setBroadcastModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xs transition"
+                aria-label="Tutup pengumuman"
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center text-xs transition cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -1701,14 +1728,14 @@ export default function AppScreen({
 
             {/* Modal Action Bar */}
             {unreadCount > 0 && (
-              <div className="px-5 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/40 flex items-center justify-between">
-                <span className="text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+              <div className="px-5 py-2.5 bg-[#DDE4EE] dark:bg-[#181C24] border-b border-slate-300/60 dark:border-slate-700/60 flex items-center justify-between">
+                <span className="text-[11px] text-amber-800 dark:text-amber-300 font-semibold">
                   Terdapat siaran baru dari sekolah
                 </span>
                 <button
                   type="button"
                   onClick={handleMarkAllAsRead}
-                  className="btn-click text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                  className="btn-click text-[11px] font-bold text-[#0F766E] dark:text-teal-300 hover:underline flex items-center gap-1"
                 >
                   <i className="fa-solid fa-check-double text-xs"></i> Tandai Semua Dibaca
                 </button>
@@ -1716,10 +1743,10 @@ export default function AppScreen({
             )}
 
             {/* Announcements List */}
-            <div className="p-4 overflow-y-auto custom-scroll space-y-3 flex-1">
+            <div className="p-4 overflow-y-auto custom-scroll space-y-3 flex-1 bg-[#E6ECF2] dark:bg-[#1F242D]">
               {allAnnouncements.length === 0 ? (
-                <div className="text-center py-8 text-slate-400 text-xs">
-                  <i className="fa-regular fa-bell-slash text-2xl mb-2 block text-slate-300 dark:text-slate-700"></i>
+                <div className="text-center py-8 text-slate-500 text-xs">
+                  <i className="fa-regular fa-bell-slash text-2xl mb-2 block text-slate-400 dark:text-slate-600"></i>
                   Belum ada pengumuman siaran yang diterbitkan.
                 </div>
               ) : (
@@ -1728,23 +1755,23 @@ export default function AppScreen({
                   return (
                     <div
                       key={ann.id}
-                      className={`p-3.5 rounded-2xl border transition-all ${
+                      className={`p-3.5 rounded-2xl transition-all ${
                         isRead
-                          ? 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
-                          : 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-slate-900 dark:text-white shadow-xs'
+                          ? 'neu-inset text-slate-600 dark:text-slate-300'
+                          : 'neu-card-sm border-l-4 border-l-[#0F766E] dark:border-l-teal-400 text-[#0F172A] dark:text-[#F1F5F9]'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {ann.is_pinned && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 flex items-center gap-1">
+                            <span className="neu-inset px-2 py-0.5 rounded-md text-[10px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1">
                               <i className="fa-solid fa-thumbtack text-[9px]"></i> Disematkan
                             </span>
                           )}
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                          <span className="neu-inset px-2 py-0.5 rounded-md text-[10px] font-semibold text-slate-700 dark:text-slate-200">
                             {ann.sasaran || 'Semua'}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400">
                             {ann.created_at
                               ? new Date(ann.created_at).toLocaleDateString('id-ID', {
                                   day: 'numeric',
@@ -1756,7 +1783,7 @@ export default function AppScreen({
                         </div>
 
                         {!isRead && (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-500 text-white shadow-xs">
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-600 text-white">
                             BARU
                           </span>
                         )}
@@ -1768,8 +1795,8 @@ export default function AppScreen({
                         {ann.konten}
                       </p>
 
-                      <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px]">
-                        <span className="text-slate-400">
+                      <div className="mt-2.5 pt-2 border-t border-slate-300/60 dark:border-slate-700/60 flex items-center justify-between text-[10px]">
+                        <span className="text-slate-500 dark:text-slate-400">
                           Oleh: <strong>{ann.penulis_nama || 'Admin'}</strong>
                         </span>
 
@@ -1777,13 +1804,13 @@ export default function AppScreen({
                           <button
                             type="button"
                             onClick={() => handleMarkAsRead(ann.id)}
-                            className="btn-click text-[11px] font-bold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 flex items-center gap-1"
+                            className="btn-click text-[11px] font-bold text-[#0F766E] dark:text-teal-300 hover:underline flex items-center gap-1"
                           >
                             <i className="fa-solid fa-check"></i> Tandai Dibaca
                           </button>
                         ) : (
-                          <span className="text-slate-400 flex items-center gap-1">
-                            <i className="fa-solid fa-check-double text-emerald-500"></i> Sudah Dibaca
+                          <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                            <i className="fa-solid fa-check-double text-[#0F766E] dark:text-teal-400"></i> Sudah Dibaca
                           </span>
                         )}
                       </div>
@@ -1794,21 +1821,21 @@ export default function AppScreen({
             </div>
 
             {/* Modal Footer */}
-            <div className="px-5 py-3 bg-slate-50 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="px-5 py-3 bg-[#E6ECF2] dark:bg-[#1F242D] border-t border-slate-300/60 dark:border-slate-700/60 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => {
                   setBroadcastModalOpen(false);
                   handleNavigation('view-informasi');
                 }}
-                className="text-xs font-bold text-nizamudin-green dark:text-nizamudin-gold hover:underline flex items-center gap-1.5"
+                className="text-xs font-bold text-[#0F766E] dark:text-teal-400 hover:underline flex items-center gap-1.5 cursor-pointer"
               >
                 <i className="fa-solid fa-bullhorn text-xs"></i> Buka Menu Informasi Lengkap
               </button>
               <button
                 type="button"
                 onClick={() => setBroadcastModalOpen(false)}
-                className="clay-btn clay-btn-secondary px-4 py-1.5 rounded-2xl text-xs font-bold"
+                className="clay-btn clay-btn-secondary px-4 py-1.5 min-h-[36px] rounded-2xl text-xs font-bold"
               >
                 Tutup
               </button>

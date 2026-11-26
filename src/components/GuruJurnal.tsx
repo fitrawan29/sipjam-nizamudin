@@ -2123,7 +2123,7 @@ export default function GuruJurnal({
         aria-labelledby="tab-input"
         className={activeTab === 'input' ? 'block' : 'hidden'}
       >
-        <div className="clay-card p-5 sm:p-6 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+        <div className="clay-card p-5 sm:p-6 rounded-3xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
                     <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
@@ -2177,22 +2177,22 @@ export default function GuruJurnal({
                   <div className="font-bold flex items-center gap-1.5 flex-wrap">
                     <span>Periode Sistem Blok Aktif: {dateBlok.nama_kegiatan}</span>
                     {dateBlok.tipe_target === 'sekolah' && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                         Seluruh Sekolah
                       </span>
                     )}
                     {dateBlok.tipe_target === 'angkatan' && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300">
                         Angkatan {dateBlok.target_angkatan}
                       </span>
                     )}
                     {dateBlok.tipe_target === 'kelas' && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                         Dispen Kelas {dateBlok.target_kelas}
                       </span>
                     )}
                     {dateBlok.tipe_target === 'guru' && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 dark:bg-sky-900/50 dark:text-sky-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300">
                         Tugas Khusus Guru
                       </span>
                     )}
@@ -2211,20 +2211,20 @@ export default function GuruJurnal({
             
             {/* Guru Inval Toggle — opsional untuk Guru */}
             {user?.role === 'Guru' && !dateBlok && (
-              <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-xl p-3.5 mb-4">
+              <div className="neu-inset rounded-xl p-3.5 mb-4">
                 <label className="flex items-center gap-3 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={isInval}
                     onChange={e => handleInvalToggle(e.target.checked)}
-                    className="w-4 h-4 rounded accent-indigo-600"
+                    className="w-4 h-4 rounded accent-[#0F766E]"
                   />
                   <div>
-                    <span className="text-sm font-bold text-indigo-800 dark:text-indigo-200">
+                    <span className="text-sm font-bold text-[#0F766E] dark:text-teal-300">
                       <i className="fa-solid fa-person-chalkboard mr-1.5" />
                       Saya sebagai Guru Inval
                     </span>
-                    <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
+                    <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                       Aktifkan jika Anda menggantikan guru lain yang berhalangan hadir.
                     </p>
                   </div>
@@ -2232,13 +2232,13 @@ export default function GuruJurnal({
 
                 {isInval && (
                   <div className="mt-3 fade-in">
-                    <label className="block text-[11px] font-bold text-indigo-900 dark:text-indigo-200 mb-1.5 ml-1">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                       Guru yang Digantikan <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={guruDigantikan?.id ?? ''}
                       onChange={e => handleGuruDigantikanChange(e.target.value)}
-                      className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                      className="w-full px-3 py-3 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       required={isInval}
                     >
                       <option value="" disabled>Pilih guru yang digantikan...</option>
@@ -2247,7 +2247,7 @@ export default function GuruJurnal({
                       ))}
                     </select>
                     {guruDigantikan && (
-                      <p className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-1 ml-1">
+                      <p className="text-[10px] text-[#0F766E] dark:text-teal-400 mt-1 ml-1">
                         <i className="fa-solid fa-circle-check mr-1" />
                         Mapel &amp; Kelas di bawah diisi berdasarkan jadwal {guruDigantikan.nama}.
                       </p>
@@ -2501,7 +2501,7 @@ export default function GuruJurnal({
                                               { code: 'I', label: 'Izin', icon: 'fa-envelope', on: 'bg-orange-500 ring-orange-400', title: 'Tandai Izin di jam pelajaran ini' },
                                               { code: 'S', label: 'Sakit', icon: 'fa-notes-medical', on: 'bg-yellow-500 ring-yellow-400', title: 'Tandai Sakit di jam pelajaran ini' },
                                               { code: 'A', label: 'Alfa', icon: 'fa-xmark', on: 'bg-red-600 ring-red-400', title: 'Tandai Alfa (memicu status Bolos harian jika pagi hadir)' },
-                                              { code: 'B', label: 'Bolos', icon: 'fa-person-walking-arrow-right', on: 'bg-purple-600 ring-purple-400', title: 'Tandai Bolos di jam pelajaran ini' }
+                                              { code: 'B', label: 'Bolos', icon: 'fa-person-walking-arrow-right', on: 'bg-slate-700 ring-slate-400', title: 'Tandai Bolos di jam pelajaran ini' }
                                             ] as const).map(opt => (
                                               <button 
                                                 key={opt.code}

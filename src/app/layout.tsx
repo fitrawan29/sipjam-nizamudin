@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Amiri, Poppins, Space_Mono } from 'next/font/google';
+import { Amiri, Manrope, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/context/ThemeContext';
 import UpdateNotificationToast from '@/components/UpdateNotificationToast';
@@ -10,16 +10,16 @@ const amiri = Amiri({
   variable: '--font-amiri',
 });
 
-const poppins = Poppins({
-  weight: ['300', '400', '500', '600', '700', '800'],
+const manrope = Manrope({
+  weight: ['400', '500', '600', '700', '800'],
   subsets: ['latin'],
-  variable: '--font-poppins',
+  variable: '--font-manrope',
 });
 
-const spaceMono = Space_Mono({
-  weight: ['400', '700'],
+const jetbrainsMono = JetBrains_Mono({
+  weight: ['400', '600', '700'],
   subsets: ['latin'],
-  variable: '--font-space-mono',
+  variable: '--font-jetbrains-mono',
 });
 
 export const metadata: Metadata = {
@@ -33,7 +33,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#0B4619',
+  themeColor: '#0F766E',
 };
 
 export default function RootLayout({
@@ -47,7 +47,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>
-      <body className={`${amiri.variable} ${poppins.variable} ${spaceMono.variable} font-sans bg-[#FDF6EC] dark:bg-[#18181b] text-gray-900 dark:text-white transition-colors duration-300`}>
+      <body className={`${amiri.variable} ${manrope.variable} ${jetbrainsMono.variable} font-sans bg-[#E6ECF2] dark:bg-[#1F242D] text-[#0F172A] dark:text-[#F1F5F9] antialiased transition-colors duration-300`}>
         <ThemeProvider defaultTheme="light">
           {children}
           <UpdateNotificationToast />

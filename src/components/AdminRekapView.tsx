@@ -994,7 +994,7 @@ export default function AdminRekapView({
 
   return (
     <section id="view-admin-rekap" className="view-section fade-in">
-        <div className="clay-card p-4 sm:p-5 rounded-3xl border-2 border-white/90 dark:border-gray-700/80 shadow-md">
+        <div className="clay-card p-4 sm:p-5 rounded-3xl">
             {/* Header & Sub-Navigasi ClayTabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 no-print">
               <div>
@@ -1035,11 +1035,11 @@ export default function AdminRekapView({
             )}
 
             {/* Filter Periode */}
-            <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/50 p-4 rounded-2xl mb-5 no-print">
-                <label className="block text-xs font-bold text-gray-900 dark:text-white mb-2">Pilih Bulan</label>
+            <div className="neu-inset p-4 rounded-2xl mb-5 no-print">
+                <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Pilih Bulan</label>
                 <div className="flex gap-2">
-                    <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2.5 rounded-xl input-premium text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
-                    <button type="button" onClick={() => tarikDataRekap(false)} disabled={loading} className="clay-btn clay-btn-blue text-white px-4 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center">
+                    <input type="month" value={bulan} onChange={e => setBulan(e.target.value)} className="flex-grow px-3 py-2.5 rounded-xl input-premium neu-input text-sm text-[#0F172A] dark:text-[#F1F5F9]" />
+                    <button type="button" onClick={() => tarikDataRekap(false)} disabled={loading} className="clay-btn clay-btn-primary text-white px-4 rounded-xl text-xs font-bold disabled:opacity-50 flex items-center justify-center">
                       {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : <i className="fa-solid fa-download"></i>}
                     </button>
                 </div>
@@ -1071,37 +1071,37 @@ export default function AdminRekapView({
                   <div className={`${activeTab === 'analitik' ? 'block' : 'hidden'} no-print space-y-5`}>
                       {/* KPI Summary Metric Cards */}
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                          <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
-                              <div className="text-xl font-black text-green-600 dark:text-green-400">{totalHadirSemua}</div>
+                          <div className="clay-card clay-card-mint p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-[#0F766E] dark:text-teal-300">Total Hadir</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalHadirSemua}</div>
                           </div>
-                          <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Jurnal KBM</div>
-                              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnalSemua}</div>
+                          <div className="clay-card clay-card-purple p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-sky-700 dark:text-sky-300">Jurnal KBM</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalJurnalSemua}</div>
                           </div>
-                          <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Tugas Piket</div>
-                              <div className="text-xl font-black text-teal-600 dark:text-teal-400">{totalPiketSemua}</div>
+                          <div className="clay-card clay-card-amber p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-teal-700 dark:text-teal-300">Tugas Piket</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalPiketSemua}</div>
                           </div>
-                          <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Dinas Luar</div>
-                              <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalDinasSemua}</div>
+                          <div className="clay-card clay-card-blue p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-sky-700 dark:text-sky-300">Dinas Luar</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalDinasSemua}</div>
                           </div>
-                          <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Izin &amp; Sakit</div>
-                              <div className="text-xl font-black text-amber-700 dark:text-amber-400">{totalIzinSemua + totalSakitSemua}</div>
+                          <div className="clay-card clay-card-peach p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Izin &amp; Sakit</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalIzinSemua + totalSakitSemua}</div>
                           </div>
                       </div>
 
                       {/* Attendance Composition Progress Bars */}
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm space-y-4">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700 gap-2">
+                      <div className="neu-card-sm rounded-2xl p-5 space-y-4">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-300/60 dark:border-slate-700/60 gap-2">
                               <div>
-                                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                      <i className="fa-solid fa-chart-pie text-emerald-500"></i>
+                                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                                      <i className="fa-solid fa-chart-pie text-[#0F766E] dark:text-teal-400"></i>
                                       <span>Komposisi Rasio Kehadiran Dewan Guru</span>
                                   </h3>
-                                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                                       Distribusi proporsional kehadiran fisik di sekolah, tugas dinas luar, dan dispensasi izin/sakit
                                   </p>
                               </div>
@@ -1194,8 +1194,8 @@ export default function AdminRekapView({
                                           'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300',
                                           'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-200',
                                           'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300',
-                                          'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/40 dark:text-blue-300',
-                                          'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300',
+                                          'bg-sky-500/15 text-sky-700 border-sky-400/30 dark:bg-sky-900/40 dark:text-sky-300',
+                                          'bg-teal-500/15 text-[#0F766E] border-teal-400/30 dark:bg-teal-900/40 dark:text-teal-300',
                                           'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
                                           'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
                                           'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
@@ -1246,38 +1246,38 @@ export default function AdminRekapView({
                   <div className={`${activeTab === 'tabel' ? 'block' : 'hidden'} space-y-5`}>
                       {/* Summary Metric Badges */}
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 no-print">
-                          <div className="clay-card clay-card-blue p-3.5 rounded-2xl border-2 border-white/90 dark:border-blue-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-blue-800 dark:text-blue-300">Total Guru</div>
-                              <div className="text-xl font-black text-blue-600 dark:text-blue-400">{totalGuru}</div>
+                          <div className="clay-card clay-card-blue p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-sky-700 dark:text-sky-300">Total Guru</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalGuru}</div>
                           </div>
-                          <div className="clay-card clay-card-peach p-3.5 rounded-2xl border-2 border-white/90 dark:border-amber-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-amber-900 dark:text-amber-300">Hari Kerja</div>
-                              <div className="text-xl font-black text-amber-700 dark:text-amber-400">{totalHariKerjaBadge}</div>
+                          <div className="clay-card clay-card-peach p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-amber-700 dark:text-amber-300">Hari Kerja</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalHariKerjaBadge}</div>
                           </div>
-                          <div className="clay-card clay-card-mint p-3.5 rounded-2xl border-2 border-white/90 dark:border-emerald-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-green-800 dark:text-green-300">Total Hadir</div>
-                              <div className="text-xl font-black text-green-600 dark:text-green-400">{totalHadirSemua}</div>
+                          <div className="clay-card clay-card-mint p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-[#0F766E] dark:text-teal-300">Total Hadir</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalHadirSemua}</div>
                           </div>
-                          <div className="clay-card clay-card-purple p-3.5 rounded-2xl border-2 border-white/90 dark:border-purple-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-indigo-800 dark:text-indigo-300">Jurnal Disetujui</div>
-                              <div className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalJurnalSemua}</div>
+                          <div className="clay-card clay-card-purple p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-sky-700 dark:text-sky-300">Jurnal Disetujui</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalJurnalSemua}</div>
                           </div>
-                          <div className="clay-card clay-card-amber p-3.5 rounded-2xl border-2 border-white/90 dark:border-teal-800/50 text-center shadow-sm">
-                              <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Piket Disetujui</div>
-                              <div className="text-xl font-black text-teal-600 dark:text-teal-400">{totalPiketSemua}</div>
+                          <div className="clay-card clay-card-amber p-3.5 rounded-2xl text-center">
+                              <div className="text-xs font-bold text-teal-700 dark:text-teal-300">Piket Disetujui</div>
+                              <div className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalPiketSemua}</div>
                           </div>
                       </div>
 
                       {/* Teacher Search Filter & Orientation Toolbar */}
                       <div className="flex flex-wrap items-center justify-between gap-3 no-print">
                           <div className="relative flex-1 min-w-[200px]">
-                              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                               <input
                                 type="text"
                                 placeholder="Cari nama guru..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
-                                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                               />
                           </div>
                           {search && (
@@ -1317,7 +1317,7 @@ export default function AdminRekapView({
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-orange-700 dark:text-orange-400 print:text-black">Pulang Cepat</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold">Keterlambatan</th>
                               <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">Piket</th>
-                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">Jurnal</th>
+                              <th className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold text-[#0F766E] dark:text-teal-300 print:text-black">Jurnal</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1327,18 +1327,18 @@ export default function AdminRekapView({
                               const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
                               return (
                                 <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium font-num">{idx + 1}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold font-num text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold font-num text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat || 0}</td>
                                   <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
-                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-indigo-700 dark:text-indigo-400 print:text-black">{r.jurnal || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold font-num text-teal-700 dark:text-teal-400 print:text-black">{r.piket || 0}</td>
+                                  <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold font-num text-[#0F766E] dark:text-teal-300 print:text-black">{r.jurnal || 0}</td>
                                 </tr>
                               );
                             })}

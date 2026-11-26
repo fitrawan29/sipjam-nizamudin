@@ -1161,13 +1161,13 @@ export default function BkJurnalView({
   // Bidang Badge Helper
   const renderBidangBadge = (bidang: string) => {
     const colors: Record<string, string> = {
-      Pribadi: 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300/60',
+      Pribadi: 'bg-teal-500/15 text-[#0F766E] dark:text-teal-300 border-teal-500/30',
       Sosial: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300/60',
       Belajar: 'bg-teal-100 text-teal-800 dark:bg-teal-950/60 dark:text-teal-300 border-teal-300/60',
-      Karir: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-300/60'
+      Karir: 'bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/30'
     };
     return (
-      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[bidang] || 'bg-gray-100 text-gray-700'}`}>
+      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${colors[bidang] || 'bg-slate-400/15 text-[#334155] dark:text-[#CBD5E1]'}`}>
         {bidang}
       </span>
     );
@@ -1179,9 +1179,9 @@ export default function BkJurnalView({
       {isReadOnly && (
         <div
           data-testid="readonly-notice"
-          className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2.5 shadow-xs"
+          className="mb-4 p-3 rounded-2xl neu-inset border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2.5"
         >
-          <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+          <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
             <i className="fa-solid fa-eye text-xs"></i>
           </div>
           <div>
@@ -1194,19 +1194,19 @@ export default function BkJurnalView({
       )}
 
       {/* Header Banner */}
-      <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-50 via-pink-50 to-indigo-50 dark:from-rose-950/40 dark:via-pink-950/30 dark:to-indigo-950/20 border-2 border-rose-200/80 dark:border-rose-800/60 shadow-xs flex flex-wrap items-center justify-between gap-3 no-print">
+      <div className="neu-card-sm p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
             <i className="fa-solid fa-heart-pulse text-lg"></i>
           </div>
           <div>
-            <h2 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
               <span>Jurnal Bimbingan Konseling (BK)</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-100 dark:bg-rose-900/60 text-rose-800 dark:text-rose-300 border border-rose-300/60">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-700 dark:text-rose-300">
                 Bebas Rombel & Jadwal
               </span>
             </h2>
-            <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+            <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5">
               Pencatatan layanan konseling individual, kelompok, mediasi, dan tindak lanjut perkembangan siswa.
             </p>
           </div>
@@ -1979,13 +1979,13 @@ export default function BkJurnalView({
               </div>
             </div>
 
-            <div className="glass-card p-3 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <div className="neu-card-sm p-3 rounded-2xl flex items-center gap-2.5">
+              <div className="neu-inset w-9 h-9 rounded-xl text-sky-700 dark:text-sky-400 flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-share-from-square"></i>
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-medium">Alih Tangan</span>
-                <span className="text-sm font-black text-indigo-600 dark:text-indigo-400">
+                <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] block font-medium">Alih Tangan</span>
+                <span className="text-sm font-black font-num text-sky-700 dark:text-sky-400">
                   {entries.filter(e => e.status === 'Alih Tangan Kasus').length}
                 </span>
               </div>
@@ -2301,7 +2301,7 @@ export default function BkJurnalView({
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(item)}
-                                className="btn-click p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-900 dark:bg-purple-900/40 dark:text-purple-300 text-xs transition"
+                                className="neu-btn btn-click p-1.5 rounded-lg text-[#0F766E] dark:text-teal-400 text-xs transition"
                                 title="Edit jurnal BK"
                               >
                                 <i className="fa-solid fa-pen-to-square"></i>
@@ -2330,7 +2330,7 @@ export default function BkJurnalView({
       {/* TAB 3: CETAK DOKUMEN RESMI */}
       {activeTab === 'cetak' && (
         <div className="space-y-4 max-w-full overflow-hidden print:overflow-visible">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white dark:bg-gray-800 p-3 sm:p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xs no-print">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 neu-card-sm p-3 sm:p-3.5 rounded-2xl no-print">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
                 <h4 className="font-bold text-xs text-gray-900 dark:text-white">

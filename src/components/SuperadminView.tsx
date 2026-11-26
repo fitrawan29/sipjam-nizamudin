@@ -77,7 +77,7 @@ export default function SuperadminView({
           icon: 'error',
           title: 'Koneksi Satelit Gagal (401)',
           html: `Instance Supabase <b>${errSchool.nama}</b> mengembalikan respon 401 Unauthorized.<br><span class="text-xs text-gray-500">Periksa kembali Supabase Anon Key di menu edit sekolah satelit.</span>`,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
       }
     };
@@ -408,7 +408,7 @@ export default function SuperadminView({
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: '<i class="fa-solid fa-plus-circle mr-1"></i> Buat Akun Dinas',
-      confirmButtonColor: '#0B4619',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const rawNama = (document.getElementById('swal-dinas-nama') as HTMLInputElement)?.value || '';
@@ -455,7 +455,7 @@ export default function SuperadminView({
           icon: 'success',
           title: 'Akun Dinas Berhasil Dibuat',
           text: `Akun ${formValues.nama} untuk wilayah ${formValues.kota_kabupaten} telah aktif.`,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
 
         fetchDinasUsers();
@@ -464,7 +464,7 @@ export default function SuperadminView({
           icon: 'error',
           title: 'Gagal Membuat Akun Dinas',
           text: err.message || 'Terjadi kesalahan sistem saat menyimpan ke database.',
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
       } finally {
         setLoading(false);
@@ -524,7 +524,7 @@ export default function SuperadminView({
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: '<i class="fa-solid fa-save mr-1"></i> Simpan Perubahan',
-      confirmButtonColor: '#0B4619',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const rawNama = (document.getElementById('swal-edit-dinas-nama') as HTMLInputElement)?.value || '';
@@ -578,7 +578,7 @@ export default function SuperadminView({
           icon: 'success',
           title: 'Akun Dinas Diperbarui',
           text: `Data akun ${formValues.nama} berhasil diperbarui.`,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
 
         fetchDinasUsers();
@@ -587,7 +587,7 @@ export default function SuperadminView({
           icon: 'error',
           title: 'Gagal Memperbarui Akun Dinas',
           text: err.message || 'Terjadi kesalahan sistem saat memperbarui ke database.',
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
       } finally {
         setLoading(false);
@@ -623,7 +623,7 @@ export default function SuperadminView({
           icon: 'success',
           title: 'Akun Dihapus',
           text: `Akun dinas ${dinasUser.nama} telah berhasil dihapus.`,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
 
         fetchDinasUsers();
@@ -632,7 +632,7 @@ export default function SuperadminView({
           icon: 'error',
           title: 'Gagal Menghapus Akun',
           text: err.message || 'Terjadi kesalahan saat menghapus dari database.',
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
       } finally {
         setLoading(false);
@@ -736,7 +736,7 @@ export default function SuperadminView({
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: '<i class="fa-solid fa-plus-circle mr-1"></i> Simpan ke Jaringan',
-      confirmButtonColor: '#0B4619',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const nama = (document.getElementById('swal-sat-nama') as HTMLInputElement)?.value?.trim();
@@ -863,7 +863,7 @@ export default function SuperadminView({
           icon: 'success',
           title: 'Sekolah Terdaftar di Jaringan!',
           text: `Sekolah "${formValues.nama}" berhasil didaftarkan ke jaringan pemantauan satelit SIPJAM.`,
-          confirmButtonColor: '#0B4619'
+          confirmButtonColor: '#0F766E'
         });
         fetchAllData();
       } catch (err: any) {
@@ -921,7 +921,7 @@ export default function SuperadminView({
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Simpan Perubahan',
-      confirmButtonColor: '#0B4619',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const nama = (document.getElementById('swal-edit-sat-nama') as HTMLInputElement)?.value?.trim();
@@ -1164,43 +1164,43 @@ export default function SuperadminView({
   return (
     <div className="space-y-6">
       {/* Superadmin Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-800 via-teal-800 to-green-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+      <div className="neu-card rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+        <i className="fa-solid fa-crown absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-12deg] pointer-events-none"></i>
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-xs font-semibold backdrop-blur-md mb-2">
-              <i className="fa-solid fa-crown text-yellow-400"></i> Platform Operator
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full neu-inset text-xs font-semibold text-[#0F766E] dark:text-teal-300 mb-2">
+              <i className="fa-solid fa-crown text-[#D97706] dark:text-amber-400"></i> Platform Operator
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[#0F172A] dark:text-[#F1F5F9]">
               Superadmin Portal
             </h1>
-            <p className="text-xs sm:text-sm text-emerald-100 mt-1 max-w-xl">
+            <p className="text-xs sm:text-sm text-[#475569] dark:text-[#CBD5E1] mt-1 max-w-xl">
               Pusat kendali multi-tenant SIPJAM. Pantau jaringan sekolah satelit, status live database, dan metrik lintas sekolah secara terpusat.
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 shrink-0">
+          <div className="flex flex-wrap gap-2.5 shrink-0">
             <button
               type="button"
               onClick={handleOpenAddSatelliteSchoolModal}
-              className="btn-click bg-white text-emerald-900 font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-lg hover:bg-emerald-50 transition"
+              className="neu-btn neu-btn-primary btn-click font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition"
             >
-              <i className="fa-solid fa-plus-circle text-emerald-700"></i> Tambah Sekolah Satelit
+              <i className="fa-solid fa-plus-circle"></i> Tambah Sekolah Satelit
             </button>
             <button
               type="button"
               onClick={() => checkSatelliteHealthAndMetrics(satelliteSchools)}
               disabled={isPingingAll}
-              className="btn-click bg-emerald-700/80 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 shadow-md border border-white/20 transition"
+              className="neu-btn btn-click text-[#0F172A] dark:text-[#F1F5F9] font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition"
             >
-              <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin' : 'text-emerald-300'}`}></i>
+              <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin text-[#0F766E]' : 'text-[#0F766E] dark:text-teal-400'}`}></i>
               <span>{isPingingAll ? 'Memeriksa...' : 'Periksa Status Live'}</span>
             </button>
             <button
               type="button"
               onClick={fetchAllData}
               disabled={loading}
-              className="btn-click bg-black/30 hover:bg-black/40 text-white px-3 py-2.5 rounded-2xl text-xs flex items-center justify-center transition"
+              className="neu-btn btn-click text-[#334155] dark:text-[#CBD5E1] px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-center transition"
               title="Refresh Data"
             >
               <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
@@ -1210,35 +1210,35 @@ export default function SuperadminView({
       </div>
 
       {/* Target School Monitoring & Scope Switcher Bar */}
-      <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-2xl p-4 shadow-sm border border-emerald-100 dark:border-gray-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div className="neu-card-sm rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
             activeTargetSchool
-              ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/20'
-              : 'bg-gray-100 dark:bg-gray-800 text-emerald-700 dark:text-emerald-400'
+              ? 'bg-[#0F766E] text-white shadow-sm'
+              : 'neu-inset text-[#0F766E] dark:text-teal-400'
           }`}>
             <i className={`fa-solid ${activeTargetSchool ? 'fa-satellite-dish animate-pulse' : 'fa-network-wired'}`}></i>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#475569] dark:text-[#94A3B8]">
                 Sekolah yang Dipantau:
               </span>
               {activeTargetSchool ? (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
                   Instance Satelit Aktif
                 </span>
               ) : (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold neu-inset text-[#475569] dark:text-[#CBD5E1]">
                   Database Pusat (Master)
                 </span>
               )}
             </div>
-            <div className="text-sm font-bold text-gray-900 dark:text-white">
+            <div className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
               {activeTargetSchool ? activeTargetSchool.nama : 'Pusat Multi-Sekolah (Seluruh Database)'}
             </div>
             {activeTargetSchool?.npsn && (
-              <div className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+              <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] font-mono">
                 NPSN: {activeTargetSchool.npsn} {activeTargetSchool.kota_kabupaten ? `• ${activeTargetSchool.kota_kabupaten}` : ''}
               </div>
             )}
@@ -1259,7 +1259,7 @@ export default function SuperadminView({
                   if (sch) handleSelectTargetSchool(sch);
                 }
               }}
-              className="w-full text-xs font-semibold py-2.5 px-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              className="neu-input w-full text-xs font-semibold py-2.5 px-3 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer"
             >
               <option value="">🌐 Database Pusat (Master)</option>
               {satelliteSchools.map(sch => (
@@ -1273,7 +1273,7 @@ export default function SuperadminView({
             <button
               type="button"
               onClick={() => handleSelectTargetSchool(null)}
-              className="btn-click px-3 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-bold transition flex items-center gap-1.5 shrink-0"
+              className="neu-btn btn-click px-3 py-2.5 rounded-xl text-[#334155] dark:text-[#CBD5E1] text-xs font-bold transition flex items-center gap-1.5 shrink-0"
               title="Kembali ke Database Master"
             >
               <i className="fa-solid fa-rotate-left"></i>
@@ -1284,14 +1284,14 @@ export default function SuperadminView({
       </div>
 
       {/* Tabs Navigation Bar: 3 tabs */}
-      <div className="flex border-b border-gray-200 dark:border-gray-800 bg-white/60 dark:bg-gray-900/60 backdrop-blur-md rounded-2xl p-1.5 shadow-sm overflow-x-auto">
+      <div className="flex neu-inset rounded-2xl p-1.5 gap-1.5 overflow-x-auto">
         <button
           type="button"
           onClick={() => switchTab('overview')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 ${
             activeTab === 'overview'
-              ? 'bg-nizamudin-green text-white dark:text-nizamudin-gold shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'neu-btn neu-btn-primary text-white'
+              : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
           }`}
         >
           <i className="fa-solid fa-gauge-high"></i>
@@ -1302,8 +1302,8 @@ export default function SuperadminView({
           onClick={() => switchTab('jaringan')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 ${
             activeTab === 'jaringan'
-              ? 'bg-nizamudin-green text-white dark:text-nizamudin-gold shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'neu-btn neu-btn-primary text-white'
+              : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
           }`}
         >
           <i className="fa-solid fa-network-wired"></i>
@@ -1314,8 +1314,8 @@ export default function SuperadminView({
           onClick={() => switchTab('dinas')}
           className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shrink-0 ${
             activeTab === 'dinas'
-              ? 'bg-nizamudin-green text-white dark:text-nizamudin-gold shadow-md'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+              ? 'neu-btn neu-btn-primary text-white'
+              : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
           }`}
         >
           <i className="fa-solid fa-building-columns"></i>
@@ -1329,80 +1329,80 @@ export default function SuperadminView({
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Total Sekolah Satelit */}
-            <div className="glass-card p-5 rounded-2xl border-l-4 border-emerald-600 dark:border-emerald-500">
+            <div className="glass-card p-5 rounded-2xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider">
                   Total Satelit
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-network-wired"></i>
                 </div>
               </div>
-              <div className="text-2xl font-black text-gray-900 dark:text-white">
+              <div className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                 {satelliteSchools.length}
               </div>
-              <div className="flex items-center gap-2 mt-2 text-[11px]">
-                <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+              <div className="flex items-center gap-2 mt-2 text-[11px] font-num">
+                <span className="text-emerald-700 dark:text-emerald-400 font-bold">
                   {stats.sekolahAktif} Aktif
                 </span>
-                <span className="text-gray-400">•</span>
-                <span className="text-amber-600 dark:text-amber-400 font-bold">
+                <span className="text-[#475569] dark:text-[#94A3B8]">•</span>
+                <span className="text-amber-700 dark:text-amber-400 font-bold">
                   {stats.sekolahNonaktif} Nonaktif
                 </span>
               </div>
             </div>
 
             {/* Status Live Database */}
-            <div className="glass-card p-5 rounded-2xl border-l-4 border-green-500 dark:border-green-400">
+            <div className="glass-card p-5 rounded-2xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider">
                   Database Online
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-xl neu-inset text-emerald-700 dark:text-emerald-300 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-database"></i>
                 </div>
               </div>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              <div className="text-2xl font-black font-num text-[#0F766E] dark:text-teal-400">
                 {onlineDbCount}
               </div>
-              <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+              <div className="flex items-center gap-1.5 mt-2 text-[11px] font-num text-[#475569] dark:text-[#94A3B8]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>{pausedDbCount} Ter-pause / checking</span>
               </div>
             </div>
 
             {/* Total Guru Lintas Jaringan */}
-            <div className="glass-card p-5 rounded-2xl border-l-4 border-purple-600 dark:border-purple-500">
+            <div className="glass-card p-5 rounded-2xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider">
                   Total Guru
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-chalkboard-user"></i>
                 </div>
               </div>
-              <div className="text-2xl font-black text-gray-900 dark:text-white">
+              <div className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                 {totalGuruNetwork}
               </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-2">
                 Tenaga pendidik lintas satelit
               </p>
             </div>
 
             {/* Total Siswa Lintas Jaringan */}
-            <div className="glass-card p-5 rounded-2xl border-l-4 border-amber-600 dark:border-amber-500">
+            <div className="glass-card p-5 rounded-2xl">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider">
                   Total Siswa
                 </span>
-                <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-user-graduate"></i>
                 </div>
               </div>
-              <div className="text-2xl font-black text-gray-900 dark:text-white">
+              <div className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                 {totalSiswaNetwork}
               </div>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-2">
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-2">
                 Siswa di seluruh jaringan satelit
               </p>
             </div>
@@ -1412,26 +1412,26 @@ export default function SuperadminView({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Quick Actions Panel */}
             <div className="glass-card p-5 rounded-2xl space-y-3">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                 <i className="fa-solid fa-bolt text-amber-500"></i> Aksi Cepat Jaringan
               </h3>
-              <p className="text-xs text-gray-600 dark:text-gray-300">
+              <p className="text-xs text-[#475569] dark:text-[#CBD5E1]">
                 Kelola infrastruktur satelit, validasi status koneksi live database, atau beralih target pemantauan.
               </p>
-              <div className="space-y-2 pt-2">
+              <div className="space-y-2.5 pt-2">
                 <button
                   type="button"
                   onClick={handleOpenAddSatelliteSchoolModal}
-                  className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-gray-50 dark:bg-gray-800/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition flex items-center gap-3"
+                  className="w-full text-left p-3 rounded-xl neu-card-sm hover:ring-2 hover:ring-[#0F766E]/40 transition flex items-center gap-3"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl neu-inset text-[#0F766E] dark:text-teal-300 flex items-center justify-center shrink-0">
                     <i className="fa-solid fa-plus-circle"></i>
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-gray-900 dark:text-white">
+                    <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Tambah Sekolah Satelit
                     </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                    <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                       Daftarkan sekolah dan kredensial Supabase ke jaringan
                     </div>
                   </div>
@@ -1441,16 +1441,16 @@ export default function SuperadminView({
                   type="button"
                   onClick={() => checkSatelliteHealthAndMetrics(satelliteSchools)}
                   disabled={isPingingAll}
-                  className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-800/60 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition flex items-center gap-3"
+                  className="w-full text-left p-3 rounded-xl neu-card-sm hover:ring-2 hover:ring-sky-500/40 transition flex items-center gap-3"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center shrink-0">
                     <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin' : ''}`}></i>
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-gray-900 dark:text-white">
+                    <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Periksa Status Live Database
                     </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                    <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                       Ping ketersediaan real-time seluruh database satelit
                     </div>
                   </div>
@@ -1459,16 +1459,16 @@ export default function SuperadminView({
                 <button
                   type="button"
                   onClick={() => switchTab('jaringan')}
-                  className="w-full text-left p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-500 bg-gray-50 dark:bg-gray-800/60 transition flex items-center gap-3"
+                  className="w-full text-left p-3 rounded-xl neu-card-sm hover:ring-2 hover:ring-slate-400/40 transition flex items-center gap-3"
                 >
-                  <div className="w-9 h-9 rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 flex items-center justify-center shrink-0">
+                  <div className="w-9 h-9 rounded-xl neu-inset text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center shrink-0">
                     <i className="fa-solid fa-network-wired"></i>
                   </div>
                   <div>
-                    <div className="text-xs font-bold text-gray-900 dark:text-white">
+                    <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Kelola Jaringan Sekolah
                     </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                    <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                       Beralih target aktif, buka Vercel, dan manajemen sekolah
                     </div>
                   </div>
@@ -1479,24 +1479,24 @@ export default function SuperadminView({
             {/* Satellite Schools Summary List */}
             <div className="glass-card p-5 rounded-2xl lg:col-span-2 space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-building-columns text-emerald-600"></i> Jaringan Sekolah Satelit Terbaru
+                <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                  <i className="fa-solid fa-building-columns text-[#0F766E] dark:text-teal-400"></i> Jaringan Sekolah Satelit Terbaru
                 </h3>
                 <button
                   type="button"
                   onClick={() => switchTab('jaringan')}
-                  className="text-xs text-nizamudin-green dark:text-nizamudin-gold font-bold hover:underline"
+                  className="text-xs text-[#0F766E] dark:text-teal-400 font-bold hover:underline"
                 >
                   Lihat Semua ({satelliteSchools.length}) <i className="fa-solid fa-arrow-right ml-1"></i>
                 </button>
               </div>
 
               {satelliteSchools.length === 0 ? (
-                <div className="text-center py-8 text-xs text-gray-500 italic">
+                <div className="text-center py-8 text-xs text-[#475569] dark:text-[#94A3B8] italic">
                   Belum ada sekolah satelit yang terdaftar di jaringan platform.
                 </div>
               ) : (
-                <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                <div className="divide-y divide-slate-300/50 dark:divide-slate-700/50">
                   {satelliteSchools.slice(0, 5).map(sch => {
                     const status = healthMap[sch.id] || (sch.status === 'nonaktif' ? 'paused' : 'online');
                     const metrics = metricsMap[sch.id] || { guruCount: 0, siswaCount: 0 };
@@ -1505,18 +1505,18 @@ export default function SuperadminView({
                     return (
                       <div key={sch.id} className="py-3 flex items-center justify-between gap-3">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                             isCurrentlyActive
-                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-sm'
-                              : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                              ? 'bg-[#0F766E] text-white shadow-sm'
+                              : 'neu-inset text-[#0F766E] dark:text-teal-300'
                           }`}>
                             <i className="fa-solid fa-school text-xs"></i>
                           </div>
                           <div className="min-w-0">
-                            <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                            <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">
                               {sch.nama}
                             </div>
-                            <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                            <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] flex items-center gap-2">
                               <span>NPSN: {sch.npsn || '-'}</span>
                               <span>•</span>
                               <span>{sch.kota_kabupaten || 'Sulawesi Utara'}</span>
@@ -1525,19 +1525,19 @@ export default function SuperadminView({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[10px] bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-[10px] bg-sky-500/15 text-sky-800 dark:text-sky-300 px-2 py-0.5 rounded-full font-bold font-num">
                             {metrics.guruCount} Guru
                           </span>
-                          <span className="text-[10px] bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold">
+                          <span className="text-[10px] bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold font-num">
                             {metrics.siswaCount} Siswa
                           </span>
                           <span
-                            className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
+                            className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${
                               status === 'online'
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                                 : status === 'checking'
-                                ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 border-gray-300 dark:border-gray-700'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border-amber-300 dark:border-amber-700'
+                                ? 'neu-inset text-[#475569] dark:text-[#94A3B8]'
+                                : 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
                             }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full ${status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
@@ -1558,15 +1558,15 @@ export default function SuperadminView({
       {activeTab === 'jaringan' && (
         <div className="space-y-6">
           {/* Top Header Card */}
-          <div className="glass-card p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 border border-emerald-100 dark:border-gray-800">
+          <div className="glass-card p-5 sm:p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold mb-1.5 border border-emerald-300 dark:border-emerald-800">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full neu-inset text-[#0F766E] dark:text-teal-300 text-[10px] font-bold mb-1.5">
                 <i className="fa-solid fa-satellite-dish"></i> Single Sign-On Multi-Tenant Architecture
               </div>
-              <h2 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-network-wired text-emerald-600"></i> Portal Induk Jaringan Sekolah
+              <h2 className="text-lg sm:text-xl font-black text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                <i className="fa-solid fa-network-wired text-[#0F766E] dark:text-teal-400"></i> Portal Induk Jaringan Sekolah
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 max-w-2xl">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5 max-w-2xl">
                 Pantau seluruh sekolah satelit dalam 1 portal master. Beralih target pemantauan Supabase secara dinamis tanpa login ulang, periksa status koneksi live database, dan buka web sekolah dengan 1 klik.
               </p>
             </div>
@@ -1576,16 +1576,16 @@ export default function SuperadminView({
                 type="button"
                 onClick={() => checkSatelliteHealthAndMetrics(satelliteSchools)}
                 disabled={isPingingAll}
-                className="btn-click px-3.5 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold transition flex items-center gap-2 shadow-xs"
+                className="neu-btn btn-click px-3.5 py-2.5 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] text-xs font-bold transition flex items-center gap-2"
                 title="Ping Ketersediaan Seluruh Database Satelit"
               >
-                <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin text-emerald-500' : 'text-emerald-600'}`}></i>
+                <i className={`fa-solid fa-wave-pulse ${isPingingAll ? 'animate-spin text-[#0F766E]' : 'text-[#0F766E] dark:text-teal-400'}`}></i>
                 <span>{isPingingAll ? 'Memeriksa Database...' : 'Periksa Status Live'}</span>
               </button>
               <button
                 type="button"
                 onClick={handleOpenAddSatelliteSchoolModal}
-                className="btn-click px-4 py-2.5 rounded-xl bg-nizamudin-green hover:bg-emerald-800 text-white dark:text-nizamudin-gold text-xs font-bold transition flex items-center gap-2 shadow-md"
+                className="neu-btn neu-btn-primary btn-click px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2"
               >
                 <i className="fa-solid fa-plus-circle"></i>
                 <span>Tambah Sekolah Satelit</span>
@@ -1595,59 +1595,59 @@ export default function SuperadminView({
 
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-            <div className="glass-card p-4 rounded-2xl border-l-4 border-emerald-600">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+            <div className="glass-card p-4 rounded-2xl">
+              <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider block mb-1">
                 Total Satelit
               </span>
-              <div className="text-2xl font-black text-gray-900 dark:text-white">
+              <div className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                 {satelliteSchools.length}
               </div>
-              <span className="text-[10px] text-gray-400 mt-1 block">Sekolah terdaftar di jaringan</span>
+              <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 block">Sekolah terdaftar di jaringan</span>
             </div>
 
-            <div className="glass-card p-4 rounded-2xl border-l-4 border-green-500">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+            <div className="glass-card p-4 rounded-2xl">
+              <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider block mb-1">
                 Database Online
               </span>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              <div className="text-2xl font-black font-num text-[#0F766E] dark:text-teal-400">
                 {onlineDbCount}
               </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 mt-1 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Siap melayani request
               </span>
             </div>
 
-            <div className="glass-card p-4 rounded-2xl border-l-4 border-amber-500">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+            <div className="glass-card p-4 rounded-2xl">
+              <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider block mb-1">
                 Database Ter-pause
               </span>
-              <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+              <div className="text-2xl font-black font-num text-[#D97706] dark:text-amber-400">
                 {pausedDbCount}
               </div>
-              <span className="text-[10px] text-gray-400 mt-1 block">Perlu resume / periksa kuota</span>
+              <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 block">Perlu resume / periksa kuota</span>
             </div>
 
-            <div className="glass-card p-4 rounded-2xl border-l-4 border-blue-500">
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">
+            <div className="glass-card p-4 rounded-2xl">
+              <span className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider block mb-1">
                 Total Guru & Siswa
               </span>
-              <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
+              <div className="text-2xl font-black font-num text-sky-700 dark:text-sky-400">
                 {totalGuruNetwork + totalSiswaNetwork}
               </div>
-              <span className="text-[10px] text-gray-400 mt-1 block">Pengguna di seluruh satelit</span>
+              <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 block">Pengguna di seluruh satelit</span>
             </div>
           </div>
 
           {/* Search & Filter Bar */}
-          <div className="glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center justify-between border border-gray-100 dark:border-gray-800">
+          <div className="glass-card p-4 rounded-2xl flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="relative w-full sm:w-80">
-              <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
+              <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-[#475569] dark:text-[#94A3B8]"></i>
               <input
                 type="text"
                 value={satelliteSearch}
                 onChange={e => setSatelliteSearch(e.target.value)}
                 placeholder="Cari sekolah satelit, NPSN, kota..."
-                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
               />
             </div>
 
@@ -1655,7 +1655,7 @@ export default function SuperadminView({
               <select
                 value={satelliteStatusFilter}
                 onChange={e => setSatelliteStatusFilter(e.target.value as any)}
-                className="w-full sm:w-44 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white cursor-pointer"
+                className="w-full sm:w-44 px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer"
               >
                 <option value="all">Semua Status Live</option>
                 <option value="online">Hanya Database Online</option>
@@ -1666,20 +1666,20 @@ export default function SuperadminView({
 
           {/* Satellite Schools Cards Grid */}
           {filteredSatellite.length === 0 ? (
-            <div className="glass-card p-10 rounded-2xl text-center border border-gray-200 dark:border-gray-800">
-              <div className="w-14 h-14 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-400 text-xl">
+            <div className="glass-card p-10 rounded-2xl text-center">
+              <div className="w-14 h-14 neu-inset rounded-full flex items-center justify-center mx-auto mb-3 text-[#475569] dark:text-[#94A3B8] text-xl">
                 <i className="fa-solid fa-satellite-dish"></i>
               </div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                 Tidak Ada Sekolah Satelit Ditemukan
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto mb-4">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] max-w-sm mx-auto mb-4">
                 Belum ada sekolah yang cocok dengan pencarian, atau belum ada sekolah yang didaftarkan ke jaringan monitoring.
               </p>
               <button
                 type="button"
                 onClick={handleOpenAddSatelliteSchoolModal}
-                className="btn-click px-4 py-2 rounded-xl bg-nizamudin-green text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-md"
+                className="neu-btn neu-btn-primary btn-click px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
               >
                 <i className="fa-solid fa-plus-circle"></i> Tambah Sekolah Satelit Sekarang
               </button>
@@ -1697,28 +1697,28 @@ export default function SuperadminView({
                 return (
                   <div
                     key={sch.id}
-                    className={`glass-card rounded-2xl p-5 flex flex-col justify-between transition-all border ${
+                    className={`glass-card rounded-2xl p-5 flex flex-col justify-between transition-all ${
                       isCurrentlyActive
-                        ? 'border-2 border-emerald-500 shadow-lg shadow-emerald-500/10 ring-2 ring-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20'
-                        : 'border-gray-200 dark:border-gray-800 hover:border-emerald-300 dark:hover:border-emerald-800'
+                        ? 'ring-2 ring-[#0F766E] dark:ring-teal-400'
+                        : ''
                     }`}
                   >
                     <div>
                       {/* Top Header & Status */}
                       <div className="flex items-start justify-between gap-2 mb-3">
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 ${
                             isCurrentlyActive
-                              ? 'bg-emerald-600 text-white border-emerald-500'
-                              : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                              ? 'bg-[#0F766E] text-white'
+                              : 'neu-inset text-[#0F766E] dark:text-teal-300'
                           }`}>
                             <i className="fa-solid fa-school text-xs"></i>
                           </div>
                           <div className="min-w-0">
-                            <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate" title={sch.nama}>
+                            <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate" title={sch.nama}>
                               {sch.nama}
                             </h3>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono flex items-center gap-1.5">
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono flex items-center gap-1.5">
                               <span>NPSN: {sch.npsn || '-'}</span>
                               <span>•</span>
                               <span>{sch.kota_kabupaten || 'Sulut'}</span>
@@ -1729,15 +1729,15 @@ export default function SuperadminView({
                         {/* Live Database Status Indicator */}
                         <div className="shrink-0">
                           {status === 'checking' ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300 flex items-center gap-1">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold neu-inset text-[#475569] dark:text-[#94A3B8] flex items-center gap-1">
                               <i className="fa-solid fa-spinner animate-spin text-[8px]"></i> Ping
                             </span>
                           ) : status === 'online' ? (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5" title="Database online dan merespons query">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5" title="Database online dan merespons query">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Online
                             </span>
                           ) : (
-                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1.5" title="Database ter-pause atau tidak terjangkau">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 flex items-center gap-1.5" title="Database ter-pause atau tidak terjangkau">
                               <span className="w-2 h-2 rounded-full bg-amber-500"></span> Ter-pause
                             </span>
                           )}
@@ -1745,26 +1745,26 @@ export default function SuperadminView({
                       </div>
 
                       {/* Real-time Metrics Pill Grid */}
-                      <div className="grid grid-cols-2 gap-2 my-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 text-xs">
+                      <div className="grid grid-cols-2 gap-2 my-3 p-2.5 rounded-xl neu-inset text-xs">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 flex items-center justify-center text-[10px]">
+                          <div className="w-6 h-6 rounded-lg neu-card-sm text-sky-700 dark:text-sky-300 flex items-center justify-center text-[10px]">
                             <i className="fa-solid fa-chalkboard-user"></i>
                           </div>
                           <div>
-                            <div className="text-[10px] text-gray-400">Guru Aktif</div>
-                            <div className="font-black text-gray-900 dark:text-white leading-tight">
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">Guru Aktif</div>
+                            <div className="font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                               {metrics.guruCount}
                             </div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-lg bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-[10px]">
+                          <div className="w-6 h-6 rounded-lg neu-card-sm text-amber-700 dark:text-amber-300 flex items-center justify-center text-[10px]">
                             <i className="fa-solid fa-user-graduate"></i>
                           </div>
                           <div>
-                            <div className="text-[10px] text-gray-400">Siswa</div>
-                            <div className="font-black text-gray-900 dark:text-white leading-tight">
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">Siswa</div>
+                            <div className="font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                               {metrics.siswaCount}
                             </div>
                           </div>
@@ -1773,48 +1773,48 @@ export default function SuperadminView({
 
                       {/* Technical Meta (Vercel & Supabase URLs) */}
                       <div className="space-y-1 mb-4 text-[10px]">
-                        <div className="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center justify-between text-[#475569] dark:text-[#94A3B8]">
                           <span className="flex items-center gap-1">
-                            <i className="fa-brands fa-react text-blue-500"></i> Web Vercel:
+                            <i className="fa-brands fa-react text-sky-600 dark:text-sky-400"></i> Web Vercel:
                           </span>
                           {sch.vercel_url ? (
                             <a
                               href={sch.vercel_url.startsWith('http://') || sch.vercel_url.startsWith('https://') ? sch.vercel_url : `https://${sch.vercel_url}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-mono text-emerald-600 dark:text-emerald-400 hover:underline truncate max-w-[150px]"
+                              className="font-mono text-[#0F766E] dark:text-teal-400 hover:underline truncate max-w-[150px]"
                               title={sch.vercel_url}
                             >
                               {sch.vercel_url.replace(/^https?:\/\//, '')}
                             </a>
                           ) : (
-                            <span className="italic text-gray-400">Belum diatur</span>
+                            <span className="italic text-[#475569] dark:text-[#94A3B8]">Belum diatur</span>
                           )}
                         </div>
 
-                        <div className="flex items-center justify-between text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center justify-between text-[#475569] dark:text-[#94A3B8]">
                           <span className="flex items-center gap-1">
-                            <i className="fa-solid fa-database text-emerald-500"></i> Supabase:
+                            <i className="fa-solid fa-database text-[#0F766E] dark:text-teal-400"></i> Supabase:
                           </span>
                           {sch.supabase_url ? (
-                            <span className="font-mono text-gray-600 dark:text-gray-300 truncate max-w-[150px]" title={sch.supabase_url}>
+                            <span className="font-mono text-[#334155] dark:text-[#CBD5E1] truncate max-w-[150px]" title={sch.supabase_url}>
                               {sch.supabase_url.replace(/^https?:\/\//, '').split('.')[0]}.supabase.co
                             </span>
                           ) : (
-                            <span className="text-gray-500 font-medium">Database Utama (Pusat)</span>
+                            <span className="text-[#475569] dark:text-[#94A3B8] font-medium">Database Utama (Pusat)</span>
                           )}
                         </div>
                       </div>
                     </div>
 
                     {/* Card Action Buttons */}
-                    <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-slate-300/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-1">
                         {isCurrentlyActive ? (
                           <button
                             type="button"
                             onClick={() => handleSelectTargetSchool(null)}
-                            className="btn-click flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+                            className="neu-btn neu-btn-primary btn-click flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition"
                             title="Klik untuk kembali ke Master Platform"
                           >
                             <i className="fa-solid fa-circle-check"></i>
@@ -1824,7 +1824,7 @@ export default function SuperadminView({
                           <button
                             type="button"
                             onClick={() => handleSelectTargetSchool(sch)}
-                            className="btn-click flex-1 py-2 px-3 rounded-xl bg-nizamudin-green hover:bg-emerald-800 text-white dark:text-nizamudin-gold font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition"
+                            className="neu-btn neu-btn-primary btn-click flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition"
                             title="Alihkan pemantauan aktif ke database sekolah ini"
                           >
                             <i className="fa-solid fa-satellite-dish"></i>
@@ -1835,7 +1835,7 @@ export default function SuperadminView({
                         <button
                           type="button"
                           onClick={() => handleOpenVercelUrl(sch)}
-                          className="btn-click py-2 px-3 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 font-bold text-xs flex items-center justify-center gap-1.5 transition"
+                          className="neu-btn btn-click py-2 px-3 rounded-xl text-[#334155] dark:text-[#CBD5E1] font-bold text-xs flex items-center justify-center gap-1.5 transition"
                           title="Buka Website Vercel Sekolah di Tab Baru"
                         >
                           <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
@@ -1843,11 +1843,11 @@ export default function SuperadminView({
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => handleEditSatelliteSchool(sch)}
-                          className="btn-click w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 flex items-center justify-center"
+                          className="neu-btn btn-click w-8 h-8 rounded-lg text-sky-700 dark:text-sky-400 flex items-center justify-center"
                           title="Edit Parameter Sekolah Satelit"
                         >
                           <i className="fa-solid fa-pen text-xs"></i>
@@ -1855,7 +1855,7 @@ export default function SuperadminView({
                         <button
                           type="button"
                           onClick={() => handleDeleteSatelliteSchool(sch)}
-                          className="btn-click w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 dark:bg-gray-800 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center"
+                          className="neu-btn btn-click w-8 h-8 rounded-lg text-rose-600 dark:text-rose-400 flex items-center justify-center"
                           title="Hapus dari Jaringan Monitoring"
                         >
                           <i className="fa-solid fa-trash text-xs"></i>
@@ -1877,14 +1877,14 @@ export default function SuperadminView({
           <div className="glass-card p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 flex items-center justify-center text-sm">
+                <div className="w-8 h-8 rounded-xl neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-building-columns"></i>
                 </div>
-                <h2 className="text-base font-black text-gray-900 dark:text-white">
+                <h2 className="text-base font-black text-[#0F172A] dark:text-[#F1F5F9]">
                   Akun Dinas Pendidikan & Penugasan Daerah Binaan
                 </h2>
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-1 max-w-2xl">
                 Superadmin berwenang menetapkan kota/kabupaten tugas pada setiap akun Dinas Pendidikan. Akun dinas beroperasi secara strictly read-only dan hanya dapat memantau sekolah di wilayah binaannya.
               </p>
             </div>
@@ -1893,7 +1893,7 @@ export default function SuperadminView({
               <button
                 type="button"
                 onClick={handleOpenAddDinasUserModal}
-                className="btn-click flex-1 sm:flex-initial bg-nizamudin-green hover:bg-emerald-800 text-white dark:text-nizamudin-gold font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-2 shadow-md transition"
+                className="neu-btn neu-btn-primary btn-click flex-1 sm:flex-initial font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-2 transition"
               >
                 <i className="fa-solid fa-plus-circle"></i>
                 <span>Tambah Akun Dinas</span>
@@ -1902,7 +1902,7 @@ export default function SuperadminView({
                 type="button"
                 onClick={fetchDinasUsers}
                 disabled={loadingDinas}
-                className="btn-click bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2.5 rounded-2xl text-xs flex items-center justify-center transition"
+                className="neu-btn btn-click text-[#334155] dark:text-[#CBD5E1] px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-center transition"
                 title="Muat Ulang Akun Dinas"
               >
                 <i className={`fa-solid fa-rotate-right ${loadingDinas ? 'animate-spin' : ''}`}></i>
@@ -1913,32 +1913,32 @@ export default function SuperadminView({
           {/* Search & Statistics Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="relative w-full sm:w-80">
-              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+              <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
               <input
                 type="text"
                 placeholder="Cari dinas, username, kota/kabupaten..."
                 value={dinasSearch}
                 onChange={(e) => setDinasSearch(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+                className="neu-input w-full pl-9 pr-8 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
               />
               {dinasSearch && (
                 <button
                   type="button"
                   onClick={() => setDinasSearch('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] text-xs"
                 >
                   <i className="fa-solid fa-times"></i>
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 self-end sm:self-center">
+            <div className="flex items-center gap-3 text-xs text-[#475569] dark:text-[#94A3B8] self-end sm:self-center">
               <span className="font-semibold">
-                Total Akun Dinas: <b className="text-gray-900 dark:text-white">{dinasUsers.length}</b>
+                Total Akun Dinas: <b className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{dinasUsers.length}</b>
               </span>
               <span>•</span>
               <span className="font-semibold">
-                Terfilter: <b className="text-gray-900 dark:text-white">{filteredDinasUsers.length}</b>
+                Terfilter: <b className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{filteredDinasUsers.length}</b>
               </span>
             </div>
           </div>
@@ -1946,13 +1946,13 @@ export default function SuperadminView({
           {/* Table / List of Dinas Accounts */}
           {filteredDinasUsers.length === 0 ? (
             <div className="glass-card p-12 rounded-2xl text-center space-y-3">
-              <div className="w-16 h-16 mx-auto rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-2xl">
+              <div className="w-16 h-16 mx-auto rounded-full neu-inset text-sky-700 dark:text-sky-400 flex items-center justify-center text-2xl">
                 <i className="fa-solid fa-building-columns"></i>
               </div>
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                 {dinasSearch ? 'Tidak ada akun dinas yang cocok' : 'Belum Ada Akun Dinas Pendidikan'}
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] max-w-md mx-auto">
                 {dinasSearch
                   ? `Tidak ditemukan akun dinas dengan kata kunci "${dinasSearch}". Periksa kembali ejaan pencarian.`
                   : 'Daftarkan akun pengawas atau perwakilan Dinas Pendidikan untuk mulai memantau kehadiran sekolah di wilayah binaan.'}
@@ -1961,18 +1961,18 @@ export default function SuperadminView({
                 <button
                   type="button"
                   onClick={handleOpenAddDinasUserModal}
-                  className="btn-click inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-nizamudin-green text-white font-bold text-xs mt-2"
+                  className="neu-btn neu-btn-primary btn-click inline-flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-xs mt-2"
                 >
                   <i className="fa-solid fa-plus-circle"></i> Tambah Akun Dinas Pertama
                 </button>
               )}
             </div>
           ) : (
-            <div className="glass-card rounded-2xl overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800">
+            <div className="glass-card rounded-2xl overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-100 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider text-[10px]">
+                    <tr className="neu-inset border-b border-slate-300/60 dark:border-slate-700/60 text-[#475569] dark:text-[#CBD5E1] font-bold uppercase tracking-wider text-[10px]">
                       <th className="py-3.5 px-4">Petugas / Instansi Dinas</th>
                       <th className="py-3.5 px-4">Username</th>
                       <th className="py-3.5 px-4">Daerah Binaan (Wilayah)</th>
@@ -1981,7 +1981,7 @@ export default function SuperadminView({
                       <th className="py-3.5 px-4 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 text-gray-700 dark:text-gray-300">
+                  <tbody className="divide-y divide-slate-300/50 dark:divide-slate-700/50 text-[#334155] dark:text-[#CBD5E1]">
                     {filteredDinasUsers.map((dinasUser) => {
                       const userRegion = (dinasUser.kota_kabupaten || '').trim().toLowerCase();
                       const matchingSchoolsCount = userRegion
@@ -1993,39 +1993,39 @@ export default function SuperadminView({
                       return (
                         <tr
                           key={dinasUser.id}
-                          className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors"
+                          className="hover:bg-white/25 dark:hover:bg-white/5 transition-colors"
                         >
-                          <td className="py-3 px-4 font-bold text-gray-900 dark:text-white">
+                          <td className="py-3 px-4 font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center font-bold text-xs shrink-0">
+                              <div className="w-8 h-8 rounded-lg neu-inset text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold text-xs shrink-0">
                                 <i className="fa-solid fa-building-user"></i>
                               </div>
                               <div>
                                 <div className="font-bold text-xs">{dinasUser.nama}</div>
-                                <div className="text-[10px] text-gray-400 font-normal">
+                                <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-normal">
                                   ID: {dinasUser.id.substring(0, 8)}...
                                 </div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-3 px-4 font-mono text-[11px] text-gray-600 dark:text-gray-400">
+                          <td className="py-3 px-4 font-mono text-[11px] text-[#475569] dark:text-[#94A3B8]">
                             @{dinasUser.username}
                           </td>
                           <td className="py-3 px-4">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-500/15 text-sky-800 dark:text-sky-300">
                               <i className="fa-solid fa-location-dot text-[10px]"></i>
                               <span>{dinasUser.kota_kabupaten || 'Belum Ditugaskan'}</span>
                             </span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-emerald-200 dark:border-emerald-800">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold font-num text-[#0F766E] dark:text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded-md">
                               <i className="fa-solid fa-school text-[10px]"></i>
                               <span>{matchingSchoolsCount} Sekolah</span>
                             </span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                              <i className="fa-solid fa-shield-halved text-[9px]"></i>
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full neu-inset text-[#475569] dark:text-[#CBD5E1]">
+                              <i className="fa-solid fa-shield-halved text-[9px] text-[#0F766E] dark:text-teal-400"></i>
                               <span>Read-Only</span>
                             </span>
                           </td>
@@ -2034,7 +2034,7 @@ export default function SuperadminView({
                               <button
                                 type="button"
                                 onClick={() => handleEditDinasUser(dinasUser)}
-                                className="btn-click w-7 h-7 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-blue-600 dark:text-blue-400 flex items-center justify-center transition"
+                                className="neu-btn btn-click w-8 h-8 rounded-lg text-sky-700 dark:text-sky-400 flex items-center justify-center transition"
                                 title="Edit Wilayah / Akun"
                               >
                                 <i className="fa-solid fa-pen text-xs"></i>
@@ -2042,7 +2042,7 @@ export default function SuperadminView({
                               <button
                                 type="button"
                                 onClick={() => handleDeleteDinasUser(dinasUser)}
-                                className="btn-click w-7 h-7 rounded-lg bg-gray-100 hover:bg-red-100 dark:bg-gray-800 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 flex items-center justify-center transition"
+                                className="neu-btn btn-click w-8 h-8 rounded-lg text-rose-600 dark:text-rose-400 flex items-center justify-center transition"
                                 title="Hapus Akun Dinas"
                               >
                                 <i className="fa-solid fa-trash text-xs"></i>

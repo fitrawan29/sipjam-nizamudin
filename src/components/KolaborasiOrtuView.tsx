@@ -327,7 +327,7 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
       `,
       showCancelButton: true,
       confirmButtonText: 'Buat Topik',
-      confirmButtonColor: '#0B4619',
+      confirmButtonColor: '#0F766E',
       cancelButtonText: 'Batal',
       preConfirm: () => {
         const siswaId = (document.getElementById('swal-kolab-siswa') as HTMLSelectElement)?.value;
@@ -477,7 +477,7 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
       inputPlaceholder: decision === 'Disetujui' ? 'Disetujui, semoga lekas membaik...' : 'Alasan penolakan...',
       showCancelButton: true,
       confirmButtonText: decision === 'Disetujui' ? 'Ya, Setujui & Sinkron Absensi' : 'Ya, Tolak',
-      confirmButtonColor: decision === 'Disetujui' ? '#0B4619' : '#DC2626',
+      confirmButtonColor: decision === 'Disetujui' ? '#0F766E' : '#DC2626',
       cancelButtonText: 'Batal',
     });
 
@@ -603,7 +603,7 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
             <select
               value={selectedSiswaId}
               onChange={(e) => setSelectedSiswaId(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-white text-gray-800 text-xs font-bold border border-white/40 focus:outline-none max-w-[220px]"
+              className="px-3 py-2 rounded-xl bg-[#E6ECF2] text-[#0F172A] text-xs font-bold border border-white/40 focus:outline-none max-w-[220px]"
             >
               {!isOrtu && <option value="">Semua Siswa</option>}
               {visibleStudents.map((s) => (
@@ -637,10 +637,10 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                 key={t.id}
                 type="button"
                 onClick={() => setActiveTab(t.id as any)}
-                className={`px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                className={`neu-btn px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
                   activeTab === t.id
-                    ? 'bg-[#0B4619] text-white shadow-md'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50'
+                    ? 'neu-btn-primary text-white'
+                    : 'text-[#334155] dark:text-[#CBD5E1]'
                 }`}
               >
                 <i className={`fa-solid ${t.icon}`}></i>
@@ -654,16 +654,16 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               <ClayCard className="p-4 lg:col-span-1 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-black text-gray-800 dark:text-white">Daftar Topik</h2>
+                  <h2 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">Daftar Topik</h2>
                   <ClayButton variant="primary" size="sm" onClick={handleCreateTopic}>
                     <i className="fa-solid fa-plus mr-1"></i> Topik Baru
                   </ClayButton>
                 </div>
 
                 {visibleTopics.length === 0 ? (
-                  <p className="text-xs text-gray-500 py-6 text-center">Belum ada topik diskusi.</p>
+                  <p className="text-xs text-[#475569] dark:text-[#94A3B8] py-6 text-center">Belum ada topik diskusi.</p>
                 ) : (
-                  <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-[480px] overflow-y-auto pr-1">
                     {visibleTopics.map((t) => {
                       const stu = studentMap[t.siswa_id];
                       const active = t.id === selectedTopicId;
@@ -672,30 +672,30 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                           key={t.id}
                           type="button"
                           onClick={() => setSelectedTopicId(t.id)}
-                          className={`w-full text-left p-3 rounded-2xl border transition cursor-pointer ${
+                          className={`w-full text-left p-3 rounded-2xl transition cursor-pointer ${
                             active
-                              ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500'
-                              : 'bg-gray-50/70 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700 hover:bg-gray-100'
+                              ? 'neu-inset ring-2 ring-[#0F766E] dark:ring-teal-400'
+                              : 'neu-card-sm'
                           }`}
                         >
                           <div className="flex items-center justify-between gap-2 mb-1">
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-800 dark:text-sky-300">
                               {t.kategori}
                             </span>
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                                 t.status === 'Selesai'
-                                  ? 'bg-gray-200 text-gray-700'
-                                  : 'bg-emerald-100 text-emerald-800'
+                                  ? 'neu-inset text-[#475569] dark:text-[#94A3B8]'
+                                  : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
                               }`}
                             >
                               {t.status}
                             </span>
                           </div>
-                          <p className="text-xs font-bold text-gray-900 dark:text-white line-clamp-1">
+                          <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] line-clamp-1">
                             {t.judul}
                           </p>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                             {stu ? `${stu.nama_siswa} (${stu.kelas})` : t.kelas} • {formatDateWita(t.last_message_at)}
                           </p>
                         </button>
@@ -707,16 +707,16 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
 
               <ClayCard className="p-4 lg:col-span-2 flex flex-col min-h-[420px]">
                 {!selectedTopic ? (
-                  <div className="flex-1 flex flex-col items-center justify-center text-gray-400 py-12">
+                  <div className="flex-1 flex flex-col items-center justify-center text-[#475569] dark:text-[#94A3B8] py-12">
                     <i className="fa-regular fa-comments text-4xl mb-2"></i>
                     <p className="text-xs">Pilih topik di sebelah kiri atau buat topik baru untuk berdiskusi.</p>
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-start justify-between gap-3 pb-3 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
                       <div>
-                        <h3 className="text-sm font-black text-gray-900 dark:text-white">{selectedTopic.judul}</h3>
-                        <p className="text-[11px] text-gray-500">
+                        <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">{selectedTopic.judul}</h3>
+                        <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                           Siswa: <strong>{studentMap[selectedTopic.siswa_id]?.nama_siswa || '-'}</strong> ({selectedTopic.kelas}) • Dibuat oleh {selectedTopic.dibuat_oleh_nama} ({selectedTopic.dibuat_oleh_role})
                         </p>
                       </div>
@@ -739,8 +739,8 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                             <div
                               className={`max-w-[82%] px-3.5 py-2.5 rounded-2xl text-xs ${
                                 isMine
-                                  ? 'bg-[#0B4619] text-white rounded-br-none'
-                                  : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-bl-none'
+                                  ? 'bg-[#0F766E] text-white rounded-br-none shadow-sm'
+                                  : 'neu-card-sm text-[#0F172A] dark:text-[#F1F5F9] rounded-bl-none'
                               }`}
                             >
                               <div className="text-[10px] font-bold opacity-80 mb-0.5">
@@ -748,7 +748,7 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                               </div>
                               <p className="whitespace-pre-wrap leading-relaxed">{m.isi}</p>
                             </div>
-                            <span className="text-[10px] text-gray-400 mt-1 px-1">
+                            <span className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] mt-1 px-1">
                               {formatTimestampWita(m.created_at)}
                             </span>
                           </div>
@@ -756,14 +756,14 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                       })}
                     </div>
 
-                    <form onSubmit={handleSendReply} className="pt-3 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+                    <form onSubmit={handleSendReply} className="pt-3 border-t border-slate-300/60 dark:border-slate-700/60 flex gap-2">
                       <input
                         type="text"
                         value={replyText}
                         onChange={(e) => setReplyText(e.target.value)}
                         placeholder={selectedTopic.status === 'Selesai' ? 'Topik sudah selesai...' : 'Tulis balasan pesan...'}
                         disabled={selectedTopic.status === 'Selesai' || sendingReply}
-                        className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-xs focus:outline-none"
+                        className="neu-input flex-1 px-3 py-2 rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none"
                       />
                       <ClayButton
                         type="submit"
@@ -784,61 +784,61 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
           {activeTab === 'monitoring' && (
             <div className="space-y-5">
               {!selectedStudent ? (
-                <ClayCard className="p-6 text-center text-xs text-gray-500">
+                <ClayCard className="p-6 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
                   Pilih salah satu siswa pada dropdown di atas untuk melihat ringkasan kehadiran dan nilai.
                 </ClayCard>
               ) : loadingMonitor ? (
-                <ClayCard className="p-6 text-center text-xs text-gray-500">
+                <ClayCard className="p-6 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
                   Memuat data monitoring {selectedStudent.nama_siswa}...
                 </ClayCard>
               ) : (
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <ClayCard variant="mint" className="p-4 text-center">
-                      <div className="text-2xl font-black">{absensiSummary.Hadir}</div>
+                      <div className="text-2xl font-black font-num">{absensiSummary.Hadir}</div>
                       <div className="text-[11px] font-bold">Hadir</div>
                     </ClayCard>
                     <ClayCard variant="amber" className="p-4 text-center">
-                      <div className="text-2xl font-black">{absensiSummary.Sakit}</div>
+                      <div className="text-2xl font-black font-num">{absensiSummary.Sakit}</div>
                       <div className="text-[11px] font-bold">Sakit</div>
                     </ClayCard>
                     <ClayCard variant="blue" className="p-4 text-center">
-                      <div className="text-2xl font-black">{absensiSummary.Izin}</div>
+                      <div className="text-2xl font-black font-num">{absensiSummary.Izin}</div>
                       <div className="text-[11px] font-bold">Izin</div>
                     </ClayCard>
                     <ClayCard variant="rose" className="p-4 text-center">
-                      <div className="text-2xl font-black">{absensiSummary.Alpa}</div>
+                      <div className="text-2xl font-black font-num">{absensiSummary.Alpa}</div>
                       <div className="text-[11px] font-bold">Alpa</div>
                     </ClayCard>
                   </div>
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                     <ClayCard className="p-4">
-                      <h3 className="text-sm font-black text-gray-800 dark:text-white mb-3">
+                      <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9] mb-3">
                         Riwayat Kehadiran Terbaru ({selectedStudent.nama_siswa})
                       </h3>
                       {absensiRows.length === 0 && presensiGerbangRows.length === 0 ? (
-                        <p className="text-xs text-gray-500 py-4 text-center">Belum ada catatan kehadiran.</p>
+                        <p className="text-xs text-[#475569] dark:text-[#94A3B8] py-4 text-center">Belum ada catatan kehadiran.</p>
                       ) : (
                         <div className="space-y-2 max-h-[320px] overflow-y-auto">
                           {absensiRows.map((a) => (
-                            <div key={a.id} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/70 text-xs">
+                            <div key={a.id} className="neu-inset flex items-center justify-between p-2.5 rounded-xl text-xs">
                               <div>
-                                <div className="font-bold text-gray-800 dark:text-white">{formatDateWita(a.tanggal)}</div>
-                                <div className="text-[11px] text-gray-500">{a.keterangan || a.sumber_perubahan}</div>
+                                <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{formatDateWita(a.tanggal)}</div>
+                                <div className="text-[11px] text-[#475569] dark:text-[#94A3B8]">{a.keterangan || a.sumber_perubahan}</div>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                                 {a.status}
                               </span>
                             </div>
                           ))}
                           {presensiGerbangRows.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between p-2.5 rounded-xl bg-blue-50/60 dark:bg-blue-900/20 text-xs">
+                            <div key={p.id} className="neu-inset flex items-center justify-between p-2.5 rounded-xl text-xs">
                               <div>
-                                <div className="font-bold text-gray-800 dark:text-white">{formatDateWita(p.tanggal)} • {p.jam}</div>
-                                <div className="text-[11px] text-gray-500">Presensi Gerbang / QR</div>
+                                <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9] font-num">{formatDateWita(p.tanggal)} • {p.jam}</div>
+                                <div className="text-[11px] text-[#475569] dark:text-[#94A3B8]">Presensi Gerbang / QR</div>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
+                              <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-500/15 text-sky-700 dark:text-sky-300">
                                 {p.status}
                               </span>
                             </div>
@@ -848,24 +848,24 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                     </ClayCard>
 
                     <ClayCard className="p-4">
-                      <h3 className="text-sm font-black text-gray-800 dark:text-white mb-3">
+                      <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9] mb-3">
                         Rekap Nilai Asesmen Terbaru
                       </h3>
                       {nilaiRows.length === 0 ? (
-                        <p className="text-xs text-gray-500 py-4 text-center">Belum ada nilai asesmen yang tercatat.</p>
+                        <p className="text-xs text-[#475569] dark:text-[#94A3B8] py-4 text-center">Belum ada nilai asesmen yang tercatat.</p>
                       ) : (
                         <div className="space-y-2 max-h-[320px] overflow-y-auto">
                           {nilaiRows.map((n) => (
-                            <div key={n.id} className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800/70 text-xs">
+                            <div key={n.id} className="neu-inset flex items-center justify-between p-2.5 rounded-xl text-xs">
                               <div>
-                                <div className="font-bold text-gray-800 dark:text-white">
+                                <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                                   {n.mapel} — {n.asesmen_kolom?.nama || 'Asesmen'}
                                 </div>
-                                <div className="text-[11px] text-gray-500">
+                                <div className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                                   Guru: {n.nama_guru} {n.catatan ? `• ${n.catatan}` : ''}
                                 </div>
                               </div>
-                              <span className="px-3 py-1 rounded-xl text-xs font-black bg-purple-100 text-purple-900">
+                              <span className="px-3 py-1 rounded-xl text-xs font-black font-num bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                                 {n.nilai ?? '-'}
                               </span>
                             </div>
@@ -884,25 +884,25 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {isOrtu && (
                 <ClayCard className="p-4 lg:col-span-1">
-                  <h3 className="text-sm font-black text-gray-800 dark:text-white mb-3">
+                  <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9] mb-3">
                     Form Pengajuan Izin / Sakit
                   </h3>
                   <form onSubmit={handleSubmitIzin} className="space-y-3 text-xs">
                     <div>
-                      <label className="font-bold block mb-1">Siswa</label>
+                      <label className="font-bold block mb-1 text-[#334155] dark:text-[#CBD5E1]">Siswa</label>
                       <input
                         type="text"
                         readOnly
                         value={selectedStudent ? `${selectedStudent.nama_siswa} (${selectedStudent.kelas})` : '-'}
-                        className="w-full px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                        className="neu-input w-full px-3 py-2 rounded-xl text-[#475569] dark:text-[#94A3B8]"
                       />
                     </div>
                     <div>
-                      <label className="font-bold block mb-1">Jenis Permohonan</label>
+                      <label className="font-bold block mb-1 text-[#334155] dark:text-[#CBD5E1]">Jenis Permohonan</label>
                       <select
                         value={izinJenis}
                         onChange={(e) => setIzinJenis(e.target.value as 'Izin' | 'Sakit')}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                        className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       >
                         <option value="Izin">Izin</option>
                         <option value="Sakit">Sakit</option>
@@ -910,43 +910,43 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="font-bold block mb-1">Tanggal Mulai</label>
+                        <label className="font-bold block mb-1 text-[#334155] dark:text-[#CBD5E1]">Tanggal Mulai</label>
                         <input
                           type="date"
                           value={izinMulai}
                           onChange={(e) => setIzinMulai(e.target.value)}
-                          className="w-full px-2.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                          className="neu-input w-full px-2.5 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
                       <div>
-                        <label className="font-bold block mb-1">Tanggal Selesai</label>
+                        <label className="font-bold block mb-1 text-[#334155] dark:text-[#CBD5E1]">Tanggal Selesai</label>
                         <input
                           type="date"
                           value={izinSelesai}
                           onChange={(e) => setIzinSelesai(e.target.value)}
-                          className="w-full px-2.5 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                          className="neu-input w-full px-2.5 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="font-bold block mb-1">Alasan *</label>
+                      <label className="font-bold block mb-1 text-[#334155] dark:text-[#CBD5E1]">Alasan *</label>
                       <textarea
                         rows={3}
                         required
                         value={izinAlasan}
                         onChange={(e) => setIzinAlasan(e.target.value)}
                         placeholder="Jelaskan alasan izin/sakit anak..."
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                        className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                     <div>
-                      <label className="font-bold block mb-1">Link Surat / Bukti (Opsional)</label>
+                      <label className="font-bold block mb-1 text-[#334155] dark:text-[#CBD5E1]">Link Surat / Bukti (Opsional)</label>
                       <input
                         type="url"
                         value={izinLampiran}
                         onChange={(e) => setIzinLampiran(e.target.value)}
                         placeholder="https://..."
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900"
+                        className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                     <ClayButton type="submit" variant="primary" className="w-full" disabled={submittingIzin}>
@@ -957,55 +957,55 @@ export default function KolaborasiOrtuView({ user }: { user: AppUser }) {
               )}
 
               <ClayCard className={`p-4 ${isOrtu ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
-                <h3 className="text-sm font-black text-gray-800 dark:text-white mb-3">
+                <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9] mb-3">
                   Daftar Pengajuan Izin Siswa
                 </h3>
                 {izinList.length === 0 ? (
-                  <p className="text-xs text-gray-500 py-8 text-center">Belum ada pengajuan izin online.</p>
+                  <p className="text-xs text-[#475569] dark:text-[#94A3B8] py-8 text-center">Belum ada pengajuan izin online.</p>
                 ) : (
                   <div className="space-y-3">
                     {izinList.map((item) => (
                       <div
                         key={item.id}
-                        className="p-3.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        className="neu-inset p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div className="space-y-1 text-xs">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-black text-gray-900 dark:text-white">
+                            <span className="font-black text-[#0F172A] dark:text-[#F1F5F9]">
                               {item.nama_siswa} ({item.kelas})
                             </span>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-700 dark:text-sky-300">
                               {item.jenis}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 item.status === 'Disetujui'
-                                  ? 'bg-emerald-100 text-emerald-800'
+                                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
                                   : item.status === 'Ditolak'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : 'bg-amber-100 text-amber-800'
+                                  ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+                                  : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                               }`}
                             >
                               {item.status}
                             </span>
                           </div>
-                          <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                          <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                             Tanggal: <strong>{formatDateWita(item.tanggal_mulai)}</strong> s.d.{' '}
                             <strong>{formatDateWita(item.tanggal_selesai)}</strong> • Oleh: {item.orang_tua_nama}
                           </p>
-                          <p className="text-xs text-gray-700 dark:text-gray-200">{item.alasan}</p>
+                          <p className="text-xs text-[#334155] dark:text-[#CBD5E1]">{item.alasan}</p>
                           {item.lampiran_url && (
                             <a
                               href={item.lampiran_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-[11px] text-blue-600 underline inline-block"
+                              className="text-[11px] text-[#0F766E] dark:text-teal-400 font-semibold underline inline-block"
                             >
                               Lihat Lampiran Bukti
                             </a>
                           )}
                           {item.catatan_guru && (
-                            <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                            <p className="text-[11px] text-[#0F766E] dark:text-teal-300">
                               Catatan Sekolah ({item.diproses_oleh || 'Guru'}): {item.catatan_guru}
                             </p>
                           )}
