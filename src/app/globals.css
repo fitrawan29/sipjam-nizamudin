@@ -1006,3 +1006,186 @@ body.fade-out {
   }
 }
 
+/* ============================================================================
+   UI PRESET SYSTEM (Crisp Bento, Warm Academic Paper, Glass Teal, Neu Classic)
+   Preserves :root & .dark base tokens for backward compatibility.
+   ============================================================================ */
+
+/* 1. Crisp Bento / Clean Flat (Default) */
+html[data-ui-preset="bento-clean"] {
+  --background: #F4F6F9;
+  --neu-bg: #F4F6F9;
+  --neu-surface: #FFFFFF;
+  --neu-surface-alt: #F8FAFC;
+  --neu-inset: #EEF2F6;
+  --neu-edge: rgba(15, 23, 42, 0.08);
+  --neu-shadow-dark: rgba(15, 23, 42, 0.06);
+  --neu-shadow-light: rgba(255, 255, 255, 0.9);
+}
+
+html.dark[data-ui-preset="bento-clean"] {
+  --background: #111620;
+  --neu-bg: #111620;
+  --neu-surface: #1A212E;
+  --neu-surface-alt: #212938;
+  --neu-inset: #131924;
+  --neu-edge: rgba(255, 255, 255, 0.08);
+  --neu-shadow-dark: rgba(0, 0, 0, 0.45);
+  --neu-shadow-light: rgba(255, 255, 255, 0.03);
+}
+
+/* 2. Warm Academic / Paper-Tactile */
+html[data-ui-preset="warm-paper"] {
+  --background: #F7F5F0;
+  --neu-bg: #F7F5F0;
+  --neu-surface: #FFFDF9;
+  --neu-surface-alt: #F3EFE6;
+  --neu-inset: #EFEBE2;
+  --neu-edge: rgba(120, 113, 108, 0.14);
+  --neu-shadow-dark: rgba(68, 64, 60, 0.07);
+  --neu-shadow-light: rgba(255, 255, 255, 0.95);
+  --neu-accent: #0F766E;
+  --neu-amber: #B45309;
+}
+
+html.dark[data-ui-preset="warm-paper"] {
+  --background: #191715;
+  --neu-bg: #191715;
+  --neu-surface: #23201D;
+  --neu-surface-alt: #2B2723;
+  --neu-inset: #161412;
+  --neu-edge: rgba(214, 211, 209, 0.09);
+  --neu-shadow-dark: rgba(0, 0, 0, 0.5);
+  --neu-shadow-light: rgba(255, 255, 255, 0.03);
+}
+
+/* 3. Modern Glass & Subtle Gradient Accent */
+html[data-ui-preset="glass-teal"] {
+  --background: #EDF2F7;
+  --neu-bg: #EDF2F7;
+  --neu-surface: rgba(255, 255, 255, 0.82);
+  --neu-surface-alt: rgba(248, 250, 252, 0.72);
+  --neu-inset: rgba(226, 232, 240, 0.65);
+  --neu-edge: rgba(255, 255, 255, 0.75);
+  --neu-shadow-dark: rgba(15, 23, 42, 0.07);
+  --neu-shadow-light: rgba(255, 255, 255, 0.95);
+}
+
+html.dark[data-ui-preset="glass-teal"] {
+  --background: #0F172A;
+  --neu-bg: #0F172A;
+  --neu-surface: rgba(30, 41, 59, 0.78);
+  --neu-surface-alt: rgba(51, 65, 85, 0.6);
+  --neu-inset: rgba(15, 23, 42, 0.65);
+  --neu-edge: rgba(148, 163, 184, 0.14);
+  --neu-shadow-dark: rgba(0, 0, 0, 0.5);
+  --neu-shadow-light: rgba(255, 255, 255, 0.04);
+}
+
+/* Surface overrides for non-classic presets (clean crisp borders + subtle elevation) */
+html:not([data-ui-preset="neu-classic"]) .neu-card,
+html:not([data-ui-preset="neu-classic"]) .clay-card,
+html:not([data-ui-preset="neu-classic"]) .glass-card {
+  background-color: var(--neu-surface) !important;
+}
+
+html[data-ui-preset="bento-clean"] .neu-card,
+html[data-ui-preset="bento-clean"] .clay-card,
+html[data-ui-preset="bento-clean"] .glass-card,
+html[data-ui-preset="warm-paper"] .neu-card,
+html[data-ui-preset="warm-paper"] .clay-card,
+html[data-ui-preset="warm-paper"] .glass-card {
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 6px 18px -6px var(--neu-shadow-dark);
+}
+
+html[data-ui-preset="glass-teal"] body {
+  background-image:
+    radial-gradient(at 0% 0%, rgba(15, 118, 110, 0.07) 0px, transparent 48%),
+    radial-gradient(at 100% 0%, rgba(217, 119, 6, 0.05) 0px, transparent 42%);
+}
+
+html[data-ui-preset="glass-teal"] .neu-card,
+html[data-ui-preset="glass-teal"] .clay-card,
+html[data-ui-preset="glass-teal"] .glass-card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px -4px var(--neu-shadow-dark);
+}
+
+html[data-ui-preset="bento-clean"] .neu-card-sm,
+html[data-ui-preset="warm-paper"] .neu-card-sm,
+html[data-ui-preset="glass-teal"] .neu-card-sm {
+  box-shadow: 0 1px 2px var(--neu-shadow-dark);
+}
+
+html[data-ui-preset="bento-clean"] .neu-inset,
+html[data-ui-preset="bento-clean"] .clay-inset,
+html[data-ui-preset="warm-paper"] .neu-inset,
+html[data-ui-preset="warm-paper"] .clay-inset,
+html[data-ui-preset="glass-teal"] .neu-inset,
+html[data-ui-preset="glass-teal"] .clay-inset {
+  box-shadow: none;
+  border: 1px solid var(--neu-edge);
+}
+
+html[data-ui-preset="bento-clean"] .neu-btn,
+html[data-ui-preset="bento-clean"] .clay-btn,
+html[data-ui-preset="warm-paper"] .neu-btn,
+html[data-ui-preset="warm-paper"] .clay-btn,
+html[data-ui-preset="glass-teal"] .neu-btn,
+html[data-ui-preset="glass-teal"] .clay-btn {
+  box-shadow: 0 1px 2px var(--neu-shadow-dark);
+}
+
+html[data-ui-preset="bento-clean"] .neu-btn:hover,
+html[data-ui-preset="bento-clean"] .clay-btn:hover,
+html[data-ui-preset="warm-paper"] .neu-btn:hover,
+html[data-ui-preset="warm-paper"] .clay-btn:hover,
+html[data-ui-preset="glass-teal"] .neu-btn:hover,
+html[data-ui-preset="glass-teal"] .clay-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px -2px var(--neu-shadow-dark);
+}
+
+/* ============================================================================
+   RESTRAINED SEMANTIC CARD ACCENTS & 3-TIER HIERARCHY (Anti-Norak)
+   ============================================================================ */
+html:not([data-ui-preset="neu-classic"]) .clay-card-mint {
+  border-color: rgba(15, 118, 110, 0.18);
+  background-image: linear-gradient(180deg, rgba(15, 118, 110, 0.045) 0%, transparent 55%);
+}
+html:not([data-ui-preset="neu-classic"]) .clay-card-blue {
+  border-color: rgba(2, 132, 199, 0.18);
+  background-image: linear-gradient(180deg, rgba(2, 132, 199, 0.045) 0%, transparent 55%);
+}
+html:not([data-ui-preset="neu-classic"]) .clay-card-amber,
+html:not([data-ui-preset="neu-classic"]) .clay-card-peach {
+  border-color: rgba(217, 119, 6, 0.2);
+  background-image: linear-gradient(180deg, rgba(217, 119, 6, 0.045) 0%, transparent 55%);
+}
+html:not([data-ui-preset="neu-classic"]) .clay-card-purple {
+  border-color: rgba(99, 102, 241, 0.18);
+  background-image: linear-gradient(180deg, rgba(99, 102, 241, 0.04) 0%, transparent 55%);
+}
+html:not([data-ui-preset="neu-classic"]) .clay-card-rose {
+  border-color: rgba(225, 29, 72, 0.18);
+  background-image: linear-gradient(180deg, rgba(225, 29, 72, 0.04) 0%, transparent 55%);
+}
+
+/* 3-Tier Card Hierarchy */
+.card-tier-hero {
+  border-color: rgba(15, 118, 110, 0.22) !important;
+  background-image: linear-gradient(135deg, rgba(15, 118, 110, 0.06) 0%, rgba(20, 184, 166, 0.015) 45%, transparent 100%);
+}
+.dark .card-tier-hero {
+  border-color: rgba(45, 212, 191, 0.2) !important;
+  background-image: linear-gradient(135deg, rgba(20, 184, 166, 0.09) 0%, transparent 60%);
+}
+.card-tier-primary {
+  border-left: 3px solid var(--neu-accent) !important;
+}
+.card-tier-compact {
+  box-shadow: none !important;
+  background-color: var(--neu-surface-alt) !important;
+}
+

@@ -272,4 +272,15 @@ export function parseTimeToMinutes(timeStr: string | null | undefined): number {
   return (!isNaN(h) ? h : 0) * 60 + (!isNaN(m) ? m : 0);
 }
 
+/**
+ * Menghasilkan sapaan waktu sesuai jam WITA.
+ */
+export function getWitaGreeting(timeStr?: string): string {
+  const hour = parseInt((timeStr || getWitaTimeStr()).split(':')[0] || '8', 10);
+  if (hour >= 4 && hour < 11) return 'Selamat Pagi';
+  if (hour >= 11 && hour < 15) return 'Selamat Siang';
+  if (hour >= 15 && hour < 18) return 'Selamat Sore';
+  return 'Selamat Malam';
+}
+
 

@@ -19,6 +19,14 @@ import {
   setReminderConfig
 } from './TeacherReminderManager';
 import { normalizeName, isForbiddenName, isDummyOrTestString } from '@/lib/dataIntegrityGuard';
+import { useTheme, UiPreset } from '@/context/ThemeContext';
+
+const UI_PRESET_OPTIONS: { id: UiPreset; label: string; desc: string; bgSwatch: string; accentSwatch: string }[] = [
+  { id: 'bento-clean', label: 'Crisp Bento', desc: 'Bersih, rapi & kontras', bgSwatch: '#F4F6F9', accentSwatch: '#0F766E' },
+  { id: 'warm-paper', label: 'Warm Paper', desc: 'Hangat & nyaman di mata', bgSwatch: '#F7F5F0', accentSwatch: '#B45309' },
+  { id: 'glass-teal', label: 'Glass Teal', desc: 'Transparan lembut', bgSwatch: '#EDF2F7', accentSwatch: '#14B8A6' },
+  { id: 'neu-classic', label: 'Neu Klasik', desc: 'Bayangan timbul klasik', bgSwatch: '#E6ECF2', accentSwatch: '#0F766E' },
+];
 
 interface AccountSettingsModalProps {
   isOpen: boolean;
@@ -33,6 +41,7 @@ export default function AccountSettingsModal({
   user,
   onUserUpdated
 }: AccountSettingsModalProps) {
+  const { theme, toggleTheme, uiPreset, setUiPreset } = useTheme();
   const [selectedAvatar, setSelectedAvatar] = useState<string>(user?.avatar || 'avatar_1');
   const [nama, setNama] = useState<string>(user?.nama || '');
   const [username, setUsername] = useState<string>(user?.username || '');
@@ -847,6 +856,57 @@ export default function AccountSettingsModal({
                 />
                 <div className="w-9 h-5 neu-inset rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white dark:after:bg-slate-200 after:rounded-full after:h-4 after:w-4 after:shadow-xs after:transition-all peer-checked:bg-[#0F766E] dark:peer-checked:bg-teal-500"></div>
               </label>
+            </div>
+          </div>
+
+          {/* Section 7: Tampilan & Suasana UI */}
+          <div className="neu-card-sm rounded-2xl p-3.5 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="neu-inset w-9 h-9 rounded-xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <i className="fa-solid fa-palette text-sm"></i>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Tampilan &amp; Suasana UI</h4>
+                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
+                    Pilih gaya visual &amp; mode pencahayaan yang paling nyaman.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="neu-btn px-3 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1.5 shrink-0"
+              >
+                <i className={`fa-solid ${theme === 'dark' ? 'fa-sun text-amber-400' : 'fa-moon text-slate-600'}`}></i>
+                <span>{theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {UI_PRESET_OPTIONS.map((opt) => {
+                const active = uiPreset === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setUiPreset(opt.id)}
+                    className={`p-2.5 rounded-xl text-left transition border cursor-pointer ${
+                      active
+                        ? 'border-[#0F766E] dark:border-teal-400 bg-[#0F766E]/8 dark:bg-teal-500/12'
+                        : 'border-slate-300/60 dark:border-slate-700/60 hover:border-[#0F766E]/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <span className="w-4 h-4 rounded-full border border-slate-300 dark:border-slate-600 shrink-0" style={{ backgroundColor: opt.bgSwatch }} />
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: opt.accentSwatch }} />
+                      {active && <i className="fa-solid fa-check text-[10px] text-[#0F766E] dark:text-teal-400 ml-auto"></i>}
+                    </div>
+                    <p className="text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{opt.label}</p>
+                    <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] mt-0.5 leading-tight">{opt.desc}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

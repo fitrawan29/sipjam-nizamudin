@@ -5,7 +5,8 @@ import {
   getWitaTimeStr, 
   getWitaDayName, 
   getWitaDateStr, formatPresensiTime,
-  parseTimeToMinutes
+  parseTimeToMinutes,
+  getWitaGreeting
 } from '@/lib/wita';
 import { 
   getGuruDailyState, 
@@ -729,8 +730,8 @@ export default function HomeViewGuru({
 
   return (
     <section id="view-home" className="fade-in block space-y-4">
-            {/* Header Banner */}
-      <div className="clay-card rounded-3xl p-4 sm:p-5 relative overflow-hidden">
+            {/* Header Banner (Tier 1: Hero Greeting + Daily Progress) */}
+      <div className="clay-card card-tier-hero rounded-3xl p-4 sm:p-5 relative overflow-hidden">
         <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-15deg] pointer-events-none"></i>
         
         <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
@@ -739,6 +740,9 @@ export default function HomeViewGuru({
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-[#0F766E] dark:text-teal-400 tracking-wide">
+                {getWitaGreeting(timeStr)},
+              </p>
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Guru'}</h2>
                 <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
@@ -780,20 +784,45 @@ export default function HomeViewGuru({
             <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
+
+        {/* Daily Progress Strip */}
+        {!loadingState && steps.length > 0 && (() => {
+          const doneCount = steps.filter((s) => s.status === 'done' || s.status === 'skipped').length;
+          const pct = Math.round((doneCount / steps.length) * 100);
+          return (
+            <div className="relative z-10 mt-2.5 pt-2.5 border-t border-slate-300/50 dark:border-slate-700/50">
+              <div className="flex items-center justify-between text-[10px] mb-1.5">
+                <span className="font-semibold text-[#475569] dark:text-[#94A3B8] flex items-center gap-1.5">
+                  <i className="fa-solid fa-bullseye text-[#0F766E] dark:text-teal-400"></i>
+                  Progres Tugas Hari Ini
+                </span>
+                <span className="font-bold font-mono text-[#0F766E] dark:text-teal-400">
+                  {doneCount}/{steps.length} ({pct}%)
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-slate-300/60 dark:bg-slate-700/70 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#0F766E] dark:bg-teal-400 transition-all duration-500"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
-                {/* Monthly Stats Summary */}
+                {/* Monthly Stats Summary (Tier 3: Compact) */}
           {teacherWarnings?.stats && (
             <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
-              <div className="clay-card clay-card-mint p-2.5 rounded-2xl flex flex-col items-center text-center">
+              <div className="clay-card clay-card-mint card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
                 <span className="text-[9px] sm:text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wide">Presensi</span>
                 <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{teacherWarnings.stats.presensi?.filled ?? 0} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">/ {teacherWarnings.stats.presensi?.required ?? 0}</span></span>
               </div>
-              <div className="clay-card clay-card-blue p-2.5 rounded-2xl flex flex-col items-center text-center">
+              <div className="clay-card clay-card-blue card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
                 <span className="text-[9px] sm:text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">Jurnal</span>
                 <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{teacherWarnings.stats.jurnal?.filled ?? 0} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">/ {teacherWarnings.stats.jurnal?.required ?? 0}</span></span>
               </div>
-              <div className="clay-card clay-card-purple p-2.5 rounded-2xl flex flex-col items-center text-center">
+              <div className="clay-card clay-card-purple card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
                 <span className="text-[9px] sm:text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Piket</span>
                 <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{teacherWarnings.stats.piket?.filled ?? 0} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">/ {teacherWarnings.stats.piket?.required ?? 0}</span></span>
               </div>

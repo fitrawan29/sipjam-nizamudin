@@ -7,7 +7,8 @@ import {
   getWitaDateStr, 
   extractWitaDateStr,
   formatPresensiTime,
-  parseTimeToMinutes
+  parseTimeToMinutes,
+  getWitaGreeting
 } from '@/lib/wita';
 import { supabase } from '@/lib/supabaseClient';
 import { renderUserAvatar } from '@/lib/avatars';
@@ -837,8 +838,8 @@ export default function HomeViewTU({
 
   return (
     <section id="view-home" className="fade-in block space-y-4">
-      {/* Header Banner */}
-      <div className="clay-card rounded-3xl p-4 sm:p-5 relative overflow-hidden">
+      {/* Header Banner (Tier 1: Hero Greeting) */}
+      <div className="clay-card card-tier-hero rounded-3xl p-4 sm:p-5 relative overflow-hidden">
         <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-15deg] pointer-events-none"></i>
         
         <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
@@ -847,6 +848,9 @@ export default function HomeViewTU({
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-[#0F766E] dark:text-teal-400 tracking-wide">
+                {getWitaGreeting(timeStr)},
+              </p>
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Staf Tata Usaha'}</h2>
                 <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
@@ -890,23 +894,23 @@ export default function HomeViewTU({
         </div>
       </div>
 
-      {/* Monthly Summary Cards for TU */}
+      {/* Monthly Summary Cards for TU (Tier 3: Compact) */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
-        <div className="clay-card clay-card-mint p-2.5 rounded-2xl flex flex-col items-center text-center">
+        <div className="clay-card clay-card-mint card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
           <span className="text-[9px] sm:text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wide">Presensi TU</span>
           <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {attendanceStats.hadir} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">Hari</span>
           </span>
           <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Kehadiran Bulan Ini</span>
         </div>
-        <div className="clay-card clay-card-blue p-2.5 rounded-2xl flex flex-col items-center text-center">
+        <div className="clay-card clay-card-blue card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
           <span className="text-[9px] sm:text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">Jurnal Kegiatan</span>
           <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {monthlyJurnalCount} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">Laporan</span>
           </span>
           <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Agenda Administrasi</span>
         </div>
-        <div className="clay-card clay-card-purple p-2.5 rounded-2xl flex flex-col items-center text-center">
+        <div className="clay-card clay-card-purple card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
           <span className="text-[9px] sm:text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Status Kerja</span>
           <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {attendanceStats.alpa === 0 ? 'Tertib' : `${attendanceStats.alpa} Alpa`}

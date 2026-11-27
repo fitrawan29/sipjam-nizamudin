@@ -8,7 +8,8 @@ import {
   getWitaStartOfDay,
   getWitaEndOfDay,
   formatPresensiTime,
-  extractWitaDateStr 
+  extractWitaDateStr,
+  getWitaGreeting 
 } from '@/lib/wita';
 import { 
   isJurnalMatchJadwal, 
@@ -1037,8 +1038,8 @@ export default function HomeViewAdmin({
 
   return (
     <section id="view-home" className="fade-in block space-y-4">
-            {/* Header Banner */}
-      <div className="clay-card rounded-3xl p-4 sm:p-5 relative overflow-hidden">
+            {/* Header Banner (Tier 1: Hero Greeting + Operational Progress) */}
+      <div className="clay-card card-tier-hero rounded-3xl p-4 sm:p-5 relative overflow-hidden">
         <i className="fa-solid fa-mosque absolute -right-4 -bottom-4 text-7xl text-[#0F766E] dark:text-teal-400 opacity-[0.06] rotate-[-15deg] pointer-events-none"></i>
         
         <div className="relative z-10 flex items-center justify-between gap-3 mb-3">
@@ -1047,6 +1048,9 @@ export default function HomeViewAdmin({
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-[#0F766E] dark:text-teal-400 tracking-wide">
+                {getWitaGreeting(timeStr)},
+              </p>
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{adminDisplayName}</h2>
                 {user?.role && user.role.toLowerCase() !== 'admin' && !adminDisplayName.toLowerCase().includes('admin') && (
@@ -1093,6 +1097,34 @@ export default function HomeViewAdmin({
             <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
+
+        {/* Daily Operational Progress Strip */}
+        {!holidayInfo?.isHoliday && adminKPIs.wajibDatang > 0 && (() => {
+          const presensiPct = Math.min(100, Math.round((adminKPIs.sudahDatang / adminKPIs.wajibDatang) * 100));
+          const jurnalPct = adminKPIs.wajibJurnal > 0 ? Math.min(100, Math.round((adminKPIs.jurnalLengkap / adminKPIs.wajibJurnal) * 100)) : 100;
+          return (
+            <div className="relative z-10 mt-2.5 pt-2.5 border-t border-slate-300/50 dark:border-slate-700/50 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <div className="flex items-center justify-between text-[10px] mb-1">
+                  <span className="font-semibold text-[#475569] dark:text-[#94A3B8]">Presensi Datang Guru</span>
+                  <span className="font-bold font-mono text-[#0F766E] dark:text-teal-400">{adminKPIs.sudahDatang}/{adminKPIs.wajibDatang} ({presensiPct}%)</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-slate-300/60 dark:bg-slate-700/70 overflow-hidden">
+                  <div className="h-full rounded-full bg-[#0F766E] dark:bg-teal-400 transition-all duration-500" style={{ width: `${presensiPct}%` }} />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between text-[10px] mb-1">
+                  <span className="font-semibold text-[#475569] dark:text-[#94A3B8]">Kelengkapan Jurnal</span>
+                  <span className="font-bold font-mono text-sky-700 dark:text-sky-400">{adminKPIs.jurnalLengkap}/{adminKPIs.wajibJurnal} ({jurnalPct}%)</span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-slate-300/60 dark:bg-slate-700/70 overflow-hidden">
+                  <div className="h-full rounded-full bg-sky-600 dark:bg-sky-400 transition-all duration-500" style={{ width: `${jurnalPct}%` }} />
+                </div>
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
               <div className="space-y-4">
