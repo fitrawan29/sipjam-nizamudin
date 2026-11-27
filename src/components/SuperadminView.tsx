@@ -1214,7 +1214,7 @@ export default function SuperadminView({
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
             activeTargetSchool
-              ? 'bg-[#0F766E] text-white shadow-sm'
+              ? 'neu-card-primary text-white'
               : 'neu-inset text-[#0F766E] dark:text-teal-400'
           }`}>
             <i className={`fa-solid ${activeTargetSchool ? 'fa-satellite-dish animate-pulse' : 'fa-network-wired'}`}></i>
@@ -1507,7 +1507,7 @@ export default function SuperadminView({
                         <div className="flex items-center gap-3 min-w-0">
                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                             isCurrentlyActive
-                              ? 'bg-[#0F766E] text-white shadow-sm'
+                              ? 'neu-card-primary text-white'
                               : 'neu-inset text-[#0F766E] dark:text-teal-300'
                           }`}>
                             <i className="fa-solid fa-school text-xs"></i>

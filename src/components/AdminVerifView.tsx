@@ -29,6 +29,7 @@ import {
 } from '@/lib/workflow';
 import { isInvalidMapel, normalizeScheduleMapel } from '@/lib/dataIntegrityGuard';
 import DokumenView from './DokumenView';
+import NeuTabs, { TabItem } from '@/components/neu/NeuTabs';
 
 export interface AdminVerifViewProps {
   user: any;
@@ -524,7 +525,7 @@ export default function AdminVerifView({
         confirmButtonText: 'Tolak Pengajuan',
         confirmButtonColor: '#dc2626',
         cancelButtonText: 'Batal',
-        cancelButtonColor: '#6b7280',
+        cancelButtonColor: '#64748b',
         inputValidator: (val) => {
           if (!val || !val.trim()) {
             return 'Alasan penolakan wajib diisi';
@@ -1244,20 +1245,27 @@ export default function AdminVerifView({
     unsubmittedPiket
   ]);
 
+  const verifTabs: TabItem[] = [
+    { id: 'Presensi', label: 'Presensi' },
+    { id: 'Jurnal', label: 'Jurnal' },
+    { id: 'Piket', label: 'Piket', icon: 'fa-solid fa-shield-halved' },
+    { id: 'Dokumen', label: 'Perangkat', icon: 'fa-solid fa-folder-open' }
+  ];
+
   return (
     <section id="view-admin-verif" className="view-section fade-in">
-      <div className="glass-card p-4">
+      <div className="neu-card p-4 sm:p-5">
         {/* View Header */}
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <i className="fa-solid fa-clipboard-check text-green-600 dark:text-green-400"></i> Verifikasi Data
+          <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+            <i className="fa-solid fa-clipboard-check text-[#0F766E] dark:text-[#14B8A6]"></i> Verifikasi Data
           </h2>
           <div className="flex items-center gap-2">
             {/* Eliminasi tampilan tombol Pedoman Kebijakan & SOP SIPJAM (SOP Disiplin, docs/KONSEKUENSI_PELANGGARAN.md) per spesifikasi R2 Pusat Verifikasi */}
             <button 
               type="button" 
               onClick={loadData} 
-              className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+              className="neu-btn text-[#334155] dark:text-[#CBD5E1] min-w-[40px] min-h-[40px] w-10 h-10 rounded-xl text-xs font-bold flex justify-center items-center transition"
               title="Muat ulang data"
             >
               <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
@@ -1267,8 +1275,8 @@ export default function AdminVerifView({
 
         {/* Read-Only Notice for Headmaster / Viewers */}
         {isReadOnly && (
-          <div data-testid="readonly-notice" className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2.5 shadow-xs">
-            <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+          <div data-testid="readonly-notice" className="alert-banner-amber mb-4 p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
               <i className="fa-solid fa-eye text-xs"></i>
             </div>
             <div>
@@ -1279,52 +1287,13 @@ export default function AdminVerifView({
         )}
 
         {/* Tab Selection */}
-        <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1">
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Presensi')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-              activeTab === 'Presensi' 
-                ? 'neu-btn-primary text-white shadow-sm' 
-                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
-            }`}
-          >
-            Presensi
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Jurnal')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-              activeTab === 'Jurnal' 
-                ? 'neu-btn-primary text-white shadow-sm' 
-                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
-            }`}
-          >
-            Jurnal
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Piket')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-              activeTab === 'Piket' 
-                ? 'neu-btn-primary text-white shadow-sm' 
-                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
-            }`}
-          >
-            <i className="fa-solid fa-shield-halved mr-1.5"></i> Piket
-          </button>
-          <button 
-            type="button" 
-            onClick={() => setActiveTab('Dokumen')} 
-            className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
-              activeTab === 'Dokumen' 
-                ? 'neu-btn-primary text-white shadow-sm' 
-                : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
-            }`}
-          >
-            <i className="fa-solid fa-folder-open mr-1.5"></i> Perangkat
-          </button>
-        </div>
+        <NeuTabs
+          items={verifTabs}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as 'Presensi' | 'Jurnal' | 'Piket' | 'Dokumen')}
+          className="mb-4 px-2 py-2"
+          ariaLabel="Kategori Verifikasi"
+        />
 
         {/* Tab 4: Dokumen / Perangkat Pembelajaran (Keep-Alive in memory) */}
         <div className={activeTab === 'Dokumen' ? 'block' : 'hidden'}>
@@ -1337,44 +1306,52 @@ export default function AdminVerifView({
           {holidayInfo?.isHoliday && (
             <div 
               data-testid="holiday-banner" 
-              className="mb-4 p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3 shadow-xs"
+              className="alert-banner-amber mb-4 p-3.5 rounded-2xl text-xs font-semibold flex items-center gap-3"
             >
-              <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-umbrella-beach text-sm"></i>
               </div>
               <div className="flex-1 min-w-0">
                 <span className="font-bold block text-sm">Hari Libur: {holidayInfo.keterangan}</span>
                 <span className="text-[11px] opacity-90 block">
-                  Pada hari libur ({effectiveDayName}, {effectiveDate}), seluruh guru dibebaskan dari kewajiban presensi, jurnal KBM, dan tugas piket tanpa ditandai alpa atau belum menyelesaikan tugas.
+                  Pada hari libur ({effectiveDayName}, <span className="font-num">{effectiveDate}</span>), seluruh guru dibebaskan dari kewajiban presensi, jurnal KBM, dan tugas piket tanpa ditandai alpa atau belum menyelesaikan tugas.
                 </span>
               </div>
             </div>
           )}
 
           {/* Filter Bar Controls */}
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-2xl border border-gray-200 dark:border-gray-800 mb-4 space-y-3">
+          <div className="neu-inset p-3.5 rounded-2xl mb-4 space-y-3">
           {/* Date Picker Row */}
-          <div className="flex gap-2">
-            <div className="relative flex-grow">
-              <i className="fa-regular fa-calendar absolute left-3 top-3.5 text-gray-400 dark:text-gray-400 text-xs"></i>
+          <div className="flex flex-wrap sm:flex-nowrap gap-2">
+            <div className="relative flex-grow min-w-[160px]">
+              <i className="fa-regular fa-calendar absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs pointer-events-none"></i>
               <input 
                 type="date" 
                 value={date} 
                 onChange={e => setDate(e.target.value)} 
-                className="w-full pl-8 pr-3 py-2.5 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                className="neu-input font-num w-full pl-9 pr-3 py-2 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]" 
               />
             </div>
             <button 
               type="button" 
               onClick={() => setDate(getWitaDateStr())} 
-              className="btn-click px-3 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-200 text-xs font-bold rounded-xl shrink-0 border border-emerald-200 dark:border-emerald-800"
+              className={`min-h-[40px] px-3.5 py-2 text-xs font-bold rounded-xl shrink-0 transition ${
+                date === getWitaDateStr()
+                  ? 'neu-btn-primary text-white'
+                  : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
+              }`}
             >
               Hari Ini
             </button>
             <button 
               type="button" 
               onClick={() => setDate('')} 
-              className="btn-click px-3 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white text-xs font-bold rounded-xl shrink-0 border border-gray-300 dark:border-gray-600"
+              className={`min-h-[40px] px-3.5 py-2 text-xs font-bold rounded-xl shrink-0 transition ${
+                !date
+                  ? 'neu-btn-primary text-white'
+                  : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
+              }`}
             >
               Semua
             </button>
@@ -1384,13 +1361,13 @@ export default function AdminVerifView({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
             {/* Filter 1: Penyelesaian Tugas */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1 ml-1">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#475569] dark:text-[#CBD5E1] mb-1 ml-1">
                 Filter Penyelesaian Tugas
               </label>
               <select
                 value={taskFilter}
                 onChange={e => setTaskFilter(e.target.value as 'Semua' | 'Sudah' | 'Belum')}
-                className="w-full px-3 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 font-semibold"
+                className="neu-input w-full px-3 py-2 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-semibold"
               >
                 <option value="Semua">Semua Guru (Sudah & Belum)</option>
                 <option value="Sudah">Sudah Menyelesaikan (Ada Pengajuan)</option>
@@ -1400,14 +1377,14 @@ export default function AdminVerifView({
 
             {/* Filter 2: Status Verifikasi */}
             <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300 mb-1 ml-1">
+              <label className="block text-[10px] font-bold uppercase tracking-wider text-[#475569] dark:text-[#CBD5E1] mb-1 ml-1">
                 Filter Status Verifikasi
               </label>
               <select
                 value={verifFilter}
                 onChange={e => setVerifFilter(e.target.value as 'Semua' | 'Menunggu' | 'Disetujui' | 'Ditolak')}
                 disabled={taskFilter === 'Belum'}
-                className="w-full px-3 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="neu-input w-full px-3 py-2 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <option value="Semua">Semua Status Verifikasi</option>
                 <option value="Menunggu">Menunggu Verifikasi</option>
@@ -1420,22 +1397,22 @@ export default function AdminVerifView({
           {/* Bulk Action Button or Indicator */}
           {taskFilter !== 'Belum' ? (
             isReadOnly ? (
-              <div className="w-full py-2.5 px-3 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-semibold flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-700 cursor-not-allowed select-none">
+              <div className="neu-card-sm w-full min-h-[42px] py-2.5 px-3 rounded-xl text-[#64748B] dark:text-[#94A3B8] text-xs font-semibold flex items-center justify-center gap-2 cursor-not-allowed select-none opacity-75">
                 <i className="fa-solid fa-lock text-xs"></i> Setujui Semua (Dinonaktifkan - Mode Peninjau)
               </div>
             ) : (
               <button 
                 type="button" 
                 onClick={bulkVerifyCurrent} 
-                className="btn-click w-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 py-2.5 rounded-xl text-xs font-bold border border-green-200 dark:border-green-800 flex justify-center items-center gap-2 hover:bg-green-200 dark:hover:bg-green-900/50 transition"
+                className="neu-btn-teal w-full min-h-[42px] py-2.5 px-3 rounded-xl text-xs font-bold flex justify-center items-center gap-2 transition"
               >
                 <i className="fa-solid fa-check-double"></i> Setujui Semua Tampil
               </button>
             )
           ) : (
-            <div className="py-2 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/50 text-amber-800 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
-              <i className="fa-solid fa-triangle-exclamation text-amber-600"></i>
-              <span>Menampilkan guru yang belum menyelesaikan tugas {activeTab} untuk tanggal {effectiveDate}.</span>
+            <div className="alert-banner-amber py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center gap-2">
+              <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i>
+              <span>Menampilkan guru yang belum menyelesaikan tugas {activeTab} untuk tanggal <span className="font-num">{effectiveDate}</span>.</span>
             </div>
           )}
         </div>
@@ -1443,20 +1420,20 @@ export default function AdminVerifView({
         {/* Text Search Bar */}
         <div className="relative mb-4 flex items-center gap-2">
           <div className="relative flex-1">
-            <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-gray-400 dark:text-gray-400 text-xs"></i>
+            <i className="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs pointer-events-none"></i>
             <input 
               type="text" 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
               placeholder={activeTab === 'Piket' ? 'Cari guru pelapor atau catatan apel...' : 'Cari nama guru, NIP, atau mapel...'} 
-              className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400 dark:placeholder-gray-400" 
+              className="neu-input w-full pl-9 pr-4 py-2 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder-[#64748B] dark:placeholder-[#94A3B8]" 
             />
           </div>
           {search && (
             <button
               type="button"
               onClick={() => setSearch('')}
-              className="px-3 py-2.5 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold shrink-0"
+              className="neu-btn min-h-[40px] px-3.5 py-2 text-xs rounded-xl text-[#334155] dark:text-[#CBD5E1] font-semibold shrink-0 transition"
             >
               Reset
             </button>
@@ -1466,13 +1443,13 @@ export default function AdminVerifView({
         {/* Verification Items List Grid */}
         <div id="verif-list-area" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[300px]">
           {loading && displayList.length === 0 ? (
-            <div className="col-span-full text-center py-10 text-gray-500 text-xs italic dark:text-gray-400">
+            <div className="col-span-full text-center py-10 text-[#64748B] dark:text-[#94A3B8] text-xs italic">
               <i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Memuat data verifikasi...
             </div>
           ) : displayList.length === 0 ? (
-            <div className="col-span-full text-center py-10 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 my-2">
-              <i className={`text-2xl mb-2 ${taskFilter === 'Belum' ? 'fa-solid fa-circle-check text-emerald-500' : 'fa-solid fa-clipboard-check text-gray-400'}`}></i>
-              <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+            <div className="col-span-full text-center py-10 px-4 neu-inset rounded-2xl my-2">
+              <i className={`text-2xl mb-2 ${taskFilter === 'Belum' ? 'fa-solid fa-circle-check text-[#0F766E] dark:text-[#14B8A6]' : 'fa-solid fa-clipboard-check text-[#64748B] dark:text-[#94A3B8]'}`}></i>
+              <p className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1]">
                 {taskFilter === 'Belum' 
                   ? `Semua guru telah menyelesaikan tugas ${activeTab} untuk tanggal ini!` 
                   : search 
@@ -1483,7 +1460,7 @@ export default function AdminVerifView({
                 <button
                   type="button"
                   onClick={() => setSearch('')}
-                  className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium inline-flex items-center gap-1"
+                  className="neu-btn min-h-[40px] mt-3 px-4 py-2 rounded-xl text-xs text-[#0F766E] dark:text-[#14B8A6] font-semibold inline-flex items-center gap-1.5 transition"
                 >
                   <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
                 </button>
@@ -1499,104 +1476,96 @@ export default function AdminVerifView({
               return (
                 <div 
                   key={item.id} 
-                  className={`bg-white dark:bg-gray-800 p-3.5 rounded-xl border shadow-sm flex flex-col justify-between gap-2.5 transition ${
-                    isBebasHadir
-                      ? 'border-blue-200/80 dark:border-blue-900/40 hover:border-blue-400'
-                      : isPiketUnsubmitted
-                      ? 'border-orange-200/80 dark:border-orange-900/40 hover:border-orange-400'
-                      : isPresensiUnsubmitted
-                      ? 'border-red-200/80 dark:border-red-900/40 hover:border-red-400'
-                      : 'border-rose-200/80 dark:border-rose-900/40 hover:border-rose-400'
-                  }`}
+                  className={`neu-card-sm p-3.5 rounded-2xl flex flex-col justify-between gap-2.5 transition ${isPresensiUnsubmitted ? 'ring-1 ring-red-500/35' : ''}`}
                 >
                   <div className="space-y-2">
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-xs font-bold text-gray-900 dark:text-white leading-tight truncate">
+                        <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">
                           {item.nama_guru || item.guru_pelapor}
                         </h3>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono mt-0.5 truncate">
+                        <p className="text-[10px] text-[#64748B] dark:text-[#94A3B8] font-mono font-num mt-0.5 truncate">
                           {item.nip !== '-' && item.nip ? `NIP: ${item.nip}` : item.mata_pelajaran}
                         </p>
                       </div>
                       {isBebasHadir ? (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shrink-0">
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 shrink-0">
                           Bebas Hadir
                         </span>
                       ) : isPiketUnsubmitted ? (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300 border border-orange-200 dark:border-orange-800 shrink-0">
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 shrink-0">
                           tidak membuat laporan piket
                         </span>
                       ) : isPresensiUnsubmitted ? (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800 shrink-0">
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 dark:text-red-300 shrink-0">
                           <i className="fa-solid fa-user-xmark mr-1 text-[8px]"></i> Alpa
                         </span>
                       ) : (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 shrink-0">
                           <i className="fa-solid fa-clock-rotate-left mr-1 text-[8px]"></i> Belum Selesai
                         </span>
                       )}
                     </div>
 
                     {isBebasHadir ? (
-                      <div className="p-2.5 rounded-lg bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 text-xs text-blue-900 dark:text-blue-200">
+                      <div className="neu-inset p-2.5 rounded-xl text-xs text-sky-800 dark:text-sky-300">
                         <p className="font-semibold text-center">Bebas Hadir</p>
                       </div>
                     ) : isPiketUnsubmitted ? (
-                      <div className="p-2.5 rounded-lg bg-orange-50/70 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 text-xs text-orange-900 dark:text-orange-200">
+                      <div className="neu-inset p-2.5 rounded-xl text-xs text-orange-800 dark:text-orange-300">
                         <p className="font-semibold text-center">tidak membuat laporan piket</p>
                       </div>
                     ) : isPresensiUnsubmitted ? (
-                      <div className="p-2.5 rounded-lg bg-red-50/70 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-xs text-red-900 dark:text-red-200 space-y-1">
+                      <div className="neu-inset p-2.5 rounded-xl text-xs text-red-800 dark:text-red-300 space-y-1">
                         <p className="font-semibold leading-snug flex items-start gap-1.5">
                           <i className="fa-solid fa-circle-exclamation mt-0.5 text-red-500 text-[10px] shrink-0"></i>
                           <span>{item.pesan_belum}</span>
                         </p>
                         {item.scheduledInfo && (
-                          <p className="text-[10px] text-gray-600 dark:text-gray-300 pl-4 font-medium">
+                          <p className="text-[10px] text-[#475569] dark:text-[#CBD5E1] pl-4 font-medium">
                             Status: {item.scheduledInfo}
                           </p>
                         )}
                       </div>
                     ) : (
-                      <div className="p-2.5 rounded-lg bg-rose-50/70 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 text-xs text-rose-900 dark:text-rose-200 space-y-1">
+                      <div className="neu-inset p-2.5 rounded-xl text-xs text-rose-800 dark:text-rose-300 space-y-1">
                         <p className="font-semibold leading-snug flex items-start gap-1.5">
                           <i className="fa-solid fa-circle-exclamation mt-0.5 text-rose-500 text-[10px] shrink-0"></i>
                           <span>{item.pesan_belum}</span>
                         </p>
                         {item.scheduledInfo && (
-                          <p className="text-[10px] text-gray-600 dark:text-gray-300 pl-4 font-medium">
+                          <p className="text-[10px] text-[#475569] dark:text-[#CBD5E1] pl-4 font-medium">
                             Status: {item.scheduledInfo}
                           </p>
                         )}
                       </div>
                     )}
 
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-between pt-1">
-                      <span>Tanggal: {item.tanggal}</span>
+                    <div className="text-[10px] text-[#64748B] dark:text-[#94A3B8] flex items-center justify-between pt-1">
+                      <span>Tanggal: <span className="font-num">{item.tanggal}</span></span>
                       <span className={`font-semibold ${
                         isBebasHadir 
-                          ? 'text-blue-600 dark:text-blue-400' 
+                          ? 'text-sky-700 dark:text-sky-300' 
                           : isPiketUnsubmitted 
-                          ? 'text-orange-600 dark:text-orange-400' 
+                          ? 'text-orange-700 dark:text-orange-300' 
                           : isPresensiUnsubmitted
-                          ? 'text-red-600 dark:text-red-400'
-                          : 'text-rose-600 dark:text-rose-400'
+                          ? 'text-red-700 dark:text-red-300'
+                          : 'text-rose-700 dark:text-rose-300'
                       }`}>
                         {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : isPresensiUnsubmitted ? 'Alpa' : 'Belum Ada Data'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <div className={`py-1 px-2 rounded-lg text-center text-[10px] font-bold ${
+                  <div className="pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+                    <div className={`neu-inset py-1.5 px-2.5 rounded-xl text-center text-[10px] font-bold ${
                       isBebasHadir
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+                        ? 'text-sky-700 dark:text-sky-300 font-medium'
                         : isPiketUnsubmitted
-                        ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 font-medium'
+                        ? 'text-orange-700 dark:text-orange-300 font-medium'
                         : isPresensiUnsubmitted
-                        ? 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
-                        : 'bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 italic font-medium'
+                        ? 'text-red-700 dark:text-red-300'
+                        : 'text-[#64748B] dark:text-[#94A3B8] italic font-medium'
                     }`}>
                       {isBebasHadir ? 'Bebas Hadir' : isPiketUnsubmitted ? 'tidak membuat laporan piket' : isPresensiUnsubmitted ? 'Alpa (Tidak Melakukan Presensi Datang & Pulang)' : 'Menunggu pengajuan dari guru'}
                     </div>
@@ -1607,27 +1576,27 @@ export default function AdminVerifView({
 
             // Render Standard Submitted Verification Card
             return (
-              <div key={item.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate">
+              <div key={item.id} className="neu-card-sm p-3.5 rounded-2xl flex flex-col gap-2.5">
+                <div className="flex justify-between items-start gap-2 mb-0.5">
+                  <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">
                     {activeTab === 'Piket' ? item.guru_pelapor : item.nama_guru}
                   </h3>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                      item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                      item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      item.status_verifikasi === 'Sakit' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
-                      item.status_verifikasi === 'Izin' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                      item.status_verifikasi === 'Dinas Luar' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                      (item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'tidak membuat laporan piket') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                      item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
+                      item.status_verifikasi === 'Ditolak' ? 'bg-red-500/15 text-red-700 dark:text-red-300' :
+                      item.status_verifikasi === 'Sakit' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' :
+                      item.status_verifikasi === 'Izin' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300' :
+                      item.status_verifikasi === 'Dinas Luar' ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300' :
+                      (item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-500/15 text-red-700 dark:text-red-300' :
+                      (item.status_verifikasi === 'Pulang Cepat' || item.status_verifikasi === 'Tidak Masuk Kelas' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'tidak membuat laporan piket') ? 'bg-orange-500/15 text-orange-700 dark:text-orange-300' :
+                      'bg-amber-500/15 text-amber-700 dark:text-amber-300'
                     }`}>{item.status_verifikasi || 'Menunggu'}</span>
                 </div>
 
                 {activeTab === 'Presensi' ? (
-                  <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
-                    <p><span className="font-semibold">Waktu:</span> {formatTimestampWita(item.timestamp)}</p>
-                    <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-[#0F766E] dark:text-teal-400">{item.tipe_absen}</span></p>
+                  <div className="text-xs text-[#334155] dark:text-[#CBD5E1] space-y-1">
+                    <p><span className="font-semibold">Waktu:</span> <span className="font-num">{formatTimestampWita(item.timestamp)}</span></p>
+                    <p><span className="font-semibold">Tipe:</span> <span className="font-bold text-[#0F766E] dark:text-[#14B8A6]">{item.tipe_absen}</span></p>
                     <div className="flex items-center gap-1.5 flex-wrap my-1">
                       <span className="font-semibold">Kategori:</span>
                       {(() => {
@@ -1636,34 +1605,34 @@ export default function AdminVerifView({
                         const sv = (item.status_verifikasi || '').toLowerCase();
                         if (jp === 'alpa' || sv === 'alpa') {
                           return (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800 inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-700 dark:text-red-300 inline-flex items-center gap-1">
                               <i className="fa-solid fa-user-xmark text-[10px]"></i> Alpa
                             </span>
                           );
                         }
                         if (jp === 'sakit' || di === 'sakit') {
                           return (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 inline-flex items-center gap-1">
                               <i className="fa-solid fa-notes-medical text-[10px]"></i> Sakit
                             </span>
                           );
                         }
                         if (jp === 'izin' || (di.includes('izin') && di !== 'sakit')) {
                           return (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 inline-flex items-center gap-1">
                               <i className="fa-solid fa-envelope-open-text text-[10px]"></i> Izin
                             </span>
                           );
                         }
                         if (jp === 'dinas luar' || di.includes('dinas')) {
                           return (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-300 dark:border-blue-800 inline-flex items-center gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-700 dark:text-sky-300 inline-flex items-center gap-1">
                               <i className="fa-solid fa-briefcase text-[10px]"></i> Dinas Luar
                             </span>
                           );
                         }
                         return (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 inline-flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1">
                             <i className="fa-solid fa-school text-[10px]"></i> Hadir di Sekolah
                           </span>
                         );
@@ -1671,45 +1640,45 @@ export default function AdminVerifView({
                     </div>
                     <p><span className="font-semibold">Jenis:</span> {item.jenis_presensi} {item.detail_izin && `(${item.detail_izin})`}</p>
                     {item.keterlambatan_detik > 0 && (
-                      <p><span className="font-semibold">Terlambat:</span> <span className="font-bold text-amber-600 dark:text-amber-400">{Math.ceil(item.keterlambatan_detik / 60)} menit</span></p>
+                      <p><span className="font-semibold">Terlambat:</span> <span className="font-num font-bold text-amber-700 dark:text-amber-300">{Math.ceil(item.keterlambatan_detik / 60)} menit</span></p>
                     )}
                     {((item.detail_izin === 'Sakit' || item.jenis_presensi === 'Sakit') && (item.durasi_hari >= 3 || item.memerlukan_persetujuan_admin)) && (
                       <div className="my-1.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 inline-flex items-center gap-1">
                           <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
-                          Sakit &gt;= 3 Hari (Perlu Persetujuan)
+                          Sakit &gt;= <span className="font-num">3</span> Hari (Perlu Persetujuan)
                         </span>
                       </div>
                     )}
                     {((item.jenis_presensi === 'Izin' || item.detail_izin?.includes('Izin')) && item.detail_izin !== 'Sakit' && (item.durasi_hari > 3 || item.memerlukan_persetujuan_admin)) && (
                       <div className="my-1.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-800 inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 inline-flex items-center gap-1">
                           <i className="fa-solid fa-triangle-exclamation text-[10px]"></i>
-                          Izin &gt; 3 Hari (Perlu Persetujuan)
+                          Izin &gt; <span className="font-num">3</span> Hari (Perlu Persetujuan)
                         </span>
                       </div>
                     )}
                     {(item.is_auto_checkout || item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat' || item.status_verifikasi === 'Lupa Checkout') && (
                       <div className="my-1.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300 inline-flex items-center gap-1">
                           <i className="fa-solid fa-robot text-[10px]"></i>
                           {item.status_verifikasi === 'Pulang Cepat' || item.jenis_presensi === 'Pulang Cepat' ? 'Auto-Checkout (Pulang Cepat)' : 'Auto-Checkout (Lupa Checkout)'}
                         </span>
                       </div>
                     )}
                     {(item.durasi_hari || item.tanggal_mulai) && (
-                      <p className="text-[11px] text-gray-600 dark:text-gray-300">
-                        <span className="font-semibold">Periode:</span> {item.tanggal_mulai ? `${item.tanggal_mulai} s/d ${item.tanggal_selesai || item.tanggal_mulai}` : ''} ({item.durasi_hari || 1} Hari)
+                      <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
+                        <span className="font-semibold">Periode:</span> <span className="font-num">{item.tanggal_mulai ? `${item.tanggal_mulai} s/d ${item.tanggal_selesai || item.tanggal_mulai}` : ''} ({item.durasi_hari || 1} Hari)</span>
                       </p>
                     )}
                     {item.link_bukti && item.link_bukti !== '-' && (
                       <div className="mt-2 flex items-center gap-2">
                         {item.link_bukti === 'pending:uploading' ? (
-                          <span className="text-xs text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                          <span className="neu-inset text-xs text-amber-700 dark:text-amber-300 font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl">
                             <i className="fa-solid fa-cloud-arrow-up animate-pulse text-[10px]"></i> Sedang diunggah ke Drive...
                           </span>
                         ) : item.link_bukti === 'gagal_upload' ? (
-                          <span className="text-xs text-red-600 dark:text-red-400 font-medium flex items-center gap-1.5 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-lg border border-red-200 dark:border-red-800">
+                          <span className="neu-inset text-xs text-rose-700 dark:text-rose-300 font-medium flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl">
                             <i className="fa-solid fa-circle-exclamation text-[10px]"></i> Upload dokumen tertunda
                           </span>
                         ) : (
@@ -1717,10 +1686,10 @@ export default function AdminVerifView({
                             <img 
                               src={transformGoogleDriveUrl(item.link_bukti)} 
                               alt="Bukti Presensi" 
-                              className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                              className="w-10 h-10 object-cover rounded-xl neu-inset p-0.5 shrink-0"
                               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                             />
-                            <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                            <a href={item.link_bukti} target="_blank" rel="noreferrer" className="text-[#0F766E] dark:text-[#14B8A6] hover:underline text-xs font-semibold block">
                               <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
                             </a>
                           </>
@@ -1730,21 +1699,21 @@ export default function AdminVerifView({
                   </div>
                 ) : activeTab === 'Jurnal' ? (
                   (item._sourceTable === 'jurnal_bk' || item.isJurnalBk) ? (
-                    <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
+                    <div className="text-xs text-[#334155] dark:text-[#CBD5E1] space-y-1">
                       <div className="flex flex-wrap items-center gap-1.5 pb-0.5">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-300 dark:border-rose-800 inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-rose-500/15 text-rose-700 dark:text-rose-300 inline-flex items-center gap-1">
                           <i className="fa-solid fa-heart-pulse text-[10px]"></i>
                           Jurnal BK ({item.bidang_bimbingan || 'Konseling'})
                         </span>
                         {item.status && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                          <span className="neu-inset px-2 py-0.5 rounded-lg text-[10px] font-semibold text-[#334155] dark:text-[#CBD5E1]">
                             {item.status}
                           </span>
                         )}
                       </div>
                       <p>
-                        <span className="font-semibold">Tanggal:</span> {item.tanggal}
-                        {item.waktu ? ` · ${item.waktu} WITA` : ''}
+                        <span className="font-semibold">Tanggal:</span> <span className="font-num">{item.tanggal}
+                        {item.waktu ? ` · ${item.waktu} WITA` : ''}</span>
                         {item.tempat_layanan ? ` (${item.tempat_layanan})` : ''}
                       </p>
                       <p>
@@ -1759,23 +1728,23 @@ export default function AdminVerifView({
                       )}
                       {item.link_dokumen && item.link_dokumen !== '-' && (
                         <div className="mt-2 flex items-center gap-2">
-                          <a href={item.link_dokumen} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs inline-flex items-center gap-1">
+                          <a href={item.link_dokumen} target="_blank" rel="noreferrer" className="text-[#0F766E] dark:text-[#14B8A6] hover:underline text-xs font-semibold inline-flex items-center gap-1">
                             <i className="fa-solid fa-paperclip"></i> Dokumen Pendukung BK
                           </a>
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
-                      <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
+                    <div className="text-xs text-[#334155] dark:text-[#CBD5E1] space-y-1">
+                      <p><span className="font-semibold">Tanggal:</span> <span className="font-num">{item.tanggal}</span></p>
                       {item.keterangan === 'Jurnal Kegiatan' || item.mapel === 'Jurnal Kegiatan' ? (
-                        <p><span className="font-semibold">Tipe:</span> <span className="text-amber-600 dark:text-amber-400 font-bold">Jurnal Kegiatan (Sistem Blok)</span></p>
+                        <p><span className="font-semibold">Tipe:</span> <span className="text-amber-700 dark:text-amber-300 font-bold">Jurnal Kegiatan (Sistem Blok)</span></p>
                       ) : (
                         <p><span className="font-semibold">Kelas/Mapel:</span> {item.kelas} - {item.mapel}</p>
                       )}
                       {(item.status_verifikasi === 'Tidak Masuk Kelas' || item.keterangan === 'Tidak Masuk Kelas') && (
                         <div className="pt-1">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
+                          <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-orange-500/15 text-orange-700 dark:text-orange-300 inline-flex items-center gap-1">
                             <i className="fa-solid fa-robot text-[10px]"></i>
                             Otomatis (Tidak Masuk Kelas)
                           </span>
@@ -1785,12 +1754,12 @@ export default function AdminVerifView({
                         <div className="pt-1">
                           <span 
                             data-testid="badge-excused-leave"
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-flex items-center gap-1 ${
+                            className={`px-2 py-0.5 rounded-lg text-[10px] font-bold inline-flex items-center gap-1 ${
                             (item.status_verifikasi === 'Sakit' || item.materi === 'Sakit' || item.leaveType === 'Sakit')
-                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border-rose-300 dark:border-rose-800'
+                              ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
                               : (item.status_verifikasi === 'Izin' || item.materi === 'Izin' || item.leaveType === 'Izin')
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 border-blue-300 dark:border-blue-800'
+                              ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              : 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
                           }`}>
                             <i className="fa-solid fa-calendar-check text-[10px]"></i>
                             Dikecualikan (Izin / Sakit)
@@ -1820,10 +1789,10 @@ export default function AdminVerifView({
                                 <img 
                                   src={transformGoogleDriveUrl(verifPhoto)} 
                                   alt="Bukti Jurnal" 
-                                  className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                  className="w-10 h-10 object-cover rounded-xl neu-inset p-0.5 shrink-0"
                                   onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                 />
-                                <a href={verifPhoto} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline text-xs block">
+                                <a href={verifPhoto} target="_blank" rel="noreferrer" className="text-[#0F766E] dark:text-[#14B8A6] hover:underline text-xs font-semibold block">
                                   <i className="fa-solid fa-arrow-up-right-from-square mr-1"></i> Bukti Lampiran
                                 </a>
                               </div>
@@ -1832,15 +1801,15 @@ export default function AdminVerifView({
                         );
                       })()}
                       {(item.lokasi || (item.latitude && item.longitude) || item.waktu_upload) && (
-                        <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 flex items-center gap-1.5 flex-wrap">
+                        <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-1 flex items-center gap-1.5 flex-wrap">
                           {(item.lokasi || (item.latitude && item.longitude)) && (
                             <span className="flex items-center gap-1">
-                              <i className="fa-solid fa-location-dot text-red-500"></i>
-                              <span>{item.lokasi || `GPS: ${item.latitude?.toFixed(5)}, ${item.longitude?.toFixed(5)}`}</span>
+                              <i className="fa-solid fa-location-dot text-rose-500"></i>
+                              <span className={!item.lokasi ? 'font-num' : undefined}>{item.lokasi || `GPS: ${item.latitude?.toFixed(5)}, ${item.longitude?.toFixed(5)}`}</span>
                             </span>
                           )}
                           {item.waktu_upload && (
-                            <span>
+                            <span className="font-num">
                               {(item.lokasi || (item.latitude && item.longitude)) ? '• ' : ''}
                               {item.waktu_upload}
                             </span>
@@ -1850,12 +1819,12 @@ export default function AdminVerifView({
                     </div>
                   )
                 ) : (
-                  <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
-                    <p><span className="font-semibold">Tanggal:</span> {item.tanggal}</p>
+                  <div className="text-xs text-[#334155] dark:text-[#CBD5E1] space-y-1">
+                    <p><span className="font-semibold">Tanggal:</span> <span className="font-num">{item.tanggal}</span></p>
                     <p><span className="font-semibold">Guru Pelapor:</span> {item.guru_pelapor}</p>
                     {item.status_verifikasi === 'tidak membuat laporan piket' && (
                       <div className="pt-1">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-100 text-orange-800 dark:bg-orange-950/60 dark:text-orange-300 border border-orange-300 dark:border-orange-800 inline-flex items-center gap-1">
+                        <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold bg-orange-500/15 text-orange-700 dark:text-orange-300 inline-flex items-center gap-1">
                           <i className="fa-solid fa-circle-exclamation text-[10px]"></i>
                           tidak membuat laporan piket
                         </span>
@@ -1867,10 +1836,10 @@ export default function AdminVerifView({
                         <img 
                           src={transformGoogleDriveUrl(item.link_foto)} 
                           alt="Foto Piket" 
-                          className="w-10 h-10 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                          className="w-10 h-10 object-cover rounded-xl neu-inset p-0.5 shrink-0"
                           onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
-                        <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline text-xs block">
+                        <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-[#0F766E] dark:text-[#14B8A6] hover:underline text-xs font-semibold block">
                           <i className="fa-solid fa-camera mr-1"></i> Foto Piket
                         </a>
                       </div>
@@ -1879,25 +1848,25 @@ export default function AdminVerifView({
                 )}
 
                 {(item.catatan_admin || item.alasan_penolakan) && (
-                  <div className="mt-2.5 p-2 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-xl text-xs flex items-start gap-2">
-                    <i className="fa-solid fa-circle-exclamation text-red-600 dark:text-red-400 mt-0.5 shrink-0 text-xs"></i>
+                  <div className="mt-2 p-2.5 neu-inset rounded-xl text-xs flex items-start gap-2">
+                    <i className="fa-solid fa-circle-exclamation text-rose-600 dark:text-rose-400 mt-0.5 shrink-0 text-xs"></i>
                     <div className="flex-1 min-w-0">
-                      <span className="font-bold text-red-800 dark:text-red-300 block text-[11px]">Alasan Penolakan:</span>
-                      <p className="text-red-700 dark:text-red-300/90 text-xs break-words italic">
+                      <span className="font-bold text-rose-700 dark:text-rose-300 block text-[11px]">Alasan Penolakan:</span>
+                      <p className="text-rose-700 dark:text-rose-300/90 text-xs break-words italic">
                         {item.catatan_admin || item.alasan_penolakan}
                       </p>
                     </div>
                   </div>
                 )}
 
-                <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div className="flex gap-2 mt-2 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
                   {item.status_verifikasi === 'tidak membuat laporan piket' ? (
-                    <div className="w-full text-center py-1.5 px-3 rounded-lg text-xs font-semibold bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800">
+                    <div className="neu-inset w-full text-center py-2 px-3 rounded-xl text-xs font-semibold text-orange-700 dark:text-orange-300">
                       <i className="fa-solid fa-circle-exclamation mr-1.5"></i>
                       Otomatis Tercatat: tidak membuat laporan piket
                     </div>
                   ) : (item.isExcusedLeave || item.status_verifikasi === 'Sakit' || item.status_verifikasi === 'Izin' || item.status_verifikasi === 'Dinas Luar') ? (
-                    <div className="w-full text-center py-1.5 px-3 rounded-lg text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <div className="neu-inset w-full text-center py-2 px-3 rounded-xl text-xs font-semibold text-[#0F766E] dark:text-[#14B8A6]">
                       <i className="fa-solid fa-check-circle mr-1.5"></i>
                       Dikecualikan ({item.status_verifikasi || item.leaveType || 'Izin / Sakit'} - Sesuai Presensi)
                     </div>
@@ -1908,7 +1877,7 @@ export default function AdminVerifView({
                       onClick={() => !isReadOnly && verifyItem(item.id, 'Dispensasi')}
                       title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan dinonaktifkan' : 'Reset / Pulihkan Status via Dispensasi Khusus (F-SIPJAM-02)'}
                       aria-label="Pulihkan via Dispensasi"
-                      className="flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50"
+                      className="neu-btn-teal flex-1 min-h-[40px] text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-50"
                     >
                       {processingId === item.id ? (
                         <i className="fa-solid fa-spinner animate-spin"></i>
@@ -1928,12 +1897,12 @@ export default function AdminVerifView({
                           onClick={() => !isReadOnly && verifyItem(item.id, 'Disetujui')} 
                           title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan verifikasi dinonaktifkan' : 'Terima / Setujui Pengajuan'}
                           aria-label="Terima / Setujui"
-                          className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                          className={`flex-1 min-h-[40px] text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1 ${
                             item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
+                              ? 'neu-inset text-[#0F766E] dark:text-[#14B8A6] cursor-default opacity-85'
                               : isReadOnly
-                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed border border-gray-200 dark:border-gray-700'
-                              : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
+                              ? 'neu-inset text-[#64748B] dark:text-[#94A3B8] cursor-not-allowed opacity-70'
+                              : 'neu-btn-teal disabled:opacity-50'
                           }`}
                         >
                           {processingId === item.id ? (
@@ -1950,10 +1919,10 @@ export default function AdminVerifView({
                           onClick={() => !isReadOnly && verifyItem(item.id, 'Ditolak')} 
                           title={isReadOnly ? 'Mode Peninjau (Read-Only): Tindakan penolakan dinonaktifkan' : 'Tolak Pengajuan'}
                           aria-label="Tolak"
-                          className={`flex-1 text-xs font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                          className={`flex-1 min-h-[40px] text-xs font-bold py-2 px-3 rounded-xl transition flex items-center justify-center gap-1 ${
                             isReadOnly
-                              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed pointer-events-none border border-gray-200 dark:border-gray-700'
-                              : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
+                              ? 'neu-inset text-[#64748B] dark:text-[#94A3B8] cursor-not-allowed pointer-events-none opacity-70'
+                              : 'neu-btn-rose disabled:opacity-50'
                           }`}
                         >
                           {processingId === item.id ? (
@@ -1972,9 +1941,9 @@ export default function AdminVerifView({
         </div>
 
         {/* Footer Summary */}
-        <div className="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <span className="text-xs text-gray-600 dark:text-white/80 font-medium">
-            {displayList.length} Data {taskFilter === 'Belum' ? 'Guru Belum Menyelesaikan' : taskFilter === 'Semua' ? 'Guru (Sudah & Belum)' : 'Diverifikasi'}
+        <div className="flex justify-between items-center mt-5 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
+          <span className="text-xs text-[#475569] dark:text-[#CBD5E1] font-medium">
+            <span className="font-num font-bold text-[#0F172A] dark:text-[#F1F5F9]">{displayList.length}</span> Data {taskFilter === 'Belum' ? 'Guru Belum Menyelesaikan' : taskFilter === 'Semua' ? 'Guru (Sudah & Belum)' : 'Diverifikasi'}
           </span>
         </div>
         </div>

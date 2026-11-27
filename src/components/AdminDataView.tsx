@@ -2723,17 +2723,19 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               <i className="fa-solid fa-database text-[#0F766E] dark:text-teal-400"></i> Master Data
             </h2>
             {/* TABS */}
-            <div className="flex overflow-x-auto custom-scroll gap-2 mb-4 pb-1 max-w-full">
+            <div role="tablist" aria-label="Tab Data Master" className="flex overflow-x-auto custom-scroll gap-2 mb-4 p-1.5 max-w-full">
                 {visibleTabs.map(tab => {
                   const isTabActive = normalizeAdminTab(activeTab) === normalizeAdminTab(tab.id);
                   return (
                     <button 
                       key={tab.id}
+                      role="tab"
+                      aria-selected={isTabActive}
                       type="button" 
                       onClick={() => handleSwitchTab(tab.id)} 
-                      className={`btn-click master-tab-btn px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition flex items-center gap-1.5 ${
+                      className={`btn-click master-tab-btn px-3.5 py-2 min-h-[38px] rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition flex items-center gap-1.5 ${
                         isTabActive 
-                          ? 'neu-btn-primary text-white shadow-sm' 
+                          ? 'neu-btn-primary text-white' 
                           : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
                       }`}
                     >
@@ -2906,9 +2908,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               {activeTab === 'Data_Siswa' && (
                 <>
                   <select
+                    aria-label="Filter Kelas"
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Kelas"
                   >
                     <option value="ALL">Semua Kelas</option>
@@ -2918,9 +2921,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   </select>
 
                   <select
+                    aria-label="Filter Status"
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Status"
                   >
                     <option value="ALL">Semua Status</option>
@@ -2930,9 +2934,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   </select>
 
                   <select
+                    aria-label="Filter Mata Pelajaran atau Agama"
                     value={filterMapelSiswa}
                     onChange={e => { setFilterMapelSiswa(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Mata Pelajaran / Agama"
                   >
                     <option value="ALL">Semua Mapel</option>
@@ -2945,9 +2950,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               {activeTab === 'Data_Guru' && (
                 <>
                   <select
+                    aria-label="Filter Status Guru"
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Status"
                   >
                     <option value="ALL">Semua Status</option>
@@ -2957,9 +2963,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   </select>
 
                   <select
+                    aria-label="Filter Mata Pelajaran Guru"
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium max-w-[200px] truncate"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium max-w-[200px] truncate"
                     title="Filter Mata Pelajaran"
                   >
                     <option value="ALL">Semua Mapel</option>
@@ -2972,9 +2979,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
               {activeTab === 'Data_Mapel' && (
                 <select
+                  aria-label="Filter Kategori Mapel"
                   value={filter1}
                   onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                  className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                  className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                   title="Filter Kategori"
                 >
                   <option value="ALL">Semua Kategori</option>
@@ -2987,9 +2995,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               {activeTab === 'Kalender_Pendidikan' && (
                 <>
                   <select
+                    aria-label="Filter Tipe Agenda"
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Tipe Agenda"
                   >
                     <option value="ALL">Semua Tipe</option>
@@ -2999,9 +3008,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   </select>
 
                   <select
+                    aria-label="Filter Bulan"
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Bulan"
                   >
                     <option value="ALL">Semua Bulan</option>
@@ -3024,9 +3034,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               {activeTab === 'Jadwal_Pelajaran' && (
                 <>
                   <select
+                    aria-label="Filter Hari"
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Hari"
                   >
                     <option value="ALL">Semua Hari</option>
@@ -3036,9 +3047,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   </select>
 
                   <select
+                    aria-label="Filter Kelas Jadwal"
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Kelas"
                   >
                     <option value="ALL">Semua Kelas</option>
@@ -3052,9 +3064,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
               {activeTab === 'Wali_Kelas' && (
                 <>
                   <select
+                    aria-label="Filter Kelas Wali"
                     value={filter1}
                     onChange={e => { setFilter1(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Kelas"
                   >
                     <option value="ALL">Semua Kelas</option>
@@ -3064,9 +3077,10 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
                   </select>
 
                   <select
+                    aria-label="Filter Tahun Ajaran"
                     value={filter2}
                     onChange={e => { setFilter2(e.target.value); setPage(0); }}
-                    className="neu-input px-2.5 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-none focus:ring-1 focus:ring-teal-500 font-medium"
+                    className="neu-input px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                     title="Filter Tahun Ajaran"
                   >
                     <option value="ALL">Semua Tahun Ajaran</option>
@@ -3179,15 +3193,15 @@ export default function AdminDataView({ user, initialTab }: AdminDataViewProps) 
 
             {/* PAGINATION */}
             {!loading && filteredList.length > 0 && (
-              <div className="flex justify-between items-center mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
-                  <span className="text-xs text-gray-600 dark:text-white/80 font-medium">
+              <div className="flex flex-wrap justify-between items-center gap-3 mt-5 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
+                  <span className="text-xs text-[#475569] dark:text-[#CBD5E1] font-medium font-num">
                     Ditampilkan: {page * ITEMS_PER_PAGE + 1} - {Math.min((page + 1) * ITEMS_PER_PAGE, filteredList.length)} dari Total {filteredList.length} Data
                   </span>
                   <div className="flex gap-2">
-                      <button type="button" disabled={page === 0} onClick={() => setPage(page - 1)} className="btn-click w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg text-xs disabled:opacity-30 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-white">
+                      <button type="button" aria-label="Halaman sebelumnya" disabled={page === 0} onClick={() => setPage(page - 1)} className="neu-btn btn-click w-11 h-11 flex items-center justify-center rounded-xl text-xs disabled:opacity-30 text-[#334155] dark:text-[#F1F5F9]">
                         <i className="fa-solid fa-chevron-left"></i>
                       </button>
-                      <button type="button" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className="btn-click w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg text-xs disabled:opacity-30 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-white">
+                      <button type="button" aria-label="Halaman berikutnya" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} className="neu-btn btn-click w-11 h-11 flex items-center justify-center rounded-xl text-xs disabled:opacity-30 text-[#334155] dark:text-[#F1F5F9]">
                         <i className="fa-solid fa-chevron-right"></i>
                       </button>
                   </div>

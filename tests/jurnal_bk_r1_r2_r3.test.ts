@@ -274,7 +274,7 @@ async function runAllTests() {
 
   // 3.1 Responsive Toolbar container
   const hasResponsiveToolbar =
-    componentSource.includes('flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white');
+    componentSource.includes('flex flex-col md:flex-row md:items-center justify-between gap-3 neu-card');
   check(
     hasResponsiveToolbar,
     'R3-01',
@@ -284,7 +284,7 @@ async function runAllTests() {
 
   // 3.2 Responsive Paper Card Padding & Overflow
   const hasResponsivePaperCard =
-    componentSource.includes('p-3.5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-300 max-w-full overflow-hidden print:overflow-visible');
+    componentSource.includes('p-3.5 sm:p-6 md:p-8 rounded-2xl max-w-full overflow-hidden print:bg-white print:text-black print:overflow-visible');
   check(
     hasResponsivePaperCard,
     'R3-02',
@@ -305,7 +305,7 @@ async function runAllTests() {
 
   // 3.4 Responsive Table Wrapper
   const hasResponsiveTableWrapper =
-    componentSource.includes('w-full overflow-x-auto rounded-xl border border-gray-200 print:border-none print:overflow-visible my-2 print:my-2 custom-scroll') &&
+    componentSource.includes('w-full overflow-x-auto rounded-xl border border-slate-300/60 dark:border-slate-700/60 print:border-none print:overflow-visible my-2 print:my-2 custom-scroll') &&
     componentSource.includes('min-w-[760px] sm:min-w-full print:min-w-0');
   check(
     hasResponsiveTableWrapper,
@@ -314,10 +314,10 @@ async function runAllTests() {
     'Table constrained inside scroll wrapper; @media print resets overflow: visible'
   );
 
-  // 3.5 Document subheader dark mode text contrast fix on white paper
+  // 3.5 Document subheader dark mode text contrast fix on Cool Slate & white paper print
   const hasSubheaderContrastFix =
-    componentSource.includes('text-gray-900 print:text-black uppercase tracking-wider') &&
-    componentSource.includes('text-xs text-gray-600 print:text-black mt-1 flex flex-wrap justify-center');
+    componentSource.includes('text-[#0F172A] dark:text-[#F1F5F9] print:text-black uppercase tracking-wider') &&
+    componentSource.includes('text-xs text-[#475569] dark:text-[#94A3B8] print:text-black mt-1 flex flex-wrap justify-center');
   check(
     hasSubheaderContrastFix,
     'R3-05',

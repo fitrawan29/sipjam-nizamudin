@@ -41,15 +41,15 @@ const src = fs.readFileSync(appScreenFile, 'utf8');
 console.log('--- 1. DOM Hierarchy & Position Verification ---');
 
 check('User identity card is rendered below the brand header divider', () => {
-  const brandHeaderIndex = src.indexOf('{isSuperadmin ? \'Portal Superadmin\' : \'SIPJAM Menu\'}');
+  const brandHeaderIndex = src.indexOf('{isSuperadmin ? \'Portal Superadmin\' : isDinas ? \'Dinas Pendidikan\' : \'SIPJAM Menu\'}');
   const userCardIndex = src.indexOf('{/* User Identity Card */}');
-  const menuListIndex = src.indexOf('max-h-[calc(100vh-230px)]');
+  const menuListIndex = src.indexOf('flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scroll');
   return brandHeaderIndex !== -1 && userCardIndex > brandHeaderIndex && menuListIndex > userCardIndex;
 });
 
 check('User identity card is rendered directly above the scrollable menu list', () => {
   const cardStart = src.indexOf('{/* User Identity Card */}');
-  const menuListStart = src.indexOf('max-h-[calc(100vh-230px)]');
+  const menuListStart = src.indexOf('flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scroll');
   const chunkBetween = src.substring(cardStart, menuListStart);
   // Between the card and the menu list, there should only be the closing div of the card
   return chunkBetween.includes('truncate') && chunkBetween.includes('renderUserAvatar');
@@ -62,7 +62,7 @@ check('Avatar display invokes renderUserAvatar with fallback to currentUser or u
 });
 
 check('Avatar container includes active status badge dot', () => {
-  return src.includes('bg-emerald-500 border-2 border-white dark:border-gray-800') &&
+  return src.includes('bg-teal-500 border-2 border-[#E6ECF2] dark:border-[#1F242D]') &&
          src.includes('title="Aktif"');
 });
 
@@ -81,41 +81,41 @@ check('Username / NIP display handles both user?.username and user?.nip with tru
 
 console.log('\n--- 3. Role Badge Matrix & Color Coding ---');
 
-check('Role badge correctly maps isSuperadmin to purple palette and fa-crown', () => {
+check('Role badge correctly maps isSuperadmin to Cool Slate inset amber palette and fa-crown', () => {
   return src.includes("isSuperadmin") &&
-         src.includes("'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 border border-purple-200/50'") &&
+         src.includes("'neu-inset text-amber-800 dark:text-amber-300'") &&
          src.includes("isSuperadmin ? 'fa-crown'") &&
          src.includes("isSuperadmin ? 'Superadmin'");
 });
 
-check('Role badge correctly maps isAdmin to blue palette and fa-user-shield', () => {
+check('Role badge correctly maps isAdmin to Cool Slate inset blue palette and fa-user-shield', () => {
   return src.includes("isAdmin") &&
-         src.includes("'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200/50'") &&
+         src.includes("'neu-inset text-blue-800 dark:text-blue-300'") &&
          src.includes("isAdmin ? 'fa-user-shield'") &&
          src.includes("isAdmin ? 'Administrator'");
 });
 
-check('Role badge correctly maps isWaliKelas to teal palette and "Guru (Wali Kelas)"', () => {
+check('Role badge correctly maps isWaliKelas to Cool Slate inset teal palette and "Guru (Wali Kelas)"', () => {
   return src.includes("isWaliKelas") &&
-         src.includes("'bg-teal-100 text-teal-800 dark:bg-teal-900/50 dark:text-teal-300 border border-teal-200/50'") &&
+         src.includes("'neu-inset text-teal-800 dark:text-teal-300'") &&
          src.includes("isWaliKelas ? 'Guru (Wali Kelas)'");
 });
 
-check('Role badge defaults regular teacher to emerald palette and "Guru"', () => {
-  return src.includes("'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 border border-emerald-200/50'") &&
+check('Role badge defaults regular teacher to Deep Teal Cool Slate inset palette and "Guru"', () => {
+  return src.includes("'neu-inset text-[#0F766E] dark:text-teal-300'") &&
          src.includes(": 'Guru'");
 });
 
 console.log('\n--- 4. Responsiveness & Mobile Scroll Bounds ---');
 
-check('Menu drawer list has flex-1 overflow-y-auto max-h-[calc(100vh-230px)]', () => {
-  return src.includes('className="space-y-1.5 flex-1 overflow-y-auto max-h-[calc(100vh-230px)] custom-scroll"');
+check('Menu drawer list has flex-1 min-h-0 overflow-y-auto px-2 py-2', () => {
+  return src.includes('className="space-y-2 flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scroll"');
 });
 
 check('Outer drawer container maintains bounded width and flex column structure', () => {
   return (src.includes('w-72 max-w-[85%]') || src.includes('w-80 max-w-[88%]')) &&
          src.includes('h-full') &&
-         src.includes('p-5 flex flex-col justify-between');
+         src.includes('flex flex-col justify-between');
 });
 
 console.log('\n--- 5. Regression Test Constraints Preservation ---');
@@ -160,7 +160,7 @@ console.log('\n--- 6. Integrity & Anti-Facade Verification ---');
 check('No hardcoded user credentials or simulated names in AppScreen identity card', () => {
   // Check that the card binds dynamically to `user?.` and not a hardcoded name like 'Fitra' or 'Admin Test'
   const cardStart = src.indexOf('{/* User Identity Card */}');
-  const menuListStart = src.indexOf('max-h-[calc(100vh-230px)]');
+  const menuListStart = src.indexOf('flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scroll');
   const cardChunk = src.substring(cardStart, menuListStart);
   return !cardChunk.includes('"Ade Fitrawan"') &&
          !cardChunk.includes('"Admin Sekolah"') &&

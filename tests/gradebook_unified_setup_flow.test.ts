@@ -234,15 +234,15 @@ assert(
 );
 
 assert(
-  code.includes('dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700') &&
-  code.includes('text-gray-500 dark:text-gray-400 text-xs italic'),
-  'R6.4: Unified setup cards and empty states adhere to solid OLED dark mode contrast standards'
+  code.includes('neu-inset rounded-xl p-4 flex flex-col') &&
+  code.includes('text-[#475569] dark:text-[#94A3B8] text-xs italic'),
+  'R6.4: Unified setup cards and empty states adhere to Cool Slate Neumorphism dark mode contrast standards'
 );
 
 assert(
   code.includes('formatifCols.length === 0 ? (') &&
   code.includes('sumatifCols.length === 0 ? (') &&
-  code.includes('border-r border-gray-200 dark:border-gray-700">\n                              -\n                            </td>'),
+  /border-r border-slate-300\/60 dark:border-slate-700\/60">\s*-\s*<\/td>/.test(code),
   'R6.5: Spreadsheet matrix table rows in tbody and tfoot maintain cell alignment when columns are empty'
 );
 

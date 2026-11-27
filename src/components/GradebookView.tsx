@@ -137,19 +137,19 @@ function AccessDeniedCard({
   onFallback?: () => void;
 }) {
   return (
-    <div className="glass-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 shadow-sm">
-      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+    <div className="neu-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl">
+      <div className="neu-inset w-16 h-16 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
         <i className="fa-solid fa-lock"></i>
       </div>
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{title}</h2>
-      <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+      <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">{title}</h2>
+      <p className="text-xs text-[#475569] dark:text-[#94A3B8] mb-6 leading-relaxed">
         {message}
       </p>
       {onFallback && (
         <button
           type="button"
           onClick={onFallback}
-          className="btn-click bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md inline-flex items-center gap-2 transition"
+          className="btn-click neu-btn-primary text-white text-xs font-bold px-5 py-2.5 min-h-[40px] rounded-xl inline-flex items-center gap-2 transition"
         >
           <i className="fa-solid fa-graduation-cap text-xs"></i> Kembali ke Buku Nilai
         </button>
@@ -1212,6 +1212,22 @@ export default function GradebookView({
   const [bulkFillColId, setBulkFillColId] = useState<string>('');
   const [bulkFillValue, setBulkFillValue] = useState<string>('80');
   const [bulkFillOnlyEmpty, setBulkFillOnlyEmpty] = useState<boolean>(true);
+
+  // Close open modals on Escape key
+  useEffect(() => {
+    if (!isTpModalOpen && !isColModalOpen && !isCpModalOpen && !isBobotModalOpen && !isBulkFillModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isTpModalOpen) setIsTpModalOpen(false);
+        if (isColModalOpen) setIsColModalOpen(false);
+        if (isCpModalOpen) setIsCpModalOpen(false);
+        if (isBobotModalOpen) setIsBobotModalOpen(false);
+        if (isBulkFillModalOpen) setIsBulkFillModalOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTpModalOpen, isColModalOpen, isCpModalOpen, isBobotModalOpen, isBulkFillModalOpen]);
 
   // Print Orientation
   
@@ -3183,32 +3199,32 @@ export default function GradebookView({
         
 
         {/* HEADER CARD */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700/80 no-print">
+        <div className="neu-card rounded-2xl p-5 no-print">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl shadow-inner shrink-0">
+            <div className="neu-inset w-12 h-12 rounded-2xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-xl shrink-0">
               <i className="fa-solid fa-graduation-cap"></i>
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg md:text-xl font-black text-gray-900 dark:text-white">
+                <h1 className="text-lg md:text-xl font-black text-[#0F172A] dark:text-[#F1F5F9]">
                   Daftar Nilai (Gradebook)
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                   Kurikulum Merdeka
                 </span>
                 {isAdmin && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-800 dark:text-amber-300">
                     Mode Review Admin
                   </span>
                 )}
                 {isTataUsaha && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-800 dark:text-sky-300">
                     Mode Tinjau TU (Read-Only)
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-700 dark:text-gray-200 mt-0.5">
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5">
                 Pengelolaan Tujuan Pembelajaran (TP), Asesmen Diagnostik, Formatif, dan Sumatif dengan kalkulasi otomatis.
               </p>
             </div>
@@ -3217,13 +3233,13 @@ export default function GradebookView({
           {!isAdmin && isGuruPengampu && (
             <div className="flex items-center gap-2 flex-wrap">
               {hasLocalDraft && (
-                <span className="text-xs font-bold text-teal-700 bg-teal-50 dark:bg-teal-900/30 dark:text-teal-300 px-3 py-1.5 rounded-xl border border-teal-200 dark:border-teal-700 flex items-center gap-1.5 shadow-sm">
-                  <i className="fa-solid fa-floppy-disk text-teal-600 dark:text-teal-400"></i>
+                <span className="neu-inset text-xs font-bold text-[#0F766E] dark:text-teal-300 px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                  <i className="fa-solid fa-floppy-disk text-[#0F766E] dark:text-teal-400"></i>
                   Draft Lokal Tersimpan
                 </span>
               )}
               {unsavedCount > 0 && (
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400 animate-pulse bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-800">
+                <span className="text-xs font-bold font-num text-amber-700 dark:text-amber-300 animate-pulse bg-amber-500/15 px-3 py-1.5 rounded-xl border border-amber-400/40 dark:border-amber-700/60">
                   <i className="fa-solid fa-circle-exclamation mr-1.5"></i>
                   {unsavedCount} perubahan belum disimpan
                 </span>
@@ -3232,10 +3248,10 @@ export default function GradebookView({
                 type="button"
                 onClick={handleSaveGrades}
                 disabled={isSaving || unsavedCount === 0}
-                className={`btn-click px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-2 transition ${
+                className={`btn-click px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold flex items-center gap-2 transition ${
                   unsavedCount > 0
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                    : 'bg-gray-100 text-gray-400 dark:bg-gray-700 dark:text-gray-400 cursor-not-allowed'
+                    ? 'neu-btn-teal text-white'
+                    : 'neu-inset text-[#94A3B8] dark:text-slate-500 cursor-not-allowed'
                 }`}
               >
                 <i className={`fa-solid ${isSaving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'}`}></i>
@@ -3256,20 +3272,20 @@ export default function GradebookView({
                 setStatusPointsForm(statusPoints);
                 setIsBobotModalOpen(true);
               }}
-              className="btn-click neu-btn px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-[#0F766E] dark:text-teal-300 transition"
+              className="btn-click neu-btn px-3 py-2 min-h-[40px] rounded-xl text-xs font-bold font-num flex items-center gap-2 text-[#0F766E] dark:text-teal-300 transition"
             >
               <i className="fa-solid fa-scale-balanced"></i>
               Bobot: H {bobotKehadiran}% / F {bobotFormatif}% / S {bobotSumatif}%
             </button>
           )}
           {!isAdmin && isWaliKelas && (
-            <div className="neu-inset px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-[#0F766E] dark:text-teal-300">
+            <div className="neu-inset px-3 py-2 rounded-xl text-xs font-bold font-num flex items-center gap-2 text-[#0F766E] dark:text-teal-300">
               <i className="fa-solid fa-scale-balanced"></i>
               <span>Komponen Penilaian: Presensi (Harian & Mapel) {bobotKehadiran}% • Formatif {bobotFormatif}% • Sumatif {bobotSumatif}%</span>
             </div>
           )}
           {!isAdmin && isPureGuruMapel && (
-            <div className="neu-inset px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-2 text-[#0F766E] dark:text-teal-300">
+            <div className="neu-inset px-3 py-2 rounded-xl text-xs font-bold font-num flex items-center gap-2 text-[#0F766E] dark:text-teal-300">
               <i className="fa-solid fa-scale-balanced"></i>
               <span>Komponen Penilaian: Presensi Mapel {bobotKehadiran}% • Formatif {bobotFormatif}% • Sumatif {bobotSumatif}%</span>
             </div>
@@ -3277,17 +3293,17 @@ export default function GradebookView({
         </div>
 
         {/* FILTER CONTROLS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-5 mt-5 border-t border-gray-100 dark:border-gray-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-5 mt-5 border-t border-slate-300/60 dark:border-slate-700/60">
           {/* Guru Filter (Admin & TU Mode) */}
           {canAccessAllTeachers ? (
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] uppercase tracking-wider mb-1">
                 Guru Pengampu
               </label>
               <select
                 value={selectedGuru}
                 onChange={e => handleSelectGuru(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="neu-input w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
               >
                 <option value="">-- Pilih Guru Pengampu --</option>
                 {teachersList.map((g, idx) => (
@@ -3299,10 +3315,10 @@ export default function GradebookView({
             </div>
           ) : (
             <div>
-              <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] uppercase tracking-wider mb-1">
                 Guru Pengampu
               </label>
-              <div className="w-full bg-gray-100 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-white truncate">
+              <div className="neu-inset w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate flex items-center">
                 {user?.nama || 'Guru Terpilih'}
               </div>
             </div>
@@ -3310,14 +3326,14 @@ export default function GradebookView({
 
           {/* Mapel Filter */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] uppercase tracking-wider mb-1">
               Mata Pelajaran
             </label>
             <select
               value={selectedMapel}
               onChange={e => handleSelectMapel(e.target.value)}
               disabled={!selectedGuru}
-              className={`w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none ${!selectedGuru ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`neu-input w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] ${!selectedGuru ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {!selectedGuru ? (
                 <option value="">-- Pilih guru pengampu terlebih dahulu --</option>
@@ -3335,14 +3351,14 @@ export default function GradebookView({
 
           {/* Kelas Filter */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] uppercase tracking-wider mb-1">
               Kelas
             </label>
             <select
               value={selectedKelas}
               onChange={e => handleSelectKelas(e.target.value)}
               disabled={!selectedGuru || !selectedMapel}
-              className={`w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none ${!selectedGuru || !selectedMapel ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`neu-input w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] ${!selectedGuru || !selectedMapel ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {!selectedGuru || !selectedMapel ? (
                 <option value="">-- Pilih mata pelajaran terlebih dahulu --</option>
@@ -3360,13 +3376,13 @@ export default function GradebookView({
 
           {/* Semester Filter */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] uppercase tracking-wider mb-1">
               Semester
             </label>
             <select
               value={selectedSemester}
               onChange={e => setSelectedSemester(e.target.value as 'Ganjil' | 'Genap')}
-              className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+              className="neu-input w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
             >
               <option value="Ganjil">Semester Ganjil{syncedSemester === 'Ganjil' ? ' (Aktif)' : ''}</option>
               <option value="Genap">Semester Genap{syncedSemester === 'Genap' ? ' (Aktif)' : ''}</option>
@@ -3375,14 +3391,14 @@ export default function GradebookView({
 
           {/* Tahun Ajaran Filter */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider mb-1">
-              Tahun Ajaran {!isAdmin && <span className="text-[10px] text-teal-600 dark:text-teal-400 font-normal lowercase">(sinkron admin)</span>}
+            <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] uppercase tracking-wider mb-1">
+              Tahun Ajaran {!isAdmin && <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-normal lowercase">(sinkron admin)</span>}
             </label>
             {isAdmin ? (
               <select
                 value={selectedTahunAjaran}
                 onChange={e => setSelectedTahunAjaran(e.target.value)}
-                className="w-full bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                className="neu-input w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-semibold font-num text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
               >
                 {gradebookTahunAjaranOptions.map(ta => (
                   <option key={ta} value={ta}>
@@ -3391,9 +3407,9 @@ export default function GradebookView({
                 ))}
               </select>
             ) : (
-              <div className="w-full bg-gray-100 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-2 text-xs font-bold text-gray-900 dark:text-white flex items-center justify-between">
+              <div className="neu-inset w-full min-h-[38px] rounded-xl px-3 py-2 text-xs font-bold font-num text-[#0F172A] dark:text-[#F1F5F9] flex items-center justify-between">
                 <span>{selectedTahunAjaran}</span>
-                <i className="fa-solid fa-lock text-[10px] text-gray-400" title="Terkunci sesuai pengaturan admin"></i>
+                <i className="fa-solid fa-lock text-[10px] text-[#64748B]" title="Terkunci sesuai pengaturan admin"></i>
               </div>
             )}
           </div>
@@ -3402,14 +3418,14 @@ export default function GradebookView({
 
       {/* ADMIN UNSELECTED GURU INITIAL EMPTY STATE */}
       {isAdmin && !selectedGuru ? (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 md:p-14 text-center shadow-sm border border-gray-100 dark:border-gray-700/80 mt-4 no-print animate-in fade-in duration-200">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-2xl shadow-inner mb-4">
+        <div className="neu-card rounded-2xl p-8 md:p-14 text-center mt-4 no-print animate-in fade-in duration-200">
+          <div className="neu-inset w-16 h-16 mx-auto rounded-2xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-2xl mb-4">
             <i className="fa-solid fa-chalkboard-user"></i>
           </div>
-          <h3 className="text-base font-bold text-gray-900 dark:text-white mb-2">
+          <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">
             Pilih Guru Pengampu Terlebih Dahulu
           </h3>
-          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs md:text-sm text-[#475569] dark:text-[#94A3B8] max-w-md mx-auto leading-relaxed">
             Silakan pilih Guru Pengampu terlebih dahulu untuk memulai asesmen dan pengelolaan buku nilai.
           </p>
         </div>
@@ -3417,14 +3433,14 @@ export default function GradebookView({
         <>
       {/* VIEW TABS NAVIGATION */}
       <div className="flex items-center justify-between gap-3 flex-wrap no-print">
-        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/80 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-x-auto custom-scroll max-w-full">
+        <div className="neu-inset flex items-center gap-2 p-1.5 rounded-2xl overflow-x-auto custom-scroll max-w-full">
           <button
             type="button"
             onClick={() => setInnerTab('tp-matrix')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               innerTab === 'tp-matrix'
-                ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
-                : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
+                ? 'neu-btn neu-btn-primary text-white'
+                : 'text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]'
             }`}
           >
             <i className="fa-solid fa-table-cells text-xs"></i>
@@ -3433,10 +3449,10 @@ export default function GradebookView({
           <button
             type="button"
             onClick={() => setInnerTab('rekap-semester')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               innerTab === 'rekap-semester'
-                ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
-                : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
+                ? 'neu-btn neu-btn-primary text-white'
+                : 'text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]'
             }`}
           >
             <i className="fa-solid fa-book-open text-xs"></i>
@@ -3445,10 +3461,10 @@ export default function GradebookView({
           <button
             type="button"
             onClick={() => setInnerTab('presensi-sesi')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               innerTab === 'presensi-sesi'
-                ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
-                : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
+                ? 'neu-btn neu-btn-primary text-white'
+                : 'text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]'
             }`}
           >
             <i className="fa-solid fa-calendar-check text-xs"></i>
@@ -3457,10 +3473,10 @@ export default function GradebookView({
           <button
             type="button"
             onClick={() => setInnerTab('statistik')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
+            className={`px-4 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-2 transition-all whitespace-nowrap shrink-0 ${
               innerTab === 'statistik'
-                ? 'bg-white dark:bg-gray-900 text-teal-700 dark:text-teal-300 shadow-sm'
-                : 'text-gray-700 hover:text-gray-900 dark:text-gray-200 dark:hover:text-white'
+                ? 'neu-btn neu-btn-primary text-white'
+                : 'text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]'
             }`}
           >
             <i className="fa-solid fa-chart-pie text-xs"></i>
@@ -3474,7 +3490,7 @@ export default function GradebookView({
             <button
               type="button"
               onClick={exportTpToCsv}
-              className="btn-click bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5"
+              className="btn-click neu-btn px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5"
             >
               <i className="fa-solid fa-file-excel"></i> Export CSV
             </button>
@@ -3483,7 +3499,7 @@ export default function GradebookView({
             <button
               type="button"
               onClick={exportSemesterToCsv}
-              className="btn-click bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:hover:bg-emerald-900/50 dark:text-emerald-300 px-3.5 py-2 rounded-xl text-xs font-bold border border-emerald-200 dark:border-emerald-800 flex items-center gap-1.5"
+              className="btn-click neu-btn px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5"
             >
               <i className="fa-solid fa-file-excel"></i> Export Rapor CSV
             </button>
@@ -3491,7 +3507,7 @@ export default function GradebookView({
           <button
             type="button"
             onClick={() => triggerPrintWithGps()}
-            className="btn-click bg-blue-50 hover:bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-300 px-3.5 py-2 rounded-xl text-xs font-bold border border-blue-200 dark:border-blue-800 flex items-center gap-1.5"
+            className="btn-click neu-btn px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5"
           >
             <i className="fa-solid fa-print"></i> Cetak Dokumen
           </button>
@@ -3528,18 +3544,18 @@ export default function GradebookView({
           {/* 1. UNIFIED SETUP PANEL (PANEL TERPADU KELOLA STRUKTUR CP • TP • KOLOM)     */}
           {/* ========================================================================= */}
           {isSetupPanelOpen && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-md border-2 border-teal-500/30 dark:border-teal-400/20 transition-all animate-in fade-in duration-200 no-print">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-700 gap-3">
+            <div className="neu-card rounded-2xl p-5 ring-1 ring-[#0F766E]/30 dark:ring-teal-400/25 transition-all animate-in fade-in duration-200 no-print">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-300/60 dark:border-slate-700/60 gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center text-sm font-black">
+                    <span className="neu-inset w-9 h-9 rounded-xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-sm font-black">
                       <i className="fa-solid fa-sitemap"></i>
                     </span>
-                    <h2 className="text-sm md:text-base font-black text-gray-900 dark:text-white">
+                    <h2 className="text-sm md:text-base font-black text-[#0F172A] dark:text-[#F1F5F9]">
                       Panel Terpadu: Struktur Capaian, Tujuan Pembelajaran & Asesmen
                     </h2>
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-1">
                     Kelola relasi hierarki Capaian Pembelajaran (CP), Tujuan Pembelajaran (TP), dan Kolom Asesmen (Diagnostik, Formatif, Sumatif) dalam satu antarmuka terpadu tanpa dialog bertingkat.
                   </p>
                 </div>
@@ -3549,7 +3565,7 @@ export default function GradebookView({
                       type="button"
                       onClick={handleQuickInitialize}
                       disabled={isInitializing}
-                      className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white flex items-center gap-1.5 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="btn-click neu-btn-teal px-3.5 py-2 min-h-[36px] rounded-xl text-xs font-bold text-white flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
                       {isInitializing ? 'Menginisialisasi...' : 'Inisialisasi Cepat'}
@@ -3559,7 +3575,7 @@ export default function GradebookView({
                     type="button"
                     disabled={isInitializing}
                     onClick={() => { setIsSetupPanelOpen(false); setInlineMode('idle'); }}
-                    className="btn-click px-3 py-1.5 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="btn-click neu-btn px-3.5 py-2 min-h-[36px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     <i className="fa-solid fa-xmark"></i> Tutup Panel
                   </button>
@@ -3601,7 +3617,7 @@ export default function GradebookView({
                             value={cpForm.kode_cp}
                             onChange={e => setCpForm({ ...cpForm, kode_cp: e.target.value })}
                             placeholder="CP 1"
-                            className="neu-input w-full px-2.5 py-1 text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9]"
+                            className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                         </div>
                         <div>
@@ -3611,7 +3627,7 @@ export default function GradebookView({
                             min="1"
                             value={cpForm.urutan}
                             onChange={e => setCpForm({ ...cpForm, urutan: parseInt(e.target.value) || 1 })}
-                            className="neu-input w-full px-2.5 py-1 text-xs font-num rounded-lg text-[#0F172A] dark:text-[#F1F5F9]"
+                            className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs font-num rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                         </div>
                       </div>
@@ -3623,20 +3639,20 @@ export default function GradebookView({
                           value={cpForm.deskripsi}
                           onChange={e => setCpForm({ ...cpForm, deskripsi: e.target.value })}
                           placeholder="Deskripsi CP..."
-                          className="neu-input w-full px-2.5 py-1 text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9]"
+                          className="neu-input w-full px-2.5 py-1.5 text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         />
                       </div>
                       <div className="flex items-center justify-end gap-1.5 pt-1">
                         <button
                           type="button"
                           onClick={() => setInlineMode('idle')}
-                          className="neu-btn px-2.5 py-1 rounded-lg text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8]"
+                          className="neu-btn px-3 py-1.5 min-h-[36px] rounded-lg text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8]"
                         >
                           Batal
                         </button>
                         <button
                           type="submit"
-                          className="btn-click neu-btn-primary px-3 py-1 rounded-lg text-[11px] font-bold text-white"
+                          className="btn-click neu-btn-primary px-3 py-1.5 min-h-[36px] rounded-lg text-[11px] font-bold text-white"
                         >
                           Simpan CP
                         </button>
@@ -3651,7 +3667,7 @@ export default function GradebookView({
                           setCpForm({ kode_cp: `CP ${cpList.length + 1}`, deskripsi: '', urutan: cpList.length + 1 });
                           setInlineMode('add-cp');
                         }}
-                        className="w-full mb-2.5 py-1.5 px-3 rounded-lg border border-dashed border-sky-400/50 dark:border-sky-600/50 hover:bg-sky-500/10 text-sky-700 dark:text-sky-300 text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                        className="w-full mb-2.5 py-2 px-3 min-h-[36px] rounded-lg border border-dashed border-sky-400/50 dark:border-sky-600/50 hover:bg-sky-500/10 text-sky-700 dark:text-sky-300 text-xs font-bold flex items-center justify-center gap-1.5 transition"
                       >
                         <i className="fa-solid fa-plus text-[10px]"></i> Tambah CP
                       </button>
@@ -3695,23 +3711,25 @@ export default function GradebookView({
                                       setCpForm({ kode_cp: cp.kode_cp, deskripsi: cp.deskripsi, urutan: cp.urutan });
                                       setInlineMode('edit-cp');
                                     }}
-                                    className="w-6 h-6 rounded-lg hover:bg-sky-500/15 text-sky-700 dark:text-sky-300 flex items-center justify-center text-[11px]"
+                                    className="w-9 h-9 rounded-lg hover:bg-sky-500/15 text-sky-700 dark:text-sky-300 flex items-center justify-center text-xs"
                                     title="Edit CP"
+                                    aria-label="Edit CP"
                                   >
                                     <i className="fa-solid fa-pen"></i>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteCp(cp)}
-                                    className="w-6 h-6 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[11px]"
+                                    className="w-9 h-9 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs"
                                     title="Hapus CP"
+                                    aria-label="Hapus CP"
                                   >
                                     <i className="fa-solid fa-trash"></i>
                                   </button>
                                 </div>
                               )}
                             </div>
-                            <p className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
+                            <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1] line-clamp-2 leading-relaxed">
                               {cp.deskripsi}
                             </p>
                           </div>
@@ -3722,17 +3740,17 @@ export default function GradebookView({
                 </div>
 
                 {/* 2. KOLOM TP */}
-                <div className="bg-gray-50 dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
+                <div className="neu-inset rounded-xl p-4 flex flex-col">
                   {/* TP Header */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-md bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300 flex items-center justify-center text-[10px] font-bold">2</span>
-                      <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                      <span className="w-5 h-5 rounded-md bg-teal-500/15 text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-[10px] font-bold font-num">2</span>
+                      <h3 className="text-xs font-black text-[#0F172A] dark:text-[#F1F5F9] uppercase tracking-wider">
                         Tujuan Pembelajaran (TP)
                       </h3>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-[11px] font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/50 px-2 py-0.5 rounded-md">
+                      <span className="text-[11px] font-bold font-num text-[#0F766E] dark:text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded-md">
                         {displayedTpList.length} TP
                       </span>
                     </div>
@@ -3740,22 +3758,22 @@ export default function GradebookView({
 
                   {/* Inline Add / Edit TP Form */}
                   {(inlineMode === 'add-tp' || inlineMode === 'edit-tp') ? (
-                    <form onSubmit={handleSaveTp} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-teal-200 dark:border-teal-700 shadow-sm mb-3 space-y-2 text-xs">
-                      <div className="font-bold text-teal-700 dark:text-teal-300 pb-1 border-b border-gray-100 dark:border-gray-700 text-[11px] flex justify-between">
+                    <form onSubmit={handleSaveTp} className="neu-card-sm p-3 rounded-xl mb-3 space-y-2 text-xs">
+                      <div className="font-bold text-[#0F766E] dark:text-teal-300 pb-1 border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] flex justify-between">
                         <span>{inlineMode === 'edit-tp' ? 'Edit TP' : 'Tambah TP Baru'}</span>
-                        <button type="button" onClick={() => setInlineMode('idle')} className="text-gray-400 hover:text-gray-600">
+                        <button type="button" onClick={() => setInlineMode('idle')} className="text-[#475569] hover:text-[#0F172A] dark:hover:text-white" aria-label="Tutup form TP">
                           <i className="fa-solid fa-xmark"></i>
                         </button>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">
+                        <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">
                           Capaian Pembelajaran (CP) Payung <span className="text-rose-500">*</span>
                         </label>
                         <select
                           required
                           value={tpForm.cp_id}
                           onChange={e => setTpForm({ ...tpForm, cp_id: e.target.value })}
-                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         >
                           <option value="" disabled>-- Pilih Capaian Pembelajaran --</option>
                           {cpList.map(cp => (
@@ -3767,49 +3785,49 @@ export default function GradebookView({
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Kode TP</label>
+                          <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Kode TP</label>
                           <input
                             type="text"
                             required
                             value={tpForm.kode_tp}
                             onChange={e => setTpForm({ ...tpForm, kode_tp: e.target.value })}
                             placeholder="TP 1"
-                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                            className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Urutan</label>
+                          <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Urutan</label>
                           <input
                             type="number"
                             min="1"
                             value={tpForm.urutan}
                             onChange={e => setTpForm({ ...tpForm, urutan: parseInt(e.target.value) || 1 })}
-                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                            className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs font-num rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Deskripsi Tujuan Pembelajaran</label>
+                        <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Deskripsi Tujuan Pembelajaran</label>
                         <textarea
                           required
                           rows={2}
                           value={tpForm.deskripsi}
                           onChange={e => setTpForm({ ...tpForm, deskripsi: e.target.value })}
                           placeholder="Deskripsi TP..."
-                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          className="neu-input w-full px-2.5 py-1.5 text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         />
                       </div>
                       <div className="flex items-center justify-end gap-1.5 pt-1">
                         <button
                           type="button"
                           onClick={() => setInlineMode('idle')}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="neu-btn px-3 py-1.5 min-h-[36px] rounded-lg text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8]"
                         >
                           Batal
                         </button>
                         <button
                           type="submit"
-                          className="btn-click px-3 py-1 rounded-lg text-[11px] font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-sm"
+                          className="btn-click neu-btn-primary px-3 py-1.5 min-h-[36px] rounded-lg text-[11px] font-bold text-white"
                         >
                           Simpan TP
                         </button>
@@ -3836,10 +3854,10 @@ export default function GradebookView({
                           });
                           setInlineMode('add-tp');
                         }}
-                        className={`w-full mb-2.5 py-1.5 px-3 rounded-lg border border-dashed text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                        className={`w-full mb-2.5 py-2 px-3 min-h-[36px] rounded-lg border border-dashed text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                           cpList.length === 0
-                            ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                            : 'border-teal-300 dark:border-teal-700 hover:bg-teal-50/50 dark:hover:bg-teal-950/30 text-teal-700 dark:text-teal-300'
+                            ? 'border-slate-300/60 dark:border-slate-700 text-[#94A3B8] dark:text-slate-500 cursor-not-allowed'
+                            : 'border-[#0F766E]/40 dark:border-teal-500/40 hover:bg-teal-500/10 text-[#0F766E] dark:text-teal-300'
                         }`}
                         title={cpList.length === 0 ? 'Buat CP terlebih dahulu' : 'Tambah TP Baru'}
                       >
@@ -3851,7 +3869,7 @@ export default function GradebookView({
                   {/* TP List */}
                   <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
                     {displayedTpList.length === 0 ? (
-                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
+                      <div className="text-center py-6 text-[#475569] dark:text-[#94A3B8] text-xs italic">
                         {cpList.length === 0
                           ? 'Buat CP di kolom sebelah kiri terlebih dahulu.'
                           : 'Belum ada TP untuk CP ini. Klik "+ Tambah TP Baru".'}
@@ -3867,15 +3885,15 @@ export default function GradebookView({
                           <div
                             key={tp.id}
                             onClick={() => setSelectedTpId(tp.id)}
-                            className={`p-2.5 rounded-xl border text-xs cursor-pointer transition flex flex-col gap-1 ${
+                            className={`p-2.5 rounded-xl text-xs cursor-pointer transition flex flex-col gap-1 ${
                               isSelected
-                                ? 'bg-teal-50/80 border-teal-400 text-teal-950 dark:bg-teal-950/50 dark:border-teal-600 dark:text-teal-100 shadow-sm ring-1 ring-teal-400/30'
-                                : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 hover:border-gray-300'
+                                ? 'neu-card-sm ring-1 ring-[#0F766E]/60 dark:ring-teal-400/60 text-[#0F172A] dark:text-[#F1F5F9]'
+                                : 'neu-card-sm opacity-85 hover:opacity-100 text-[#334155] dark:text-[#CBD5E1]'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-1">
                               <div className="flex items-center gap-1.5 font-black">
-                                <span className="px-1.5 py-0.5 rounded bg-teal-100 text-teal-800 dark:bg-teal-900/60 dark:text-teal-200 text-[10px]">
+                                <span className="px-1.5 py-0.5 rounded bg-teal-500/15 text-[#0F766E] dark:text-teal-200 text-[10px]">
                                   {tp.kode_tp}
                                 </span>
                                 {parentCp && (
@@ -3883,7 +3901,7 @@ export default function GradebookView({
                                     {parentCp.kode_cp}
                                   </span>
                                 )}
-                                <span className="text-[10px] text-gray-400 font-semibold">#{tp.urutan}</span>
+                                <span className="text-[10px] font-num text-[#475569] font-semibold">#{tp.urutan}</span>
                               </div>
                               {!isAdmin && isGuruPengampu && (
                                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
@@ -3901,31 +3919,33 @@ export default function GradebookView({
                                       });
                                       setInlineMode('edit-tp');
                                     }}
-                                    className="w-6 h-6 rounded-lg hover:bg-teal-200/60 dark:hover:bg-teal-800/60 text-teal-700 dark:text-teal-300 flex items-center justify-center text-[11px]"
+                                    className="w-9 h-9 rounded-lg hover:bg-teal-500/15 text-[#0F766E] dark:text-teal-300 flex items-center justify-center text-xs"
                                     title="Edit TP"
+                                    aria-label="Edit TP"
                                   >
                                     <i className="fa-solid fa-pen"></i>
                                   </button>
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteTp(tp)}
-                                    className="w-6 h-6 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[11px]"
+                                    className="w-9 h-9 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs"
                                     title="Hapus TP"
+                                    aria-label="Hapus TP"
                                   >
                                     <i className="fa-solid fa-trash"></i>
                                   </button>
                                 </div>
                               )}
                             </div>
-                            <p className="text-[11px] text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
+                            <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1] line-clamp-2 leading-relaxed">
                               {tp.deskripsi}
                             </p>
-                            <div className="flex items-center gap-2 pt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                            <div className="flex items-center gap-2 pt-0.5 text-[10px] font-num text-[#475569] dark:text-[#94A3B8]">
                               <span>1 Diag</span>
                               <span>• {fCount} Formatif</span>
                               <span>• {sCount} Sumatif</span>
                               {isSelected && (
-                                <span className="ml-auto font-bold text-teal-600 dark:text-teal-400">
+                                <span className="ml-auto font-sans font-bold text-[#0F766E] dark:text-teal-400">
                                   <i className="fa-solid fa-check mr-0.5"></i> Aktif di Matriks
                                 </span>
                               )}
@@ -3938,80 +3958,80 @@ export default function GradebookView({
                 </div>
 
                 {/* 3. KOLOM ASESMEN */}
-                <div className="bg-gray-50 dark:bg-gray-900/70 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
+                <div className="neu-inset rounded-xl p-4 flex flex-col">
                   {/* Kolom Header */}
                   <div className="flex items-center justify-between gap-2 mb-3">
                     <div className="flex items-center gap-1.5">
-                      <span className="w-5 h-5 rounded-md bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 flex items-center justify-center text-[10px] font-bold">3</span>
-                      <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-wider">
+                      <span className="w-5 h-5 rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300 flex items-center justify-center text-[10px] font-bold font-num">3</span>
+                      <h3 className="text-xs font-black text-[#0F172A] dark:text-[#F1F5F9] uppercase tracking-wider">
                         Kolom Asesmen ({currentTP ? currentTP.kode_tp : '-'})
                       </h3>
                     </div>
-                    <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-md">
+                    <span className="text-[11px] font-bold font-num text-sky-700 dark:text-sky-300 bg-sky-500/15 px-2 py-0.5 rounded-md">
                       {columnsList.length} Kolom
                     </span>
                   </div>
 
                   {/* Inline Add / Edit Column Form */}
                   {(inlineMode === 'add-col' || inlineMode === 'edit-col') ? (
-                    <form onSubmit={handleSaveCol} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-blue-200 dark:border-blue-700 shadow-sm mb-3 space-y-2 text-xs">
-                      <div className="font-bold text-blue-700 dark:text-blue-300 pb-1 border-b border-gray-100 dark:border-gray-700 text-[11px] flex justify-between">
+                    <form onSubmit={handleSaveCol} className="neu-card-sm p-3 rounded-xl mb-3 space-y-2 text-xs">
+                      <div className="font-bold text-[#0F766E] dark:text-teal-300 pb-1 border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] flex justify-between">
                         <span>{inlineMode === 'edit-col' ? `Edit Kolom ${colForm.kategori}` : `Tambah Kolom ${colForm.kategori}`}</span>
-                        <button type="button" onClick={() => setInlineMode('idle')} className="text-gray-400 hover:text-gray-600">
+                        <button type="button" onClick={() => setInlineMode('idle')} className="text-[#475569] hover:text-[#0F172A] dark:hover:text-white" aria-label="Tutup form kolom">
                           <i className="fa-solid fa-xmark"></i>
                         </button>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Nama Asesmen</label>
+                        <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Nama Asesmen</label>
                         <input
                           type="text"
                           required
                           value={colForm.nama}
                           onChange={e => setColForm({ ...colForm, nama: e.target.value })}
                           placeholder="Formatif 2, Quiz 1..."
-                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Bobot Nilai</label>
+                          <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Bobot Nilai</label>
                           <input
                             type="number"
                             min="1"
                             max="10"
                             value={colForm.bobot}
                             onChange={e => setColForm({ ...colForm, bobot: parseFloat(e.target.value) || 1 })}
-                            className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                            className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs font-num rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Kategori</label>
-                          <span className="block px-2.5 py-1 text-xs bg-gray-100 dark:bg-gray-800 rounded-lg font-bold text-gray-700 dark:text-gray-300">
+                          <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Kategori</label>
+                          <span className="neu-inset flex items-center px-2.5 py-1.5 min-h-[36px] text-xs rounded-lg font-bold text-[#334155] dark:text-[#CBD5E1]">
                             {colForm.kategori}
                           </span>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-600 dark:text-gray-300 mb-0.5">Keterangan (opsional)</label>
+                        <label className="block text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] mb-0.5">Keterangan (opsional)</label>
                         <input
                           type="text"
                           value={colForm.keterangan}
                           onChange={e => setColForm({ ...colForm, keterangan: e.target.value })}
                           placeholder="Catatan asesmen..."
-                          className="w-full px-2.5 py-1 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white"
+                          className="neu-input w-full px-2.5 py-1.5 min-h-[36px] text-xs rounded-lg text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         />
                       </div>
                       <div className="flex items-center justify-end gap-1.5 pt-1">
                         <button
                           type="button"
                           onClick={() => setInlineMode('idle')}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          className="neu-btn px-3 py-1.5 min-h-[36px] rounded-lg text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8]"
                         >
                           Batal
                         </button>
                         <button
                           type="submit"
-                          className="btn-click px-3 py-1 rounded-lg text-[11px] font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                          className="btn-click neu-btn-primary px-3 py-1.5 min-h-[36px] rounded-lg text-[11px] font-bold text-white"
                         >
                           Simpan Kolom
                         </button>
@@ -4033,7 +4053,7 @@ export default function GradebookView({
                             });
                             setInlineMode('add-col');
                           }}
-                          className="py-1.5 px-2 rounded-lg border border-dashed border-emerald-300 dark:border-emerald-700 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1 transition"
+                          className="py-2 px-2 min-h-[36px] rounded-lg border border-dashed border-emerald-400/50 dark:border-emerald-600/50 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center gap-1 transition"
                         >
                           <i className="fa-solid fa-plus text-[10px]"></i> + Formatif
                         </button>
@@ -4050,7 +4070,7 @@ export default function GradebookView({
                             });
                             setInlineMode('add-col');
                           }}
-                          className="py-1.5 px-2 rounded-lg border border-dashed border-teal-400/50 dark:border-teal-600/50 hover:bg-teal-500/10 text-[#0F766E] dark:text-teal-300 text-xs font-bold flex items-center justify-center gap-1 transition"
+                          className="py-2 px-2 min-h-[36px] rounded-lg border border-dashed border-[#0F766E]/40 dark:border-teal-500/40 hover:bg-teal-500/10 text-[#0F766E] dark:text-teal-300 text-xs font-bold flex items-center justify-center gap-1 transition"
                         >
                           <i className="fa-solid fa-plus text-[10px]"></i> + Sumatif
                         </button>
@@ -4061,11 +4081,11 @@ export default function GradebookView({
                   {/* Column List for current TP */}
                   <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scroll pr-1 flex-1">
                     {!currentTP ? (
-                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
+                      <div className="text-center py-6 text-[#475569] dark:text-[#94A3B8] text-xs italic">
                         Pilih Tujuan Pembelajaran (TP) terlebih dahulu.
                       </div>
                     ) : columnsList.length === 0 ? (
-                      <div className="text-center py-6 text-gray-500 dark:text-gray-400 text-xs italic">
+                      <div className="text-center py-6 text-[#475569] dark:text-[#94A3B8] text-xs italic">
                         Belum ada kolom asesmen.
                       </div>
                     ) : (
@@ -4075,34 +4095,28 @@ export default function GradebookView({
                         return (
                           <div
                             key={col.id}
-                            className={`p-2 rounded-xl border text-xs flex items-center justify-between gap-2 ${
-                              isDiag
-                                ? 'bg-blue-50/50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800'
-                                : isForm
-                                ? 'bg-emerald-50/50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800'
-                                : 'bg-teal-50/60 dark:bg-teal-950/40 border-teal-200 dark:border-teal-800'
-                            }`}
+                            className="neu-card-sm p-2.5 rounded-xl text-xs flex items-center justify-between gap-2"
                           >
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <span className={`px-1.5 py-0.2 rounded text-[10px] font-black ${
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-black ${
                                   isDiag
-                                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200'
+                                    ? 'bg-sky-500/15 text-sky-700 dark:text-sky-300'
                                     : isForm
-                                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200'
-                                    : 'bg-teal-100 text-[#0F766E] dark:bg-teal-900/60 dark:text-teal-200'
+                                    ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                                    : 'bg-teal-500/15 text-[#0F766E] dark:text-teal-300'
                                 }`}>
                                   {col.kategori}
                                 </span>
-                                <span className="font-bold text-gray-900 dark:text-white truncate flex-1 min-w-0 max-w-[150px]">
+                                <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate flex-1 min-w-0 max-w-[150px]">
                                   {col.nama}
                                 </span>
                                 {!isDiag && (
-                                  <span className="text-[10px] text-gray-500 font-normal shrink-0">w:{col.bobot || 1}</span>
+                                  <span className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] font-normal shrink-0">w:{col.bobot || 1}</span>
                                 )}
                               </div>
                               {col.keterangan && (
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[180px] mt-0.5">
+                                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate max-w-[180px] mt-0.5">
                                   {col.keterangan}
                                 </p>
                               )}
@@ -4122,8 +4136,9 @@ export default function GradebookView({
                                     });
                                     setInlineMode('edit-col');
                                   }}
-                                  className="w-6 h-6 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center text-[11px]"
+                                  className="w-9 h-9 rounded-lg hover:bg-slate-300/40 dark:hover:bg-slate-700/60 text-[#475569] dark:text-[#CBD5E1] flex items-center justify-center text-xs"
                                   title="Edit Kolom"
+                                  aria-label="Edit Kolom"
                                 >
                                   <i className="fa-solid fa-pen"></i>
                                 </button>
@@ -4131,8 +4146,9 @@ export default function GradebookView({
                                   <button
                                     type="button"
                                     onClick={() => handleDeleteCol(col)}
-                                    className="w-6 h-6 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 flex items-center justify-center text-[11px]"
+                                    className="w-9 h-9 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs"
                                     title="Hapus Kolom"
+                                    aria-label="Hapus Kolom"
                                   >
                                     <i className="fa-solid fa-trash"></i>
                                   </button>
@@ -4154,10 +4170,10 @@ export default function GradebookView({
           {/* ========================================================================= */}
           {tpList.length === 0 ? (
             /* Cold Start Banner if no TPs exist */
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+            <div className="neu-card rounded-2xl p-5 no-print">
               {/* Educational Guidance Banner preserving T1.5 contract */}
               {cpList.length === 0 && (
-                <div className="p-3.5 mb-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
+                <div className="p-3.5 mb-3 rounded-xl bg-amber-500/15 border border-amber-400/40 dark:border-amber-700/60 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2.5">
                   <i className="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400 text-sm shrink-0"></i>
                   <span>Langkah 1: Buat Capaian Pembelajaran (CP) terlebih dahulu sebelum menambahkan Tujuan Pembelajaran (TP).</span>
                 </div>
@@ -4165,13 +4181,13 @@ export default function GradebookView({
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                 <div>
-                  <h3 className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-2">
+                  <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                     <span>Format Penilaian Belum Tersedia</span>
-                    <span className="text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                    <span className="text-[11px] font-normal text-[#475569] dark:text-[#94A3B8]">
                       ({selectedMapel} - {selectedKelas})
                     </span>
                   </h3>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 max-w-xl">
+                  <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5 max-w-xl">
                     Mata pelajaran ini belum memiliki Tujuan Pembelajaran untuk penilaian. Klik <strong>Inisialisasi Cepat</strong> untuk langsung membuat format Kurikulum Merdeka (1 CP, 1 TP, 1 Diagnostik, 1 Formatif, 1 Sumatif) dengan 1 klik, atau atur manual melalui Panel Terpadu.
                   </p>
                 </div>
@@ -4182,7 +4198,7 @@ export default function GradebookView({
                       type="button"
                       onClick={handleQuickInitialize}
                       disabled={isInitializing}
-                      className="btn-click bg-teal-600 hover:bg-teal-700 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-md flex items-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="btn-click neu-btn-primary text-white px-4 py-2.5 min-h-[40px] rounded-xl text-xs font-black flex items-center gap-2 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <i className={`fa-solid ${isInitializing ? 'fa-spinner fa-spin' : 'fa-bolt'}`}></i>
                       {isInitializing ? 'Menyiapkan...' : 'Inisialisasi Cepat (1 Klik)'}
@@ -4191,7 +4207,7 @@ export default function GradebookView({
                       type="button"
                       disabled={isInitializing}
                       onClick={() => setIsSetupPanelOpen(true)}
-                      className="btn-click bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="btn-click neu-btn text-[#0F172A] dark:text-[#F1F5F9] px-3.5 py-2.5 min-h-[40px] rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       <i className="fa-solid fa-sitemap"></i> Buka Panel Setup
                     </button>
@@ -4208,15 +4224,15 @@ export default function GradebookView({
             </div>
           ) : (
             /* Streamlined Active Bar */
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print space-y-3">
+            <div className="neu-card rounded-2xl p-4 no-print space-y-3">
               {/* Row 1: CP & TP Breadcrumb Pills & Structure Button */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-2 overflow-x-auto pb-1.5 custom-scroll max-w-full touch-pan-x overscroll-x-contain">
                   {/* Active CP Pill */}
                   {selectedCpId && (
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#475569] dark:text-[#94A3B8]">CP:</span>
-                      <div className="neu-inset flex items-center gap-1 text-sky-700 dark:text-sky-300 px-2.5 py-1 rounded-xl text-xs font-black">
+                      <div className="neu-inset flex items-center gap-1 text-sky-700 dark:text-sky-300 px-2.5 py-1.5 min-h-[36px] rounded-xl text-xs font-black">
                         <span>{cpList.find(c => c.id === selectedCpId)?.kode_cp || 'CP'}</span>
                         <span className="font-normal text-[11px] max-w-[120px] truncate hidden sm:inline">
                           - {cpList.find(c => c.id === selectedCpId)?.deskripsi || ''}
@@ -4225,10 +4241,10 @@ export default function GradebookView({
                       <button
                         type="button"
                         onClick={() => setShowAllTp(prev => !prev)}
-                        className={`px-2 py-1 rounded-xl text-[11px] font-bold border transition shrink-0 ${
+                        className={`px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-bold transition shrink-0 ${
                           showAllTp
-                            ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/50 dark:text-teal-200 dark:border-teal-700'
-                            : 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
+                            ? 'neu-btn neu-btn-teal text-white'
+                            : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
                         }`}
                         title={showAllTp ? 'Tampilkan TP Sesuai CP' : 'Tampilkan Semua TP'}
                       >
@@ -4239,19 +4255,19 @@ export default function GradebookView({
                   )}
 
                   {/* Divider */}
-                  <span className="text-gray-300 dark:text-gray-600 font-bold shrink-0">|</span>
+                  <span className="text-slate-300 dark:text-slate-600 font-bold shrink-0">|</span>
 
                   {/* TP Pills */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">TP:</span>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#475569] dark:text-[#94A3B8]">TP:</span>
                     {displayedTpList.map(tp => (
                       <div
                         key={tp.id}
                         onClick={() => setSelectedTpId(tp.id)}
-                        className={`cursor-pointer px-3 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 border transition shrink-0 ${
+                        className={`cursor-pointer px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-black flex items-center gap-1.5 transition shrink-0 ${
                           selectedTpId === tp.id
-                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm ring-2 ring-teal-500/30'
-                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 dark:bg-gray-900/50 dark:text-gray-300 dark:border-gray-700 dark:hover:bg-gray-800'
+                            ? 'neu-btn neu-btn-primary text-white'
+                            : 'neu-btn text-[#334155] dark:text-[#CBD5E1]'
                         }`}
                       >
                         <span>{tp.kode_tp}</span>
@@ -4272,16 +4288,18 @@ export default function GradebookView({
                                 setInlineMode('edit-tp');
                                 setIsSetupPanelOpen(true);
                               }}
-                              className="w-5 h-5 rounded text-white/80 hover:text-white flex items-center justify-center text-[10px] p-0.5"
+                              className="w-7 h-7 rounded-lg text-white/90 hover:text-white hover:bg-white/15 flex items-center justify-center text-[11px]"
                               title="Edit TP"
+                              aria-label="Edit TP"
                             >
                               <i className="fa-solid fa-pen"></i>
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeleteTp(tp)}
-                              className="w-5 h-5 rounded text-white/80 hover:text-rose-200 flex items-center justify-center text-[10px] p-0.5"
+                              className="w-7 h-7 rounded-lg text-white/90 hover:text-rose-200 hover:bg-white/15 flex items-center justify-center text-[11px]"
                               title="Hapus TP"
+                              aria-label="Hapus TP"
                             >
                               <i className="fa-solid fa-trash"></i>
                             </button>
@@ -4297,15 +4315,19 @@ export default function GradebookView({
                   <button
                     type="button"
                     onClick={() => setIsSetupPanelOpen(prev => !prev)}
-                    className={`btn-click w-full sm:w-auto px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition ${
+                    className={`btn-click w-full sm:w-auto px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                       isSetupPanelOpen
-                        ? 'bg-teal-100 text-teal-800 border-teal-300 dark:bg-teal-900/60 dark:text-teal-200 dark:border-teal-700 shadow-sm'
-                        : 'bg-gray-50 hover:bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:hover:bg-gray-750 dark:text-gray-200 dark:border-gray-700'
+                        ? 'neu-btn neu-btn-teal text-white'
+                        : 'neu-btn text-[#0F172A] dark:text-[#F1F5F9]'
                     }`}
                   >
-                    <i className="fa-solid fa-sitemap text-teal-600 dark:text-teal-400"></i>
+                    <i className={`fa-solid fa-sitemap ${isSetupPanelOpen ? 'text-white' : 'text-[#0F766E] dark:text-teal-400'}`}></i>
                     <span>Kelola Struktur Asesmen</span>
-                    <span className="px-1.5 py-0.2 rounded-md bg-white dark:bg-gray-900 text-[10px] text-gray-600 dark:text-gray-300 font-normal">
+                    <span className={`px-1.5 py-0.5 rounded-md font-num text-[10px] font-semibold ${
+                      isSetupPanelOpen
+                        ? 'bg-white/20 text-white'
+                        : 'neu-inset text-[#475569] dark:text-[#CBD5E1]'
+                    }`}>
                       {cpList.length} CP • {tpList.length} TP
                     </span>
                     <i className={`fa-solid ${isSetupPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px] ml-0.5`}></i>
@@ -4315,18 +4337,18 @@ export default function GradebookView({
 
               {/* Row 2: Assessment Column Badges & Quick Action Buttons */}
               {currentTP && (
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-750">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#475569] dark:text-[#94A3B8]">
                       Kolom ({currentTP.kode_tp}):
                     </span>
-                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold font-num bg-sky-500/15 text-sky-700 dark:text-sky-300 flex items-center gap-1">
                       <i className="fa-solid fa-check text-[10px]"></i> 1 Diagnostik (Wajib)
                     </span>
-                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold font-num bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                       {formatifCols.length} Formatif
                     </span>
-                    <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
+                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold font-num bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                       {sumatifCols.length} Sumatif
                     </span>
 
@@ -4346,7 +4368,7 @@ export default function GradebookView({
                             setInlineMode('add-col');
                             setIsSetupPanelOpen(true);
                           }}
-                          className="btn-click px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 transition"
+                          className="btn-click neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1 transition"
                         >
                           <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Formatif
                         </button>
@@ -4364,7 +4386,7 @@ export default function GradebookView({
                             setInlineMode('add-col');
                             setIsSetupPanelOpen(true);
                           }}
-                          className="btn-click px-2.5 py-1 rounded-lg text-xs font-bold bg-teal-500/15 hover:bg-teal-500/25 text-[#0F766E] dark:text-teal-300 flex items-center gap-1 transition"
+                          className="btn-click neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold text-[#0F766E] dark:text-teal-300 flex items-center gap-1 transition"
                         >
                           <i className="fa-solid fa-plus text-[10px]"></i> + Kolom Sumatif
                         </button>
@@ -4381,7 +4403,7 @@ export default function GradebookView({
                         <button
                           type="button"
                           onClick={() => handleOpenBulkFill()}
-                          className="btn-click px-2.5 py-1 rounded-lg text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 flex items-center gap-1 transition"
+                          className="btn-click neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1 transition"
                         >
                           <i className="fa-solid fa-bolt text-[10px]"></i> Isi Nilai Cepat
                         </button>
@@ -4392,13 +4414,13 @@ export default function GradebookView({
                   {/* Student Search */}
                   <div className="w-full md:w-60">
                     <div className="relative">
-                      <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                      <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] text-xs"></i>
                       <input
                         type="text"
                         value={studentSearch}
                         onChange={e => setStudentSearch(e.target.value)}
                         placeholder="Cari nama atau NISN..."
-                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        className="neu-input w-full pl-8 pr-3 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder-[#64748B] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                       />
                     </div>
                   </div>
@@ -4505,10 +4527,10 @@ export default function GradebookView({
               <div className="overflow-x-auto max-h-[600px] custom-scroll relative print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   {/* Table Header */}
-                  <thead className="bg-slate-200/70 dark:bg-slate-900/80 text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 backdrop-blur-md shadow-sm">
+                  <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 shadow-sm print:bg-gray-100 print:text-black">
                     {/* Upper Category Row */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24]">
+                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                         Identitas Siswa
                       </th>
                       <th className="py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-sky-500/10 text-sky-800 dark:text-sky-300">
@@ -4526,33 +4548,33 @@ export default function GradebookView({
                       >
                         Asesmen Sumatif (Lingkup Materi)
                       </th>
-                      <th colSpan={4} className="py-2.5 px-3 text-center bg-amber-50/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300">
+                      <th colSpan={4} className="py-2.5 px-3 text-center bg-amber-500/10 text-amber-800 dark:text-amber-300">
                         Kalkulasi Kurikulum Merdeka
                       </th>
                     </tr>
 
                     {/* Column Headers */}
-                    <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
-                      <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                    <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
 
                       {/* Diagnostik Column */}
                       {diagnostikCol && (
                         <th
-                          className="py-2 px-2 w-28 text-center bg-blue-50/30 dark:bg-blue-950/20 border-r border-gray-200 dark:border-gray-700"
+                          className="py-2 px-2 w-28 text-center bg-sky-500/5 border-r border-slate-300/60 dark:border-slate-700/60"
                           title={diagnostikCol.keterangan ? `Keterangan: ${diagnostikCol.keterangan}` : undefined}
                         >
                           <div className="flex flex-col items-center justify-center gap-0.5">
                             <div className="flex items-center justify-center gap-1">
                               <span>{diagnostikCol.nama}</span>
-                              <span className="text-[9px] px-1 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded">
+                              <span className="text-[9px] px-1 bg-sky-500/15 text-sky-700 dark:text-sky-300 rounded font-num">
                                 1x
                               </span>
                             </div>
                             {diagnostikCol.keterangan && (
-                              <span className="text-[9px] font-normal text-gray-500 dark:text-gray-400 truncate max-w-[90px]">
+                              <span className="text-[9px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
                                 {diagnostikCol.keterangan}
                               </span>
                             )}
@@ -4562,14 +4584,14 @@ export default function GradebookView({
 
                       {/* Formatif Columns */}
                       {formatifCols.length === 0 ? (
-                        <th className="py-2 px-3 w-28 text-center italic text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                        <th className="py-2 px-3 w-28 text-center italic text-[#64748B] border-r border-slate-300/60 dark:border-slate-700/60">
                           Belum ada formatif
                         </th>
                       ) : (
                         formatifCols.map(col => (
                           <th
                             key={col.id}
-                            className="py-2 px-2 w-28 text-center bg-emerald-50/30 dark:bg-emerald-950/20 border-r border-gray-200 dark:border-gray-700 group"
+                            className="py-2 px-2 w-28 text-center bg-emerald-500/5 border-r border-slate-300/60 dark:border-slate-700/60 group"
                             title={col.keterangan ? `Keterangan: ${col.keterangan}` : undefined}
                           >
                             <div className="flex flex-col items-center justify-center gap-0.5">
@@ -4580,24 +4602,26 @@ export default function GradebookView({
                                     <button
                                       type="button"
                                       onClick={() => handleOpenEditColModal(col)}
-                                      className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                      className="w-6 h-6 rounded text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center"
                                       title="Ubah Nama/Bobot/Keterangan"
+                                      aria-label="Edit Kolom Formatif"
                                     >
-                                      <i className="fa-solid fa-pen text-[9px]"></i>
+                                      <i className="fa-solid fa-pen text-[10px]"></i>
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteCol(col)}
-                                      className="w-4 h-4 rounded text-red-400 hover:text-red-600"
+                                      className="w-6 h-6 rounded text-rose-500 hover:text-rose-600 flex items-center justify-center"
                                       title="Hapus Kolom"
+                                      aria-label="Hapus Kolom Formatif"
                                     >
-                                      <i className="fa-solid fa-trash text-[9px]"></i>
+                                      <i className="fa-solid fa-trash text-[10px]"></i>
                                     </button>
                                   </div>
                                 )}
                               </div>
                               {col.keterangan && (
-                                <span className="text-[9px] font-normal text-gray-500 dark:text-gray-400 truncate max-w-[90px]">
+                                <span className="text-[9px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
                                   {col.keterangan}
                                 </span>
                               )}
@@ -4608,14 +4632,14 @@ export default function GradebookView({
 
                       {/* Sumatif Columns */}
                       {sumatifCols.length === 0 ? (
-                        <th className="py-2 px-3 w-28 text-center italic text-gray-400 border-r border-gray-200 dark:border-gray-700">
+                        <th className="py-2 px-3 w-28 text-center italic text-[#64748B] border-r border-slate-300/60 dark:border-slate-700/60">
                           Belum ada sumatif
                         </th>
                       ) : (
                         sumatifCols.map(col => (
                           <th
                             key={col.id}
-                            className="py-2 px-2 w-28 text-center bg-teal-500/10 dark:bg-teal-950/20 border-r border-slate-300/60 dark:border-slate-700/60 group"
+                            className="py-2 px-2 w-28 text-center bg-teal-500/10 border-r border-slate-300/60 dark:border-slate-700/60 group"
                             title={col.keterangan ? `Keterangan: ${col.keterangan}` : undefined}
                           >
                             <div className="flex flex-col items-center justify-center gap-0.5">
@@ -4626,24 +4650,26 @@ export default function GradebookView({
                                     <button
                                       type="button"
                                       onClick={() => handleOpenEditColModal(col)}
-                                      className="w-4 h-4 rounded text-gray-400 hover:text-gray-600 dark:hover:text-white"
+                                      className="w-6 h-6 rounded text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center"
                                       title="Ubah Nama/Bobot/Keterangan"
+                                      aria-label="Edit Kolom Sumatif"
                                     >
-                                      <i className="fa-solid fa-pen text-[9px]"></i>
+                                      <i className="fa-solid fa-pen text-[10px]"></i>
                                     </button>
                                     <button
                                       type="button"
                                       onClick={() => handleDeleteCol(col)}
-                                      className="w-4 h-4 rounded text-red-400 hover:text-red-600"
+                                      className="w-6 h-6 rounded text-rose-500 hover:text-rose-600 flex items-center justify-center"
                                       title="Hapus Kolom"
+                                      aria-label="Hapus Kolom Sumatif"
                                     >
-                                      <i className="fa-solid fa-trash text-[9px]"></i>
+                                      <i className="fa-solid fa-trash text-[10px]"></i>
                                     </button>
                                   </div>
                                 )}
                               </div>
                               {col.keterangan && (
-                                <span className="text-[9px] font-normal text-gray-500 dark:text-gray-400 truncate max-w-[90px]">
+                                <span className="text-[9px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
                                   {col.keterangan}
                                 </span>
                               )}
@@ -4653,9 +4679,9 @@ export default function GradebookView({
                       )}
 
                       {/* Summary Columns */}
-                      <th className="py-2 px-2 w-24 text-center bg-amber-50/30 dark:bg-amber-950/20">Rata Formatif</th>
-                      <th className="py-2 px-2 w-24 text-center bg-amber-50/30 dark:bg-amber-950/20">Rata Sumatif</th>
-                      <th className="py-2 px-2 w-28 text-center font-black bg-amber-100/50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
+                      <th className="py-2 px-2 w-24 text-center bg-amber-500/5">Rata Formatif</th>
+                      <th className="py-2 px-2 w-24 text-center bg-amber-500/5">Rata Sumatif</th>
+                      <th className="py-2 px-2 w-28 text-center font-black bg-amber-500/15 text-amber-900 dark:text-amber-200">
                         Nilai Akhir TP
                       </th>
                       <th className="py-2 px-2.5 w-32 text-center">Predikat</th>
@@ -4663,7 +4689,7 @@ export default function GradebookView({
                   </thead>
 
                   {/* Table Body */}
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60">
                     {filteredStudents.map((student, idx) => {
                       const stats = calculateStudentTpStats(student.nisn);
                       const sGrades = gradesMap[student.nisn] || {};
@@ -4671,25 +4697,25 @@ export default function GradebookView({
                       return (
                         <tr
                           key={student.nisn}
-                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors group"
+                          className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
                           {/* Student Info */}
-                          <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 text-center text-gray-500 font-medium w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[136px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-3 font-semibold text-gray-900 dark:text-white w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
                             <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] max-w-[48px]">
+                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 text-center text-[#475569] dark:text-[#94A3B8] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
                           {/* Diagnostik Cell */}
                           {diagnostikCol && (
-                            <td className="p-1 text-center bg-blue-50/10 dark:bg-blue-950/10 border-r border-gray-200 dark:border-gray-700">
+                            <td className="p-1 text-center bg-sky-500/5 border-r border-slate-300/60 dark:border-slate-700/60">
                               {isAdmin || !isGuruPengampu ? (
-                                <span className="font-semibold text-gray-900 dark:text-white">
+                                <span className="font-semibold font-num text-[#0F172A] dark:text-[#F1F5F9]">
                                   {sGrades[diagnostikCol.id] ?? '-'}
                                 </span>
                               ) : (
@@ -4706,10 +4732,10 @@ export default function GradebookView({
                                   onKeyDown={e => handleCellKeyDown(e, idx, 0)}
                                   onFocus={e => e.target.select()}
                                   placeholder="-"
-                                  className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                  className={`neu-input w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-bold font-num transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
                                     dirtyGrades[`${student.nisn}_${diagnostikCol.id}`]
-                                      ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
+                                      ? 'ring-2 ring-amber-400/70 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                      : 'text-[#0F172A] dark:text-[#F1F5F9]'
                                   }`}
                                 />
                               )}
@@ -4718,7 +4744,7 @@ export default function GradebookView({
 
                           {/* Formatif Cells */}
                           {formatifCols.length === 0 ? (
-                            <td className="p-2 text-center text-gray-400 italic text-[11px] border-r border-gray-200 dark:border-gray-700">
+                            <td className="p-2 text-center text-[#64748B] italic text-[11px] border-r border-slate-300/60 dark:border-slate-700/60">
                               -
                             </td>
                           ) : (
@@ -4728,51 +4754,7 @@ export default function GradebookView({
                               return (
                                 <td
                                   key={col.id}
-                                  className="p-1 text-center bg-emerald-50/10 dark:bg-emerald-950/10 border-r border-gray-200 dark:border-gray-700"
-                                >
-                                  {isAdmin || !isGuruPengampu ? (
-                                    <span className="font-semibold text-gray-900 dark:text-white">
-                                      {sGrades[col.id] ?? '-'}
-                                    </span>
-                                  ) : (
-                                    <input
-                                      id={`grade-cell-${idx}-${colIndex}`}
-                                      data-row={idx}
-                                      data-col={colIndex}
-                                      type="number"
-                                      min="0"
-                                      max="100"
-                                      step="0.5"
-                                      value={sGrades[col.id] ?? ''}
-                                      onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
-                                      onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
-                                      onFocus={e => e.target.select()}
-                                      placeholder="-"
-                                      className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                                        isDirty
-                                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white'
-                                      }`}
-                                    />
-                                  )}
-                                </td>
-                              );
-                            })
-                          )}
-
-                          {/* Sumatif Cells */}
-                          {sumatifCols.length === 0 ? (
-                            <td className="p-2 text-center text-gray-400 italic text-[11px] border-r border-gray-200 dark:border-gray-700">
-                              -
-                            </td>
-                          ) : (
-                            sumatifCols.map((col, smIdx) => {
-                              const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
-                              const colIndex = (diagnostikCol ? 1 : 0) + formatifCols.length + smIdx;
-                              return (
-                                <td
-                                  key={col.id}
-                                  className="p-1 text-center bg-teal-500/5 dark:bg-teal-950/10 border-r border-slate-300/60 dark:border-slate-700/60"
+                                  className="p-1 text-center bg-emerald-500/5 border-r border-slate-300/60 dark:border-slate-700/60"
                                 >
                                   {isAdmin || !isGuruPengampu ? (
                                     <span className="font-semibold font-num text-[#0F172A] dark:text-[#F1F5F9]">
@@ -4792,10 +4774,54 @@ export default function GradebookView({
                                       onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
                                       onFocus={e => e.target.select()}
                                       placeholder="-"
-                                      className={`w-16 mx-auto text-center py-1 px-1 rounded-lg border text-xs font-bold font-num transition focus:outline-none focus:ring-2 focus:ring-[#0F766E] ${
+                                      className={`neu-input w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-bold font-num transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
                                         isDirty
-                                          ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
-                                          : 'border-slate-300/70 dark:border-slate-700 bg-[#E6ECF2]/60 dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9]'
+                                          ? 'ring-2 ring-amber-400/70 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                          : 'text-[#0F172A] dark:text-[#F1F5F9]'
+                                      }`}
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })
+                          )}
+
+                          {/* Sumatif Cells */}
+                          {sumatifCols.length === 0 ? (
+                            <td className="p-2 text-center text-[#64748B] italic text-[11px] border-r border-slate-300/60 dark:border-slate-700/60">
+                              -
+                            </td>
+                          ) : (
+                            sumatifCols.map((col, smIdx) => {
+                              const isDirty = dirtyGrades[`${student.nisn}_${col.id}`];
+                              const colIndex = (diagnostikCol ? 1 : 0) + formatifCols.length + smIdx;
+                              return (
+                                <td
+                                  key={col.id}
+                                  className="p-1 text-center bg-teal-500/5 border-r border-slate-300/60 dark:border-slate-700/60"
+                                >
+                                  {isAdmin || !isGuruPengampu ? (
+                                    <span className="font-semibold font-num text-[#0F172A] dark:text-[#F1F5F9]">
+                                      {sGrades[col.id] ?? '-'}
+                                    </span>
+                                  ) : (
+                                    <input
+                                      id={`grade-cell-${idx}-${colIndex}`}
+                                      data-row={idx}
+                                      data-col={colIndex}
+                                      type="number"
+                                      min="0"
+                                      max="100"
+                                      step="0.5"
+                                      value={sGrades[col.id] ?? ''}
+                                      onChange={e => handleGradeChange(student.nisn, col.id, e.target.value)}
+                                      onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
+                                      onFocus={e => e.target.select()}
+                                      placeholder="-"
+                                      className={`neu-input w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-bold font-num transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
+                                        isDirty
+                                          ? 'ring-2 ring-amber-400/70 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
+                                          : 'text-[#0F172A] dark:text-[#F1F5F9]'
                                       }`}
                                     />
                                   )}
@@ -4831,7 +4857,7 @@ export default function GradebookView({
                   {/* Table Footer: Class Average */}
                   <tfoot className="bg-[#DDE4EE] dark:bg-[#181C24] font-extrabold border-t-2 border-slate-300/70 dark:border-slate-700 text-[#0F172A] dark:text-[#F1F5F9]">
                     <tr>
-                      <td colSpan={4} className="sticky left-0 z-10 bg-[#DDE4EE] dark:bg-[#181C24] py-2.5 px-3 text-right border-r border-slate-300/60 dark:border-slate-700">
+                      <td colSpan={4} className="sticky left-0 z-10 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-3 text-right border-r border-slate-300/60 dark:border-slate-700">
                         Rata-rata Kelas:
                       </td>
                       {diagnostikCol && (
@@ -4882,7 +4908,7 @@ export default function GradebookView({
                           </td>
                         ))
                       )}
-                      <td className="py-2.5 px-2 text-center text-gray-700 dark:text-gray-300">
+                      <td className="py-2.5 px-2 text-center font-num text-[#334155] dark:text-[#CBD5E1]">
                         {(() => {
                           let sum = 0, c = 0;
                           students.forEach(s => {
@@ -4892,7 +4918,7 @@ export default function GradebookView({
                           return c > 0 ? (sum / c).toFixed(1) : '-';
                         })()}
                       </td>
-                      <td className="py-2.5 px-2 text-center text-gray-700 dark:text-gray-300">
+                      <td className="py-2.5 px-2 text-center font-num text-[#334155] dark:text-[#CBD5E1]">
                         {(() => {
                           let sum = 0, c = 0;
                           students.forEach(s => {
@@ -4902,10 +4928,10 @@ export default function GradebookView({
                           return c > 0 ? (sum / c).toFixed(1) : '-';
                         })()}
                       </td>
-                      <td className="py-2.5 px-2 text-center text-sm font-black text-amber-800 dark:text-amber-300 bg-amber-100/50 dark:bg-amber-950/40">
+                      <td className="py-2.5 px-2 text-center text-sm font-black font-num text-amber-800 dark:text-amber-300 bg-amber-500/15">
                         {classAnalytics.classAvg > 0 ? classAnalytics.classAvg : '-'}
                       </td>
-                      <td className="py-2.5 px-2.5 text-center text-[11px]">
+                      <td className="py-2.5 px-2.5 text-center font-num text-[11px]">
                         Tuntas: {classAnalytics.tuntasPct}%
                       </td>
                     </tr>
@@ -4933,18 +4959,18 @@ export default function GradebookView({
       {/* ========================================================================= */}
       {innerTab === 'rekap-semester' && (
         <div className="space-y-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+          <div className="neu-card rounded-2xl p-4 no-print">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white">
+                <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   Rekapitulasi Nilai Akhir Semester (Rapor)
                 </h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
                   Nilai Akhir dari setiap Tujuan Pembelajaran (TP) dikompilasi untuk menghasilkan Nilai Rapor Semester.
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-teal-700 dark:text-teal-300 bg-teal-50 dark:bg-teal-900/30 px-3 py-1.5 rounded-xl border border-teal-200 dark:border-teal-800">
+                <span className="neu-inset text-xs font-bold font-num text-[#0F766E] dark:text-teal-300 px-3 py-1.5 rounded-xl">
                   Total {tpList.length} TP Terkompilasi
                 </span>
               </div>
@@ -4952,25 +4978,25 @@ export default function GradebookView({
           </div>
 
           {tpList.length === 0 ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-10 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-              <i className="fa-solid fa-folder-open text-3xl text-gray-400 mb-2"></i>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+            <div className="neu-card-sm rounded-2xl p-10 text-center">
+              <i className="fa-solid fa-folder-open text-3xl text-[#64748B] mb-2"></i>
+              <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
                 Belum ada TP yang dibuat untuk semester ini.
               </p>
             </div>
           ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
+            <div className="neu-card-sm rounded-2xl overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
               <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-30 backdrop-blur-md shadow-sm">
+                  <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 shadow-sm print:bg-gray-100 print:text-black">
                     {/* Upper Category Row */}
-                    <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
+                    <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider">
+                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                         Identitas Siswa
                       </th>
                       <th
                         colSpan={tpList.length + 1}
-                        className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-emerald-50/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300"
+                        className="py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
                       >
                         Asesmen Formatif (Proses) • Bobot {bobotFormatif}%
                       </th>
@@ -4992,10 +5018,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
-                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
 
                       {/* Header per TP - Formatif */}
                       {tpList.map(tp => (
@@ -5061,14 +5087,14 @@ export default function GradebookView({
                           key={student.nisn}
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-2.5 text-center text-[#475569] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-2.5 font-mono text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 text-center text-[#475569] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
                             <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
+                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -5134,23 +5160,23 @@ export default function GradebookView({
                           </td>
 
                           {/* Nilai Rapor Semester */}
-                          <td className="py-2.5 px-3 text-center font-black text-sm bg-amber-50/50 dark:bg-amber-950/30 text-amber-900 dark:text-amber-200 border-r border-gray-200 dark:border-gray-700">
+                          <td className="py-2.5 px-3 text-center font-black font-num text-sm bg-amber-500/10 text-amber-900 dark:text-amber-200 border-r border-slate-300/60 dark:border-slate-700/60">
                             {stats.semesterFinal !== null ? stats.semesterFinal : '-'}
                           </td>
 
                           {/* Predikat */}
-                          <td className="py-2.5 px-3 text-center border-r border-gray-200 dark:border-gray-700">
+                          <td className="py-2.5 px-3 text-center border-r border-slate-300/60 dark:border-slate-700/60">
                             {stats.predikat !== '-' ? (
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${stats.predikatBadge}`}>
                                 {stats.predikat}
                               </span>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              <span className="text-[#64748B]">-</span>
                             )}
                           </td>
 
                           {/* Deskripsi Capaian Pembelajaran */}
-                          <td className="py-2.5 px-3 text-left whitespace-normal text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed max-w-sm">
+                          <td className="py-2.5 px-3 text-left whitespace-normal text-[11px] text-[#334155] dark:text-[#CBD5E1] leading-relaxed max-w-sm">
                             {stats.deskripsiCapaian}
                           </td>
                         </tr>
@@ -5180,21 +5206,21 @@ export default function GradebookView({
       {innerTab === 'presensi-sesi' && (
         <div className="space-y-4">
           {/* Header Card / Action Bar */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
+          <div className="neu-card rounded-2xl p-4 no-print">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i className="fa-solid fa-calendar-check text-teal-600 dark:text-teal-400"></i>
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                    <i className="fa-solid fa-calendar-check text-[#0F766E] dark:text-teal-400"></i>
                     Rincian Presensi Sesi & Poin Kehadiran (16 Pertemuan)
                   </h3>
                   {isSavingAttendance && (
-                    <span className="text-[10px] font-bold text-teal-700 bg-teal-50 dark:bg-teal-900/40 px-2 py-0.5 rounded-md inline-flex items-center gap-1 animate-pulse">
+                    <span className="text-[10px] font-bold text-[#0F766E] dark:text-teal-300 bg-teal-500/15 px-2 py-0.5 rounded-md inline-flex items-center gap-1 animate-pulse">
                       <i className="fa-solid fa-spinner fa-spin"></i> Menyimpan ke Jurnal...
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-1">
                   Kelola status kehadiran setiap pertemuan KBM secara interaktif. Nilai kehadiran dan kalkulasi rapor terupdate seketika.
                 </p>
               </div>
@@ -5202,14 +5228,14 @@ export default function GradebookView({
               {/* Role-Based Mode Switcher: Wali Kelas / Admin can toggle, Guru Mapel strictly Presensi Mapel */}
               <div className="flex items-center gap-2 flex-wrap">
                 {!isPureGuruMapel ? (
-                  <div className="bg-gray-100 dark:bg-gray-900 p-1 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center gap-1">
+                  <div className="neu-inset p-1.5 rounded-2xl flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => setActiveAttendanceView('mapel')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      className={`px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                         activeAttendanceView === 'mapel'
-                          ? 'bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-300 shadow-sm'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                          ? 'neu-btn neu-btn-primary text-white'
+                          : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                       }`}
                     >
                       <i className="fa-solid fa-book text-xs"></i>
@@ -5218,10 +5244,10 @@ export default function GradebookView({
                     <button
                       type="button"
                       onClick={() => setActiveAttendanceView('harian')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                      className={`px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                         activeAttendanceView === 'harian'
-                          ? 'neu-btn-primary text-white shadow-sm'
-                          : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
+                          ? 'neu-btn neu-btn-primary text-white'
+                          : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                       }`}
                     >
                       <i className="fa-solid fa-calendar-day text-xs"></i>
@@ -5229,7 +5255,7 @@ export default function GradebookView({
                     </button>
                   </div>
                 ) : (
-                  <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 border border-teal-200 dark:border-teal-800 inline-flex items-center gap-1.5">
+                  <span className="neu-inset px-3 py-2 min-h-[38px] rounded-xl text-xs font-bold text-[#0F766E] dark:text-teal-300 inline-flex items-center gap-1.5">
                     <i className="fa-solid fa-book text-xs"></i>
                     Presensi Mapel: {selectedMapel} ({selectedKelas})
                   </span>
@@ -5238,49 +5264,49 @@ export default function GradebookView({
             </div>
 
             {/* Attendance Metrics Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/80">
-              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block">Kemajuan Pertemuan</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
+              <div className="neu-inset p-3.5 rounded-xl">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] block">Kemajuan Pertemuan</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-xl font-black text-gray-900 dark:text-white">
+                  <span className="text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                     {sessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0).length}
                   </span>
-                  <span className="text-xs font-bold text-gray-400">/ 16 Sesi</span>
+                  <span className="text-xs font-bold font-num text-[#64748B]">/ 16 Sesi</span>
                 </div>
-                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold mt-0.5 block">
+                <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-semibold font-num mt-0.5 block">
                   Semester {selectedSemester} ({selectedTahunAjaran})
                 </span>
               </div>
 
-              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block">Bobot Nilai Kehadiran</span>
+              <div className="neu-inset p-3.5 rounded-xl">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] block">Bobot Nilai Kehadiran</span>
                 <div className="flex items-baseline gap-1 mt-1">
-                  <span className="text-xl font-black text-teal-700 dark:text-teal-300">
+                  <span className="text-xl font-black font-num text-[#0F766E] dark:text-teal-300">
                     {bobotKehadiran}%
                   </span>
-                  <span className="text-xs font-bold text-gray-400">dari Nilai Rapor</span>
+                  <span className="text-xs font-bold text-[#64748B]">dari Nilai Rapor</span>
                 </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-0.5 block">
+                <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-medium mt-0.5 block">
                   Komponen Kehadiran Buku Nilai
                 </span>
               </div>
 
-              <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-100 dark:border-gray-700 lg:col-span-2">
-                <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 block mb-1.5">Skor Poin Status Kehadiran</span>
-                <div className="flex items-center gap-2 flex-wrap text-xs">
-                  <span className="px-2 py-0.5 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-200 font-bold text-[11px]">
+              <div className="neu-inset p-3.5 rounded-xl lg:col-span-2">
+                <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] block mb-1.5">Skor Poin Status Kehadiran</span>
+                <div className="flex items-center gap-2 flex-wrap text-xs font-num">
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-bold text-[11px]">
                     Hadir (H): {statusPoints.hadir ?? 100} pts
                   </span>
-                  <span className="px-2 py-0.5 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 font-bold text-[11px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-sky-500/15 text-sky-800 dark:text-sky-200 font-bold text-[11px]">
                     Sakit (S): {statusPoints.sakit ?? 75} pts
                   </span>
-                  <span className="px-2 py-0.5 rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 font-bold text-[11px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-200 font-bold text-[11px]">
                     Izin (I): {statusPoints.izin ?? 75} pts
                   </span>
-                  <span className="px-2 py-0.5 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200 font-bold text-[11px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-orange-500/15 text-orange-800 dark:text-orange-200 font-bold text-[11px]">
                     Terlambat (T): {statusPoints.terlambat ?? 75} pts
                   </span>
-                  <span className="px-2 py-0.5 rounded-lg bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-200 font-bold text-[11px]">
+                  <span className="px-2 py-0.5 rounded-lg bg-rose-500/15 text-rose-800 dark:text-rose-200 font-bold text-[11px]">
                     Alpa (A): {statusPoints.alpa ?? 0} pts
                   </span>
                 </div>
@@ -5290,53 +5316,53 @@ export default function GradebookView({
 
           {/* Table Container */}
           {activeAttendanceView === 'mapel' ? (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
+            <div className="neu-card-sm rounded-2xl overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
               <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                  <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 sticky top-0 z-30 backdrop-blur-md shadow-sm">
+                  <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 shadow-sm print:bg-gray-100 print:text-black">
                     {/* Category Header Row */}
-                    <tr className="border-b border-gray-200 dark:border-gray-700 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-gray-100 dark:bg-gray-800">
+                    <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider">
+                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                         Identitas Siswa
                       </th>
-                      <th colSpan={16} className="py-2.5 px-3 border-r border-gray-200 dark:border-gray-700 text-center bg-teal-50/70 dark:bg-teal-950/40 text-teal-800 dark:text-teal-300">
+                      <th colSpan={16} className="py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                         16 Pertemuan KBM Sesi Tatap Muka
                       </th>
-                      <th colSpan={7} className="py-2.5 px-3 text-center bg-blue-50/70 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300">
+                      <th colSpan={7} className="py-2.5 px-3 text-center bg-sky-500/10 text-sky-800 dark:text-sky-300">
                         Rekapitulasi Kehadiran & Kontribusi Nilai
                       </th>
                     </tr>
 
                     {/* Column Headers */}
-                    <tr className="border-b border-gray-200 dark:border-gray-700 font-bold text-gray-800 dark:text-gray-200 text-[11px]">
-                      <th className="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-gray-50 dark:bg-gray-900 py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-gray-200 dark:border-gray-700">L/P</th>
+                    <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
 
                       {/* 16 Session Columns */}
                       {sessions.map(sess => (
                         <th
                           key={sess.sessionNumber}
-                          className="py-2 px-2 w-20 text-center border-r border-gray-200 dark:border-gray-700 bg-gray-50/40 dark:bg-gray-900/30"
+                          className="py-2 px-2 w-20 text-center border-r border-slate-300/60 dark:border-slate-700/60 bg-[#E6ECF2]/60 dark:bg-[#1F242D]/60"
                         >
                           <div className="flex flex-col items-center justify-center gap-0.5">
-                            <span className="font-extrabold text-gray-800 dark:text-gray-200 text-[11px]">
+                            <span className="font-extrabold font-num text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
                               P{sess.sessionNumber}
                             </span>
                             {sess.tanggal ? (
-                              <span className="text-[8px] font-normal text-gray-400 font-mono">
+                              <span className="text-[8px] font-normal text-[#475569] dark:text-[#94A3B8] font-mono font-num">
                                 {sess.tanggal.slice(5)}
                               </span>
                             ) : (
-                              <span className="text-[8px] font-normal text-gray-400 italic">
+                              <span className="text-[8px] font-normal text-[#64748B] italic">
                                 Belum
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => handleMarkAllPresent(sess.sessionNumber)}
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-teal-50 text-teal-700 hover:bg-teal-100 dark:bg-teal-900/40 dark:text-teal-300 dark:hover:bg-teal-900/70 font-semibold border border-teal-200 dark:border-teal-700 transition flex items-center gap-1 mt-0.5"
+                              className="text-[9px] px-2 py-1 min-h-[28px] rounded-lg bg-teal-500/15 text-[#0F766E] hover:bg-teal-500/25 dark:text-teal-300 font-semibold transition flex items-center gap-1 mt-0.5"
                               title={`Tandai Semua Hadir pada Pertemuan ${sess.sessionNumber}`}
                             >
                               <i className="fa-solid fa-check-double text-[8px]"></i> Hadir
@@ -5346,21 +5372,21 @@ export default function GradebookView({
                       ))}
 
                       {/* Rekap Counts */}
-                      <th className="py-2 px-2 w-12 text-center font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50/30 dark:bg-emerald-950/20 border-r border-gray-200 dark:border-gray-700">H</th>
-                      <th className="py-2 px-2 w-12 text-center font-bold text-blue-700 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-950/20 border-r border-gray-200 dark:border-gray-700">S</th>
-                      <th className="py-2 px-2 w-12 text-center font-bold text-amber-700 dark:text-amber-300 bg-amber-50/30 dark:bg-amber-950/20 border-r border-gray-200 dark:border-gray-700">I</th>
-                      <th className="py-2 px-2 w-12 text-center font-bold text-red-700 dark:text-red-300 bg-red-50/30 dark:bg-red-950/20 border-r border-gray-200 dark:border-gray-700">A</th>
-                      <th className="py-2 px-2.5 w-20 text-center font-bold border-r border-gray-200 dark:border-gray-700">Total Poin</th>
-                      <th className="py-2 px-2.5 w-24 text-center font-black bg-teal-100/60 dark:bg-teal-950/40 text-teal-900 dark:text-teal-200 border-r border-gray-200 dark:border-gray-700">
+                      <th className="py-2 px-2 w-12 text-center font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border-r border-slate-300/60 dark:border-slate-700/60">H</th>
+                      <th className="py-2 px-2 w-12 text-center font-bold text-sky-700 dark:text-sky-300 bg-sky-500/10 border-r border-slate-300/60 dark:border-slate-700/60">S</th>
+                      <th className="py-2 px-2 w-12 text-center font-bold text-amber-700 dark:text-amber-300 bg-amber-500/10 border-r border-slate-300/60 dark:border-slate-700/60">I</th>
+                      <th className="py-2 px-2 w-12 text-center font-bold text-rose-700 dark:text-rose-300 bg-rose-500/10 border-r border-slate-300/60 dark:border-slate-700/60">A</th>
+                      <th className="py-2 px-2.5 w-20 text-center font-bold border-r border-slate-300/60 dark:border-slate-700/60">Total Poin</th>
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-teal-500/15 text-[#0F766E] dark:text-teal-200 border-r border-slate-300/60 dark:border-slate-700/60">
                         Kehadiran (%)
                       </th>
-                      <th className="py-2 px-2.5 w-24 text-center font-black bg-amber-100/60 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
+                      <th className="py-2 px-2.5 w-24 text-center font-black bg-amber-500/15 text-amber-900 dark:text-amber-200">
                         Kontribusi Rapor
                       </th>
                     </tr>
                   </thead>
 
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tbody className="divide-y divide-slate-200/70 dark:divide-slate-700/60">
                     {filteredStudents.map((student, idx) => {
                       const validRecordedSessions = sessions.filter(s => s.isRecorded || Object.keys(s.attendanceMap).length > 0);
                       let hCount = 0;
@@ -5386,16 +5412,16 @@ export default function GradebookView({
                       return (
                         <tr
                           key={student.nisn}
-                          className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition-colors group"
+                          className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
-                          <td className="sticky left-0 z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 text-center text-gray-500 font-medium w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2.5 font-mono text-[11px] text-gray-600 dark:text-gray-300 w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[136px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-3 font-semibold text-gray-900 dark:text-white w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
                             <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/60 py-2 px-2 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] max-w-[48px]">
+                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 text-center text-[#475569] dark:text-[#94A3B8] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -5404,23 +5430,24 @@ export default function GradebookView({
                             const rawStatus = sess.attendanceMap[student.nisn];
                             const status = rawStatus || (sess.isRecorded ? 'H' : '-');
                             
-                            let badgeStyle = 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500 border border-dashed border-gray-300 dark:border-gray-600';
-                            if (status === 'H') badgeStyle = 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 font-extrabold';
-                            else if (status === 'S') badgeStyle = 'bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-200 border border-blue-300 dark:border-blue-700 font-extrabold';
-                            else if (status === 'I') badgeStyle = 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200 border border-amber-300 dark:border-amber-700 font-extrabold';
-                            else if (status === 'T') badgeStyle = 'bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200 border border-orange-300 dark:border-orange-700 font-extrabold';
-                            else if (status === 'A' || status === 'B') badgeStyle = 'bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200 border border-red-300 dark:border-red-700 font-extrabold';
+                            let badgeStyle = 'neu-inset text-[#64748B] dark:text-slate-500';
+                            if (status === 'H') badgeStyle = 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 border border-emerald-400/50 dark:border-emerald-700 font-extrabold';
+                            else if (status === 'S') badgeStyle = 'bg-sky-500/20 text-sky-800 dark:text-sky-200 border border-sky-400/50 dark:border-sky-700 font-extrabold';
+                            else if (status === 'I') badgeStyle = 'bg-amber-500/20 text-amber-800 dark:text-amber-200 border border-amber-400/50 dark:border-amber-700 font-extrabold';
+                            else if (status === 'T') badgeStyle = 'bg-orange-500/20 text-orange-800 dark:text-orange-200 border border-orange-400/50 dark:border-orange-700 font-extrabold';
+                            else if (status === 'A' || status === 'B') badgeStyle = 'bg-rose-500/20 text-rose-800 dark:text-rose-200 border border-rose-400/50 dark:border-rose-700 font-extrabold';
 
                             return (
                               <td
                                 key={sess.sessionNumber}
-                                className="py-2 px-1.5 text-center border-r border-gray-200 dark:border-gray-700"
+                                className="py-1.5 px-1.5 text-center border-r border-slate-300/60 dark:border-slate-700/60"
                               >
                                 <button
                                   type="button"
                                   onClick={() => handleUpdateCellStatus(sess.sessionNumber, student.nisn)}
-                                  className={`w-7 h-7 rounded-lg text-xs transition transform hover:scale-110 active:scale-95 shadow-sm inline-flex items-center justify-center ${badgeStyle}`}
+                                  className={`w-9 h-9 rounded-lg text-xs transition transform hover:scale-105 active:scale-95 inline-flex items-center justify-center ${badgeStyle}`}
                                   title={`Pertemuan ${sess.sessionNumber}: Klik untuk ubah status (H -> S -> I -> T -> A)`}
+                                  aria-label={`Pertemuan ${sess.sessionNumber} ${student.nama_siswa}: ${status}`}
                                 >
                                   {status}
                                 </button>
@@ -5429,15 +5456,15 @@ export default function GradebookView({
                           })}
 
                           {/* Summary Counts */}
-                          <td className="py-2 px-2 text-center font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/10 dark:bg-emerald-950/10 border-r border-gray-200 dark:border-gray-700">{hCount}</td>
-                          <td className="py-2 px-2 text-center font-bold text-blue-700 dark:text-blue-400 bg-blue-50/10 dark:bg-blue-950/10 border-r border-gray-200 dark:border-gray-700">{sCount}</td>
-                          <td className="py-2 px-2 text-center font-bold text-amber-700 dark:text-amber-400 bg-amber-50/10 dark:bg-amber-950/10 border-r border-gray-200 dark:border-gray-700">{iCount}</td>
-                          <td className="py-2 px-2 text-center font-bold text-red-700 dark:text-red-400 bg-red-50/10 dark:bg-red-950/10 border-r border-gray-200 dark:border-gray-700">{aCount}</td>
-                          <td className="py-2 px-2.5 text-center font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">{totalPoints}</td>
-                          <td className="py-2 px-2.5 text-center font-black text-sm bg-teal-50/60 dark:bg-teal-950/30 text-teal-800 dark:text-teal-300 border-r border-gray-200 dark:border-gray-700">
+                          <td className="py-2 px-2 text-center font-bold font-num text-emerald-700 dark:text-emerald-400 bg-emerald-500/5 border-r border-slate-300/60 dark:border-slate-700/60">{hCount}</td>
+                          <td className="py-2 px-2 text-center font-bold font-num text-sky-700 dark:text-sky-400 bg-sky-500/5 border-r border-slate-300/60 dark:border-slate-700/60">{sCount}</td>
+                          <td className="py-2 px-2 text-center font-bold font-num text-amber-700 dark:text-amber-400 bg-amber-500/5 border-r border-slate-300/60 dark:border-slate-700/60">{iCount}</td>
+                          <td className="py-2 px-2 text-center font-bold font-num text-rose-700 dark:text-rose-400 bg-rose-500/5 border-r border-slate-300/60 dark:border-slate-700/60">{aCount}</td>
+                          <td className="py-2 px-2.5 text-center font-semibold font-num text-[#334155] dark:text-[#CBD5E1] border-r border-slate-300/60 dark:border-slate-700/60">{totalPoints}</td>
+                          <td className="py-2 px-2.5 text-center font-black font-num text-sm bg-teal-500/10 text-[#0F766E] dark:text-teal-300 border-r border-slate-300/60 dark:border-slate-700/60">
                             {attRate}%
                           </td>
-                          <td className="py-2 px-2.5 text-center font-black text-sm bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300">
+                          <td className="py-2 px-2.5 text-center font-black font-num text-sm bg-amber-500/10 text-amber-800 dark:text-amber-300">
                             +{raporContribution}
                           </td>
                         </tr>
@@ -5462,12 +5489,12 @@ export default function GradebookView({
               </div>
               <div className="overflow-x-auto max-h-[600px] custom-scroll">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
-                  <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-20 backdrop-blur-md">
+                  <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-20 print:bg-gray-100 print:text-black">
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[11px]">
-                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2.5 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2.5 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2.5 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] py-2.5 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
+                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
+                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
                       <th className="py-2.5 px-3 text-center text-emerald-700 dark:text-emerald-300 border-r border-slate-300/60 dark:border-slate-700/60">Hadir</th>
                       <th className="py-2.5 px-3 text-center text-sky-700 dark:text-sky-300 border-r border-slate-300/60 dark:border-slate-700/60">Sakit</th>
                       <th className="py-2.5 px-3 text-center text-amber-700 dark:text-amber-300 border-r border-slate-300/60 dark:border-slate-700/60">Izin</th>
@@ -5483,12 +5510,12 @@ export default function GradebookView({
                       const dStat = dailyClassAttendance[student.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0, total: 0, percentage: 100 };
                       return (
                         <tr key={student.nisn} className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 group">
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-2.5 text-center text-[#475569] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-2.5 font-mono text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
-                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 text-center text-[#475569] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
+                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
+                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
                             <span className="truncate block">{student.nama_siswa}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">{student.gender || '-'}</td>
+                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">{student.gender || '-'}</td>
                           <td className="py-2.5 px-3 text-center font-bold font-num text-emerald-700 dark:text-emerald-400 border-r border-slate-300/60 dark:border-slate-700/60">{dStat.hadir}</td>
                           <td className="py-2.5 px-3 text-center font-bold font-num text-sky-700 dark:text-sky-400 border-r border-slate-300/60 dark:border-slate-700/60">{dStat.sakit}</td>
                           <td className="py-2.5 px-3 text-center font-bold font-num text-amber-700 dark:text-amber-400 border-r border-slate-300/60 dark:border-slate-700/60">{dStat.izin}</td>
@@ -5525,128 +5552,128 @@ export default function GradebookView({
         <div className="space-y-4">
           {/* Summary Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="neu-card-sm rounded-2xl p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Rata-rata Kelas</span>
-                <span className="w-8 h-8 rounded-xl bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center text-sm">
+                <span className="text-xs font-bold text-[#475569] dark:text-[#94A3B8]">Rata-rata Kelas</span>
+                <span className="neu-inset w-9 h-9 rounded-xl text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-chart-line"></i>
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-gray-900 dark:text-white">
+                <span className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">
                   {classAnalytics.classAvg}
                 </span>
-                <span className="text-xs text-gray-500 font-semibold">/ 100</span>
+                <span className="text-xs font-num text-[#64748B] font-semibold">/ 100</span>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] font-num text-[#64748B] dark:text-[#94A3B8] mt-1">
                 Dari {classAnalytics.gradedStudents} siswa dinilai
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="neu-card-sm rounded-2xl p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Ketuntasan (KKTP ≥ 75)</span>
-                <span className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm">
+                <span className="text-xs font-bold text-[#475569] dark:text-[#94A3B8]">Ketuntasan (KKTP ≥ 75)</span>
+                <span className="neu-inset w-9 h-9 rounded-xl text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-check-double"></i>
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                <span className="text-2xl font-black font-num text-emerald-600 dark:text-emerald-400">
                   {classAnalytics.tuntasPct}%
                 </span>
-                <span className="text-xs text-gray-500 font-semibold">
+                <span className="text-xs font-num text-[#64748B] dark:text-[#94A3B8] font-semibold">
                   ({classAnalytics.tuntasCount} siswa)
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-1">
                 Kriteria Ketercapaian Tujuan Pembelajaran
               </p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="neu-card-sm rounded-2xl p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Nilai Tertinggi</span>
-                <span className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center text-sm">
+                <span className="text-xs font-bold text-[#475569] dark:text-[#94A3B8]">Nilai Tertinggi</span>
+                <span className="neu-inset w-9 h-9 rounded-xl text-sky-600 dark:text-sky-400 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-trophy"></i>
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                <span className="text-2xl font-black font-num text-sky-600 dark:text-sky-400">
                   {classAnalytics.highestScore}
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">Skor tertinggi di TP ini</p>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-1">Skor tertinggi di TP ini</p>
             </div>
 
-            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+            <div className="neu-card-sm rounded-2xl p-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Nilai Terendah</span>
-                <span className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-sm">
+                <span className="text-xs font-bold text-[#475569] dark:text-[#94A3B8]">Nilai Terendah</span>
+                <span className="neu-inset w-9 h-9 rounded-xl text-rose-600 dark:text-rose-400 flex items-center justify-center text-sm">
                   <i className="fa-solid fa-arrow-down-wide-short"></i>
                 </span>
               </div>
               <div className="mt-2 flex items-baseline gap-2">
-                <span className="text-2xl font-black text-red-600 dark:text-red-400">
+                <span className="text-2xl font-black font-num text-rose-600 dark:text-rose-400">
                   {classAnalytics.lowestScore}
                 </span>
               </div>
-              <p className="text-[11px] text-gray-400 mt-1">Skor terendah di TP ini</p>
+              <p className="text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-1">Skor terendah di TP ini</p>
             </div>
           </div>
 
           {/* Grade Distribution Breakdown */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4">
+          <div className="neu-card rounded-2xl p-5">
+            <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-4">
               Distribusi Capaian Kompetensi Kurikulum Merdeka
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800/50">
-                <div className="flex justify-between items-center text-xs font-bold text-green-800 dark:text-green-300">
+              <div className="neu-inset p-4 rounded-xl">
+                <div className="flex justify-between items-center text-xs font-bold text-emerald-700 dark:text-emerald-300">
                   <span>Sangat Baik (A)</span>
-                  <span>85 - 100</span>
+                  <span className="font-num">85 - 100</span>
                 </div>
-                <div className="mt-2 text-2xl font-black text-green-700 dark:text-green-400">
+                <div className="mt-2 text-2xl font-black font-num text-emerald-700 dark:text-emerald-400">
                   {classAnalytics.distribution.a}{' '}
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
                     ({classAnalytics.gradedStudents > 0 ? Math.round((classAnalytics.distribution.a / classAnalytics.gradedStudents) * 100) : 0}%)
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800/50">
-                <div className="flex justify-between items-center text-xs font-bold text-blue-800 dark:text-blue-300">
+              <div className="neu-inset p-4 rounded-xl">
+                <div className="flex justify-between items-center text-xs font-bold text-sky-700 dark:text-sky-300">
                   <span>Baik (B)</span>
-                  <span>75 - 84</span>
+                  <span className="font-num">75 - 84</span>
                 </div>
-                <div className="mt-2 text-2xl font-black text-blue-700 dark:text-blue-400">
+                <div className="mt-2 text-2xl font-black font-num text-sky-700 dark:text-sky-400">
                   {classAnalytics.distribution.b}{' '}
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
                     ({classAnalytics.gradedStudents > 0 ? Math.round((classAnalytics.distribution.b / classAnalytics.gradedStudents) * 100) : 0}%)
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800/50">
-                <div className="flex justify-between items-center text-xs font-bold text-yellow-800 dark:text-yellow-300">
+              <div className="neu-inset p-4 rounded-xl">
+                <div className="flex justify-between items-center text-xs font-bold text-amber-700 dark:text-amber-300">
                   <span>Cukup (C)</span>
-                  <span>65 - 74</span>
+                  <span className="font-num">65 - 74</span>
                 </div>
-                <div className="mt-2 text-2xl font-black text-yellow-700 dark:text-yellow-400">
+                <div className="mt-2 text-2xl font-black font-num text-amber-700 dark:text-amber-400">
                   {classAnalytics.distribution.c}{' '}
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
                     ({classAnalytics.gradedStudents > 0 ? Math.round((classAnalytics.distribution.c / classAnalytics.gradedStudents) * 100) : 0}%)
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50">
-                <div className="flex justify-between items-center text-xs font-bold text-red-800 dark:text-red-300">
+              <div className="neu-inset p-4 rounded-xl">
+                <div className="flex justify-between items-center text-xs font-bold text-rose-700 dark:text-rose-300">
                   <span>Perlu Bimbingan (D)</span>
-                  <span>&lt; 65</span>
+                  <span className="font-num">&lt; 65</span>
                 </div>
-                <div className="mt-2 text-2xl font-black text-red-700 dark:text-red-400">
+                <div className="mt-2 text-2xl font-black font-num text-rose-700 dark:text-rose-400">
                   {classAnalytics.distribution.d}{' '}
-                  <span className="text-xs font-medium text-gray-500">
+                  <span className="text-xs font-medium text-[#64748B] dark:text-[#94A3B8]">
                     ({classAnalytics.gradedStudents > 0 ? Math.round((classAnalytics.distribution.d / classAnalytics.gradedStudents) * 100) : 0}%)
                   </span>
                 </div>
@@ -5673,16 +5700,26 @@ export default function GradebookView({
 
       {/* Modal Add / Edit TP */}
       {isTpModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white">
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsTpModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingTp ? 'Edit Tujuan Pembelajaran' : 'Tambah Tujuan Pembelajaran (TP)'}
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
                 {editingTp ? 'Edit Tujuan Pembelajaran' : 'Tambah Tujuan Pembelajaran (TP)'}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsTpModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs"
+                aria-label="Tutup dialog"
+                className="neu-btn w-11 h-11 rounded-full text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center text-sm shrink-0"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -5690,14 +5727,14 @@ export default function GradebookView({
 
             <form onSubmit={handleSaveTp} className="space-y-3.5 mt-4 text-xs">
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Capaian Pembelajaran (CP) Payung <span className="text-rose-500">*</span>
                 </label>
                 <select
                   required
                   value={tpForm.cp_id}
                   onChange={e => setTpForm({ ...tpForm, cp_id: e.target.value })}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 >
                   <option value="" disabled>-- Pilih Capaian Pembelajaran --</option>
                   {cpList.map(cp => (
@@ -5710,7 +5747,7 @@ export default function GradebookView({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                     Kode TP
                   </label>
                   <input
@@ -5719,11 +5756,11 @@ export default function GradebookView({
                     value={tpForm.kode_tp}
                     onChange={e => setTpForm({ ...tpForm, kode_tp: e.target.value })}
                     placeholder="e.g. TP 1"
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                     Urutan
                   </label>
                   <input
@@ -5731,13 +5768,13 @@ export default function GradebookView({
                     min="1"
                     value={tpForm.urutan}
                     onChange={e => setTpForm({ ...tpForm, urutan: parseInt(e.target.value) || 1 })}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="neu-input w-full px-3 py-2 min-h-[40px] font-num rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Deskripsi Tujuan Pembelajaran
                 </label>
                 <textarea
@@ -5746,44 +5783,44 @@ export default function GradebookView({
                   value={tpForm.deskripsi}
                   onChange={e => setTpForm({ ...tpForm, deskripsi: e.target.value })}
                   placeholder="Deskripsikan kompetensi atau materi pembelajaran yang ingin dicapai..."
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 ></textarea>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                     Semester
                   </label>
                   <select
                     value={tpForm.semester}
                     onChange={e => setTpForm({ ...tpForm, semester: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                    className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                   >
                     <option value="Ganjil">Ganjil</option>
                     <option value="Genap">Genap</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Tahun Ajaran {!isAdmin && <span className="text-[10px] text-teal-600 font-normal">(Sinkron Admin)</span>}
+                  <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                    Tahun Ajaran {!isAdmin && <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-normal">(Sinkron Admin)</span>}
                   </label>
                   <input
                     type="text"
                     value={tpForm.tahun_ajaran}
                     onChange={e => !isAdmin ? null : setTpForm({ ...tpForm, tahun_ajaran: e.target.value })}
                     readOnly={!isAdmin}
-                    className={`w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:outline-none ${
+                    className={`w-full px-3 py-2 min-h-[40px] font-num rounded-xl ${
                       !isAdmin
-                        ? 'bg-gray-100 dark:bg-gray-800/80 cursor-not-allowed text-gray-500'
-                        : 'bg-gray-50 dark:bg-gray-900 focus:ring-2 focus:ring-teal-500'
+                        ? 'neu-inset cursor-not-allowed text-[#64748B]'
+                        : 'neu-input text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]'
                     }`}
                   />
                 </div>
               </div>
 
               {!editingTp && (
-                <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 text-[11px] text-teal-800 dark:text-teal-300">
+                <div className="p-2.5 rounded-xl bg-teal-500/15 border border-[#0F766E]/30 text-[11px] text-[#0F766E] dark:text-teal-300">
                   <i className="fa-solid fa-info-circle mr-1"></i> Kolom <strong>Diagnostik</strong>, <strong>Formatif 1</strong>, dan <strong>Sumatif 1</strong> akan otomatis dibuatkan.
                 </div>
               )}
@@ -5792,13 +5829,13 @@ export default function GradebookView({
                 <button
                   type="button"
                   onClick={() => setIsTpModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="btn-click px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md"
+                  className="btn-click neu-btn-primary px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-white"
                 >
                   {editingTp ? 'Simpan Perubahan' : 'Buat TP'}
                 </button>
@@ -5810,16 +5847,26 @@ export default function GradebookView({
 
       {/* Modal Add / Edit Asesmen Kolom */}
       {isColModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white">
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsColModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingCol ? 'Edit Kolom Asesmen' : `Tambah Kolom ${colForm.kategori}`}
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-sm w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
                 {editingCol ? 'Edit Kolom Asesmen' : `Tambah Kolom ${colForm.kategori}`}
               </h3>
               <button
                 type="button"
                 onClick={() => setIsColModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs"
+                aria-label="Tutup dialog"
+                className="neu-btn w-11 h-11 rounded-full text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center text-sm shrink-0"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -5827,16 +5874,16 @@ export default function GradebookView({
 
             <form onSubmit={handleSaveCol} className="space-y-3.5 mt-4 text-xs">
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Kategori
                 </label>
-                <div className="px-3 py-2 bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-gray-900 dark:text-white">
+                <div className="neu-inset px-3 py-2 min-h-[40px] flex items-center rounded-xl font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   {colForm.kategori}
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Nama Kolom Asesmen
                 </label>
                 <input
@@ -5845,25 +5892,25 @@ export default function GradebookView({
                   value={colForm.nama}
                   onChange={e => setColForm({ ...colForm, nama: e.target.value })}
                   placeholder="e.g. Formatif 2, Quiz 1, Sumatif Bab 1..."
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Keterangan <span className="font-normal text-gray-400">(opsional)</span>
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                  Keterangan <span className="font-normal text-[#64748B]">(opsional)</span>
                 </label>
                 <input
                   type="text"
                   value={colForm.keterangan}
                   onChange={e => setColForm({ ...colForm, keterangan: e.target.value })}
                   placeholder="e.g. Ulangan Harian Bab 3, Proyek Kelompok..."
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Bobot Nilai
                 </label>
                 <input
@@ -5872,9 +5919,9 @@ export default function GradebookView({
                   max="10"
                   value={colForm.bobot}
                   onChange={e => setColForm({ ...colForm, bobot: parseFloat(e.target.value) || 1 })}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] font-num rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 />
-                <span className="text-[10px] text-gray-400 mt-1 block">
+                <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] mt-1 block">
                   Default bobot adalah 1. Kolom dengan bobot lebih tinggi berpengaruh lebih besar pada rata-rata.
                 </span>
               </div>
@@ -5883,13 +5930,13 @@ export default function GradebookView({
                 <button
                   type="button"
                   onClick={() => setIsColModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="btn-click px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md"
+                  className="btn-click neu-btn-primary px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-white"
                 >
                   Simpan Kolom
                 </button>
@@ -5901,14 +5948,27 @@ export default function GradebookView({
 
       {/* Modal Add / Edit CP */}
       {isCpModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-md w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white">
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsCpModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingCp ? 'Edit Capaian Pembelajaran' : 'Tambah Capaian Pembelajaran (CP)'}
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
                 {editingCp ? 'Edit Capaian Pembelajaran' : 'Tambah Capaian Pembelajaran (CP)'}
               </h3>
-              <button type="button" onClick={() => setIsCpModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs">
+              <button
+                type="button"
+                onClick={() => setIsCpModalOpen(false)}
+                aria-label="Tutup dialog"
+                className="neu-btn w-11 h-11 rounded-full text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center text-sm shrink-0"
+              >
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
@@ -5919,13 +5979,13 @@ export default function GradebookView({
                   <input type="text" required value={cpForm.kode_cp}
                     onChange={e => setCpForm({ ...cpForm, kode_cp: e.target.value })}
                     placeholder="e.g. CP 1"
-                    className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:ring-2 focus:ring-[#0F766E] focus:outline-none" />
+                    className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]" />
                 </div>
                 <div>
                   <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">Urutan</label>
                   <input type="number" min="1" value={cpForm.urutan}
                     onChange={e => setCpForm({ ...cpForm, urutan: parseInt(e.target.value) || 1 })}
-                    className="neu-input w-full px-3 py-2 font-num rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:ring-2 focus:ring-[#0F766E] focus:outline-none" />
+                    className="neu-input w-full px-3 py-2 min-h-[40px] font-num rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]" />
                 </div>
               </div>
               <div>
@@ -5933,16 +5993,16 @@ export default function GradebookView({
                 <textarea required rows={4} value={cpForm.deskripsi}
                   onChange={e => setCpForm({ ...cpForm, deskripsi: e.target.value })}
                   placeholder="Deskripsikan capaian pembelajaran yang menjadi payung dari beberapa Tujuan Pembelajaran..."
-                  className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:ring-2 focus:ring-[#0F766E] focus:outline-none">
+                  className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]">
                 </textarea>
               </div>
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setIsCpModalOpen(false)}
-                  className="neu-btn px-4 py-2 rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">
+                  className="neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">
                   Batal
                 </button>
                 <button type="submit"
-                  className="btn-click neu-btn-primary px-4 py-2 rounded-xl text-xs font-bold text-white">
+                  className="btn-click neu-btn-primary px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-white">
                   {editingCp ? 'Simpan Perubahan' : 'Buat CP'}
                 </button>
               </div>
@@ -5955,12 +6015,25 @@ export default function GradebookView({
 
       {/* Modal Bobot Nilai (Admin Only) */}
       {isBobotModalOpen && isAdmin && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto custom-scroll">
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsBobotModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pengaturan Bobot Nilai Akhir & Kehadiran"
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto custom-scroll"
+          >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">Pengaturan Bobot Nilai Akhir & Kehadiran</h3>
-              <button type="button" onClick={() => setIsBobotModalOpen(false)}
-                className="neu-btn w-7 h-7 rounded-full text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center text-xs">
+              <button
+                type="button"
+                onClick={() => setIsBobotModalOpen(false)}
+                aria-label="Tutup dialog"
+                className="neu-btn w-11 h-11 rounded-full text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center text-sm shrink-0"
+              >
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
@@ -5981,14 +6054,14 @@ export default function GradebookView({
                       </label>
                       <input type="number" min="0" max="100" required value={bobotForm[key]}
                         onChange={e => setBobotForm({ ...bobotForm, [key]: parseInt(e.target.value) || 0 })}
-                        className="neu-input w-full px-3 py-2 rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:ring-2 focus:ring-[#0F766E] focus:outline-none text-center font-bold font-num" />
+                        className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] text-center font-bold font-num" />
                     </div>
                   ))}
                 </div>
-                <div className={`mt-2.5 p-2 rounded-xl text-[11px] font-bold text-center border ${
+                <div className={`mt-2.5 p-2 rounded-xl text-[11px] font-bold font-num text-center border ${
                   bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100
-                    ? 'bg-green-50 text-green-800 border-green-200 dark:bg-green-950/40 dark:text-green-300 dark:border-green-800'
-                    : 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-800'
+                    ? 'bg-emerald-500/15 text-emerald-800 border-emerald-400/50 dark:text-emerald-300 dark:border-emerald-800'
+                    : 'bg-rose-500/15 text-rose-800 border-rose-400/50 dark:text-rose-300 dark:border-rose-800'
                 }`}>
                   Total: {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif}%
                   {bobotForm.kehadiran + bobotForm.formatif + bobotForm.sumatif === 100 ? ' ✓' : ' (harus 100%)'}
@@ -5996,26 +6069,26 @@ export default function GradebookView({
               </div>
 
               {/* Sub-form: Konfigurasi Poin Status Kehadiran per Pertemuan */}
-              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
+              <div className="pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
                 <div className="flex items-center justify-between mb-1">
-                  <h4 className="font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                    <i className="fa-solid fa-user-check text-teal-600 dark:text-teal-400"></i>
+                  <h4 className="font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                    <i className="fa-solid fa-user-check text-[#0F766E] dark:text-teal-400"></i>
                     Poin Status Kehadiran per Pertemuan
                   </h4>
                   <button
                     type="button"
                     onClick={() => setStatusPointsForm(DEFAULT_STATUS_POINTS)}
-                    className="text-[10px] text-teal-600 dark:text-teal-400 hover:underline font-semibold"
+                    className="text-[10px] text-[#0F766E] dark:text-teal-400 hover:underline font-semibold"
                   >
                     Reset Default
                   </button>
                 </div>
-                <p className="text-gray-500 dark:text-gray-400 text-[11px] mb-2.5">
+                <p className="text-[#475569] dark:text-[#94A3B8] text-[11px] mb-2.5">
                   Nilai poin (0–100) per pertemuan untuk menghitung persentase kehadiran siswa.
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                    <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1 text-[11px] flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
                       Hadir (Poin)
                     </label>
@@ -6026,12 +6099,12 @@ export default function GradebookView({
                       required
                       value={statusPointsForm.hadir}
                       onChange={e => setStatusPointsForm({ ...statusPointsForm, hadir: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                      className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] text-center font-bold font-num"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+                    <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1 text-[11px] flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-sky-500 inline-block"></span>
                       Sakit (Poin)
                     </label>
                     <input
@@ -6041,11 +6114,11 @@ export default function GradebookView({
                       required
                       value={statusPointsForm.sakit}
                       onChange={e => setStatusPointsForm({ ...statusPointsForm, sakit: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                      className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] text-center font-bold font-num"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                    <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1 text-[11px] flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
                       Izin (Poin)
                     </label>
@@ -6056,11 +6129,11 @@ export default function GradebookView({
                       required
                       value={statusPointsForm.izin}
                       onChange={e => setStatusPointsForm({ ...statusPointsForm, izin: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                      className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] text-center font-bold font-num"
                     />
                   </div>
                   <div>
-                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                    <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1 text-[11px] flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-amber-500 inline-block"></span>
                       Terlambat (Poin)
                     </label>
@@ -6071,11 +6144,11 @@ export default function GradebookView({
                       required
                       value={statusPointsForm.terlambat}
                       onChange={e => setStatusPointsForm({ ...statusPointsForm, terlambat: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                      className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] text-center font-bold font-num"
                     />
                   </div>
                   <div className="col-span-2">
-                    <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1 text-[11px] flex items-center gap-1">
+                    <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1 text-[11px] flex items-center gap-1">
                       <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
                       Alpa (Poin)
                     </label>
@@ -6086,22 +6159,22 @@ export default function GradebookView({
                       required
                       value={statusPointsForm.alpa}
                       onChange={e => setStatusPointsForm({ ...statusPointsForm, alpa: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none text-center font-bold"
+                      className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E] text-center font-bold font-num"
                     />
                   </div>
                 </div>
-                <div className="mt-2 text-[10px] text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50 p-2 rounded-lg">
+                <div className="neu-inset mt-2 text-[10px] font-num text-[#475569] dark:text-[#94A3B8] p-2.5 rounded-lg">
                   Formula: Nilai Kehadiran = (Total Poin / (Jumlah Sesi × 100)) × 100%
                 </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
                 <button type="button" onClick={() => setIsBobotModalOpen(false)}
-                  className="neu-btn px-4 py-2 rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">
+                  className="neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">
                   Batal
                 </button>
                 <button type="submit"
-                  className="btn-click neu-btn-primary px-4 py-2 rounded-xl text-xs font-bold text-white">
+                  className="btn-click neu-btn-primary px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-white">
                   Simpan Bobot
                 </button>
               </div>
@@ -6112,16 +6185,26 @@ export default function GradebookView({
 
       {/* Modal Bulk Fill Grades */}
       {isBulkFillModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-gray-100 dark:border-gray-700 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-700">
-              <h3 className="text-sm font-black text-gray-900 dark:text-white">
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsBulkFillModalOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Isi Nilai Cepat (Bulk Fill)"
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-sm w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+          >
+            <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
                 Isi Nilai Cepat (Bulk Fill)
               </h3>
               <button
                 type="button"
                 onClick={() => setIsBulkFillModalOpen(false)}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-700 dark:hover:text-white flex items-center justify-center text-xs"
+                aria-label="Tutup dialog"
+                className="neu-btn w-11 h-11 rounded-full text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center text-sm shrink-0"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -6129,13 +6212,13 @@ export default function GradebookView({
 
             <form onSubmit={handleExecuteBulkFill} className="space-y-3.5 mt-4 text-xs">
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Pilih Kolom Target
                 </label>
                 <select
                   value={bulkFillColId}
                   onChange={e => setBulkFillColId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 >
                   {columnsList.map(c => (
                     <option key={c.id} value={c.id}>
@@ -6146,7 +6229,7 @@ export default function GradebookView({
               </div>
 
               <div>
-                <label className="block font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                   Nilai yang Akan Diisikan (0 - 100)
                 </label>
                 <input
@@ -6157,7 +6240,7 @@ export default function GradebookView({
                   required
                   value={bulkFillValue}
                   onChange={e => setBulkFillValue(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] font-num rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                 />
               </div>
 
@@ -6167,9 +6250,9 @@ export default function GradebookView({
                   id="bulkEmptyOnly"
                   checked={bulkFillOnlyEmpty}
                   onChange={e => setBulkFillOnlyEmpty(e.target.checked)}
-                  className="w-4 h-4 rounded text-teal-600 focus:ring-teal-500"
+                  className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E]"
                 />
-                <label htmlFor="bulkEmptyOnly" className="font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+                <label htmlFor="bulkEmptyOnly" className="font-medium text-[#334155] dark:text-[#CBD5E1] cursor-pointer">
                   Hanya isi siswa yang belum memiliki nilai
                 </label>
               </div>
@@ -6178,13 +6261,13 @@ export default function GradebookView({
                 <button
                   type="button"
                   onClick={() => setIsBulkFillModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="btn-click px-4 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white shadow-md"
+                  className="btn-click neu-btn-primary px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-white"
                 >
                   Terapkan Nilai
                 </button>

@@ -101,6 +101,18 @@ export default function SistemBlokView({ user }: { user: any }) {
 
   const todayStr = getWitaDateStr();
 
+  useEffect(() => {
+    if (!isEditModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !editSubmitting) {
+        setIsEditModalOpen(false);
+        setEditingItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEditModalOpen, editSubmitting]);
+
   // Load data
   const loadBlokData = useCallback(async () => {
     setLoading(true);
@@ -620,29 +632,29 @@ export default function SistemBlokView({ user }: { user: any }) {
   return (
     <div id="view-sistem-blok" className="fade-in space-y-4">
       {/* Header Banner */}
-      <div className="glass-card p-5 border-l-4 border-amber-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="glass-card p-5 ring-1 ring-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-8 h-8 rounded-lg bg-amber-500 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+          <div className="flex items-center gap-2.5 mb-1">
+            <span className="w-9 h-9 rounded-xl neu-inset text-[#D97706] dark:text-amber-400 flex items-center justify-center text-sm font-bold shrink-0">
               <i className="fa-solid fa-layer-group"></i>
             </span>
-            <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
+            <h2 className="text-base sm:text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
               Manajemen Sistem Blok
             </h2>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 max-w-2xl leading-relaxed">
+          <p className="text-xs text-[#475569] dark:text-[#94A3B8] max-w-2xl leading-relaxed">
             Kelola periode sistem blok waktu. Selama rentang waktu blok aktif, jadwal mengajar reguler disembunyikan/ditiadakan dan digantikan oleh kegiatan khusus. Guru hanya bertugas mengisi jurnal kegiatan.
           </p>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-center">
+        <div className="flex items-center gap-2.5 shrink-0">
+          <div className="neu-card-sm px-3.5 py-2 rounded-xl text-center">
             <span className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase block">Blok Aktif</span>
-            <span className="text-base font-black text-amber-600 dark:text-amber-400">{activeCount}</span>
+            <span className="text-base font-black font-num text-[#D97706] dark:text-amber-400">{activeCount}</span>
           </div>
-          <div className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-center">
-            <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase block">Total Blok</span>
-            <span className="text-base font-black text-gray-900 dark:text-white">{blokList.length}</span>
+          <div className="neu-card-sm px-3.5 py-2 rounded-xl text-center">
+            <span className="text-[10px] font-bold text-[#475569] dark:text-[#CBD5E1] uppercase block">Total Blok</span>
+            <span className="text-base font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{blokList.length}</span>
           </div>
         </div>
       </div>
@@ -671,9 +683,9 @@ export default function SistemBlokView({ user }: { user: any }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Tanggal Mulai <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -681,12 +693,12 @@ export default function SistemBlokView({ user }: { user: any }) {
                     value={tanggalMulai}
                     onChange={e => setTanggalMulai(e.target.value)}
                     required
-                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Tanggal Selesai <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -695,18 +707,18 @@ export default function SistemBlokView({ user }: { user: any }) {
                     onChange={e => setTanggalSelesai(e.target.value)}
                     required
                     min={tanggalMulai || undefined}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
               </div>
             </div>
 
             {/* Cakupan Target Pemblokiran */}
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+            <div className="space-y-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+              <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                 Cakupan Target Pemblokiran <span className="text-red-500">*</span>
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 {[
                   { id: 'sekolah', label: 'Keseluruhan Sekolah', icon: 'fa-school' },
                   { id: 'angkatan', label: 'Per Angkatan', icon: 'fa-graduation-cap' },
@@ -719,10 +731,10 @@ export default function SistemBlokView({ user }: { user: any }) {
                     onClick={() => {
                       setTipeTarget(tgt.id as TargetBlokType);
                     }}
-                    className={`btn-click p-2.5 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1.5 transition ${
+                    className={`neu-btn btn-click p-2.5 min-h-[56px] rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition ${
                       tipeTarget === tgt.id
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                        ? 'neu-btn-amber'
+                        : 'text-[#334155] dark:text-[#CBD5E1]'
                     }`}
                   >
                     <i className={`fa-solid ${tgt.icon} text-sm`}></i>
@@ -733,22 +745,22 @@ export default function SistemBlokView({ user }: { user: any }) {
 
               {/* Dynamic Target Selection */}
               {tipeTarget === 'sekolah' && (
-                <div className="p-3 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
-                  <i className="fa-solid fa-circle-info text-blue-500 text-sm shrink-0"></i>
+                <div className="p-3 alert-banner-blue rounded-xl text-xs text-sky-800 dark:text-sky-300 flex items-center gap-2">
+                  <i className="fa-solid fa-circle-info text-sky-600 dark:text-sky-400 text-sm shrink-0"></i>
                   <span>Aturan blok berlaku untuk seluruh siswa, guru, dan jadwal KBM di sekolah.</span>
                 </div>
               )}
 
               {tipeTarget === 'angkatan' && (
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Pilih Angkatan Target <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={targetAngkatan}
                     onChange={e => setTargetAngkatan(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   >
                     <option value="">-- Pilih Angkatan --</option>
                     {angkatanOptions.map(ang => (
@@ -762,14 +774,14 @@ export default function SistemBlokView({ user }: { user: any }) {
 
               {tipeTarget === 'kelas' && (
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Pilih Kelas Target <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={targetKelas}
                     onChange={e => setTargetKelas(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   >
                     <option value="">-- Pilih Kelas --</option>
                     {availableClasses.map(cls => (
@@ -781,7 +793,7 @@ export default function SistemBlokView({ user }: { user: any }) {
 
               {tipeTarget === 'guru' && (
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Pilih Guru Target <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -794,7 +806,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                       setTargetGuruNip(match ? match.nip || '' : '');
                     }}
                     required
-                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   >
                     <option value="">-- Pilih Guru --</option>
                     {availableTeachers.map(t => (
@@ -808,26 +820,26 @@ export default function SistemBlokView({ user }: { user: any }) {
             </div>
 
             {/* Pengaturan Rentang Waktu (Jam) */}
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-900 dark:text-white select-none">
+            <div className="space-y-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] select-none min-h-[36px]">
                   <input
                     type="checkbox"
                     checked={isFullDay}
                     onChange={e => setIsFullDay(e.target.checked)}
-                    className="w-4 h-4 rounded text-amber-600 focus:ring-amber-500"
+                    className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E]"
                   />
                   <span>Berlaku Sepanjang Hari (Full Day)</span>
                 </label>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                <span className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                   {isFullDay ? 'Semua jam pelajaran pada tanggal ini diblok' : 'Hanya jam tertentu yang diblok'}
                 </span>
               </div>
 
               {!isFullDay && (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-200/80 dark:border-amber-800/60">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 neu-inset border border-amber-500/25 rounded-xl">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                       Jam Mulai <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -835,11 +847,11 @@ export default function SistemBlokView({ user }: { user: any }) {
                       value={jamMulai}
                       onChange={e => setJamMulai(e.target.value)}
                       required={!isFullDay}
-                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                       Jam Selesai <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -847,7 +859,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                       value={jamSelesai}
                       onChange={e => setJamSelesai(e.target.value)}
                       required={!isFullDay}
-                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                     />
                   </div>
                 </div>
@@ -855,7 +867,7 @@ export default function SistemBlokView({ user }: { user: any }) {
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+              <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                 Deskripsi / Keterangan Khusus (Opsional)
               </label>
               <textarea
@@ -863,7 +875,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                 onChange={e => setDeskripsi(e.target.value)}
                 rows={2}
                 placeholder="Jelaskan rincian kegiatan khusus atau instruksi pengisian jurnal bagi para guru..."
-                className="w-full px-3 py-2 text-xs rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 text-xs rounded-xl input-premium resize-none text-[#0F172A] dark:text-[#F1F5F9]"
               />
             </div>
 
@@ -871,7 +883,7 @@ export default function SistemBlokView({ user }: { user: any }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-md text-xs flex items-center gap-2 disabled:opacity-50 transition"
+                className="btn-click neu-btn neu-btn-primary text-white font-bold px-5 py-2.5 min-h-[42px] rounded-xl text-xs flex items-center gap-2 disabled:opacity-50 transition"
               >
                 {submitting ? (
                   <>
@@ -899,11 +911,11 @@ export default function SistemBlokView({ user }: { user: any }) {
       <div className="glass-card p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <i className="fa-solid fa-list-check text-blue-500"></i>
+            <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+              <i className="fa-solid fa-list-check text-sky-600 dark:text-sky-400"></i>
               <span>Daftar Periode Sistem Blok</span>
             </h3>
-            <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold font-num text-[#475569] dark:text-[#CBD5E1] neu-inset px-2.5 py-0.5 rounded-full">
               {filteredList.length} data
             </span>
           </div>
@@ -1139,20 +1151,33 @@ export default function SistemBlokView({ user }: { user: any }) {
 
       {/* Modal Edit Periode Blok */}
       {isAdmin && isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-gray-200 dark:border-gray-800 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-pen-to-square text-blue-500"></i>
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => {
+            setIsEditModalOpen(false);
+            setEditingItem(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Edit Periode Sistem Blok"
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-lg w-full p-5 space-y-4 max-h-[90dvh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                <i className="fa-solid fa-pen-to-square text-[#0F766E] dark:text-teal-400"></i>
                 <span>Edit Periode Sistem Blok</span>
               </h3>
               <button
                 type="button"
+                aria-label="Tutup modal edit blok"
                 onClick={() => {
                   setIsEditModalOpen(false);
                   setEditingItem(null);
                 }}
-                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center text-xs"
+                className="neu-btn w-11 h-11 rounded-full text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] flex items-center justify-center text-sm"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -1160,7 +1185,7 @@ export default function SistemBlokView({ user }: { user: any }) {
 
             <form onSubmit={handleEditSave} className="space-y-3.5">
               <div>
-                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                   Nama Kegiatan <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -1168,13 +1193,13 @@ export default function SistemBlokView({ user }: { user: any }) {
                   value={editNama}
                   onChange={e => setEditNama(e.target.value)}
                   required
-                  className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Tanggal Mulai <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1182,12 +1207,12 @@ export default function SistemBlokView({ user }: { user: any }) {
                     value={editMulai}
                     onChange={e => setEditMulai(e.target.value)}
                     required
-                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                  <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                     Tanggal Selesai <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1196,14 +1221,14 @@ export default function SistemBlokView({ user }: { user: any }) {
                     onChange={e => setEditSelesai(e.target.value)}
                     required
                     min={editMulai || undefined}
-                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
               </div>
 
               {/* Target Scope Selection for Edit */}
-              <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+              <div className="space-y-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+                <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                   Cakupan Target Pemblokiran <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1217,10 +1242,10 @@ export default function SistemBlokView({ user }: { user: any }) {
                       key={tgt.id}
                       type="button"
                       onClick={() => setEditTipeTarget(tgt.id as TargetBlokType)}
-                      className={`btn-click p-2 rounded-xl text-xs font-bold border flex flex-col items-center justify-center gap-1 transition ${
+                      className={`neu-btn btn-click p-2 min-h-[48px] rounded-xl text-xs font-bold flex flex-col items-center justify-center gap-1 transition ${
                         editTipeTarget === tgt.id
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          ? 'neu-btn-primary text-white'
+                          : 'text-[#334155] dark:text-[#CBD5E1]'
                       }`}
                     >
                       <i className={`fa-solid ${tgt.icon} text-xs`}></i>
@@ -1231,22 +1256,22 @@ export default function SistemBlokView({ user }: { user: any }) {
 
                 {/* Dynamic Target Selection for Edit */}
                 {editTipeTarget === 'sekolah' && (
-                  <div className="p-2.5 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-xl text-xs text-blue-800 dark:text-blue-300 flex items-center gap-2">
-                    <i className="fa-solid fa-circle-info text-blue-500 text-xs shrink-0"></i>
+                  <div className="p-2.5 alert-banner-blue rounded-xl text-xs text-sky-800 dark:text-sky-300 flex items-center gap-2">
+                    <i className="fa-solid fa-circle-info text-sky-600 dark:text-sky-400 text-xs shrink-0"></i>
                     <span>Aturan blok berlaku untuk seluruh siswa, guru, dan jadwal KBM di sekolah.</span>
                   </div>
                 )}
 
                 {editTipeTarget === 'angkatan' && (
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                       Pilih Angkatan Target <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={editTargetAngkatan}
                       onChange={e => setEditTargetAngkatan(e.target.value)}
                       required
-                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                     >
                       <option value="">-- Pilih Angkatan --</option>
                       {angkatanOptions.map(ang => (
@@ -1260,14 +1285,14 @@ export default function SistemBlokView({ user }: { user: any }) {
 
                 {editTipeTarget === 'kelas' && (
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                       Pilih Kelas Target <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={editTargetKelas}
                       onChange={e => setEditTargetKelas(e.target.value)}
                       required
-                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                     >
                       <option value="">-- Pilih Kelas --</option>
                       {availableClasses.map(cls => (
@@ -1279,7 +1304,7 @@ export default function SistemBlokView({ user }: { user: any }) {
 
                 {editTipeTarget === 'guru' && (
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                       Pilih Guru Target <span className="text-red-500">*</span>
                     </label>
                     <select
@@ -1292,7 +1317,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                         setEditTargetGuruNip(match ? match.nip || '' : '');
                       }}
                       required
-                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                      className="w-full px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                     >
                       <option value="">-- Pilih Guru --</option>
                       {availableTeachers.map(t => (
@@ -1306,26 +1331,26 @@ export default function SistemBlokView({ user }: { user: any }) {
               </div>
 
               {/* Time Range Controls for Edit */}
-              <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-900 dark:text-white select-none">
+              <div className="space-y-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] select-none min-h-[36px]">
                     <input
                       type="checkbox"
                       checked={editIsFullDay}
                       onChange={e => setEditIsFullDay(e.target.checked)}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                      className="w-4 h-4 rounded text-[#0F766E] focus:ring-[#0F766E]"
                     />
                     <span>Berlaku Sepanjang Hari (Full Day)</span>
                   </label>
-                  <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                  <span className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                     {editIsFullDay ? 'Semua jam pelajaran diblok' : 'Hanya jam tertentu'}
                   </span>
                 </div>
 
                 {!editIsFullDay && (
-                  <div className="grid grid-cols-2 gap-3 p-2.5 bg-blue-50/50 dark:bg-blue-950/20 rounded-xl border border-blue-200/80 dark:border-blue-800/60">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-2.5 neu-inset rounded-xl">
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                         Jam Mulai <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -1333,11 +1358,11 @@ export default function SistemBlokView({ user }: { user: any }) {
                         value={editJamMulai}
                         onChange={e => setEditJamMulai(e.target.value)}
                         required={!editIsFullDay}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                        className="w-full px-3 py-1.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1">
+                      <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">
                         Jam Selesai <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -1345,7 +1370,7 @@ export default function SistemBlokView({ user }: { user: any }) {
                         value={editJamSelesai}
                         onChange={e => setEditJamSelesai(e.target.value)}
                         required={!editIsFullDay}
-                        className="w-full px-3 py-1.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white bg-white dark:bg-gray-800"
+                        className="w-full px-3 py-1.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                   </div>
@@ -1353,32 +1378,32 @@ export default function SistemBlokView({ user }: { user: any }) {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                   Deskripsi Kegiatan
                 </label>
                 <textarea
                   value={editDeskripsi}
                   onChange={e => setEditDeskripsi(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 text-xs rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                  className="w-full px-3 py-2 text-xs rounded-xl input-premium resize-none text-[#0F172A] dark:text-[#F1F5F9]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => {
                     setIsEditModalOpen(false);
                     setEditingItem(null);
                   }}
-                  className="btn-click px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                  className="neu-btn btn-click px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={editSubmitting}
-                  className="btn-click px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md flex items-center gap-1.5 transition disabled:opacity-50"
+                  className="neu-btn neu-btn-primary btn-click px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold text-white flex items-center gap-1.5 transition disabled:opacity-50"
                 >
                   {editSubmitting ? (
                     <>

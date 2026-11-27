@@ -106,32 +106,34 @@ export default function PWAInstallPrompt() {
       id="pwa-install-banner"
       role="dialog"
       aria-label="Install SIPJAM"
-      className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 print:hidden no-print animate-in fade-in slide-in-from-bottom-5 duration-300"
+      className="fixed bottom-24 sm:bottom-6 left-4 right-4 sm:left-auto sm:right-6 sm:max-w-md z-50 print:hidden no-print animate-in fade-in slide-in-from-bottom-5 duration-300"
     >
-      <div className="neu-card rounded-2xl p-4 flex items-center gap-3.5">
-        <div className="w-11 h-11 rounded-xl bg-gradient-to-tr from-[#0F766E] to-[#14B8A6] flex items-center justify-center text-white text-xl shadow-md shrink-0">
-          <i className="fa-solid fa-mobile-screen-button"></i>
+      <div className="neu-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center gap-3.5">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <div className="w-11 h-11 rounded-xl neu-card-primary flex items-center justify-center text-white text-xl shrink-0">
+            <i className="fa-solid fa-mobile-screen-button"></i>
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
+              Install Aplikasi SIPJAM
+            </h4>
+            <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5 leading-snug">
+              Pasang aplikasi untuk akses cepat dan pengalaman terbaik di perangkat Anda.
+            </p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
-            Install Aplikasi SIPJAM
-          </h4>
-          <p className="text-[11px] text-slate-600 dark:text-slate-300 line-clamp-2 mt-0.5 leading-snug">
-            Pasang aplikasi untuk akses cepat dan pengalaman terbaik di perangkat Anda.
-          </p>
-        </div>
-        <div className="flex flex-col sm:flex-row items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto">
           <button
             type="button"
             onClick={handleInstall}
-            className="neu-btn neu-btn-primary btn-click px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold flex items-center gap-1.5"
+            className="neu-btn neu-btn-primary btn-click flex-1 sm:flex-none px-3.5 py-2 min-h-[44px] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5"
           >
             <i className="fa-solid fa-download text-[10px]"></i> Install
           </button>
           <button
             type="button"
             onClick={handleDismiss}
-            className="neu-btn neu-btn-secondary btn-click px-3 py-2 min-h-[38px] text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-xl"
+            className="neu-btn neu-btn-secondary btn-click flex-1 sm:flex-none px-3 py-2 min-h-[44px] text-slate-600 dark:text-slate-300 text-xs font-semibold rounded-xl"
           >
             Nanti Saja
           </button>

@@ -314,7 +314,7 @@ async function runAdversarialRaporSecurityTests() {
     // Verify assigned class is rendered in the badge
     assert.ok(markup.includes('VII-B'), 'Rendered HTML must contain VII-B');
     assert.ok(
-      markup.includes('font-extrabold text-teal-700 dark:text-teal-300'),
+      markup.includes('font-extrabold text-[#0F766E] dark:text-[#14B8A6]'),
       'Must contain static class badge classes'
     );
 

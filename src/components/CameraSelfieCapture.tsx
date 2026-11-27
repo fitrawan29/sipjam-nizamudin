@@ -429,7 +429,7 @@ export default function CameraSelfieCapture({
                 ''
               } object-contain`}
             />
-            <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
+            <div className="absolute top-2 left-2 max-w-[calc(100%-1rem)] bg-slate-900/80 px-2.5 py-1 rounded-full text-[10px] text-white font-medium flex items-center gap-1.5 border border-white/20 truncate">
               <i className="fa-solid fa-check text-teal-400 shrink-0"></i>
               <span className="shrink-0">Foto Terverifikasi</span>
               {locationName && <span className="text-slate-300 ml-1 max-w-[120px] sm:max-w-[200px] truncate">| {locationName}</span>}
@@ -467,14 +467,14 @@ export default function CameraSelfieCapture({
                   <button
                     type="button"
                     onClick={() => startCamera(facingMode)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                    className="px-3.5 py-2 min-h-[38px] bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
                   >
                     <i className="fa-solid fa-rotate-right"></i> Coba Lagi
                   </button>
                   <button
                     type="button"
                     onClick={toggleFacingMode}
-                    className="px-3 py-1.5 bg-[#0F766E] hover:bg-[#0D645D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                    className="px-3.5 py-2 min-h-[38px] bg-[#0F766E] hover:bg-[#0D645D] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
                   >
                     <i className="fa-solid fa-camera-rotate"></i> Ganti Kamera ({facingMode === 'user' ? 'Belakang' : 'Depan'})
                   </button>
@@ -486,19 +486,19 @@ export default function CameraSelfieCapture({
             {isStreaming && (
               <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-3">
                 <div className="flex justify-between items-start">
-                  <span className="bg-black/50 backdrop-blur-sm text-[10px] text-white px-2 py-0.5 rounded-md border border-white/10 flex items-center gap-1">
+                  <span className="bg-slate-900/75 text-[10px] text-white px-2.5 py-1 rounded-md border border-white/15 flex items-center gap-1">
                     <i className="fa-solid fa-circle-dot text-red-500 animate-pulse"></i> LIVE
                   </span>
                   <button
                     type="button"
                     onClick={toggleFacingMode}
-                    className="pointer-events-auto bg-black/60 hover:bg-black/80 backdrop-blur-sm text-[11px] text-slate-100 px-2.5 py-1 rounded-lg border border-white/20 flex items-center gap-1.5 transition"
+                    className="pointer-events-auto bg-slate-900/80 hover:bg-slate-900 text-[11px] text-slate-100 px-3 py-1.5 min-h-[36px] rounded-lg border border-white/20 flex items-center gap-1.5 transition"
                   >
                     <i className="fa-solid fa-camera-rotate text-teal-400"></i>
                     <span>{facingMode === 'user' ? 'Kamera Depan' : 'Kamera Belakang'}</span>
                   </button>
                 </div>
-                <div className="text-center text-white/80 text-[11px] font-medium drop-shadow bg-black/50 backdrop-blur-sm py-1 rounded-md mx-auto px-3">
+                <div className="text-center text-white/90 text-[11px] font-medium bg-slate-900/75 py-1 rounded-md mx-auto px-3">
                   {facingMode === 'user' ? 'Posisikan wajah Anda di tengah layar' : 'Arahkan kamera ke objek / aktivitas'}
                 </div>
               </div>

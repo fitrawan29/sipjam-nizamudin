@@ -985,7 +985,7 @@ export default function GuruPresensi({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
         <div>
           <h1 className="text-xl font-black text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
-            <i className="fa-solid fa-clock-user text-[#0F766E] dark:text-teal-400"></i>
+            <i className="fa-solid fa-user-clock text-[#0F766E] dark:text-teal-400"></i>
             <span>Presensi Kehadiran Guru</span>
           </h1>
           <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
@@ -1159,8 +1159,8 @@ export default function GuruPresensi({
                 </div>
 
                 {tipeAbsen === 'Pulang' && (
-                  <div className="neu-inset border border-teal-500/25 p-3 rounded-xl text-xs text-[#0F766E] dark:text-teal-300 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="neu-inset border border-teal-500/25 p-3 rounded-xl text-xs text-[#0F766E] dark:text-teal-300 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <i className="fa-regular fa-clock text-[#0F766E] dark:text-teal-400 text-sm"></i>
                       <div>
                         <div className="font-bold">
@@ -1351,18 +1351,18 @@ export default function GuruPresensi({
                         className="w-full px-3 py-2 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" 
                       />
                       {file && (
-                        <div className="p-3.5 rounded-2xl neu-inset border border-teal-500/25 flex items-center justify-between transition-all">
-                          <div className="flex items-center gap-2.5 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
-                            <i className="fa-solid fa-file-circle-check text-[#0F766E] dark:text-teal-400 text-lg"></i>
-                            <div>
-                              <div className="font-bold flex items-center gap-1.5">
+                        <div className="p-3.5 rounded-2xl neu-inset border border-teal-500/25 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 transition-all">
+                          <div className="flex items-center gap-2.5 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] min-w-0 flex-1">
+                            <i className="fa-solid fa-file-circle-check text-[#0F766E] dark:text-teal-400 text-lg shrink-0"></i>
+                            <div className="min-w-0 flex-1">
+                              <div className="font-bold flex flex-wrap items-center gap-1.5">
                                 {/* File surat izin terpasang */}
                                 <span>File {requiredDocName} terpasang</span>
                                 <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                                   Valid
                                 </span>
                               </div>
-                              <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] font-normal">
+                              <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] font-normal break-words">
                                 {file.name} ({(file.size / 1024).toFixed(0)} KB) • Tujuan: SIPJAM/Presensi_Guru/{normalizeDriveTeacherFolder(user?.nama || 'Guru')}
                               </div>
                             </div>
@@ -1387,7 +1387,7 @@ export default function GuruPresensi({
                                 await clearPresensiFileDraft();
                               }
                             }}
-                            className="neu-btn px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 rounded-lg transition"
+                            className="neu-btn px-3 py-2 min-h-[40px] text-[11px] font-bold text-rose-600 dark:text-rose-400 rounded-xl transition shrink-0"
                           >
                             Ganti File
                           </button>
@@ -1436,12 +1436,12 @@ export default function GuruPresensi({
                     />
 
                     {file && (
-                      <div className="p-3 rounded-xl neu-inset border border-teal-500/25 flex items-center justify-between transition-all">
-                        <div className="flex items-center gap-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
-                          <i className="fa-solid fa-circle-check text-[#0F766E] dark:text-teal-400 text-base"></i>
-                          <div>
+                      <div className="p-3 rounded-xl neu-inset border border-teal-500/25 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 transition-all">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] min-w-0 flex-1">
+                          <i className="fa-solid fa-circle-check text-[#0F766E] dark:text-teal-400 text-base shrink-0"></i>
+                          <div className="min-w-0 flex-1">
                             <div>{jenisPresensi === 'Dinas Luar' ? 'Foto lokasi siap digunakan' : 'Foto selfie siap digunakan'}</div>
-                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-normal">
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-normal truncate">
                               {file.name} ({(file.size / 1024).toFixed(0)} KB)
                             </div>
                           </div>
@@ -1466,7 +1466,7 @@ export default function GuruPresensi({
                               setPhotoPreviewUrl(null);
                             }
                           }}
-                          className="neu-btn px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 rounded-lg transition"
+                          className="neu-btn px-3 py-2 min-h-[40px] text-[11px] font-bold text-rose-600 dark:text-rose-400 rounded-xl transition shrink-0"
                         >
                           Ganti Foto
                         </button>
@@ -1476,15 +1476,19 @@ export default function GuruPresensi({
                 )}
 
                 <div id="row-tempat" className="fade-in pt-1">
-                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1 flex justify-between">
-                        <span>Titik Lokasi (Tempat)</span>
-                        <span className="text-[9px] text-[#0F766E] dark:text-teal-400 cursor-pointer btn-click" onClick={() => fetchLocation(gpsConfig)}>
+                    <div className="flex items-center justify-between mb-1.5 ml-1 gap-2">
+                        <label htmlFor="guru-presensi-lokasi" className="text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">Titik Lokasi (Tempat)</label>
+                        <button
+                          type="button"
+                          onClick={() => fetchLocation(gpsConfig)}
+                          className="neu-btn px-2.5 py-1 min-h-[34px] rounded-xl text-[10px] font-bold text-[#0F766E] dark:text-teal-400 inline-flex items-center gap-1"
+                        >
                           <i className="fa-solid fa-location-crosshairs"></i> Refresh API
-                        </span>
-                    </label>
-                    <input type="text" value={lokasi} readOnly className="w-full px-3 py-2 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] cursor-not-allowed" />
+                        </button>
+                    </div>
+                    <input id="guru-presensi-lokasi" type="text" value={lokasi} readOnly className="w-full px-3 py-2 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] cursor-not-allowed" />
                     {jarakAktual !== null && jenisPresensi === 'Sekolah' && (
-                      <div className={`text-[10px] font-num mt-1 ml-1 font-bold ${jarakAktual <= gpsConfig.radius ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      <div className={`text-[10px] font-num mt-1 ml-1 font-bold ${jarakAktual <= gpsConfig.radius ? 'text-[#0F766E] dark:text-teal-400' : 'text-rose-600 dark:text-rose-400'}`}>
                         <i className={`fa-solid ${jarakAktual <= gpsConfig.radius ? 'fa-check-circle' : 'fa-triangle-exclamation'} mr-1`}></i> 
                         Jarak Anda: {jarakAktual} m (Batas: {gpsConfig.radius} m)
                       </div>

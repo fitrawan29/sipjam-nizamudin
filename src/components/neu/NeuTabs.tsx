@@ -129,8 +129,8 @@ export const NeuTabs: React.FC<NeuTabsProps> = ({
     );
   };
 
-  const baseContainerClasses = `flex items-center gap-2.5 overflow-x-auto custom-scroll no-print select-none py-1.5 px-1 ${
-    borderBottom ? 'border-b border-slate-300/60 dark:border-slate-700/60 pb-3.5 mb-5' : 'pb-1.5'
+  const baseContainerClasses = `flex items-center gap-2.5 overflow-x-auto custom-scroll no-print select-none py-2.5 px-2.5 ${
+    borderBottom ? 'border-b border-slate-300/60 dark:border-slate-700/60 pb-4 mb-5' : ''
   } ${className}`;
 
   return (
@@ -140,9 +140,9 @@ export const NeuTabs: React.FC<NeuTabsProps> = ({
         const isDisabled = Boolean(tab.disabled);
         const tourId = tab.dataTour || tab['data-tour'] || tab.id;
 
-        let sizeClasses = 'text-xs px-4 py-2 min-h-[40px]';
-        if (size === 'sm') sizeClasses = 'text-[11px] px-3 py-1.5 min-h-[36px] rounded-xl';
-        if (size === 'lg') sizeClasses = 'text-sm px-5 py-2.5 min-h-[44px] rounded-2xl';
+        let sizeClasses = 'text-xs px-4 py-2 min-h-[44px]';
+        if (size === 'sm') sizeClasses = 'text-[11px] px-3 py-1.5 min-h-[38px] rounded-xl';
+        if (size === 'lg') sizeClasses = 'text-sm px-5 py-2.5 min-h-[48px] rounded-2xl';
 
         let stateClasses = '';
         if (isDisabled) {

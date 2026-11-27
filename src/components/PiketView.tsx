@@ -2017,16 +2017,18 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
   if (isGuru && dailyState && !dailyState.isPiket && !isAdmin) {
     return (
       <section id="view-piket" className="view-section page-enter w-full max-w-full">
-        <div className="clay-card clay-card-amber p-8 text-center max-w-lg mx-auto mt-6 rounded-3xl">
-          <div className="w-16 h-16 neu-inset text-[#D97706] dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-            <i className="fa-solid fa-shield-halved"></i>
-          </div>
-          <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Bukan Jadwal Piket Hari Ini</h2>
-          <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mb-6 leading-relaxed">
-            Modul <strong>Piket</strong> (termasuk fitur Presensi Siswa dan Laporan Piket) secara eksklusif hanya dapat diakses oleh Guru yang memiliki jadwal piket pada hari ini. Anda tidak tercatat dalam jadwal piket hari ini.
-          </p>
-          <div className="p-3 neu-inset rounded-xl border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 font-medium">
-            <i className="fa-solid fa-circle-info mr-1.5"></i> Hubungi Administrator jika jadwal penugasan piket Anda belum tercatat di sistem.
+        <div className="p-1.5 sm:p-2 w-full">
+          <div className="neu-card p-8 text-center max-w-lg mx-auto mt-6 rounded-3xl border border-amber-500/25">
+            <div className="w-16 h-16 neu-inset text-[#D97706] dark:text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+              <i className="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Bukan Jadwal Piket Hari Ini</h2>
+            <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mb-6 leading-relaxed">
+              Modul <strong>Piket</strong> (termasuk fitur Presensi Siswa dan Laporan Piket) secara eksklusif hanya dapat diakses oleh Guru yang memiliki jadwal piket pada hari ini. Anda tidak tercatat dalam jadwal piket hari ini.
+            </p>
+            <div className="p-3 neu-inset rounded-xl border border-amber-500/25 text-xs text-amber-800 dark:text-amber-300 font-medium">
+              <i className="fa-solid fa-circle-info mr-1.5"></i> Hubungi Administrator jika jadwal penugasan piket Anda belum tercatat di sistem.
+            </div>
           </div>
         </div>
       </section>
@@ -2035,10 +2037,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
   return (
     <section id="view-piket" className="view-section page-enter w-full max-w-full overflow-x-auto">
-        <div className="glass-card p-4 sm:p-6 w-full max-w-full overflow-hidden">
+      <div className="p-1.5 sm:p-2 w-full max-w-full">
+        <div className="neu-card p-4 sm:p-6 w-full max-w-full">
             <div className="flex justify-between items-center mb-4 no-print">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center">
+                <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2.5">
+                    <span className="w-9 h-9 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
                       <i className="fa-solid fa-shield-halved text-sm"></i>
                     </span>
                     {isAdmin ? 'Manajemen & Penugasan Piket' : 'Modul Piket Guru'}
@@ -2050,62 +2053,74 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     if (activeTab === 'rekap') fetchRekapPiket();
                     if (activeTab === 'scan') fetchTodayScanData();
                   }} 
-                  className="btn-click bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white w-8 h-8 rounded-lg text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+                  title="Muat ulang data"
+                  aria-label="Muat ulang data piket"
+                  className="neu-btn text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6] w-10 h-10 rounded-xl text-xs font-bold flex justify-center items-center shrink-0 cursor-pointer"
                 >
                   <i className="fa-solid fa-rotate-right text-xs"></i>
                 </button>
             </div>
 
             {dailyState?.isLibur && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 no-print">
+              <div className="neu-inset text-rose-700 dark:text-rose-300 p-4 rounded-2xl mb-4 text-sm font-bold border border-rose-500/30 no-print">
                 <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {dailyState.lockedReason}
               </div>
             )}
 
             {/* TAB BUTTONS */}
-            <div className="flex gap-2 mb-4 overflow-x-auto custom-scroll pb-1 no-print">
+            <div role="tablist" aria-label="Menu Piket" className="neu-inset p-1.5 rounded-2xl flex gap-2 mb-5 overflow-x-auto custom-scroll no-print">
               <button 
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'beranda'}
                 onClick={() => setActiveTab('beranda')} 
-                className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'beranda' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
+                className={`neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'beranda' ? 'neu-btn-primary text-white font-bold' : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6] font-semibold'}`}
               >
                 Beranda Piket
               </button>
 
               <button 
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'scan'}
                 onClick={() => setActiveTab('scan')} 
-                className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'scan' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
+                className={`neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'scan' ? 'neu-btn-primary text-white font-bold' : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6] font-semibold'}`}
               >
-                <i className="fa-solid fa-qrcode mr-1.5 text-teal-600 dark:text-teal-400"></i> Presensi Siswa (QR & Manual)
+                <i className={`fa-solid fa-qrcode ${activeTab === 'scan' ? 'text-white' : 'text-[#0F766E] dark:text-[#14B8A6]'}`}></i> Presensi Siswa (QR & Manual)
               </button>
 
               {isAdmin && (
                 <button 
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'penugasan'}
                   onClick={() => setActiveTab('penugasan')} 
-                  className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'penugasan' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
+                  className={`neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'penugasan' ? 'neu-btn-primary text-white font-bold' : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6] font-semibold'}`}
                 >
-                  <i className="fa-solid fa-user-gear mr-1.5 text-teal-600 dark:text-teal-400"></i> Penugasan Piket
+                  <i className={`fa-solid fa-user-gear ${activeTab === 'penugasan' ? 'text-white' : 'text-[#0F766E] dark:text-[#14B8A6]'}`}></i> Penugasan Piket
                 </button>
               )}
 
               {canReport && (
                 <button 
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'lapor'}
                   onClick={() => setActiveTab('lapor')} 
-                  className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'lapor' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
+                  className={`neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'lapor' ? 'neu-btn-primary text-white font-bold' : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6] font-semibold'}`}
                 >
-                  <i className="fa-solid fa-pen-to-square mr-1.5 text-teal-600 dark:text-teal-400"></i> Isi Laporan
+                  <i className={`fa-solid fa-pen-to-square ${activeTab === 'lapor' ? 'text-white' : 'text-[#0F766E] dark:text-[#14B8A6]'}`}></i> Isi Laporan
                 </button>
               )}
 
               <button 
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'rekap'}
                 onClick={() => setActiveTab('rekap')} 
-                className={`clay-btn px-4 py-2 rounded-2xl text-xs whitespace-nowrap transition-all pill-interactive ${activeTab === 'rekap' ? 'clay-btn-mint text-teal-700 font-bold dark:text-teal-400' : 'clay-btn-secondary text-gray-700 dark:text-gray-200'}`}
+                className={`neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${activeTab === 'rekap' ? 'neu-btn-primary text-white font-bold' : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6] font-semibold'}`}
               >
-                <i className="fa-solid fa-chart-pie mr-1.5 text-teal-600 dark:text-teal-400"></i> Rekap Piket
+                <i className={`fa-solid fa-chart-pie ${activeTab === 'rekap' ? 'text-white' : 'text-[#0F766E] dark:text-[#14B8A6]'}`}></i> Rekap Piket
               </button>
             </div>
 
@@ -2115,26 +2130,26 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
                   {/* Rejection Alert — Laporan Piket Ditolak */}
                   {isGuru && dailyState?.laporanPiketDitolak && (
-                    <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 space-y-2">
-                      <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                    <div className="neu-inset border border-rose-500/35 rounded-2xl p-4 space-y-2">
+                      <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-sm">
                         <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
                         <span>Laporan Piket Anda Ditolak oleh Admin</span>
                       </div>
                       {(dailyState.laporanPiketDitolak.catatan_admin || dailyState.laporanPiketDitolak.alasan_penolakan) && (
-                        <div className="pl-6 text-xs text-red-700 dark:text-red-300/90 italic leading-relaxed">
+                        <div className="pl-6 text-xs text-rose-700 dark:text-rose-300/90 italic leading-relaxed">
                           <span className="font-semibold not-italic">Alasan: </span>
                           {dailyState.laporanPiketDitolak.catatan_admin || dailyState.laporanPiketDitolak.alasan_penolakan}
                         </div>
                       )}
-                      <div className="pl-6 flex items-center gap-3">
-                        <span className="text-xs text-red-600 dark:text-red-400 font-semibold">
+                      <div className="pl-6 flex items-center gap-3 flex-wrap">
+                        <span className="text-xs text-rose-600 dark:text-rose-400 font-semibold">
                           <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang laporan piket Anda.
                         </span>
                         {canReport && (
                           <button
                             type="button"
                             onClick={() => setActiveTab('lapor')}
-                            className="text-xs font-bold text-white bg-red-600 hover:bg-red-700 px-3 py-1 rounded-lg transition"
+                            className="neu-btn neu-btn-rose text-xs font-bold text-white px-3.5 py-1.5 min-h-[36px] rounded-xl transition cursor-pointer"
                           >
                             Isi Ulang Sekarang →
                           </button>
@@ -2143,37 +2158,37 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     </div>
                   )}
 
-                  <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl">
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-xs font-bold text-teal-800 dark:text-teal-400 flex items-center gap-1.5">
+                  <div className="neu-inset p-4 rounded-2xl">
+                      <div className="flex justify-between items-center mb-3 gap-2">
+                        <h3 className="text-xs font-bold text-[#0F766E] dark:text-[#14B8A6] flex items-center gap-1.5">
                           <i className="fa-regular fa-calendar-check"></i> Jadwal Piket Harian (Senin – Sabtu)
                         </h3>
                         {isAdmin && (
                           <button
                             type="button"
                             onClick={() => setActiveTab('penugasan')}
-                            className="text-[11px] font-bold text-teal-700 dark:text-teal-400 hover:underline inline-flex items-center gap-1"
+                            className="neu-btn text-[11px] font-bold text-[#0F766E] dark:text-[#14B8A6] px-3 py-1.5 min-h-[34px] rounded-xl inline-flex items-center gap-1 cursor-pointer"
                           >
                             <i className="fa-solid fa-gear text-[10px]"></i> Kelola Penugasan
                           </button>
                         )}
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-80 overflow-y-auto custom-scroll pr-1">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto custom-scroll p-2">
                         {HARI_PIKET_LIST.map(hari => {
                           const guruList = penugasanList.filter(p => p.hari === hari && p.tipe_petugas === 'Guru');
                           const siswaList = penugasanList.filter(p => p.hari === hari && p.tipe_petugas === 'Siswa');
                           const legacyRow = jadwalPiket.find(j => j.hari === hari);
 
                           return (
-                            <div key={hari} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-teal-100 dark:border-teal-900 shadow-2xs space-y-1.5">
-                              <div className="flex justify-between items-center">
-                                <span className="font-bold text-teal-700 dark:text-teal-400 text-xs">{hari}</span>
-                                <span className="text-[10px] bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 font-semibold px-1.5 py-0.2 rounded">
+                            <div key={hari} className="neu-card-sm p-3.5 rounded-2xl space-y-1.5">
+                              <div className="flex justify-between items-center gap-2">
+                                <span className="font-bold text-[#0F766E] dark:text-[#14B8A6] text-xs">{hari}</span>
+                                <span className="font-num text-[10px] neu-inset text-[#0F766E] dark:text-[#14B8A6] font-semibold px-2 py-0.5 rounded-lg">
                                   {guruList.length} Guru • {siswaList.length} Siswa
                                 </span>
                               </div>
-                              <div className="text-[11px] text-gray-800 dark:text-gray-200">
-                                <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] block">Guru:</span>
+                              <div className="text-[11px] text-[#0F172A] dark:text-[#F1F5F9]">
+                                <span className="font-bold text-[#64748B] dark:text-[#94A3B8] text-[10px] block">Guru:</span>
                                 {guruList.length > 0 ? (
                                   <ul className="list-disc list-inside space-y-0.5 mt-0.5">
                                     {guruList.map(g => (
@@ -2181,17 +2196,17 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                     ))}
                                   </ul>
                                 ) : (
-                                  <span className="text-[10px] text-gray-400 italic">
+                                  <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8] italic">
                                     {legacyRow?.daftar_guru || 'Belum ditugaskan'}
                                   </span>
                                 )}
                               </div>
                               {siswaList.length > 0 && (
-                                <div className="text-[11px] text-gray-800 dark:text-gray-200 pt-1 border-t border-gray-100 dark:border-gray-700">
-                                  <span className="font-bold text-gray-500 dark:text-gray-400 text-[10px] block">Siswa:</span>
+                                <div className="text-[11px] text-[#0F172A] dark:text-[#F1F5F9] pt-1.5 border-t border-slate-300/40 dark:border-slate-700/60">
+                                  <span className="font-bold text-[#64748B] dark:text-[#94A3B8] text-[10px] block">Siswa:</span>
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {siswaList.map(s => (
-                                      <span key={s.id} className="text-[9px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded font-medium">
+                                      <span key={s.id} className="text-[9px] neu-inset text-[#334155] dark:text-[#CBD5E1] px-2 py-0.5 rounded-md font-medium">
                                         {s.siswa_nama} {s.kelas ? `(${s.kelas})` : ''}
                                       </span>
                                     ))}
@@ -2205,47 +2220,47 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
                   <div>
                       <div className="flex justify-between items-center mb-3 px-1">
-                          <h3 className="text-xs font-bold text-gray-900 dark:text-white"><i className="fa-solid fa-list-check mr-1.5 text-teal-600 dark:text-teal-400"></i> Laporan Terbaru</h3>
+                          <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]"><i className="fa-solid fa-list-check mr-1.5 text-[#0F766E] dark:text-[#14B8A6]"></i> Laporan Terbaru</h3>
                       </div>
-                      <div className="space-y-3 min-h-[150px]">
+                      <div className="space-y-3 min-h-[150px] p-1">
                         {laporanPiket.length === 0 ? (
-                          <div className="text-center text-[10px] text-gray-500 dark:text-white/80 py-4">Belum ada laporan.</div>
+                          <div className="neu-inset rounded-2xl text-center text-[11px] text-[#64748B] dark:text-[#94A3B8] py-6">Belum ada laporan.</div>
                         ) : laporanPiket.map(l => (
-                          <div key={l.id} className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col gap-2">
+                          <div key={l.id} className="neu-card-sm p-3.5 rounded-2xl flex flex-col gap-2">
                             <div className="flex justify-between items-start mb-1">
                               <div>
-                                <div className="font-bold text-xs text-gray-900 dark:text-white">{l.guru_pelapor}</div>
-                                <div className="text-[9px] text-gray-500 dark:text-gray-400">{l.tanggal}</div>
+                                <div className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">{l.guru_pelapor}</div>
+                                <div className="font-num text-[10px] text-[#64748B] dark:text-[#94A3B8]">{l.tanggal}</div>
                               </div>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                l.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${
+                                l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                l.status_verifikasi === 'Ditolak' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                               }`}>{l.status_verifikasi || 'Menunggu'}</span>
                             </div>
-                            <div className="text-[10px] text-gray-700 dark:text-white/80 line-clamp-2">{l.catatan_apel || "Tidak ada catatan."}</div>
+                            <div className="text-[11px] text-[#334155] dark:text-[#CBD5E1] line-clamp-2">{l.catatan_apel || "Tidak ada catatan."}</div>
                             {l.link_foto && l.link_foto !== '-' && (
                               <div className="flex items-center gap-2 mt-1">
                                 <img 
                                   src={transformGoogleDriveUrl(l.link_foto)} 
                                   alt="Foto Piket" 
-                                  className="w-8 h-8 object-cover rounded border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                  className="w-9 h-9 object-cover rounded-xl neu-inset p-0.5 shrink-0"
                                   onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                 />
-                                <a href={l.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline text-[10px] inline-flex items-center gap-1">
+                                <a href={l.link_foto} target="_blank" rel="noreferrer" className="text-[#0F766E] dark:text-[#14B8A6] hover:underline text-[10px] font-semibold inline-flex items-center gap-1">
                                   <i className="fa-solid fa-camera mr-1"></i> Foto Piket
                                 </a>
                               </div>
                             )}
                             {isAdmin && (
-                              <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                              <div className="flex gap-2 mt-2 pt-2 border-t border-slate-300/40 dark:border-slate-700/60">
                                 <button
                                   disabled={processingId === l.id || l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi'}
                                   onClick={() => updatePiketStatus(l.id, 'Disetujui')}
-                                  className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                                  className={`flex-1 text-[10px] font-bold py-2 min-h-[36px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
                                     l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi'
-                                      ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
-                                      : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
+                                      ? 'neu-inset text-emerald-700 dark:text-emerald-300 cursor-default opacity-80'
+                                      : 'neu-btn neu-btn-teal text-white disabled:opacity-50'
                                   }`}
                                 >
                                   {processingId === l.id ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-check"></i> Setujui</>}
@@ -2253,10 +2268,10 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 <button
                                   disabled={processingId === l.id || l.status_verifikasi === 'Ditolak'}
                                   onClick={() => updatePiketStatus(l.id, 'Ditolak')}
-                                  className={`flex-1 text-[10px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                                  className={`flex-1 text-[10px] font-bold py-2 min-h-[36px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
                                     l.status_verifikasi === 'Ditolak'
-                                      ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 cursor-default opacity-80'
-                                      : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
+                                      ? 'neu-inset text-rose-700 dark:text-rose-300 cursor-default opacity-80'
+                                      : 'neu-btn neu-btn-rose text-white disabled:opacity-50'
                                   }`}
                                 >
                                   {processingId === l.id ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-xmark"></i> Tolak</>}
@@ -2273,29 +2288,29 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
             {/* TAB: PRESENSI SISWA (QR & MANUAL) */}
             {activeTab === 'scan' && (
               isAdmin ? (
-                <div id="piket-content-scan" className="space-y-6 fade-in">
+                <div id="piket-content-scan" className="space-y-6 fade-in p-1">
                 {/* 1. Kiosk Station & Mode Switcher Controls */}
-                <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-4">
+                <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                      <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
-                        <i className="fa-solid fa-qrcode text-teal-600 dark:text-teal-400"></i>
+                      <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                        <i className="fa-solid fa-qrcode text-[#0F766E] dark:text-[#14B8A6]"></i>
                         Kios Scanner Presensi Siswa (QR Code & Input Manual)
                       </h3>
-                      <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                      <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5">
                         Mendukung scanner USB HID barcode/QR, kamera browser, dan input manual tersinkronisasi dua arah.
                       </p>
                     </div>
 
                     {/* Kiosk Device ID Selector */}
-                    <div className="flex items-center gap-2 self-stretch sm:self-auto bg-white dark:bg-gray-800 p-1.5 rounded-xl border border-teal-200 dark:border-teal-800">
-                      <span className="text-[11px] font-bold text-gray-500 dark:text-gray-400 pl-2 whitespace-nowrap">
-                        <i className="fa-solid fa-desktop mr-1 text-teal-600"></i> Stasiun Kios:
+                    <div className="flex items-center gap-2 self-stretch sm:self-auto neu-inset p-1.5 rounded-2xl">
+                      <span className="text-[11px] font-bold text-[#475569] dark:text-[#CBD5E1] pl-2 whitespace-nowrap">
+                        <i className="fa-solid fa-desktop mr-1 text-[#0F766E] dark:text-[#14B8A6]"></i> Stasiun Kios:
                       </span>
                       <select
                         value={deviceId}
                         onChange={(e) => handleDeviceIdChange(e.target.value)}
-                        className="text-xs font-bold text-gray-800 dark:text-gray-200 bg-gray-50 dark:bg-gray-700/50 py-1.5 px-2.5 rounded-lg border-0 focus:ring-2 focus:ring-teal-500 cursor-pointer"
+                        className="neu-input text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] py-2 px-3 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                       >
                         <option value="kiosk-1">Kios 1 (Gerbang Utama)</option>
                         <option value="kiosk-2">Kios 2 (Gerbang Barat)</option>
@@ -2317,27 +2332,27 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
                   {/* Mode Toggle: Datang vs Pulang */}
                   <div>
-                    <label className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide block mb-2">
+                    <label className="text-[11px] font-bold text-[#475569] dark:text-[#CBD5E1] uppercase tracking-wide block mb-2">
                       Pilih Status Presensi:
                     </label>
-                    <div className="grid grid-cols-2 gap-3 max-w-xl">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-xl">
                       <button
                         type="button"
                         onClick={() => setScanMode('datang')}
-                        className={`py-3 px-4 rounded-xl text-left transition-all border flex items-center gap-3 ${
+                        className={`neu-btn py-3 px-4 min-h-[56px] rounded-2xl text-left transition-all flex items-center gap-3 cursor-pointer ${
                           scanMode === 'datang'
-                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-400/50'
-                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                            ? 'neu-btn-primary text-white'
+                            : 'text-[#334155] dark:text-[#CBD5E1]'
                         }`}
                       >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                          scanMode === 'datang' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400'
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          scanMode === 'datang' ? 'bg-white/20 text-white' : 'neu-inset text-[#0F766E] dark:text-[#14B8A6]'
                         }`}>
                           <i className="fa-solid fa-right-to-bracket text-lg"></i>
                         </div>
                         <div>
                           <div className="font-bold text-xs sm:text-sm">PRESENSI DATANG</div>
-                          <div className={`text-[10px] ${scanMode === 'datang' ? 'text-emerald-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                          <div className={`text-[10px] ${scanMode === 'datang' ? 'text-teal-50/90' : 'text-[#64748B] dark:text-[#94A3B8]'}`}>
                             Catat kedatangan siswa
                           </div>
                         </div>
@@ -2346,20 +2361,20 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       <button
                         type="button"
                         onClick={() => setScanMode('pulang')}
-                        className={`py-3 px-4 rounded-xl text-left transition-all border flex items-center gap-3 ${
+                        className={`neu-btn py-3 px-4 min-h-[56px] rounded-2xl text-left transition-all flex items-center gap-3 cursor-pointer ${
                           scanMode === 'pulang'
-                            ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-400/50'
-                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                            ? 'neu-btn-primary text-white'
+                            : 'text-[#334155] dark:text-[#CBD5E1]'
                         }`}
                       >
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
-                          scanMode === 'pulang' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400'
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                          scanMode === 'pulang' ? 'bg-white/20 text-white' : 'neu-inset text-sky-600 dark:text-sky-400'
                         }`}>
                           <i className="fa-solid fa-right-from-bracket text-lg"></i>
                         </div>
                         <div>
                           <div className="font-bold text-xs sm:text-sm">PRESENSI PULANG</div>
-                          <div className={`text-[10px] ${scanMode === 'pulang' ? 'text-blue-100' : 'text-gray-500 dark:text-gray-400'}`}>
+                          <div className={`text-[10px] ${scanMode === 'pulang' ? 'text-teal-50/90' : 'text-[#64748B] dark:text-[#94A3B8]'}`}>
                             Catat kepulangan siswa
                           </div>
                         </div>
@@ -2367,12 +2382,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     </div>
 
                     {scanMode === 'pulang' && (
-                      <div className={`mt-3 p-3 rounded-xl border flex items-center gap-2.5 text-xs font-semibold ${
+                      <div className={`neu-inset mt-3 p-3 rounded-2xl border flex items-center gap-2.5 text-xs font-semibold ${
                         piketPulangCheck.allowed
-                          ? 'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-950/40 dark:text-blue-200 dark:border-blue-800'
-                          : 'bg-amber-50 text-amber-900 border-amber-300 dark:bg-amber-950/40 dark:text-amber-200 dark:border-amber-800'
+                          ? 'text-sky-900 border-sky-500/30 dark:text-sky-200'
+                          : 'text-amber-900 border-amber-500/35 dark:text-amber-200'
                       }`}>
-                        <i className={`fa-solid ${piketPulangCheck.allowed ? 'fa-circle-check text-blue-600' : 'fa-clock text-amber-600'} text-sm shrink-0`}></i>
+                        <i className={`fa-solid ${piketPulangCheck.allowed ? 'fa-circle-check text-sky-600 dark:text-sky-400' : 'fa-clock text-amber-600 dark:text-amber-400'} text-sm shrink-0`}></i>
                         <div>
                           <div className="font-bold">{piketPulangCheck.allowed ? 'Hak Akses Utama Guru Piket Aktif' : 'Presensi Pulang Dialihkan / Belum Aktif'}</div>
                           <div className="text-[11px] font-normal opacity-90 mt-0.5">{piketPulangCheck.pesan}</div>
@@ -2385,15 +2400,15 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                 {/* 2. Scanner Station & Real-Time Student Feedback Card */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* Left Column: Input Modes (USB HID + Camera) */}
-                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <i className="fa-solid fa-barcode text-teal-600"></i> Mode Input Scanner (QR / Barcode)
+                  <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-4">
+                    <div className="flex justify-between items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                        <i className="fa-solid fa-barcode text-[#0F766E] dark:text-[#14B8A6]"></i> Mode Input Scanner (QR / Barcode)
                       </span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                      <span className={`neu-inset text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1.5 ${
                         isUsbInputFocused
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400'
-                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-400'
+                          ? 'text-emerald-700 dark:text-emerald-400'
+                          : 'text-amber-700 dark:text-amber-400'
                       }`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${isUsbInputFocused ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
                         {isUsbInputFocused ? 'USB Scanner Fokus Aktif' : 'Klik Input untuk Fokus'}
@@ -2412,11 +2427,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       }}
                       className="space-y-2"
                     >
-                      <label className="text-[11px] font-semibold text-gray-600 dark:text-gray-300 block">
+                      <label className="text-[11px] font-semibold text-[#475569] dark:text-[#CBD5E1] block">
                         Scanner Barcode / QR Eksternal (USB HID):
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-teal-600 dark:text-teal-400">
+                        <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#0F766E] dark:text-[#14B8A6]">
                           <i className="fa-solid fa-qrcode text-base"></i>
                         </div>
                         <input
@@ -2441,24 +2456,24 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           onBlur={handleUsbInputBlur}
                           disabled={scanProcessing}
                           placeholder="Arahkan scanner ke QR Code atau ketik NISN lalu Enter..."
-                          className="w-full pl-10 pr-28 py-3 text-sm bg-gray-50 dark:bg-gray-900 border-2 border-teal-500 dark:border-teal-600 rounded-xl focus:outline-none focus:ring-4 focus:ring-teal-500/20 text-gray-900 dark:text-white font-mono placeholder:font-sans placeholder:text-gray-400"
+                          className="neu-input font-num w-full pl-10 pr-28 py-3 text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder:font-sans placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           autoFocus
                           autoComplete="off"
                         />
                         <button
                           type="submit"
                           disabled={scanProcessing || !usbInputVal.trim()}
-                          className="absolute right-1.5 top-1.5 bottom-1.5 px-4 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          className="neu-btn neu-btn-primary absolute right-1.5 top-1.5 bottom-1.5 px-4 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                         >
                           {scanProcessing ? <i className="fa-solid fa-spinner animate-spin"></i> : <>Scan <i className="fa-solid fa-arrow-turn-down text-[10px]"></i></>}
                         </button>
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center justify-between">
-                        <span><i className="fa-solid fa-circle-info mr-1 text-teal-600"></i> Auto re-focus aktif untuk scan berkelanjutan tanpa mouse</span>
+                      <div className="text-[10px] text-[#64748B] dark:text-[#94A3B8] flex items-center justify-between gap-2">
+                        <span><i className="fa-solid fa-circle-info mr-1 text-[#0F766E] dark:text-[#14B8A6]"></i> Auto re-focus aktif untuk scan berkelanjutan tanpa mouse</span>
                         <button
                           type="button"
                           onClick={() => usbInputRef.current?.focus()}
-                          className="text-teal-600 dark:text-teal-400 hover:underline font-semibold cursor-pointer"
+                          className="text-[#0F766E] dark:text-[#14B8A6] hover:underline font-semibold cursor-pointer shrink-0"
                         >
                           Fokus Ulang
                         </button>
@@ -2466,16 +2481,16 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     </form>
 
                     {/* Divider & Browser Camera Scanner Option */}
-                    <div className="pt-3 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[11px] font-semibold text-gray-600 dark:text-gray-300">
+                    <div className="pt-3 border-t border-slate-300/40 dark:border-slate-700/60 space-y-3">
+                      <div className="flex justify-between items-center gap-2">
+                        <span className="text-[11px] font-semibold text-[#475569] dark:text-[#CBD5E1]">
                           Kamera Browser (Webcam / HP):
                         </span>
                         {!cameraActive ? (
                           <button
                             type="button"
                             onClick={startCamera}
-                            className="px-3 py-1.5 bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-teal-200 dark:border-teal-800 cursor-pointer"
+                            className="neu-btn neu-btn-teal px-3.5 py-2 min-h-[38px] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                           >
                             <i className="fa-solid fa-camera"></i> Buka Kamera
                           </button>
@@ -2483,7 +2498,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           <button
                             type="button"
                             onClick={stopCamera}
-                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border border-red-200 dark:border-red-800 cursor-pointer"
+                            className="neu-btn neu-btn-rose px-3.5 py-2 min-h-[38px] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
                           >
                             <i className="fa-solid fa-video-slash"></i> Tutup Kamera
                           </button>
@@ -2491,14 +2506,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       </div>
 
                       {cameraError && (
-                        <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                        <div className="neu-inset p-3 border border-rose-500/30 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
                           <i className="fa-solid fa-triangle-exclamation"></i>
                           <span>{cameraError}</span>
                         </div>
                       )}
 
                       {cameraActive && (
-                        <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video border-2 border-teal-500 shadow-inner">
+                        <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video border-2 border-[#0F766E] neu-inset">
                           <video
                             ref={(el) => {
                               videoRef.current = el;
@@ -2518,12 +2533,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           {/* Scanner Reticle Overlay */}
                           <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                             <div className="w-40 h-40 sm:w-56 sm:h-56 max-w-[75%] max-h-[75%] border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
-                              <span className="text-[10px] text-teal-200 bg-black/60 px-2 py-0.5 rounded-full font-bold">
+                              <span className="text-[10px] text-teal-200 bg-slate-900/75 px-2 py-0.5 rounded-full font-bold">
                                 Arahkan QR ke Sini
                               </span>
                             </div>
                           </div>
-                          <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs p-1.5 rounded-lg text-center text-[10px] text-white">
+                          <div className="absolute bottom-2 left-2 right-2 bg-slate-900/75 p-1.5 rounded-lg text-center text-[10px] text-white">
                             {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
                               <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
                             ) : (
@@ -2536,21 +2551,21 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* Right Column: Visual Feedback Student Card */}
-                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between min-h-[300px]">
+                  <div className="neu-card-sm p-4 sm:p-5 rounded-2xl flex flex-col justify-between min-h-[300px]">
                     <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                          <i className="fa-solid fa-id-card text-teal-600"></i> Kartu Hasil Presensi Terakhir
+                      <div className="flex justify-between items-center mb-3 gap-2">
+                        <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                          <i className="fa-solid fa-id-card text-[#0F766E] dark:text-[#14B8A6]"></i> Kartu Hasil Presensi Terakhir
                         </span>
                         {lastScanResult && (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                          <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase ${
                             lastScanResult.success
                               ? lastScanResult.status === 'datang'
                                 ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                                : 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300'
+                                : 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'
                               : lastScanResult.alreadyExists
                               ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                              : 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
+                              : 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
                           }`}>
                             {lastScanResult.success
                               ? `Presensi ${lastScanResult.status} Berhasil`
@@ -2562,18 +2577,18 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       </div>
 
                       {lastScanResult?.student ? (
-                        <div className={`p-4 rounded-xl border-2 space-y-3 transition-all ${
+                        <div className={`neu-inset p-4 rounded-2xl border-2 space-y-3 transition-all ${
                           lastScanResult.success
                             ? lastScanResult.status === 'datang'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500'
-                              : 'bg-blue-50 dark:bg-blue-950/20 border-blue-500'
+                              ? 'border-emerald-500/60'
+                              : 'border-sky-500/60'
                             : lastScanResult.alreadyExists
-                            ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500'
-                            : 'bg-red-50 dark:bg-red-950/20 border-red-500'
+                            ? 'border-amber-500/60'
+                            : 'border-rose-500/60'
                         }`}>
                           <div className="flex items-center gap-4">
                             {/* Avatar */}
-                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl text-white shadow-md shrink-0 ${
+                            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl text-white shrink-0 ${
                               lastScanResult.status === 'datang'
                                 ? 'bg-gradient-to-tr from-[#0F766E] to-teal-500'
                                 : 'bg-gradient-to-tr from-sky-600 to-cyan-600'
@@ -2583,14 +2598,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
                             {/* Details */}
                             <div className="min-w-0 flex-1">
-                              <h4 className="text-base sm:text-lg font-black text-gray-900 dark:text-white truncate">
+                              <h4 className="text-base sm:text-lg font-black text-[#0F172A] dark:text-[#F1F5F9] truncate">
                                 {lastScanResult.student.nama_siswa}
                               </h4>
                               <div className="flex flex-wrap items-center gap-2 mt-1">
-                                <span className="text-xs font-bold px-2.5 py-0.5 rounded-md bg-white dark:bg-gray-800 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-700 shadow-2xs">
+                                <span className="neu-card-sm text-xs font-bold px-2.5 py-0.5 rounded-lg text-[#0F766E] dark:text-[#14B8A6]">
                                   Kelas {lastScanResult.student.kelas}
                                 </span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                                <span className="font-num text-xs text-[#475569] dark:text-[#94A3B8]">
                                   NISN: {lastScanResult.student.nisn || '-'}
                                 </span>
                               </div>
@@ -2598,33 +2613,33 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           </div>
 
                           {/* Message and Timestamp */}
-                          <div className="pt-2 border-t border-black/10 dark:border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs">
-                            <span className="font-semibold text-gray-800 dark:text-gray-200">
+                          <div className="pt-2 border-t border-slate-300/40 dark:border-slate-700/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 text-xs">
+                            <span className="font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
                               {lastScanResult.message}
                             </span>
-                            <span className="text-[11px] text-gray-500 dark:text-gray-400 font-mono shrink-0">
+                            <span className="font-num text-[11px] text-[#475569] dark:text-[#94A3B8] shrink-0">
                               pk. {formatPresensiTime(lastScanResult.jam) || (lastScanResult.jam && lastScanResult.jam !== '-' ? lastScanResult.jam : '-')} WITA
                             </span>
                           </div>
                         </div>
                       ) : lastScanResult && !lastScanResult.student ? (
-                        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border-2 border-red-500 space-y-2">
-                          <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+                        <div className="neu-inset p-4 rounded-2xl border-2 border-rose-500/60 space-y-2">
+                          <div className="flex items-center gap-2 text-rose-700 dark:text-rose-400 font-bold text-sm">
                             <i className="fa-solid fa-circle-xmark text-lg"></i>
                             <span>Siswa Tidak Ditemukan</span>
                           </div>
-                          <p className="text-xs text-red-600 dark:text-red-300">
+                          <p className="text-xs text-rose-700 dark:text-rose-300">
                             {lastScanResult.message}
                           </p>
                         </div>
                       ) : (
-                        <div className="p-8 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 flex flex-col items-center justify-center text-center space-y-3 text-gray-400 dark:text-gray-500">
-                          <div className="w-16 h-16 rounded-full bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 flex items-center justify-center text-2xl shadow-inner">
+                        <div className="neu-inset p-8 rounded-2xl border border-dashed border-slate-400/40 dark:border-slate-600/50 flex flex-col items-center justify-center text-center space-y-3 text-[#64748B] dark:text-[#94A3B8]">
+                          <div className="w-16 h-16 rounded-full neu-card-sm text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center text-2xl">
                             <i className="fa-solid fa-qrcode animate-pulse"></i>
                           </div>
                           <div>
-                            <div className="font-bold text-sm text-gray-700 dark:text-gray-300">Menunggu Presensi Siswa...</div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            <div className="font-bold text-sm text-[#334155] dark:text-[#CBD5E1]">Menunggu Presensi Siswa...</div>
+                            <div className="text-xs text-[#64748B] dark:text-[#94A3B8] mt-1">
                               Arahkan kartu QR ke scanner atau ketik data siswa pada form manual
                             </div>
                           </div>
@@ -2632,7 +2647,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       )}
                     </div>
 
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                    <div className="font-num text-[10px] text-[#64748B] dark:text-[#94A3B8] pt-3 border-t border-slate-300/40 dark:border-slate-700/60 flex justify-between items-center">
                       <span>Stasiun: {deviceId}</span>
                       <span>Audio Feedback: Suara Aktif (Web Audio)</span>
                     </div>
@@ -2640,34 +2655,34 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                 </div>
 
                 {/* 3. Presensi Manual Siswa & Daftar Roster (Sinkronisasi Dua Arah) */}
-                <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                     <div>
-                      <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
-                        <i className="fa-solid fa-clipboard-user text-teal-600 dark:text-teal-400"></i>
+                      <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                        <i className="fa-solid fa-clipboard-user text-[#0F766E] dark:text-[#14B8A6]"></i>
                         Presensi Manual & Daftar Siswa
                       </h3>
-                      <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                      <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5">
                         Input manual siswa dan ceklis presensi per kelas • Tersinkronisasi dua arah dengan Scanner QR.
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 self-stretch sm:self-auto bg-teal-50 dark:bg-teal-950/40 text-teal-800 dark:text-teal-200 border border-teal-200 dark:border-teal-800 py-1.5 px-3 rounded-xl text-xs font-semibold">
-                      <i className="fa-solid fa-arrows-rotate text-teal-600"></i>
+                    <div className="neu-inset flex items-center gap-2 self-stretch sm:self-auto text-[#0F766E] dark:text-[#14B8A6] py-1.5 px-3 rounded-xl text-xs font-semibold">
+                      <i className="fa-solid fa-arrows-rotate text-[#0F766E] dark:text-[#14B8A6]"></i>
                       <span>Sinkronisasi Dua Arah Aktif</span>
                     </div>
                   </div>
 
                   {/* Filter & Form Input Manual */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-teal-200/50 dark:border-teal-800/50">
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-300/40 dark:border-slate-700/60">
                     {/* Filter Kelas */}
                     <div className="flex-1 sm:max-w-xs">
-                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                      <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                         Pilih Kelas:
                       </label>
                       <select
                         value={manualKelasFilter}
                         onChange={(e) => setManualKelasFilter(e.target.value)}
-                        className="w-full text-xs font-semibold bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                        className="neu-input w-full text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] px-3 py-2.5 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                       >
                         <option value="Semua">Semua Kelas</option>
                         {kelasList.map(k => (
@@ -2684,7 +2699,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       }}
                       className="flex-1"
                     >
-                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                      <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                         Form Input Manual Siswa:
                       </label>
                       <div className="flex items-center gap-2">
@@ -2701,9 +2716,9 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               }
                             }}
                             placeholder="Ketik nama siswa atau NISN lalu Enter untuk presensi..."
-                            className="w-full pl-9 pr-8 py-2.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+                            className="neu-input w-full pl-9 pr-8 py-2.5 text-xs text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
-                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
+                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-[#64748B] dark:text-[#94A3B8]"></i>
                           {manualSearchQuery && (
                             <button
                               type="button"
@@ -2712,7 +2727,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 setUsbInputVal('');
                                 setLastScanResult(null);
                               }}
-                              className="absolute right-2.5 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                              className="absolute right-2.5 top-2.5 text-xs text-[#64748B] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] cursor-pointer"
                             >
                               <i className="fa-solid fa-xmark"></i>
                             </button>
@@ -2721,7 +2736,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         <button
                           type="submit"
                           disabled={!manualSearchQuery.trim() || !!manualMarkLoading}
-                          className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                          className="neu-btn neu-btn-primary px-4 py-2.5 min-h-[40px] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer"
                         >
                           <i className="fa-solid fa-check"></i>
                           <span>Proses Presensi</span>
@@ -2731,21 +2746,21 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* Manual Student Roster Table Card */}
-                  <div className="pt-2 border-t border-gray-100 dark:border-gray-700 space-y-3">
+                  <div className="pt-2 border-t border-slate-300/40 dark:border-slate-700/60 space-y-3">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <div>
-                        <h4 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                          <i className="fa-solid fa-users text-teal-600"></i>
+                        <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                          <i className="fa-solid fa-users text-[#0F766E] dark:text-[#14B8A6]"></i>
                           Daftar Siswa {manualKelasFilter !== 'Semua' ? `Kelas ${manualKelasFilter}` : '(Semua Kelas)'}
                         </h4>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        <p className="font-num text-[11px] text-[#64748B] dark:text-[#94A3B8] mt-0.5">
                           Menampilkan {filteredManualStudents.length} siswa
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={fetchTodayScanData}
-                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                        className="neu-btn px-3.5 py-2 min-h-[38px] text-[#334155] dark:text-[#CBD5E1] rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
                       >
                         <i className="fa-solid fa-rotate text-xs"></i>
                         <span>Segarkan Status</span>
@@ -2753,25 +2768,25 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto custom-scroll">
-                      <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200 border-collapse">
+                    <div className="overflow-x-auto custom-scroll neu-inset rounded-2xl p-1.5">
+                      <table className="w-full text-left text-xs text-[#334155] dark:text-[#CBD5E1] border-collapse">
                         <thead>
-                          <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">
-                            <th className="py-3 px-3 w-12 text-center">No</th>
+                          <tr className="border-b border-slate-300/50 dark:border-slate-700/60 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase">
+                            <th className="py-3 px-3 w-12 text-center rounded-tl-xl">No</th>
                             <th className="py-3 px-3">Nama Siswa</th>
                             <th className="py-3 px-3">NISN</th>
                             <th className="py-3 px-3">Kelas</th>
                             <th className="py-3 px-3 text-center min-w-[140px]">Presensi Datang</th>
                             <th className="py-3 px-3 text-center min-w-[140px]">Presensi Pulang</th>
-                            <th className="py-3 px-3 text-center w-20">WA Ortu</th>
+                            <th className="py-3 px-3 text-center w-20 rounded-tr-xl">WA Ortu</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                        <tbody className="divide-y divide-slate-300/40 dark:divide-slate-700/50 font-medium">
                           {filteredManualStudents.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="py-10 text-center text-gray-400 dark:text-gray-500 text-xs">
+                              <td colSpan={7} className="py-10 text-center text-[#64748B] dark:text-[#94A3B8] text-xs">
                                 <div className="flex flex-col items-center justify-center space-y-2">
-                                  <i className="fa-solid fa-user-slash text-2xl text-gray-300 dark:text-gray-600"></i>
+                                  <i className="fa-solid fa-user-slash text-2xl opacity-50"></i>
                                   <span>Tidak ada siswa ditemukan sesuai filter / pencarian.</span>
                                 </div>
                               </td>
@@ -2786,32 +2801,32 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               );
 
                               return (
-                                <tr key={s.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                                  <td className="py-3 px-3 text-center text-gray-400 text-[11px] font-mono">
+                                <tr key={s.id || idx} className="hover:bg-white/25 dark:hover:bg-white/5 transition-colors">
+                                  <td className="py-3 px-3 text-center text-[#64748B] dark:text-[#94A3B8] text-[11px] font-num">
                                     {idx + 1}
                                   </td>
                                   <td className="py-3 px-3">
-                                    <div className="font-bold text-gray-900 dark:text-white">
+                                    <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                                       {s.nama_siswa}
                                     </div>
                                     {s.gender && (
-                                      <span className="text-[10px] text-gray-400 dark:text-gray-500">
+                                      <span className="text-[10px] text-[#64748B] dark:text-[#94A3B8]">
                                         {s.gender === 'L' ? 'Laki-laki' : s.gender === 'P' ? 'Perempuan' : s.gender}
                                       </span>
                                     )}
                                   </td>
-                                  <td className="py-3 px-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
+                                  <td className="py-3 px-3 font-num text-[11px] text-[#475569] dark:text-[#94A3B8]">
                                     {s.nisn || '-'}
                                   </td>
                                   <td className="py-3 px-3">
-                                    <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold text-[10px]">
+                                    <span className="neu-card-sm px-2 py-0.5 rounded-md text-[#0F766E] dark:text-[#14B8A6] font-bold text-[10px]">
                                       {s.kelas}
                                     </span>
                                   </td>
                                   <td className="py-3 px-3 text-center">
                                     {datangRecord ? (
                                       <div className="inline-flex items-center gap-1.5">
-                                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
+                                        <span className="neu-card-sm px-2.5 py-1 rounded-lg text-[11px] font-bold font-num text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1.5">
                                           <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
                                           <span>Datang {formatPresensiTime(datangRecord.jam) || '-'}</span>
                                         </span>
@@ -2819,19 +2834,19 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                           type="button"
                                           onClick={() => handleCancelManualPresensi(datangRecord.id, s.nama_siswa, 'datang', s.id)}
                                           title="Batalkan presensi datang"
-                                          className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                          className="neu-btn w-9 h-9 rounded-xl text-[#64748B] hover:text-rose-600 dark:hover:text-rose-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
                                         >
                                           <i className="fa-solid fa-xmark"></i>
                                         </button>
                                       </div>
                                     ) : (
                                       <div className="inline-flex items-center justify-center gap-2">
-                                        <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">-</span>
+                                        <span className="text-[#64748B] dark:text-[#94A3B8] font-num text-xs font-semibold">-</span>
                                         <button
                                           type="button"
                                           disabled={manualMarkLoading === `${s.id}-datang`}
                                           onClick={() => handleManualMark(s, 'datang')}
-                                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                          className="neu-btn neu-btn-teal px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold text-white transition inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                         >
                                           {manualMarkLoading === `${s.id}-datang` ? (
                                             <i className="fa-solid fa-spinner animate-spin"></i>
@@ -2846,27 +2861,27 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                   <td className="py-3 px-3 text-center">
                                     {pulangRecord ? (
                                       <div className="inline-flex items-center gap-1.5">
-                                        <span className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
-                                          <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
+                                        <span className="neu-card-sm px-2.5 py-1 rounded-lg text-[11px] font-bold font-num text-sky-700 dark:text-sky-300 inline-flex items-center gap-1.5">
+                                          <i className="fa-solid fa-circle-check text-sky-600 dark:text-sky-400"></i>
                                           <span>Pulang {formatPresensiTime(pulangRecord.jam) || '-'}</span>
                                         </span>
                                         <button
                                           type="button"
                                           onClick={() => handleCancelManualPresensi(pulangRecord.id, s.nama_siswa, 'pulang', s.id)}
                                           title="Batalkan presensi pulang"
-                                          className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                          className="neu-btn w-9 h-9 rounded-xl text-[#64748B] hover:text-rose-600 dark:hover:text-rose-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
                                         >
                                           <i className="fa-solid fa-xmark"></i>
                                         </button>
                                       </div>
                                     ) : (
                                       <div className="inline-flex items-center justify-center gap-2">
-                                        <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">-</span>
+                                        <span className="text-[#64748B] dark:text-[#94A3B8] font-num text-xs font-semibold">-</span>
                                         <button
                                           type="button"
                                           disabled={manualMarkLoading === `${s.id}-pulang`}
                                           onClick={() => handleManualMark(s, 'pulang')}
-                                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer"
+                                          className="neu-btn neu-btn-primary px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-bold text-white transition inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                                         >
                                           {manualMarkLoading === `${s.id}-pulang` ? (
                                             <i className="fa-solid fa-spinner animate-spin"></i>
@@ -2896,9 +2911,9 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                         user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
                                       )}
                                       title="Kirim WhatsApp ke Orang Tua"
-                                      className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                                      className="neu-btn w-9 h-9 rounded-xl text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition inline-flex items-center justify-center cursor-pointer"
                                     >
-                                      <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                                      <i className="fa-brands fa-whatsapp text-sm"></i>
                                     </button>
                                   </td>
                                 </tr>
@@ -2912,50 +2927,50 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                 </div>
 
                 {/* 3. Real-Time Stat Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 shadow-xs flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl shrink-0">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-0.5">
+                  <div className="neu-card-sm p-4 rounded-2xl flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl neu-inset text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl shrink-0">
                       <i className="fa-solid fa-right-to-bracket"></i>
                     </div>
                     <div>
-                      <div className="text-2xl font-black text-emerald-700 dark:text-emerald-400">
+                      <div className="font-num text-2xl font-black text-emerald-700 dark:text-emerald-400">
                         {scanSummary.totalDatang}
                       </div>
-                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Hadir Datang</div>
+                      <div className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">Total Hadir Datang</div>
                     </div>
                   </div>
 
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/50 shadow-xs flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl shrink-0">
+                  <div className="neu-card-sm p-4 rounded-2xl flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl neu-inset text-sky-600 dark:text-sky-400 flex items-center justify-center text-xl shrink-0">
                       <i className="fa-solid fa-right-from-bracket"></i>
                     </div>
                     <div>
-                      <div className="text-2xl font-black text-blue-700 dark:text-blue-400">
+                      <div className="font-num text-2xl font-black text-sky-700 dark:text-sky-400">
                         {scanSummary.totalPulang}
                       </div>
-                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Pulang</div>
+                      <div className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">Total Pulang</div>
                     </div>
                   </div>
 
-                  <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl border border-teal-100 dark:border-teal-900/50 shadow-xs flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xl shrink-0">
+                  <div className="neu-card-sm p-4 rounded-2xl flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center text-xl shrink-0">
                       <i className="fa-solid fa-users"></i>
                     </div>
                     <div>
-                      <div className="text-2xl font-black text-teal-700 dark:text-teal-400">
+                      <div className="font-num text-2xl font-black text-[#0F766E] dark:text-[#14B8A6]">
                         {scanSummary.totalUnik}
                       </div>
-                      <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">Total Unik Siswa</div>
+                      <div className="text-xs font-semibold text-[#475569] dark:text-[#CBD5E1]">Total Unik Siswa</div>
                     </div>
                   </div>
                 </div>
 
                 {/* 4. Live Attendance Log Table */}
-                <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-4">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                      <i className="fa-solid fa-clock-rotate-left text-teal-600"></i>
-                      Log Presensi Siswa Hari Ini ({filteredTodayScans.length} Presensi)
+                    <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                      <i className="fa-solid fa-clock-rotate-left text-[#0F766E] dark:text-[#14B8A6]"></i>
+                      <span>Log Presensi Siswa Hari Ini (<span className="font-num">{filteredTodayScans.length}</span> Presensi)</span>
                     </h3>
 
                     {/* Filter & Search Controls */}
@@ -2964,7 +2979,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       <select
                         value={scanFilterKelas}
                         onChange={(e) => setScanFilterKelas(e.target.value)}
-                        className="text-xs bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
+                        className="neu-input text-xs text-[#0F172A] dark:text-[#F1F5F9] px-3 py-2 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                       >
                         <option value="Semua">Semua Kelas</option>
                         {kelasList.map(k => (
@@ -2979,15 +2994,17 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           value={scanSearchQuery}
                           onChange={(e) => setScanSearchQuery(e.target.value)}
                           placeholder="Cari siswa / NISN..."
-                          className="w-full pl-8 pr-3 py-2 text-xs bg-gray-50 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="neu-input w-full pl-8 pr-3 py-2 text-xs text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         />
-                        <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-gray-400"></i>
+                        <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-xs text-[#64748B] dark:text-[#94A3B8]"></i>
                       </div>
 
                       <button
                         type="button"
                         onClick={fetchTodayScanData}
-                        className="px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                        title="Segarkan Log Presensi"
+                        aria-label="Segarkan Log Presensi"
+                        className="neu-btn w-10 h-10 text-[#334155] dark:text-[#CBD5E1] rounded-xl text-xs font-bold transition flex items-center justify-center shrink-0 cursor-pointer"
                       >
                         <i className="fa-solid fa-rotate text-xs"></i>
                       </button>
@@ -2995,24 +3012,24 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* Table */}
-                  <div className="overflow-x-auto custom-scroll">
-                    <table className="w-full text-left text-xs text-gray-700 dark:text-gray-200 border-collapse">
+                  <div className="overflow-x-auto custom-scroll neu-inset rounded-2xl p-1.5">
+                    <table className="w-full text-left text-xs text-[#334155] dark:text-[#CBD5E1] border-collapse">
                       <thead>
-                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 text-[11px] font-bold text-gray-500 dark:text-gray-400 uppercase">
-                          <th className="py-2.5 px-3">No</th>
+                        <tr className="border-b border-slate-300/50 dark:border-slate-700/60 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase">
+                          <th className="py-2.5 px-3 rounded-tl-xl">No</th>
                           <th className="py-2.5 px-3">Waktu</th>
                           <th className="py-2.5 px-3">Nama Siswa</th>
                           <th className="py-2.5 px-3">Kelas</th>
                           <th className="py-2.5 px-3">NISN</th>
                           <th className="py-2.5 px-3">Status</th>
                           <th className="py-2.5 px-3">Kios</th>
-                          <th className="py-2.5 px-3 text-center w-20">WA Ortu</th>
+                          <th className="py-2.5 px-3 text-center w-20 rounded-tr-xl">WA Ortu</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                      <tbody className="divide-y divide-slate-300/40 dark:divide-slate-700/50 font-medium">
                         {filteredTodayScans.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="py-8 text-center text-gray-400 dark:text-gray-500 text-xs">
+                            <td colSpan={8} className="py-8 text-center text-[#64748B] dark:text-[#94A3B8] text-xs">
                               Belum ada catatan presensi siswa hari ini.
                             </td>
                           </tr>
@@ -3028,20 +3045,20 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             };
 
                             return (
-                              <tr key={item.id || idx} className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors">
-                                <td className="py-2.5 px-3 text-gray-400 text-[11px]">{idx + 1}</td>
-                                <td className="py-2.5 px-3 font-mono font-semibold text-gray-900 dark:text-white">
+                              <tr key={item.id || idx} className="hover:bg-white/25 dark:hover:bg-white/5 transition-colors">
+                                <td className="py-2.5 px-3 font-num text-[#64748B] dark:text-[#94A3B8] text-[11px]">{idx + 1}</td>
+                                <td className="py-2.5 px-3 font-num font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
                                   {formatPresensiTime(item.jam) || (item.jam && item.jam !== '-' ? item.jam : '-')}
                                 </td>
-                                <td className="py-2.5 px-3 font-bold text-gray-900 dark:text-white">
+                                <td className="py-2.5 px-3 font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                                   {item.nama_siswa}
                                 </td>
                                 <td className="py-2.5 px-3">
-                                  <span className="px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 font-bold text-[10px]">
+                                  <span className="neu-card-sm px-2 py-0.5 rounded-md text-[#0F766E] dark:text-[#14B8A6] font-bold text-[10px]">
                                     {item.kelas}
                                   </span>
                                 </td>
-                                <td className="py-2.5 px-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
+                                <td className="py-2.5 px-3 font-num text-[11px] text-[#475569] dark:text-[#94A3B8]">
                                   {item.nisn || '-'}
                                 </td>
                                 <td className="py-2.5 px-3">
@@ -3050,13 +3067,13 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                       <i className="fa-solid fa-right-to-bracket text-[9px]"></i> Datang
                                     </span>
                                   ) : (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 inline-flex items-center gap-1">
                                       <i className="fa-solid fa-right-from-bracket text-[9px]"></i> Pulang
                                     </span>
                                   )}
                                 </td>
-                                <td className="py-2.5 px-3 font-mono text-[10px] text-gray-500 dark:text-gray-400">
-                                  <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                <td className="py-2.5 px-3 font-num text-[10px] text-[#475569] dark:text-[#94A3B8]">
+                                  <span className="neu-card-sm px-2 py-0.5 rounded text-[#334155] dark:text-[#CBD5E1]">
                                     {item.device_id || 'kiosk-default'}
                                   </span>
                                 </td>
@@ -3074,9 +3091,9 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                       user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
                                     )}
                                     title="Kirim WhatsApp ke Orang Tua"
-                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                                    className="neu-btn w-9 h-9 rounded-xl text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 transition inline-flex items-center justify-center cursor-pointer"
                                   >
-                                    <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                                    <i className="fa-brands fa-whatsapp text-sm"></i>
                                   </button>
                                 </td>
                               </tr>
@@ -3090,48 +3107,48 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
               </div>
             ) : (
                 /* GURU VIEW: Tampilan Ringkas, Pill Mode, Scanner Compact, Roster Sentuh Cepat, Badge Metrik Inline */
-                <div id="piket-content-scan-guru" className="space-y-5 fade-in">
+                <div id="piket-content-scan-guru" className="space-y-5 fade-in p-1">
                   {/* 1. Header Bar Ringkas (Guru) */}
-                  <div className="bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/30 p-4 sm:p-5 rounded-2xl border border-teal-200 dark:border-teal-800 shadow-sm space-y-3">
+                  <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-3">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
-                        <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                        <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                           {/* AST preservation: Presensi Siswa Piket (Mode Guru) */}
-                          <i className="fa-solid fa-qrcode text-teal-600 dark:text-teal-400"></i>
+                          <i className="fa-solid fa-qrcode text-[#0F766E] dark:text-[#14B8A6]"></i>
                           Presensi Datang & Pulang Siswa (Mode Guru)
                         </h3>
-                        <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
+                        <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5">
                           Pencatatan kehadiran siswa secara ringkas via scanner QR atau 1-tap tombol presensi.
                         </p>
                       </div>
 
                       {/* Inline counter badge: Hadir Datang: X • Pulang: Y */}
-                      <div className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 px-3.5 py-1.5 rounded-xl border border-teal-200 dark:border-teal-800 shadow-2xs text-xs font-bold self-stretch sm:self-auto justify-center">
-                        <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <div className="neu-inset inline-flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-bold font-num self-stretch sm:self-auto justify-center">
+                        <span className="flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
                           <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                           Hadir Datang: {scanSummary.totalDatang}
                         </span>
-                        <span className="text-gray-300 dark:text-gray-600">•</span>
-                        <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                          <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                        <span className="text-slate-400 dark:text-slate-600">•</span>
+                        <span className="flex items-center gap-1.5 text-sky-700 dark:text-sky-400">
+                          <span className="w-2 h-2 rounded-full bg-sky-500"></span>
                           Pulang: {scanSummary.totalPulang}
                         </span>
                       </div>
                     </div>
 
                     {/* Compact Attendance Mode Toggle (Pill button Datang | Pulang) */}
-                    <div className="flex items-center gap-3 pt-1">
-                      <span className="text-[11px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">
+                    <div className="flex items-center gap-3 pt-1 flex-wrap">
+                      <span className="text-[11px] font-bold text-[#475569] dark:text-[#CBD5E1] uppercase tracking-wide">
                         Mode Presensi:
                       </span>
-                      <div className="inline-flex p-1 bg-white dark:bg-gray-800 rounded-xl border border-teal-200 dark:border-teal-800 shadow-2xs">
+                      <div className="neu-inset inline-flex p-1.5 rounded-2xl gap-1.5">
                         <button
                           type="button"
                           onClick={() => setScanMode('datang')}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          className={`neu-btn px-4 py-1.5 min-h-[38px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                             scanMode === 'datang'
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : 'text-gray-600 dark:text-gray-300 hover:text-emerald-600'
+                              ? 'neu-btn-primary text-white'
+                              : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                           }`}
                         >
                           <i className="fa-solid fa-right-to-bracket text-xs"></i>
@@ -3140,10 +3157,10 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         <button
                           type="button"
                           onClick={() => setScanMode('pulang')}
-                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          className={`neu-btn px-4 py-1.5 min-h-[38px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                             scanMode === 'pulang'
-                              ? 'bg-blue-600 text-white shadow-xs'
-                              : 'text-gray-600 dark:text-gray-300 hover:text-blue-600'
+                              ? 'neu-btn-primary text-white'
+                              : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                           }`}
                         >
                           <i className="fa-solid fa-right-from-bracket text-xs"></i>
@@ -3154,15 +3171,15 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* 2. Compact Scanner Toggle Card */}
-                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+                  <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-3">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400 flex items-center justify-center text-sm font-bold shrink-0">
+                        <div className="w-9 h-9 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center text-sm font-bold shrink-0">
                           <i className="fa-solid fa-camera"></i>
                         </div>
                         <div>
-                          <div className="text-xs font-bold text-gray-900 dark:text-white">Scanner QR Code Siswa</div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400">Pindai kartu QR siswa menggunakan kamera atau USB scanner</div>
+                          <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Scanner QR Code Siswa</div>
+                          <div className="text-[11px] text-[#64748B] dark:text-[#94A3B8]">Pindai kartu QR siswa menggunakan kamera atau USB scanner</div>
                         </div>
                       </div>
 
@@ -3171,7 +3188,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           <button
                             type="button"
                             onClick={startCamera}
-                            className="w-full sm:w-auto px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                            className="neu-btn neu-btn-teal w-full sm:w-auto px-3.5 py-2 min-h-[38px] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <i className="fa-solid fa-camera"></i>
                             <span>Buka Kamera QR</span>
@@ -3180,7 +3197,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           <button
                             type="button"
                             onClick={stopCamera}
-                            className="w-full sm:w-auto px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                            className="neu-btn neu-btn-rose w-full sm:w-auto px-3.5 py-2 min-h-[38px] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
                           >
                             <i className="fa-solid fa-video-slash"></i>
                             <span>Tutup Kamera</span>
@@ -3190,14 +3207,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     </div>
 
                     {cameraError && (
-                      <div className="p-3 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-xs text-red-600 dark:text-red-400 flex items-center gap-2">
+                      <div className="neu-inset p-3 border border-rose-500/30 rounded-xl text-xs text-rose-700 dark:text-rose-300 flex items-center gap-2">
                         <i className="fa-solid fa-triangle-exclamation"></i>
                         <span>{cameraError}</span>
                       </div>
                     )}
 
                     {cameraActive && (
-                      <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video max-w-md mx-auto border-2 border-teal-500 shadow-inner">
+                      <div className="relative rounded-2xl overflow-hidden bg-black aspect-[4/3] sm:aspect-video max-w-md mx-auto border-2 border-[#0F766E] neu-inset">
                         <video
                           ref={(el) => {
                             videoRef.current = el;
@@ -3216,12 +3233,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         />
                         <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                           <div className="w-36 h-36 xs:w-40 xs:h-40 sm:w-48 sm:h-48 max-w-[75%] max-h-[75%] border-2 border-dashed border-teal-400 rounded-2xl relative flex items-center justify-center animate-pulse">
-                            <span className="text-[10px] text-teal-200 bg-black/60 px-2 py-0.5 rounded-full font-bold">
+                            <span className="text-[10px] text-teal-200 bg-slate-900/75 px-2 py-0.5 rounded-full font-bold">
                               Arahkan QR ke Sini
                             </span>
                           </div>
                         </div>
-                        <div className="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-xs p-1.5 rounded-lg text-center text-[10px] text-white">
+                        <div className="absolute bottom-2 left-2 right-2 bg-slate-900/75 p-1.5 rounded-lg text-center text-[10px] text-white">
                           {typeof window !== 'undefined' && 'BarcodeDetector' in window ? (
                             <span><i className="fa-solid fa-bolt mr-1 text-teal-400"></i> BarcodeDetector aktif • Deteksi QR otomatis</span>
                           ) : (
@@ -3241,10 +3258,10 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           handleProcessScan(code);
                         }
                       }}
-                      className="pt-2 border-t border-gray-100 dark:border-gray-700"
+                      className="pt-2 border-t border-slate-300/40 dark:border-slate-700/60"
                     >
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-teal-600">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#0F766E] dark:text-[#14B8A6]">
                           <i className="fa-solid fa-barcode text-xs"></i>
                         </div>
                         <input
@@ -3269,12 +3286,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                           onBlur={handleUsbInputBlur}
                           disabled={scanProcessing}
                           placeholder="Scan barcode/QR atau ketik NISN siswa..."
-                          className="w-full pl-8 pr-20 py-2.5 text-xs bg-gray-50 dark:bg-gray-900 border border-teal-300 dark:border-teal-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 font-mono text-gray-900 dark:text-white"
+                          className="neu-input font-num w-full pl-8 pr-20 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder:font-sans placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         />
                         <button
                           type="submit"
                           disabled={scanProcessing || !usbInputVal.trim()}
-                          className="absolute right-1 top-1 bottom-1 px-3 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                          className="neu-btn neu-btn-primary absolute right-1 top-1 bottom-1 px-3.5 disabled:opacity-50 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
                         >
                           {scanProcessing ? <i className="fa-solid fa-spinner animate-spin"></i> : <span>Scan</span>}
                         </button>
@@ -3283,30 +3300,30 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
                     {/* Feedback Banner if lastScanResult exists */}
                     {lastScanResult && (
-                      <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 text-xs ${
+                      <div className={`neu-inset p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
                         lastScanResult.success
                           ? lastScanResult.status === 'datang'
-                            ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
-                            : 'bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200'
+                            ? 'border-emerald-500/40 text-emerald-900 dark:text-emerald-200'
+                            : 'border-sky-500/40 text-sky-900 dark:text-sky-200'
                           : lastScanResult.alreadyExists
-                          ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-                          : 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800 text-red-900 dark:text-red-200'
+                          ? 'border-amber-500/40 text-amber-900 dark:text-amber-200'
+                          : 'border-rose-500/40 text-rose-900 dark:text-rose-200'
                       }`}>
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white shrink-0 ${
-                            lastScanResult.status === 'datang' ? 'bg-emerald-600' : 'bg-blue-600'
+                            lastScanResult.status === 'datang' ? 'bg-[#0F766E]' : 'bg-sky-600'
                           }`}>
                             {lastScanResult.student ? lastScanResult.student.nama_siswa.charAt(0).toUpperCase() : '!'}
                           </div>
                           <div className="truncate">
-                            <div className="font-bold truncate text-sm">
+                            <div className="font-bold truncate text-sm text-[#0F172A] dark:text-[#F1F5F9]">
                               {lastScanResult.student?.nama_siswa || 'Presensi'}
                               {lastScanResult.student && <span className="ml-1 text-xs font-normal opacity-80">({lastScanResult.student.kelas})</span>}
                             </div>
                             <div className="text-[11px] opacity-90 truncate">{lastScanResult.message}</div>
                           </div>
                         </div>
-                        <div className="text-[11px] font-mono shrink-0 font-bold">
+                        <div className="text-[11px] font-num shrink-0 font-bold">
                           {formatPresensiTime(lastScanResult.jam) ? `pk. ${formatPresensiTime(lastScanResult.jam)}` : (lastScanResult.jam ? `pk. ${lastScanResult.jam}` : '')}
                         </div>
                       </div>
@@ -3314,21 +3331,21 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* 3. Fast Touch-Friendly Student Roster (Guru) */}
-                  <div className="bg-white dark:bg-gray-800 p-4 sm:p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-4">
+                  <div className="neu-card-sm p-4 sm:p-5 rounded-2xl space-y-4">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div>
-                        <h3 className="text-sm sm:text-base font-bold text-teal-900 dark:text-teal-200 flex items-center gap-2">
-                          <i className="fa-solid fa-users text-teal-600 dark:text-teal-400"></i>
+                        <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                          <i className="fa-solid fa-users text-[#0F766E] dark:text-[#14B8A6]"></i>
                           Daftar Siswa {manualKelasFilter !== 'Semua' ? `Kelas ${manualKelasFilter}` : '(Semua Kelas)'}
                         </h3>
-                        <p className="text-xs text-teal-700 dark:text-teal-400/80 mt-0.5">
-                          Menampilkan {filteredManualStudents.length} siswa • 1-tap tombol untuk mencatat kehadiran
+                        <p className="text-xs text-[#475569] dark:text-[#94A3B8] mt-0.5">
+                          Menampilkan <span className="font-num font-semibold">{filteredManualStudents.length}</span> siswa • 1-tap tombol untuk mencatat kehadiran
                         </p>
                       </div>
                       <button
                         type="button"
                         onClick={fetchTodayScanData}
-                        className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
+                        className="neu-btn px-3.5 py-2 min-h-[38px] text-[#334155] dark:text-[#CBD5E1] rounded-xl text-xs font-bold transition flex items-center gap-1.5 self-end sm:self-auto cursor-pointer"
                       >
                         <i className="fa-solid fa-rotate text-xs"></i>
                         <span>Segarkan Data</span>
@@ -3336,15 +3353,15 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     </div>
 
                     {/* Filter & Quick Search Form */}
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-teal-200/50 dark:border-teal-800/50">
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2 border-t border-slate-300/40 dark:border-slate-700/60">
                       <div className="w-full sm:w-48">
-                        <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                        <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                           Pilih Kelas:
                         </label>
                         <select
                           value={manualKelasFilter}
                           onChange={(e) => setManualKelasFilter(e.target.value)}
-                          className="w-full text-xs font-semibold bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 px-3 py-2.5 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer shadow-2xs"
+                          className="neu-input w-full text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] px-3 py-2.5 rounded-xl cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                         >
                           <option value="Semua">Semua Kelas</option>
                           {kelasList.map(k => (
@@ -3354,7 +3371,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       </div>
 
                       <div className="flex-1">
-                        <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                        <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                           Cari Siswa:
                         </label>
                         <div className="relative">
@@ -3364,9 +3381,9 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             onChange={(e) => handleManualSearchChange(e.target.value)}
                             onFocus={(e) => e.target.select()}
                             placeholder="Ketik nama siswa atau NISN..."
-                            className="w-full pl-9 pr-8 py-2.5 text-xs bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-xl border border-teal-300 dark:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-2xs"
+                            className="neu-input w-full pl-9 pr-8 py-2.5 text-xs text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
-                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-gray-400"></i>
+                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-xs text-[#64748B] dark:text-[#94A3B8]"></i>
                           {manualSearchQuery && (
                             <button
                               type="button"
@@ -3375,7 +3392,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 setUsbInputVal('');
                                 setLastScanResult(null);
                               }}
-                              className="absolute right-2.5 top-2.5 text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+                              className="absolute right-2.5 top-2.5 text-xs text-[#64748B] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] cursor-pointer"
                             >
                               <i className="fa-solid fa-xmark"></i>
                             </button>
@@ -3387,14 +3404,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     {/* Student List (Touch-Friendly Cards with 1-Tap Buttons) */}
                     <div className="space-y-2 pt-2">
                       {filteredManualStudents.length === 0 ? (
-                        <div className="py-10 text-center text-gray-400 dark:text-gray-500 text-xs">
+                        <div className="neu-inset rounded-2xl py-10 text-center text-[#64748B] dark:text-[#94A3B8] text-xs">
                           <div className="flex flex-col items-center justify-center space-y-2">
-                            <i className="fa-solid fa-user-slash text-2xl text-gray-300 dark:text-gray-600"></i>
+                            <i className="fa-solid fa-user-slash text-2xl opacity-50"></i>
                             <span>Tidak ada siswa ditemukan sesuai filter / pencarian.</span>
                           </div>
                         </div>
                       ) : (
-                        <div className="divide-y divide-gray-100 dark:divide-gray-800">
+                        <div className="divide-y divide-slate-300/40 dark:divide-slate-700/50">
                           {filteredManualStudents.map((s, idx) => {
                             const datangRecord = todayScans.find(
                               scan => (scan.siswa_id === s.id || (s.nisn && scan.nisn === s.nisn)) && scan.status === 'datang'
@@ -3406,27 +3423,27 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             return (
                               <div
                                 key={s.id || idx}
-                                className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/70 dark:hover:bg-gray-750/50 px-2 rounded-xl transition-colors"
+                                className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-white/25 dark:hover:bg-white/5 px-2 rounded-xl transition-colors"
                               >
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 font-bold flex items-center justify-center text-xs shrink-0">
+                                  <div className="font-num w-9 h-9 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] font-bold flex items-center justify-center text-xs shrink-0">
                                     {idx + 1}
                                   </div>
                                   <div className="min-w-0">
-                                    <div className="font-bold text-sm text-gray-900 dark:text-white truncate">
+                                    <div className="font-bold text-sm text-[#0F172A] dark:text-[#F1F5F9] truncate">
                                       {s.nama_siswa}
                                     </div>
-                                    <div className="flex items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
-                                      <span className="font-semibold text-teal-600 dark:text-teal-400">Kelas {s.kelas}</span>
-                                      {s.nisn && <span>• NISN: {s.nisn}</span>}
+                                    <div className="flex items-center gap-2 text-[11px] text-[#64748B] dark:text-[#94A3B8]">
+                                      <span className="font-semibold text-[#0F766E] dark:text-[#14B8A6]">Kelas {s.kelas}</span>
+                                      {s.nisn && <span className="font-num">• NISN: {s.nisn}</span>}
                                     </div>
                                   </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0 flex-wrap justify-end">
                                   {datangRecord ? (
                                     <div className="inline-flex items-center gap-1.5">
-                                      <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1.5 shadow-2xs">
+                                      <span className="neu-card-sm px-3 py-1.5 rounded-xl text-xs font-bold font-num text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1.5">
                                         <i className="fa-solid fa-circle-check text-emerald-600 dark:text-emerald-400"></i>
                                         <span>Datang {formatPresensiTime(datangRecord.jam) || '-'}</span>
                                       </span>
@@ -3434,19 +3451,19 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                         type="button"
                                         onClick={() => handleCancelManualPresensi(datangRecord.id, s.nama_siswa, 'datang', s.id)}
                                         title="Batalkan presensi datang"
-                                        className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                        className="neu-btn w-9 h-9 rounded-xl text-[#64748B] hover:text-rose-600 dark:hover:text-rose-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
                                       >
                                         <i className="fa-solid fa-xmark"></i>
                                       </button>
                                     </div>
                                   ) : (
                                     <div className="inline-flex items-center gap-1.5">
-                                      <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold mr-1">-</span>
+                                      <span className="text-[#64748B] dark:text-[#94A3B8] font-num text-xs font-semibold mr-1">-</span>
                                       <button
                                         type="button"
                                         disabled={manualMarkLoading === `${s.id}-datang`}
                                         onClick={() => handleManualMark(s, 'datang')}
-                                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
+                                        className="neu-btn neu-btn-teal px-3.5 py-2 rounded-xl text-xs font-bold text-white transition inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer min-h-[38px]"
                                       >
                                         {manualMarkLoading === `${s.id}-datang` ? (
                                           <i className="fa-solid fa-spinner animate-spin"></i>
@@ -3460,27 +3477,27 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
                                   {pulangRecord ? (
                                     <div className="inline-flex items-center gap-1.5">
-                                      <span className="px-3 py-1.5 rounded-xl text-xs font-bold bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 inline-flex items-center gap-1.5 shadow-2xs">
-                                        <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400"></i>
+                                      <span className="neu-card-sm px-3 py-1.5 rounded-xl text-xs font-bold font-num text-sky-700 dark:text-sky-300 inline-flex items-center gap-1.5">
+                                        <i className="fa-solid fa-circle-check text-sky-600 dark:text-sky-400"></i>
                                         <span>Pulang {formatPresensiTime(pulangRecord.jam) || '-'}</span>
                                       </span>
                                       <button
                                         type="button"
                                         onClick={() => handleCancelManualPresensi(pulangRecord.id, s.nama_siswa, 'pulang', s.id)}
                                         title="Batalkan presensi pulang"
-                                        className="w-6 h-6 rounded-md hover:bg-red-50 dark:hover:bg-red-950/40 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
+                                        className="neu-btn w-9 h-9 rounded-xl text-[#64748B] hover:text-rose-600 dark:hover:text-rose-400 transition inline-flex items-center justify-center text-xs cursor-pointer"
                                       >
                                         <i className="fa-solid fa-xmark"></i>
                                       </button>
                                     </div>
                                   ) : (
                                     <div className="inline-flex items-center gap-1.5">
-                                      <span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold mr-1">-</span>
+                                      <span className="text-[#64748B] dark:text-[#94A3B8] font-num text-xs font-semibold mr-1">-</span>
                                       <button
                                         type="button"
                                         disabled={manualMarkLoading === `${s.id}-pulang`}
                                         onClick={() => handleManualMark(s, 'pulang')}
-                                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 active:scale-95 text-white transition inline-flex items-center gap-1.5 shadow-2xs disabled:opacity-50 cursor-pointer min-h-[38px]"
+                                        className="neu-btn neu-btn-primary px-3.5 py-2 rounded-xl text-xs font-bold text-white transition inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer min-h-[38px]"
                                       >
                                         {manualMarkLoading === `${s.id}-pulang` ? (
                                           <i className="fa-solid fa-spinner animate-spin"></i>
@@ -3509,7 +3526,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                       user?.sekolah_nama || user?.nama_sekolah || (typeof user?.sekolah === 'string' ? user.sekolah : user?.sekolah?.nama) || 'Sekolah'
                                     )}
                                     title="Kirim WhatsApp ke Orang Tua"
-                                    className="w-9 h-9 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 flex items-center justify-center transition shrink-0 cursor-pointer"
+                                    className="neu-btn w-9 h-9 rounded-xl text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center justify-center transition shrink-0 cursor-pointer"
                                   >
                                     <i className="fa-brands fa-whatsapp text-base"></i>
                                   </button>
@@ -3527,10 +3544,10 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
             {/* TAB: PENUGASAN PIKET (ADMIN ONLY) */}
             {activeTab === 'penugasan' && isAdmin && (
-              <div id="piket-content-penugasan" className="space-y-5 fade-in">
+              <div id="piket-content-penugasan" className="space-y-5 fade-in p-1">
                 {/* Day selector pills */}
-                <div className="bg-teal-50 dark:bg-teal-900/20 p-3 rounded-2xl border border-teal-100 dark:border-teal-900/50">
-                  <div className="text-[10px] font-bold text-teal-800 dark:text-teal-400 mb-2 uppercase tracking-wide">
+                <div className="neu-inset p-3.5 rounded-2xl">
+                  <div className="text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] mb-2 uppercase tracking-wide">
                     Pilih Hari Penugasan:
                   </div>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -3539,14 +3556,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         key={day}
                         type="button"
                         onClick={() => setSelectedHariPiket(day)}
-                        className={`py-2 px-3 rounded-xl text-xs font-bold transition-all pill-interactive flex flex-col items-center justify-center ${
+                        className={`neu-btn py-2 px-3 min-h-[44px] rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center cursor-pointer ${
                           selectedHariPiket === day
-                            ? 'bg-teal-600 text-white shadow-md'
-                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700'
+                            ? 'neu-btn-primary text-white'
+                            : 'text-[#334155] dark:text-[#CBD5E1] hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                         }`}
                       >
                         <span>{day}</span>
-                        <span className="text-[9px] opacity-75 font-normal">
+                        <span className="font-num text-[9px] opacity-80 font-normal">
                           {penugasanList.filter(p => p.hari === day).length} Petugas
                         </span>
                       </button>
@@ -3554,25 +3571,25 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <span className="w-6 h-6 rounded-lg bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 flex items-center justify-center text-xs">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                    <span className="w-7 h-7 rounded-lg neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center text-xs">
                       <i className="fa-solid fa-calendar-day"></i>
                     </span>
                     Jadwal Piket Hari {selectedHariPiket}
                   </h3>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="font-num text-xs text-[#64748B] dark:text-[#94A3B8]">
                     Tahun Ajaran 2026/2027
                   </span>
                 </div>
 
                 {/* Section 1: Guru Piket */}
-                <div className="bg-white dark:bg-gray-800/80 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
+                <div className="neu-card-sm p-4 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-300/40 dark:border-slate-700/60">
                     <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-chalkboard-user text-teal-600 dark:text-teal-400"></i>
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wide">
-                        Dewan Guru Piket ({penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru').length})
+                      <i className="fa-solid fa-chalkboard-user text-[#0F766E] dark:text-[#14B8A6]"></i>
+                      <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] uppercase tracking-wide">
+                        Dewan Guru Piket (<span className="font-num">{penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru').length}</span>)
                       </h4>
                     </div>
                   </div>
@@ -3580,7 +3597,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   {/* List of assigned teachers */}
                   <div className="space-y-2">
                     {penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Guru').length === 0 ? (
-                      <div className="text-center py-6 text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                      <div className="neu-inset text-center py-6 text-xs text-[#64748B] dark:text-[#94A3B8] italic rounded-xl border border-dashed border-slate-400/40 dark:border-slate-600/50">
                         Belum ada guru yang ditugaskan piket pada hari {selectedHariPiket}.
                       </div>
                     ) : (
@@ -3589,17 +3606,17 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         .map((guruItem, idx) => (
                           <div
                             key={guruItem.id}
-                            className="flex items-center justify-between p-3 bg-teal-50/40 dark:bg-teal-950/20 border border-teal-100 dark:border-teal-900/50 rounded-xl"
+                            className="neu-inset flex items-center justify-between p-3 rounded-xl"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="w-7 h-7 rounded-lg bg-teal-600 text-white font-bold text-xs flex items-center justify-center">
+                              <span className="font-num w-7 h-7 rounded-lg bg-[#0F766E] text-white font-bold text-xs flex items-center justify-center shrink-0">
                                 {idx + 1}
                               </span>
                               <div>
-                                <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                                   {guruItem.guru_nama}
                                 </div>
-                                <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                <div className="font-num text-[10px] text-[#64748B] dark:text-[#94A3B8]">
                                   NIP: {guruItem.guru_nip || '-'}
                                 </div>
                               </div>
@@ -3608,7 +3625,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               type="button"
                               onClick={() => handleDeletePenugasan(guruItem.id, guruItem.guru_nama || '', 'Guru')}
                               title="Hapus penugasan guru"
-                              className="btn-click w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 flex items-center justify-center transition border border-red-200 dark:border-red-900"
+                              className="neu-btn w-9 h-9 rounded-xl text-rose-600 dark:text-rose-400 flex items-center justify-center transition cursor-pointer"
                             >
                               <i className="fa-solid fa-trash text-xs"></i>
                             </button>
@@ -3618,11 +3635,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* Add Guru form */}
-                  <form onSubmit={handleAddGuruPiket} className="pt-2 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row gap-2">
+                  <form onSubmit={handleAddGuruPiket} className="pt-2 border-t border-slate-300/40 dark:border-slate-700/60 flex flex-col sm:flex-row gap-2">
                     <select
                       value={selectedTeacherId}
                       onChange={e => setSelectedTeacherId(e.target.value)}
-                      className="flex-1 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                      className="neu-input flex-1 px-3 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                     >
                       <option value="">-- Pilih Guru untuk Ditugaskan --</option>
                       {allTeachers
@@ -3636,7 +3653,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                     <button
                       type="submit"
                       disabled={assignLoading || !selectedTeacherId}
-                      className="btn-click bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 shrink-0"
+                      className="neu-btn neu-btn-primary text-white font-bold px-4 py-2 min-h-[40px] rounded-xl text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0 cursor-pointer"
                     >
                       <i className="fa-solid fa-plus text-xs"></i> Tugaskan Guru
                     </button>
@@ -3644,12 +3661,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                 </div>
 
                 {/* Section 2: Siswa Piket */}
-                <div className="bg-white dark:bg-gray-800/80 p-4 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-gray-100 dark:border-gray-700">
+                <div className="neu-card-sm p-4 rounded-2xl space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-300/40 dark:border-slate-700/60">
                     <div className="flex items-center gap-2">
-                      <i className="fa-solid fa-users text-teal-600 dark:text-teal-400"></i>
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wide">
-                        Siswa Piket ({penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa').length})
+                      <i className="fa-solid fa-users text-[#0F766E] dark:text-[#14B8A6]"></i>
+                      <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] uppercase tracking-wide">
+                        Siswa Piket (<span className="font-num">{penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa').length}</span>)
                       </h4>
                     </div>
                   </div>
@@ -3657,7 +3674,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   {/* List of assigned students */}
                   <div className="space-y-2">
                     {penugasanList.filter(p => p.hari === selectedHariPiket && p.tipe_petugas === 'Siswa').length === 0 ? (
-                      <div className="text-center py-6 text-xs text-gray-400 italic bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                      <div className="neu-inset text-center py-6 text-xs text-[#64748B] dark:text-[#94A3B8] italic rounded-xl border border-dashed border-slate-400/40 dark:border-slate-600/50">
                         Belum ada siswa yang ditugaskan piket pada hari {selectedHariPiket}.
                       </div>
                     ) : (
@@ -3666,21 +3683,21 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         .map((siswaItem, idx) => (
                           <div
                             key={siswaItem.id}
-                            className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/40 border border-gray-100 dark:border-gray-700 rounded-xl"
+                            className="neu-inset flex items-center justify-between p-3 rounded-xl"
                           >
                             <div className="flex items-center gap-3">
-                              <span className="w-7 h-7 rounded-lg bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300 font-bold text-xs flex items-center justify-center">
+                              <span className="font-num w-7 h-7 rounded-lg neu-card-sm text-[#0F766E] dark:text-[#14B8A6] font-bold text-xs flex items-center justify-center shrink-0">
                                 {idx + 1}
                               </span>
                               <div>
-                                <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                                   {siswaItem.siswa_nama}
                                 </div>
-                                <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                                  <span className="bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300 font-semibold px-1.5 py-0.2 rounded">
+                                <div className="text-[10px] text-[#64748B] dark:text-[#94A3B8] flex items-center gap-2 mt-0.5">
+                                  <span className="neu-card-sm text-[#0F766E] dark:text-[#14B8A6] font-semibold px-2 py-0.5 rounded-md">
                                     Kelas {siswaItem.kelas || '-'}
                                   </span>
-                                  <span>NISN: {siswaItem.siswa_nisn || '-'}</span>
+                                  <span className="font-num">NISN: {siswaItem.siswa_nisn || '-'}</span>
                                 </div>
                               </div>
                             </div>
@@ -3688,7 +3705,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               type="button"
                               onClick={() => handleDeletePenugasan(siswaItem.id, siswaItem.siswa_nama || '', 'Siswa')}
                               title="Hapus penugasan siswa"
-                              className="btn-click w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 flex items-center justify-center transition border border-red-200 dark:border-red-900"
+                              className="neu-btn w-9 h-9 rounded-xl text-rose-600 dark:text-rose-400 flex items-center justify-center transition cursor-pointer"
                             >
                               <i className="fa-solid fa-trash text-xs"></i>
                             </button>
@@ -3698,19 +3715,19 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* Add Siswa Form with Selection / Manual toggle */}
-                  <div className="pt-2 border-t border-gray-100 dark:border-gray-700 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                  <div className="pt-2 border-t border-slate-300/40 dark:border-slate-700/60 space-y-3">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <span className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1]">
                         + Tambah Siswa Piket
                       </span>
-                      <div className="flex gap-1 text-[10px]">
+                      <div className="neu-inset p-1 rounded-xl flex gap-1 text-[10px]">
                         <button
                           type="button"
                           onClick={() => setSiswaAssignMode('select')}
-                          className={`px-2 py-1 rounded-lg font-bold transition ${
+                          className={`neu-btn px-2.5 py-1.5 min-h-[32px] rounded-lg font-bold transition cursor-pointer ${
                             siswaAssignMode === 'select'
-                              ? 'bg-teal-600 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                              ? 'neu-btn-primary text-white'
+                              : 'text-[#475569] dark:text-[#CBD5E1]'
                           }`}
                         >
                           Pilih dari Data
@@ -3718,10 +3735,10 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         <button
                           type="button"
                           onClick={() => setSiswaAssignMode('manual')}
-                          className={`px-2 py-1 rounded-lg font-bold transition ${
+                          className={`neu-btn px-2.5 py-1.5 min-h-[32px] rounded-lg font-bold transition cursor-pointer ${
                             siswaAssignMode === 'manual'
-                              ? 'bg-teal-600 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+                              ? 'neu-btn-primary text-white'
+                              : 'text-[#475569] dark:text-[#CBD5E1]'
                           }`}
                         >
                           Input Manual
@@ -3739,7 +3756,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 setSelectedSiswaFilterKelas(e.target.value);
                                 setSelectedSiswaNisn('');
                               }}
-                              className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                              className="neu-input w-full px-2.5 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                             >
                               <option value="">Semua Kelas</option>
                               {kelasList.map(k => (
@@ -3752,7 +3769,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             <select
                               value={selectedSiswaNisn}
                               onChange={e => setSelectedSiswaNisn(e.target.value)}
-                              className="flex-1 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                              className="neu-input flex-1 px-3 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                             >
                               <option value="">-- Pilih Siswa --</option>
                               {allStudents
@@ -3766,7 +3783,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             <button
                               type="submit"
                               disabled={assignLoading || !selectedSiswaNisn}
-                              className="btn-click bg-teal-600 hover:bg-teal-700 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50 shrink-0"
+                              className="neu-btn neu-btn-primary text-white font-bold px-4 py-2 min-h-[40px] rounded-xl text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0 cursor-pointer"
                             >
                               <i className="fa-solid fa-plus text-xs"></i> Tambah
                             </button>
@@ -3779,14 +3796,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             placeholder="Nama Siswa"
                             value={manualSiswaNama}
                             onChange={e => setManualSiswaNama(e.target.value)}
-                            className="sm:col-span-2 px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                            className="neu-input sm:col-span-2 px-3 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                           <input
                             type="text"
                             placeholder="Kelas (e.g. X Merdeka)"
                             value={manualSiswaKelas}
                             onChange={e => setManualSiswaKelas(e.target.value)}
-                            className="px-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                            className="neu-input px-3 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                           />
                           <div className="flex gap-2">
                             <input
@@ -3794,12 +3811,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               placeholder="NISN"
                               value={manualSiswaNisn}
                               onChange={e => setManualSiswaNisn(e.target.value)}
-                              className="flex-1 px-2.5 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                              className="neu-input font-num flex-1 px-2.5 py-2.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder:font-sans placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                             />
                             <button
                               type="submit"
                               disabled={assignLoading || !manualSiswaNama || !manualSiswaKelas}
-                              className="btn-click bg-teal-600 hover:bg-teal-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center justify-center gap-1 shadow-sm disabled:opacity-50 shrink-0"
+                              className="neu-btn neu-btn-primary text-white font-bold px-3.5 py-2 min-h-[40px] rounded-xl text-xs flex items-center justify-center gap-1 disabled:opacity-50 shrink-0 cursor-pointer"
                             >
                               <i className="fa-solid fa-plus text-xs"></i> Tambah
                             </button>
@@ -3814,11 +3831,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
             {/* TAB 2: LAPOR PIKET (GURU ON DUTY ONLY) */}
             {activeTab === 'lapor' && canReport && (
-              <div id="piket-content-form" className="fade-in space-y-4">
+              <div id="piket-content-form" className="fade-in space-y-4 p-1">
                   {isFormLocked && (
                     <div 
                       id="piket-form-lock-alert"
-                      className="sticky top-2 z-30 p-3.5 mb-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/80 dark:border-amber-700 text-amber-900 dark:text-amber-200 shadow-md flex items-start gap-2.5 animate-pulse"
+                      className="neu-inset alert-banner-amber sticky top-2 z-30 p-3.5 mb-3 rounded-2xl border border-amber-500/40 text-amber-900 dark:text-amber-200 flex items-start gap-2.5"
                     >
                       <div className="text-lg text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">
                         <i className="fa-solid fa-lock"></i>
@@ -3828,7 +3845,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       </div>
                     </div>
                   )}
-                  <div className="bg-teal-50 border border-teal-200 dark:bg-teal-900/20 dark:border-teal-800 dark:text-teal-300 p-3 rounded-xl mb-4 text-[10px] text-teal-800 font-medium leading-relaxed">
+                  <div className="neu-inset border border-teal-500/30 p-3.5 rounded-2xl mb-4 text-[11px] text-[#0F766E] dark:text-[#14B8A6] font-medium leading-relaxed">
                       <i className="fa-solid fa-circle-info mr-1.5"></i> {
                         isFormLocked 
                           ? "Formulir sedang diedit oleh petugas lain. Silakan lengkapi catatan dan foto dokumentasi piket Anda." 
@@ -3840,28 +3857,28 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   {/* AST preservation compatibility: Rekap Absensi Sekolah */}
                   <form onSubmit={handlePiketSubmit} className="space-y-4">
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tanggal Piket</label>
-                        <input type="date" required value={getWitaDateStr()} readOnly className="w-full px-3 py-2.5 text-sm rounded-xl input-premium bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white cursor-not-allowed" />
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Tanggal Piket</label>
+                        <input type="date" required value={getWitaDateStr()} readOnly className="neu-input font-num w-full px-3 py-2.5 text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9] opacity-80 cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Catatan Khusus</label>
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Catatan Khusus</label>
                         <textarea 
                           value={catatan} 
                           onChange={e => setCatatan(e.target.value)} 
                           disabled={isFormLocked}
                           rows={2} 
-                          className={`w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-800 ${isFormLocked ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}`} 
+                          className={`neu-input w-full px-3 py-2.5 text-sm rounded-xl resize-none text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] ${isFormLocked ? 'opacity-50 cursor-not-allowed' : ''}`} 
                           placeholder={isFormLocked ? 'Formulir presensi terkunci...' : 'Deskripsikan kejadian saat piket...'}
                         ></textarea>
                       </div>
                       <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1 flex items-center justify-between">
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1 flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <i className="fa-solid fa-camera text-teal-600 dark:text-teal-400"></i>
-                            Foto Dokumentasi Piket <span className="text-red-500 dark:text-red-400">(Wajib Kamera Langsung)</span>
+                            <i className="fa-solid fa-camera text-[#0F766E] dark:text-[#14B8A6]"></i>
+                            Foto Dokumentasi Piket <span className="text-rose-600 dark:text-rose-400">(Wajib Kamera Langsung)</span>
                           </span>
-                          <span className="text-[10px] text-teal-600 dark:text-teal-400 font-semibold">
+                          <span className="text-[10px] text-[#0F766E] dark:text-[#14B8A6] font-semibold">
                             {file ? 'Foto Terpasang' : 'Kamera Aktif'}
                           </span>
                         </label>
@@ -3884,12 +3901,12 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         />
 
                         {file && (
-                          <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/80 flex items-center justify-between transition-all">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-teal-800 dark:text-teal-200">
-                              <i className="fa-solid fa-circle-check text-teal-600 dark:text-teal-400 text-base"></i>
+                          <div className="neu-inset p-3 rounded-2xl border border-teal-500/30 flex items-center justify-between transition-all">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-[#0F766E] dark:text-[#14B8A6]">
+                              <i className="fa-solid fa-circle-check text-[#0F766E] dark:text-[#14B8A6] text-base"></i>
                               <div>
                                 <div>Foto dokumentasi piket siap diunggah</div>
-                                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                <div className="font-num text-[10px] text-[#64748B] dark:text-[#94A3B8] font-normal">
                                   {file.name} ({(file.size / 1024).toFixed(0)} KB)
                                 </div>
                               </div>
@@ -3901,7 +3918,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 setFile(null);
                                 setPhotoPreviewUrl(null);
                               }}
-                              className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-bold px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="neu-btn text-xs text-rose-600 dark:text-rose-400 font-bold px-3 py-1.5 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                             >
                               Hapus
                             </button>
@@ -3913,7 +3930,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         <button 
                           type="submit" 
                           disabled={loading} 
-                          className="btn-click w-full bg-teal-600 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-teal-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="neu-btn neu-btn-primary w-full text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                           >
                             {loading ? 'Menyimpan...' : (
                               <><i className="fa-solid fa-paper-plane"></i> {
@@ -3930,27 +3947,27 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
             {/* TAB 3: REKAP PIKET */}
             {activeTab === 'rekap' && (
-              <div id="piket-content-rekap" className="space-y-4 fade-in w-full max-w-full overflow-x-auto">
+              <div id="piket-content-rekap" className="space-y-4 fade-in w-full max-w-full overflow-x-auto p-1">
                   <PrintHeader user={user} sekolahId={user?.sekolah_id} />
 
                   {/* Filter Area (Hidden in Print) */}
-                  <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl space-y-3 no-print">
+                  <div className="neu-inset p-4 rounded-2xl space-y-3 no-print">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
-                              <label className="block text-[10px] font-bold text-teal-800 dark:text-teal-400 mb-1">PILIH BULAN</label>
+                              <label className="block text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] mb-1">PILIH BULAN</label>
                               <div className="flex gap-1.5">
                                 <input 
                                   type="month" 
                                   value={rekapBulan} 
                                   onChange={e => setRekapBulan(e.target.value)} 
-                                  className="w-full px-2.5 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                                  className="neu-input font-num w-full px-2.5 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]" 
                                 />
                                 {rekapBulan && (
                                   <button 
                                     type="button" 
                                     onClick={() => setRekapBulan('')} 
                                     title="Tampilkan semua bulan" 
-                                    className="px-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs font-bold rounded-xl shrink-0"
+                                    className="neu-btn px-3 py-2 text-[#334155] dark:text-[#CBD5E1] text-xs font-bold rounded-xl shrink-0 cursor-pointer"
                                   >
                                     Semua
                                   </button>
@@ -3958,11 +3975,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               </div>
                           </div>
                           <div>
-                              <label className="block text-[10px] font-bold text-teal-800 dark:text-teal-400 mb-1">GURU PELAPOR</label>
+                              <label className="block text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] mb-1">GURU PELAPOR</label>
                               <select 
                                 value={rekapGuru} 
                                 onChange={e => setRekapGuru(e.target.value)} 
-                                className="w-full px-2.5 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className="neu-input w-full px-2.5 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                               >
                                   <option value="Semua">Semua Guru</option>
                                   {guruOptions.map(g => (
@@ -3971,11 +3988,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               </select>
                           </div>
                           <div>
-                              <label className="block text-[10px] font-bold text-teal-800 dark:text-teal-400 mb-1">STATUS VERIFIKASI</label>
+                              <label className="block text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] mb-1">STATUS VERIFIKASI</label>
                               <select 
                                 value={rekapStatus} 
                                 onChange={e => setRekapStatus(e.target.value)} 
-                                className="w-full px-2.5 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                className="neu-input w-full px-2.5 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                               >
                                   <option value="Semua">Semua Status</option>
                                   <option value="Disetujui">Disetujui</option>
@@ -3987,20 +4004,20 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                       </div>
                       <div className="flex flex-wrap sm:flex-nowrap gap-2">
                           <div className="relative flex-grow w-full sm:w-auto">
-                              <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 dark:text-gray-400 text-xs"></i>
+                              <i className="fa-solid fa-search absolute left-3 top-3 text-[#64748B] dark:text-[#94A3B8] text-xs"></i>
                               <input 
                                 type="text" 
                                 value={rekapSearch} 
                                 onChange={e => setRekapSearch(e.target.value)} 
                                 placeholder="Cari berdasarkan nama guru, catatan apel, atau tanggal..." 
-                                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
+                                className="neu-input w-full pl-8 pr-3 py-2 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] placeholder:text-[#64748B] dark:placeholder:text-[#94A3B8] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E]"
                               />
                           </div>
                           {rekapSearch && (
                             <button
                               type="button"
                               onClick={() => setRekapSearch('')}
-                              className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold shrink-0"
+                              className="neu-btn px-3 py-2 text-xs rounded-xl text-[#334155] dark:text-[#CBD5E1] font-semibold shrink-0 cursor-pointer"
                             >
                               Reset
                             </button>
@@ -4009,7 +4026,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                             type="button" 
                             onClick={fetchRekapPiket} 
                             disabled={rekapLoading} 
-                            className="btn-click px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                            className="neu-btn neu-btn-primary px-4 py-2 min-h-[38px] text-white rounded-xl text-xs font-bold shrink-0 flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                           >
                             <i className={`fa-solid fa-rotate-right ${rekapLoading ? 'animate-spin' : ''}`}></i>
                             <span>Muat</span>
@@ -4018,42 +4035,42 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                   </div>
 
                   {/* Summary Metric Badges */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                      <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-800 p-3 rounded-xl">
-                          <div className="text-[10px] font-bold text-teal-800 dark:text-teal-400 uppercase tracking-wide">Total Laporan</div>
-                          <div className="text-lg font-black text-teal-900 dark:text-white mt-0.5">{totalRekap}</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-0.5">
+                      <div className="neu-card-sm p-3.5 rounded-2xl">
+                          <div className="text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] uppercase tracking-wide">Total Laporan</div>
+                          <div className="font-num text-xl font-black text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">{totalRekap}</div>
                       </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 rounded-xl">
-                          <div className="text-[10px] font-bold text-green-800 dark:text-green-400 uppercase tracking-wide">Disetujui</div>
-                          <div className="text-lg font-black text-green-900 dark:text-white mt-0.5">{totalDisetujui}</div>
+                      <div className="neu-card-sm p-3.5 rounded-2xl">
+                          <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">Disetujui</div>
+                          <div className="font-num text-xl font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{totalDisetujui}</div>
                       </div>
-                      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded-xl">
-                          <div className="text-[10px] font-bold text-yellow-800 dark:text-yellow-400 uppercase tracking-wide">Menunggu</div>
-                          <div className="text-lg font-black text-yellow-900 dark:text-white mt-0.5">{totalMenunggu}</div>
+                      <div className="neu-card-sm p-3.5 rounded-2xl">
+                          <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Menunggu</div>
+                          <div className="font-num text-xl font-black text-amber-700 dark:text-amber-300 mt-0.5">{totalMenunggu}</div>
                       </div>
-                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-xl">
-                          <div className="text-[10px] font-bold text-red-800 dark:text-red-400 uppercase tracking-wide">Ditolak</div>
-                          <div className="text-lg font-black text-red-900 dark:text-white mt-0.5">{totalDitolak}</div>
+                      <div className="neu-card-sm p-3.5 rounded-2xl">
+                          <div className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">Ditolak</div>
+                          <div className="font-num text-xl font-black text-rose-700 dark:text-rose-300 mt-0.5">{totalDitolak}</div>
                       </div>
                   </div>
 
                   {/* Rekap List Items */}
-                  <div className="space-y-3 min-h-[200px]">
+                  <div className="space-y-3 min-h-[200px] p-1">
                       {rekapLoading ? (
-                        <div className="text-center py-12 text-gray-500 text-xs italic dark:text-gray-400">
+                        <div className="text-center py-12 text-[#64748B] text-xs italic dark:text-[#94A3B8]">
                           <i className="fa-solid fa-spinner animate-spin mr-1.5"></i> Memuat data rekap piket...
                         </div>
                       ) : filteredRekap.length === 0 ? (
-                        <div className="text-center py-12 px-4 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
-                          <i className="fa-solid fa-shield-halved text-2xl text-gray-400 dark:text-gray-500 mb-2"></i>
-                          <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                        <div className="neu-inset text-center py-12 px-4 rounded-2xl border border-dashed border-slate-400/40 dark:border-slate-600/50">
+                          <i className="fa-solid fa-shield-halved text-2xl text-[#64748B] dark:text-[#94A3B8] mb-2"></i>
+                          <p className="text-xs font-semibold text-[#334155] dark:text-[#CBD5E1]">
                             {rekapSearch ? `Tidak ada laporan piket yang sesuai dengan pencarian "${rekapSearch}".` : 'Tidak ada laporan piket yang sesuai dengan filter.'}
                           </p>
                           {rekapSearch && (
                             <button
                               type="button"
                               onClick={() => setRekapSearch('')}
-                              className="mt-2 text-xs text-teal-600 dark:text-teal-400 hover:underline font-medium inline-flex items-center gap-1"
+                              className="mt-2 text-xs text-[#0F766E] dark:text-[#14B8A6] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
                             >
                               <i className="fa-solid fa-rotate-left text-[10px]"></i> Reset pencarian
                             </button>
@@ -4061,40 +4078,40 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         </div>
                       ) : (
                         filteredRekap.map((item, idx) => (
-                          <div key={item.id} className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm space-y-2">
-                              <div className="flex justify-between items-start">
+                          <div key={item.id} className="neu-card-sm p-4 rounded-2xl space-y-2">
+                              <div className="flex justify-between items-start gap-2">
                                   <div>
-                                      <div className="font-bold text-xs text-gray-900 dark:text-white flex items-center gap-2">
-                                          <span>{idx + 1}. {item.guru_pelapor}</span>
+                                      <div className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                                          <span><span className="font-num">{idx + 1}.</span> {item.guru_pelapor}</span>
                                       </div>
-                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                      <div className="font-num text-[10px] text-[#64748B] dark:text-[#94A3B8] mt-0.5">
                                           {formatDateWita(item.tanggal)} ({item.tanggal ? getWitaDayName(new Date(item.tanggal + 'T00:00:00+08:00')) : '-'})
                                       </div>
                                   </div>
-                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
-                                      item.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                      item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                      item.status_verifikasi === 'Ditolak' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                      'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${
+                                      item.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
+                                      item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                                      item.status_verifikasi === 'Ditolak' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
+                                      'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                                   }`}>
                                       {item.status_verifikasi || 'tidak membuat laporan piket'}
                                   </span>
                               </div>
 
-                              <div className="text-xs text-gray-700 dark:text-gray-200 space-y-1">
+                              <div className="text-xs text-[#334155] dark:text-[#CBD5E1] space-y-1">
                                   <p><span className="font-semibold">Catatan Apel / Kejadian:</span> {item.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' || item.catatan_apel?.toLowerCase() === 'tidak membuat laporan piket' ? 'tidak membuat laporan piket' : (item.catatan_apel || item.keterangan || '-')}</p>
                                   {formatRekapAbsen(item.rekap_absen_kelas) && (
-                                      <p><span className="font-semibold">Kehadiran Siswa:</span> <span className="font-medium text-teal-700 dark:text-teal-400">{formatRekapAbsen(item.rekap_absen_kelas)}</span></p>
+                                      <p><span className="font-semibold">Kehadiran Siswa:</span> <span className="font-medium text-[#0F766E] dark:text-[#14B8A6]">{formatRekapAbsen(item.rekap_absen_kelas)}</span></p>
                                   )}
                                   {item.link_foto && item.link_foto !== '-' && (
                                       <div className="flex items-center gap-2 mt-1.5">
                                           <img 
                                               src={transformGoogleDriveUrl(item.link_foto)} 
                                               alt="Foto Dokumentasi" 
-                                              className="w-9 h-9 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm shrink-0"
+                                              className="w-9 h-9 object-cover rounded-xl neu-inset p-0.5 shrink-0"
                                               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                                           />
-                                          <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-teal-600 dark:text-teal-400 hover:underline inline-flex items-center gap-1 text-xs">
+                                          <a href={item.link_foto} target="_blank" rel="noreferrer" className="text-[#0F766E] dark:text-[#14B8A6] hover:underline inline-flex items-center gap-1 text-xs font-semibold">
                                               <i className="fa-solid fa-camera mr-1"></i> Lihat Foto Dokumentasi
                                           </a>
                                       </div>
@@ -4102,14 +4119,14 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                               </div>
 
                               {isAdmin && item.status_verifikasi?.toLowerCase() !== 'tidak membuat laporan piket' && !item.id?.toString().startsWith('unfilled-') && (
-                                  <div className="flex gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 no-print">
+                                  <div className="flex gap-2 mt-2 pt-2 border-t border-slate-300/40 dark:border-slate-700/60 no-print">
                                       <button
                                           disabled={processingId === item.id || item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'}
                                           onClick={() => updatePiketStatus(item.id, 'Disetujui')}
-                                          className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                                          className={`flex-1 text-[11px] font-bold py-2 min-h-[36px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
                                               item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi'
-                                                  ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 cursor-default opacity-80'
-                                                  : 'bg-green-500 hover:bg-green-600 text-white disabled:opacity-50'
+                                                  ? 'neu-inset text-emerald-700 dark:text-emerald-300 cursor-default opacity-80'
+                                                  : 'neu-btn neu-btn-teal text-white disabled:opacity-50'
                                           }`}
                                       >
                                           {processingId === item.id ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-check"></i> Setujui</>}
@@ -4117,10 +4134,10 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                       <button
                                           disabled={processingId === item.id || item.status_verifikasi === 'Ditolak'}
                                           onClick={() => updatePiketStatus(item.id, 'Ditolak')}
-                                          className={`flex-1 text-[11px] font-bold py-1.5 rounded-lg transition flex items-center justify-center gap-1 ${
+                                          className={`flex-1 text-[11px] font-bold py-2 min-h-[36px] rounded-xl transition flex items-center justify-center gap-1 cursor-pointer ${
                                               item.status_verifikasi === 'Ditolak'
-                                                  ? 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 cursor-default opacity-80'
-                                                  : 'bg-red-500 hover:bg-red-600 text-white disabled:opacity-50'
+                                                  ? 'neu-inset text-rose-700 dark:text-rose-300 cursor-default opacity-80'
+                                                  : 'neu-btn neu-btn-rose text-white disabled:opacity-50'
                                           }`}
                                       >
                                           {processingId === item.id ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-xmark"></i> Tolak</>}
@@ -4145,18 +4162,18 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
 
                   {/* Print & Export Actions */}
                   {filteredRekap.length > 0 && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-gray-100 dark:border-gray-800 no-print">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-300/40 dark:border-slate-700/60 no-print">
                           <button 
                             type="button" 
                             onClick={exportRekapPiketCSV} 
-                            className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition"
+                            className="neu-btn neu-btn-teal w-full text-white py-3 min-h-[44px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
                           >
                               <i className="fa-solid fa-file-excel"></i> Export Excel (CSV)
                           </button>
                           <button 
                             type="button" 
                             onClick={() => triggerPrintWithGps()} 
-                            className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition"
+                            className="neu-btn neu-btn-primary w-full text-white py-3 min-h-[44px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition cursor-pointer"
                           >
                               <i className="fa-solid fa-print"></i> Cetak Rekap
                           </button>
@@ -4165,6 +4182,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
               </div>
             )}
         </div>
+      </div>
     </section>
   );
 }

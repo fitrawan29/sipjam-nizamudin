@@ -179,7 +179,7 @@ assert(
   guruScanCode.includes("Mode Presensi:") &&
   guruScanCode.includes("onClick={() => setScanMode('datang')}") &&
   guruScanCode.includes("onClick={() => setScanMode('pulang')}") &&
-  guruScanCode.includes("inline-flex p-1 bg-white dark:bg-gray-800 rounded-xl"),
+  guruScanCode.includes("neu-inset inline-flex p-1.5 rounded-2xl gap-1.5"),
   'Guru view provides compact pill toggle button for Datang | Pulang'
 );
 
@@ -244,7 +244,7 @@ assert(
 // Admin: 7-column Live Attendance Audit Log
 assert(
   adminScanCode.includes('Log Presensi Siswa Hari Ini') &&
-  adminScanCode.includes('<th className="py-2.5 px-3">No</th>') &&
+  adminScanCode.includes('<th className="py-2.5 px-3 rounded-tl-xl">No</th>') &&
   adminScanCode.includes('<th className="py-2.5 px-3">Waktu</th>') &&
   adminScanCode.includes('<th className="py-2.5 px-3">Nama Siswa</th>') &&
   adminScanCode.includes('<th className="py-2.5 px-3">Kelas</th>') &&

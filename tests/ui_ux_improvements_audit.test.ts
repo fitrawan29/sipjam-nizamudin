@@ -270,7 +270,7 @@ assert(adminDataContent.includes('grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3
 
 // 3.2 PiketView.tsx responsiveness
 assert(piketContent.includes('id="view-piket" className="view-section page-enter w-full max-w-full overflow-x-auto"'), 'PiketView container has w-full max-w-full overflow-x-auto');
-assert(piketContent.includes('id="piket-content-rekap" className="space-y-4 fade-in w-full max-w-full overflow-x-auto"'), 'PiketView rekap container has w-full max-w-full overflow-x-auto');
+assert(piketContent.includes('id="piket-content-rekap" className="space-y-4 fade-in w-full max-w-full overflow-x-auto p-1"'), 'PiketView rekap container has w-full max-w-full overflow-x-auto');
 assert(piketContent.includes('flex flex-wrap sm:flex-nowrap gap-2') || piketContent.includes('flex flex-wrap'), 'PiketView action bar has mobile wrap classes');
 
 // 3.3 GradebookView.tsx responsiveness

@@ -186,6 +186,15 @@ export default function AccountSettingsModal({
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const handleTogglePush = async () => {
@@ -444,8 +453,17 @@ export default function AccountSettingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/45 dark:bg-black/65 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-      <div className="clay-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/50 dark:bg-black/65 p-3 sm:p-4 overflow-y-auto"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Pengaturan Akun & Profil"
+        onClick={(e) => e.stopPropagation()}
+        className="clay-card neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-xl overflow-hidden my-auto max-h-[92dvh] flex flex-col"
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-300/60 dark:border-slate-700/60">
           <div className="flex items-center gap-3">
@@ -461,8 +479,9 @@ export default function AccountSettingsModal({
           </div>
           <button
             type="button"
+            aria-label="Tutup pengaturan akun"
             onClick={onClose}
-            className="neu-btn w-9 h-9 rounded-full flex items-center justify-center text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] transition"
+            className="neu-btn w-11 h-11 rounded-full flex items-center justify-center text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] transition shrink-0"
           >
             <i className="fa-solid fa-times text-sm"></i>
           </button>

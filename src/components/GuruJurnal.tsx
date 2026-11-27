@@ -10,7 +10,7 @@ import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } 
 import CameraSelfieCapture from '@/components/CameraSelfieCapture';
 import { WatermarkCoordinates } from '@/lib/watermarkCanvas';
 import { saveJurnalDraft, loadJurnalDraft, clearJurnalDraft, getJurnalDraftKey } from '@/utils/draftStorage';
-import ClayTabs, { TabItem } from '@/components/ClayTabs';
+import NeuTabs, { TabItem } from '@/components/neu/NeuTabs';
 import RekapJurnalView from '@/components/RekapJurnalView';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
@@ -2098,18 +2098,18 @@ export default function GuruJurnal({
 
   return (
     <section id="view-guru-jurnal" className="view-section fade-in max-w-4xl mx-auto space-y-4 print:max-w-none print:w-full print:mx-0 print:p-0">
-      {/* Sub-Navigasi ClayTabs */}
+      {/* Sub-Navigasi NeuTabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 no-print">
         <div>
-          <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-            <i className="fa-solid fa-book-journal-whills text-blue-600 dark:text-blue-400"></i>
+          <h1 className="text-xl font-black text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+            <i className="fa-solid fa-book-journal-whills text-[#0F766E] dark:text-[#14B8A6]"></i>
             <span>Jurnal Pembelajaran</span>
           </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
             Pusat administrasi kegiatan belajar mengajar dan pelaporan capaian materi harian
           </p>
         </div>
-        <ClayTabs
+        <NeuTabs
           items={tabItems}
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -2123,15 +2123,15 @@ export default function GuruJurnal({
         aria-labelledby="tab-input"
         className={activeTab === 'input' ? 'block' : 'hidden'}
       >
-        <div className="clay-card p-5 sm:p-6 rounded-3xl">
+        <div className="neu-card p-5 sm:p-6 rounded-3xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i className="fa-solid fa-book-journal-whills text-blue-500 dark:text-blue-400"></i> Form Jurnal
+                <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                    <i className="fa-solid fa-book-journal-whills text-[#0F766E] dark:text-[#14B8A6]"></i> Form Jurnal
                 </h2>
                 <div className="flex items-center gap-2 flex-wrap">
                   {hasDraft && (
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-bold shadow-sm">
-                      <i className="fa-solid fa-cloud-arrow-down text-emerald-500"></i>
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1.5 neu-inset text-[#0F766E] dark:text-[#14B8A6] rounded-xl text-xs font-bold">
+                      <i className="fa-solid fa-cloud-arrow-down text-[#0F766E] dark:text-[#14B8A6]"></i>
                       <span>Draft Lokal Tersimpan</span>
                     </div>
                   )}
@@ -2139,31 +2139,31 @@ export default function GuruJurnal({
             </div>
 
             {isLocked && (
-              <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm font-bold border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800">
+              <div className="neu-card-rose text-rose-700 dark:text-rose-300 p-4 rounded-2xl mb-4 text-sm font-bold">
                 <i className="fa-solid fa-lock mr-2"></i> Akses Terkunci: {lockedMessage}
               </div>
             )}
 
             {/* Rejection Alert — Jurnal Ditolak */}
             {(dailyState?.jurnalDitolak?.length ?? 0) > 0 && (
-              <div className="bg-red-50 dark:bg-red-950/30 border border-red-300 dark:border-red-800 rounded-xl p-4 mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-red-700 dark:text-red-400 font-bold text-sm">
+              <div className="neu-card-rose rounded-2xl p-4 mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-rose-700 dark:text-rose-300 font-bold text-sm">
                   <i className="fa-solid fa-circle-xmark text-base shrink-0"></i>
-                  <span>Jurnal Anda Ditolak oleh Admin ({dailyState!.jurnalDitolak.length} entri)</span>
+                  <span>Jurnal Anda Ditolak oleh Admin (<span className="font-num">{dailyState!.jurnalDitolak.length}</span> entri)</span>
                 </div>
                 {dailyState!.jurnalDitolak.slice(0, 3).map((j: any) => (
                   <div key={j.id} className="pl-6 space-y-0.5">
-                    <div className="text-xs font-semibold text-red-800 dark:text-red-300">
+                    <div className="text-xs font-semibold text-rose-800 dark:text-rose-200">
                       {j.mapel || j.keterangan || 'Jurnal'} {j.kelas ? `— ${j.kelas}` : ''}
                     </div>
                     {(j.catatan_admin || j.alasan_penolakan) && (
-                      <div className="text-xs text-red-700 dark:text-red-300/90 italic">
+                      <div className="text-xs text-rose-700 dark:text-rose-300/90 italic">
                         Alasan: {j.catatan_admin || j.alasan_penolakan}
                       </div>
                     )}
                   </div>
                 ))}
-                <div className="pl-6 text-xs text-red-600 dark:text-red-400 font-semibold">
+                <div className="pl-6 text-xs text-rose-600 dark:text-rose-400 font-semibold">
                   <i className="fa-solid fa-rotate-right mr-1"></i> Silakan isi ulang jurnal Anda. Data lama yang ditolak akan dihapus otomatis saat Anda menyimpan.
                 </div>
               </div>
@@ -2171,7 +2171,7 @@ export default function GuruJurnal({
             
             {/* Sistem Blok Alert Banner */}
             {dateBlok && (
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-800 rounded-xl p-3.5 mb-4 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2.5">
+              <div className="neu-card-amber rounded-2xl p-3.5 mb-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5">
                 <i className="fa-solid fa-layer-group text-amber-600 dark:text-amber-400 text-sm mt-0.5 shrink-0"></i>
                 <div>
                   <div className="font-bold flex items-center gap-1.5 flex-wrap">
@@ -2197,11 +2197,11 @@ export default function GuruJurnal({
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] mt-0.5 text-amber-700 dark:text-amber-300 leading-relaxed">
+                  <div className="text-[11px] mt-0.5 text-amber-800 dark:text-amber-200/90 leading-relaxed">
                     Jadwal KBM reguler ditiadakan sementara dan digantikan oleh kegiatan khusus ini{dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? ' untuk jam pelajaran yang terblokir' : ''}. Anda hanya perlu mengisi form <strong>Jurnal Kegiatan</strong> di bawah ini (tidak perlu mengisi jurnal absensi kelas reguler){dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? ', atau pilih opsi Jurnal KBM di bawah jika mengisi kelas reguler Anda yang tidak diblok' : ''}.
                   </div>
                   {dateBlok.deskripsi && (
-                    <div className="text-[11px] mt-1.5 italic bg-amber-100/60 dark:bg-amber-900/40 p-2 rounded-lg text-amber-900 dark:text-amber-200">
+                    <div className="text-[11px] mt-1.5 italic neu-inset p-2 rounded-lg text-amber-900 dark:text-amber-200">
                       Petunjuk: {dateBlok.deskripsi}
                     </div>
                   )}
@@ -2212,7 +2212,7 @@ export default function GuruJurnal({
             {/* Guru Inval Toggle — opsional untuk Guru */}
             {user?.role === 'Guru' && !dateBlok && (
               <div className="neu-inset rounded-xl p-3.5 mb-4">
-                <label className="flex items-center gap-3 cursor-pointer select-none">
+                <label className="flex items-center gap-3 cursor-pointer select-none min-h-[40px]">
                   <input
                     type="checkbox"
                     checked={isInval}
@@ -2233,12 +2233,12 @@ export default function GuruJurnal({
                 {isInval && (
                   <div className="mt-3 fade-in">
                     <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
-                      Guru yang Digantikan <span className="text-red-500">*</span>
+                      Guru yang Digantikan <span className="text-rose-500">*</span>
                     </label>
                     <select
                       value={guruDigantikan?.id ?? ''}
                       onChange={e => handleGuruDigantikanChange(e.target.value)}
-                      className="w-full px-3 py-3 text-sm rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
+                      className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       required={isInval}
                     >
                       <option value="" disabled>Pilih guru yang digantikan...</option>
@@ -2259,7 +2259,7 @@ export default function GuruJurnal({
 
             <form onSubmit={handleJurnalSubmit} className={`space-y-4 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
                 <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Jenis Jurnal</label>
+                    <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Jenis Jurnal</label>
                     {dailyState?.hasBlockedSchedule && !dailyState?.isBlok ? (
                       <div className="space-y-1.5">
                         <select
@@ -2274,22 +2274,22 @@ export default function GuruJurnal({
                               setMateri('');
                             }
                           }}
-                          className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-white dark:bg-gray-800 border-2 border-emerald-500/60 cursor-pointer shadow-sm"
+                          className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl font-bold text-[#0F766E] dark:text-[#14B8A6] border-2 border-[#0F766E]/50 dark:border-[#14B8A6]/50 cursor-pointer"
                         >
                           <option value="Jurnal KBM">Jurnal KBM (Jadwal Mengajar Reguler)</option>
                           <option value="Jurnal Kegiatan">Jurnal Kegiatan (Sistem Blok: {dateBlok?.nama_kegiatan || dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'})</option>
                         </select>
-                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium ml-1">
+                        <p className="text-[10px] text-[#0F766E] dark:text-[#14B8A6] font-medium ml-1">
                           <i className="fa-solid fa-circle-info mr-1"></i> Jadwal campuran aktif: Silakan pilih Jurnal KBM untuk kelas reguler atau Jurnal Kegiatan untuk jam yang diblokir.
                         </p>
                       </div>
                     ) : (
-                      <select value={tipeJurnal} disabled className="w-full px-3 py-3 text-sm rounded-xl input-premium font-bold text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800 cursor-not-allowed">
+                      <select value={tipeJurnal} disabled className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl font-bold text-[#0F766E] dark:text-[#14B8A6] opacity-75 cursor-not-allowed">
                           <option value={tipeJurnal}>{tipeJurnal} {dateBlok ? `(Sistem Blok: ${dateBlok.nama_kegiatan})` : dailyState?.isDinasLuar ? '(Dinas Luar)' : ''}</option>
                       </select>
                     )}
                     {(!dailyState?.hasBlockedSchedule || dailyState?.isBlok) && (
-                      <p className="text-[9px] text-gray-500 dark:text-white/80 mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
+                      <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
                     )}
                 </div>
 
@@ -2304,14 +2304,14 @@ export default function GuruJurnal({
                 {tipeJurnal === 'Jurnal KBM' ? (
                   <>
                     {/* Mode Sub-Antarmuka: Absensi Siswa vs Jurnal KBM */}
-                    <div className="flex items-center gap-1.5 p-1 bg-gray-100 dark:bg-gray-800/80 rounded-2xl border border-gray-200 dark:border-gray-700 w-full sm:w-fit mb-3 fade-in">
+                    <div className="flex items-center gap-1.5 p-1.5 neu-inset rounded-2xl w-full sm:w-fit mb-3 fade-in">
                       <button
                         type="button"
                         onClick={() => handleKbmSubModeChange('absensi')}
-                        className={`btn-click flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                        className={`btn-click flex-1 sm:flex-initial px-4 py-2 min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                           kbmSubMode === 'absensi'
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                            ? 'neu-btn neu-btn-primary text-white'
+                            : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                         }`}
                       >
                         <i className="fa-solid fa-users-check text-[11px]"></i>
@@ -2320,10 +2320,10 @@ export default function GuruJurnal({
                       <button
                         type="button"
                         onClick={() => handleKbmSubModeChange('jurnal')}
-                        className={`btn-click flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                        className={`btn-click flex-1 sm:flex-initial px-4 py-2 min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
                           kbmSubMode === 'jurnal'
-                            ? 'bg-blue-600 text-white shadow-sm'
-                            : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
+                            ? 'neu-btn neu-btn-primary text-white'
+                            : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                         }`}
                       >
                         <i className="fa-solid fa-book-bookmark text-[11px]"></i>
@@ -2336,28 +2336,28 @@ export default function GuruJurnal({
                       <div className="space-y-3 fade-in">
                         {/* Hari/Tanggal */}
                         <div className="fade-in">
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                             Hari/Tanggal
                           </label>
                           <input
                             type="text"
                             value={formatDisplayDate(tanggal)}
                             readOnly
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                            className="neu-input w-full px-3 py-2.5 min-h-[42px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9] opacity-75 cursor-not-allowed"
                           />
                         </div>
 
                         {/* Mapel & Kelas untuk Absensi */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 fade-in">
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                              Mata Pelajaran <span className="text-red-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
+                            <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                              Mata Pelajaran <span className="text-rose-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-[#475569] dark:text-[#94A3B8] font-normal font-num">({mapelList.length} mapel Anda)</span>}
                             </label>
                             <select 
                               value={mapel} 
                               onChange={e => handleMapelChange(e.target.value)} 
                               required 
-                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                             >
                               <option value="" disabled>Pilih Mapel...</option>
                               {uniqueMapelList.map(m => (
@@ -2368,14 +2368,14 @@ export default function GuruJurnal({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                              Kelas <span className="text-red-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
+                            <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                              Kelas <span className="text-rose-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-[#475569] dark:text-[#94A3B8] font-normal font-num">({kelasList.length} kelas Anda)</span>}
                             </label>
                             <select 
                               value={kelas} 
                               onChange={e => handleKelasChange(e.target.value)} 
                               required 
-                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                             >
                               <option value="" disabled>Pilih Kelas...</option>
                               {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => {
@@ -2391,15 +2391,15 @@ export default function GuruJurnal({
                         </div>
 
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Absensi Murid <span className="text-gray-500 dark:text-gray-400 font-normal">(Tersinkronisasi Otomatis)</span>
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                            Absensi Murid <span className="text-[#475569] dark:text-[#94A3B8] font-normal">(Tersinkronisasi Otomatis)</span>
                           </label>
                           <input
                             type="text"
                             value={kehadiranMurid}
                             onChange={e => setKehadiranMurid(e.target.value)}
                             placeholder="Contoh: Total murid: 30, Hadir: 28, Izin: 1, Sakit: 1, Alpa: 0"
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            className="neu-input w-full px-3 py-2.5 min-h-[42px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                         </div>
 
@@ -2411,36 +2411,36 @@ export default function GuruJurnal({
                           }).length;
 
                           return (
-                            <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-3 rounded-xl fade-in">
+                            <div className="neu-inset p-3.5 rounded-2xl fade-in">
                               {truantCount > 0 && (
                                 <div 
                                   id="jurnal-truancy-alert"
-                                  className="p-3 mb-3 rounded-xl border border-red-300 bg-red-50 dark:bg-red-950/80 dark:border-red-800 text-red-900 dark:text-red-200 text-xs font-bold flex items-center gap-2.5 animate-pulse"
+                                  className="neu-card-rose p-3 mb-3 rounded-xl text-rose-900 dark:text-rose-200 text-xs font-bold flex items-center gap-2.5 animate-pulse"
                                 >
-                                  <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400 text-sm shrink-0"></i>
-                                  <span>⚠️ Perhatian: Terdeteksi {truantCount} siswa bolos (hadir di gerbang sekolah namun Alpa pada jam pelajaran ini).</span>
+                                  <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-sm shrink-0"></i>
+                                  <span className="font-num">⚠️ Perhatian: Terdeteksi {truantCount} siswa bolos (hadir di gerbang sekolah namun Alpa pada jam pelajaran ini).</span>
                                 </div>
                               )}
                               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                                 <div>
-                                  <h3 className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <i className="fa-solid fa-book-open-reader text-blue-500 dark:text-blue-400"></i> Presensi Siswa Mapel: {mapel || 'Pembelajaran'} (Kelas {kelas})
+                                  <h3 className="text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                                    <i className="fa-solid fa-book-open-reader text-[#0F766E] dark:text-[#14B8A6]"></i> Presensi Siswa Mapel: {mapel || 'Pembelajaran'} (Kelas {kelas})
                                   </h3>
-                                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  <p className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] mt-0.5">
                                     Mencatat kehadiran khusus jam pelajaran ini (tidak mengubah absensi kelas harian) — {students.length} siswa kelas {kelas} terdaftar.
                                   </p>
                                 </div>
                                 <button
                                   type="button"
                                   onClick={handleApplyPiketAttendance}
-                                  className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold shadow-sm flex items-center gap-1.5 transition self-start sm:self-auto"
+                                  className="neu-btn neu-btn-teal btn-click px-3 py-2 min-h-[40px] rounded-xl text-[11px] font-bold flex items-center gap-1.5 transition self-start sm:self-auto"
                                   title="Tandai siswa yang sudah presensi di gerbang datang sebagai Hadir"
                                 >
                                   {/* AST preservation: Terapkan Presensi Piket */}
                                   <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Datang
                                 </button>
                               </div>
-                              <div className="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1">
+                              <div className="space-y-2.5 max-h-60 overflow-y-auto custom-scroll p-2">
                                 {students.map((siswa, idx) => {
                                   const sKey = siswa.nisn || siswa.id || `student-${idx}`;
                                   const pRec = (siswa.nisn && piketAttendance[siswa.nisn]) || (siswa.id && piketAttendance[siswa.id]);
@@ -2450,36 +2450,36 @@ export default function GuruJurnal({
                                   const isTruant = !isMorningLocked && isMorningHadir && absensi[siswa.nisn] === 'A';
                                   const changeRec = (siswa.nisn && lastChangeMap[siswa.nisn]) || (siswa.id && lastChangeMap[siswa.id]) || lastChangeMap[sKey];
                                   return (
-                                    <div key={siswa.nisn || siswa.id || idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white dark:bg-gray-800 p-2 rounded-lg border border-gray-100 dark:border-gray-700 shadow-sm gap-2">
+                                    <div key={siswa.nisn || siswa.id || idx} className="neu-card-sm flex flex-col sm:flex-row sm:items-center justify-between p-2.5 rounded-xl gap-2">
                                       <div className="flex items-center gap-2 flex-1 min-w-0">
-                                        <span className="text-[10px] font-bold text-gray-500 dark:text-white/80 w-4 shrink-0">{idx + 1}.</span>
+                                        <span className="text-[10px] font-bold font-num text-[#475569] dark:text-[#94A3B8] w-5 shrink-0">{idx + 1}.</span>
                                         <div className="min-w-0 flex-1">
                                           <div className="flex items-center gap-2 flex-wrap">
-                                            <span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>
+                                            <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">{siswa.nama_siswa}</span>
                                             {isTruant ? (
-                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-red-100 text-red-800 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1 shrink-0 animate-pulse">
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30 flex items-center gap-1 shrink-0 animate-pulse">
                                                 {/* AST preservation: Terindikasi Bolos (Hadir Gerbang pk. ... Alpa Mapel) */}
                                                 <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
                                               </span>
                                             ) : pRec ? (
-                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold font-num bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0">
                                                 {/* AST preservation: ✓ Hadir di Sekolah (Piket */}
                                                 <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Datang {pRec.jam})
                                               </span>
                                             ) : (
-                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1 shrink-0">
+                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
                                                 {/* AST preservation: Belum Scan Piket / Belum Presensi Piket */}
                                                 <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Datang
                                               </span>
                                             )}
                                           </div>
-                                          <div className="text-[9px] text-gray-500 dark:text-white/80">{siswa.nisn || siswa.id || 'NISN belum terdata'}</div>
+                                          <div className="text-[9px] font-num text-[#475569] dark:text-[#94A3B8]">{siswa.nisn || siswa.id || 'NISN belum terdata'}</div>
                                           {changeRec && (
                                             <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
-                                              <i className="fa-solid fa-clock-rotate-left text-[8px] text-teal-600 dark:text-teal-400"></i>
+                                              <i className="fa-solid fa-clock-rotate-left text-[8px] text-[#0F766E] dark:text-[#14B8A6]"></i>
                                               <span>
                                                 Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{changeRec.diubah_oleh}</strong>
-                                                {' '}(<span className="font-semibold text-teal-700 dark:text-teal-300">{changeRec.sumber_perubahan}</span>)
+                                                {' '}(<span className="font-semibold text-[#0F766E] dark:text-[#14B8A6]">{changeRec.sumber_perubahan}</span>)
                                                 {changeRec.keterangan ? (
                                                   <span className="italic text-slate-600 dark:text-slate-300"> — "{changeRec.keterangan}"</span>
                                                 ) : null}
@@ -2490,27 +2490,27 @@ export default function GuruJurnal({
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0">
                                         {isMorningLocked ? (
-                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs">
-                                            <i className="fa-solid fa-lock text-[9px] text-amber-600"></i>
+                                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg text-[10px] font-bold neu-inset text-amber-800 dark:text-amber-300 border border-amber-500/30">
+                                            <i className="fa-solid fa-lock text-[9px] text-amber-600 dark:text-amber-400"></i>
                                             <span>{(morningLockedAttendance[sKey] || morningLockedAttendance[siswa.nisn])?.label} (Terkunci)</span>
                                           </span>
                                         ) : (
-                                          <div className="flex items-center gap-1">
+                                          <div className="flex flex-wrap items-center gap-1.5">
                                             {([
                                               { code: 'H', label: 'Hadir', icon: 'fa-check', on: 'bg-emerald-600 ring-emerald-400', title: 'Siswa hadir di jam pelajaran ini' },
                                               { code: 'I', label: 'Izin', icon: 'fa-envelope', on: 'bg-orange-500 ring-orange-400', title: 'Tandai Izin di jam pelajaran ini' },
                                               { code: 'S', label: 'Sakit', icon: 'fa-notes-medical', on: 'bg-yellow-500 ring-yellow-400', title: 'Tandai Sakit di jam pelajaran ini' },
-                                              { code: 'A', label: 'Alfa', icon: 'fa-xmark', on: 'bg-red-600 ring-red-400', title: 'Tandai Alfa (memicu status Bolos harian jika pagi hadir)' },
+                                              { code: 'A', label: 'Alfa', icon: 'fa-xmark', on: 'bg-rose-600 ring-rose-400', title: 'Tandai Alfa (memicu status Bolos harian jika pagi hadir)' },
                                               { code: 'B', label: 'Bolos', icon: 'fa-person-walking-arrow-right', on: 'bg-slate-700 ring-slate-400', title: 'Tandai Bolos di jam pelajaran ini' }
                                             ] as const).map(opt => (
                                               <button 
                                                 key={opt.code}
                                                 type="button"
                                                 onClick={() => handleAbsensiChange(sKey, opt.code, siswa.nisn)}
-                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                                className={`px-2.5 py-1.5 min-h-[40px] rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
                                                   currentSt === opt.code 
                                                     ? opt.on + ' text-white shadow-sm ring-1' 
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                                                    : 'neu-inset text-[#475569] hover:text-[#0F172A] dark:text-[#CBD5E1] dark:hover:text-[#F1F5F9]'
                                                 }`}
                                                 title={opt.title}
                                               >
@@ -2527,19 +2527,19 @@ export default function GuruJurnal({
                             </div>
                           );
                         })() : isFetchingStudents ? (
-                          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-6 rounded-xl text-center fade-in">
-                            <i className="fa-solid fa-spinner fa-spin text-blue-500 text-xl mb-2 block"></i>
-                            <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                          <div className="neu-inset p-6 rounded-2xl text-center fade-in">
+                            <i className="fa-solid fa-spinner fa-spin text-[#0F766E] dark:text-[#14B8A6] text-xl mb-2 block"></i>
+                            <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                               Memuat Seluruh Siswa Kelas {kelas}...
                             </div>
                           </div>
                         ) : (
-                          <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-4 rounded-xl text-center fade-in">
-                            <i className="fa-solid fa-users text-gray-400 dark:text-gray-500 text-xl mb-1.5 block"></i>
-                            <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                          <div className="neu-inset p-4 rounded-2xl text-center fade-in">
+                            <i className="fa-solid fa-users text-[#475569] dark:text-[#94A3B8] text-xl mb-1.5 block"></i>
+                            <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                               {!kelas ? 'Pilih Kelas Terlebih Dahulu' : `Belum Ada Siswa Terdaftar di Kelas ${kelas}`}
                             </div>
-                            <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                            <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                               {!kelas
                                 ? 'Silakan tentukan kelas pada pilihan di atas untuk menampilkan daftar seluruh siswa.'
                                 : `Pastikan data siswa untuk kelas ${kelas} telah terdaftar pada database sistem.`}
@@ -2547,9 +2547,9 @@ export default function GuruJurnal({
                           </div>
                         )}
 
-                        <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-100 dark:border-orange-900/30 p-3 rounded-xl">
-                          <label className="block text-[10px] font-bold text-orange-800 dark:text-orange-400 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
-                          <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="w-full px-3 py-2 text-[11px] rounded-lg border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none" placeholder="Misal: Siswa A mengantuk..."></textarea>
+                        <div className="neu-card-amber p-3.5 rounded-2xl">
+                          <label className="block text-[10px] font-bold text-amber-800 dark:text-amber-300 mb-1.5"><i className="fa-solid fa-clipboard-user mr-1"></i> Catatan Khusus Siswa (Opsional)</label>
+                          <textarea value={catatanSiswa} onChange={e => setCatatanSiswa(e.target.value)} rows={2} className="neu-input w-full px-3 py-2.5 min-h-[44px] text-xs rounded-xl resize-none text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Misal: Siswa A mengantuk..."></textarea>
                         </div>
 
                         {/* Tombol Simpan Khusus Absensi Siswa */}
@@ -2558,7 +2558,7 @@ export default function GuruJurnal({
                             type="button"
                             onClick={handleSaveAbsensiOnly}
                             disabled={loading || isLocked}
-                            className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="neu-btn neu-btn-primary btn-click w-full text-white font-bold py-3.5 min-h-[44px] rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-50"
                           >
                             {loading ? 'Memproses...' : <><i className="fa-solid fa-save"></i> Simpan Absensi Siswa</>}
                           </button>
@@ -2566,7 +2566,7 @@ export default function GuruJurnal({
                             <button
                               type="button"
                               onClick={() => handleKbmSubModeChange('jurnal')}
-                              className="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+                              className="text-xs font-semibold text-[#0F766E] dark:text-[#14B8A6] hover:underline min-h-[40px] px-2"
                             >
                               Lanjut isi materi &amp; dokumentasi di Form Jurnal KBM &rarr;
                             </button>
@@ -2581,21 +2581,21 @@ export default function GuruJurnal({
                       <div className="space-y-4 fade-in">
                         {/* 2. Hari/Tanggal */}
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                             Hari/Tanggal
                           </label>
                           <input
                             type="text"
                             value={formatDisplayDate(tanggal)}
                             readOnly
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
+                            className="neu-input w-full px-3 py-2.5 min-h-[42px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9] opacity-75 cursor-not-allowed"
                           />
                         </div>
 
                         {/* 3. Materi/Konten */}
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Materi/Konten <span className="text-red-500">*</span>
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                            Materi/Konten <span className="text-rose-500">*</span>
                           </label>
                           <textarea
                             value={konten || materi}
@@ -2605,7 +2605,7 @@ export default function GuruJurnal({
                             }}
                             required
                             rows={3}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"
+                            className="neu-input w-full px-3 py-2.5 text-sm rounded-xl resize-none text-[#0F172A] dark:text-[#F1F5F9]"
                             placeholder="Tuliskan materi atau konten pembelajaran..."
                           />
                         </div>
@@ -2613,14 +2613,14 @@ export default function GuruJurnal({
                         {/* 4. Kelas/JP */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                              Kelas <span className="text-red-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({kelasList.length} kelas Anda)</span>}
+                            <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                              Kelas <span className="text-rose-500">*</span> {kelasList.length > 0 && user?.role !== 'Admin' && <span className="text-[#475569] dark:text-[#94A3B8] font-normal font-num">({kelasList.length} kelas Anda)</span>}
                             </label>
                             <select 
                               value={kelas} 
                               onChange={e => handleKelasChange(e.target.value)} 
                               required 
-                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                             >
                               <option value="" disabled>Pilih Kelas...</option>
                               {Array.from(new Set([...kelasList, ...(kelas && kelas !== '-' ? [kelas] : [])])).filter(Boolean).sort().map(k => {
@@ -2634,7 +2634,7 @@ export default function GuruJurnal({
                             </select>
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                            <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                               JP (Jam Pelajaran)
                             </label>
                             <input
@@ -2642,18 +2642,18 @@ export default function GuruJurnal({
                               value={jamKe}
                               onChange={e => setJamKe(e.target.value)}
                               placeholder="Contoh: 1-2 atau 3-4"
-                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              className="neu-input font-num w-full px-3 py-3 min-h-[44px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                             />
                           </div>
                           <div>
-                            <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                              Mata Pelajaran <span className="text-red-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-gray-400 dark:text-gray-500 font-normal">({mapelList.length} mapel Anda)</span>}
+                            <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                              Mata Pelajaran <span className="text-rose-500">*</span> {mapelList.length > 0 && user?.role !== 'Admin' && <span className="text-[#475569] dark:text-[#94A3B8] font-normal font-num">({mapelList.length} mapel Anda)</span>}
                             </label>
                             <select 
                               value={mapel} 
                               onChange={e => handleMapelChange(e.target.value)} 
                               required 
-                              className="w-full px-3 py-3 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                              className="neu-input w-full px-3 py-3 min-h-[44px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                             >
                               <option value="" disabled>Pilih Mapel...</option>
                               {uniqueMapelList.map(m => (
@@ -2666,22 +2666,22 @@ export default function GuruJurnal({
                         </div>
 
                         {/* 5. Keadaan Siswa (terdiri dari sub-kolom/sub-field: Jumlah, Hadir, Sakit, Izin, Alpa) */}
-                        <div className="p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2.5">
+                        <div className="p-4 neu-inset rounded-2xl space-y-3">
                           <div className="flex items-center justify-between flex-wrap gap-2">
-                            <div className="text-[11px] font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                              <i className="fa-solid fa-users-check text-blue-600 dark:text-blue-400"></i> Keadaan Siswa
+                            <div className="text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                              <i className="fa-solid fa-users-check text-[#0F766E] dark:text-[#14B8A6]"></i> Keadaan Siswa
                             </div>
                             <button
                               type="button"
                               onClick={() => handleKbmSubModeChange('absensi')}
-                              className="btn-click text-xs font-bold text-blue-700 dark:text-blue-300 bg-white dark:bg-gray-800 border border-blue-300 dark:border-blue-700 px-3 py-1.5 rounded-xl shadow-2xs hover:bg-blue-50 dark:hover:bg-gray-700 transition flex items-center gap-1"
+                              className="neu-btn btn-click text-xs font-bold text-[#0F766E] dark:text-[#14B8A6] px-3 py-2 min-h-[40px] rounded-xl transition flex items-center gap-1.5"
                             >
                               <i className="fa-solid fa-pen-to-square text-[10px]"></i> Kelola Absensi Per Siswa
                             </button>
                           </div>
-                          <div className="grid grid-cols-5 gap-2">
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                             <div>
-                              <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1 text-center">
+                              <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1 text-center">
                                 Jumlah
                               </label>
                               <input
@@ -2689,7 +2689,7 @@ export default function GuruJurnal({
                                 min="0"
                                 value={keadaanCounts.jumlah}
                                 onChange={e => handleKeadaanFieldChange('jumlah', parseInt(e.target.value, 10) || 0)}
-                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                                className="neu-input font-num w-full px-2 py-2 min-h-[42px] text-center font-bold text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                               />
                             </div>
                             <div>
@@ -2701,11 +2701,11 @@ export default function GuruJurnal({
                                 min="0"
                                 value={keadaanCounts.hadir}
                                 onChange={e => handleKeadaanFieldChange('hadir', parseInt(e.target.value, 10) || 0)}
-                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-emerald-600 dark:text-emerald-400"
+                                className="neu-input font-num w-full px-2 py-2 min-h-[42px] text-center font-bold text-xs rounded-xl text-emerald-600 dark:text-emerald-400"
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold text-yellow-700 dark:text-yellow-400 mb-1 text-center">
+                              <label className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-1 text-center">
                                 Sakit
                               </label>
                               <input
@@ -2713,7 +2713,7 @@ export default function GuruJurnal({
                                 min="0"
                                 value={keadaanCounts.sakit}
                                 onChange={e => handleKeadaanFieldChange('sakit', parseInt(e.target.value, 10) || 0)}
-                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-yellow-600 dark:text-yellow-400"
+                                className="neu-input font-num w-full px-2 py-2 min-h-[42px] text-center font-bold text-xs rounded-xl text-amber-600 dark:text-amber-400"
                               />
                             </div>
                             <div>
@@ -2725,11 +2725,11 @@ export default function GuruJurnal({
                                 min="0"
                                 value={keadaanCounts.izin}
                                 onChange={e => handleKeadaanFieldChange('izin', parseInt(e.target.value, 10) || 0)}
-                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-400"
+                                className="neu-input font-num w-full px-2 py-2 min-h-[42px] text-center font-bold text-xs rounded-xl text-orange-600 dark:text-orange-400"
                               />
                             </div>
                             <div>
-                              <label className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-1 text-center">
+                              <label className="block text-[10px] font-bold text-rose-700 dark:text-rose-400 mb-1 text-center">
                                 Alpa
                               </label>
                               <input
@@ -2737,19 +2737,19 @@ export default function GuruJurnal({
                                 min="0"
                                 value={keadaanCounts.alpa}
                                 onChange={e => handleKeadaanFieldChange('alpa', parseInt(e.target.value, 10) || 0)}
-                                className="w-full px-2 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400"
+                                className="neu-input font-num w-full px-2 py-2 min-h-[42px] text-center font-bold text-xs rounded-xl text-rose-600 dark:text-rose-400"
                               />
                             </div>
                           </div>
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
+                          <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] italic font-num">
                             {kehadiranMurid || `Total murid: ${keadaanCounts.jumlah}, Hadir: ${keadaanCounts.hadir}, Izin: ${keadaanCounts.izin}, Sakit: ${keadaanCounts.sakit}, Alpa: ${keadaanCounts.alpa}`}
                           </p>
                         </div>
 
                         {/* 6. Tempat/Lokasi KBM */}
                         <div>
-                          <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                            Tempat/Lokasi KBM <span className="text-red-500">*</span>
+                          <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
+                            Tempat/Lokasi KBM <span className="text-rose-500">*</span>
                           </label>
                           <input
                             type="text"
@@ -2757,7 +2757,7 @@ export default function GuruJurnal({
                             onChange={e => setLokasiKbm(e.target.value)}
                             required
                             placeholder="contoh: Ruang Kelas 7A, Lab IPA"
-                            className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white"
+                            className="neu-input w-full px-3 py-2.5 min-h-[42px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                         </div>
                       </div>
@@ -2768,20 +2768,20 @@ export default function GuruJurnal({
                     {/* Jurnal Kegiatan Fields */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Tanggal</label>
-                        <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" />
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Tanggal</label>
+                        <input type="date" value={tanggal} onChange={e => setTanggal(e.target.value)} required className="neu-input font-num w-full px-3 py-2.5 min-h-[42px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]" />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">Nama Kegiatan</label>
-                        <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="w-full px-3 py-2.5 text-sm rounded-xl input-premium text-gray-900 dark:text-white" placeholder="..." />
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">Nama Kegiatan</label>
+                        <input type="text" value={materi} onChange={e => setMateri(e.target.value)} required className="neu-input w-full px-3 py-2.5 min-h-[42px] text-sm rounded-xl text-[#0F172A] dark:text-[#F1F5F9]" placeholder="..." />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                      <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                         Uraian / Deskripsi
                       </label>
-                      <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="w-full px-3 py-2.5 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white" placeholder="Deskripsikan selengkapnya..."></textarea>
+                      <textarea value={kegiatan} onChange={e => setKegiatan(e.target.value)} required rows={2} className="neu-input w-full px-3 py-2.5 text-sm rounded-xl resize-none text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Deskripsikan selengkapnya..."></textarea>
                     </div>
                   </>
                 )}
@@ -2789,24 +2789,24 @@ export default function GuruJurnal({
                 {!(tipeJurnal === 'Jurnal KBM' && kbmSubMode === 'absensi') && (
                   <>
                     <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1 ml-1 flex items-center justify-between">
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1 flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <i className="fa-solid fa-camera text-blue-600 dark:text-blue-400"></i>
+                            <i className="fa-solid fa-camera text-[#0F766E] dark:text-[#14B8A6]"></i>
                             {tipeJurnal === 'Jurnal KBM' ? 'Dokumentasi' : 'Foto Dokumentasi Kegiatan'}{' '}
                             {isUploadAllowed ? (
-                              <span className="text-gray-500 dark:text-gray-400 font-normal">(Live Camera / Upload Foto)</span>
+                              <span className="text-[#475569] dark:text-[#94A3B8] font-normal">(Live Camera / Upload Foto)</span>
                             ) : (
-                              <span className="text-red-500 dark:text-red-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
+                              <span className="text-rose-600 dark:text-rose-400 font-normal">(Wajib Kamera Lanskap Langsung)</span>
                             )}
                           </span>
-                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                          <span className="text-[10px] text-[#0F766E] dark:text-[#14B8A6] font-semibold">
                             {file ? '✓ Foto Terpasang' : uploadMode === 'camera' || !isUploadAllowed ? 'Kamera Aktif' : 'Upload Foto Aktif'}
                           </span>
                         </label>
 
                         {/* Mode selector if school allows upload */}
                         {isUploadAllowed && (
-                          <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 gap-1 text-xs mb-2">
+                          <div className="flex rounded-2xl neu-inset p-1.5 gap-1.5 text-xs mb-2">
                             <button
                               type="button"
                               onClick={() => {
@@ -2816,10 +2816,10 @@ export default function GuruJurnal({
                                 setUploadLokasi(null);
                                 setUploadWaktu(null);
                               }}
-                              className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                              className={`flex-1 py-2 min-h-[40px] rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${
                                 uploadMode === 'camera'
-                                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                  ? 'neu-btn neu-btn-primary text-white'
+                                  : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                               }`}
                             >
                               <i className="fa-solid fa-camera"></i> Kamera Langsung
@@ -2833,10 +2833,10 @@ export default function GuruJurnal({
                                 setUploadLokasi(null);
                                 setUploadWaktu(null);
                               }}
-                              className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                              className={`flex-1 py-2 min-h-[40px] rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${
                                 uploadMode === 'gallery'
-                                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                                  ? 'neu-btn neu-btn-primary text-white'
+                                  : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                               }`}
                             >
                               <i className="fa-solid fa-images"></i> Upload Foto / Galeri
@@ -2874,7 +2874,7 @@ export default function GuruJurnal({
                           <div className="space-y-2">
                             <label
                               htmlFor="jurnal-gallery-file-input"
-                              className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[140px]"
+                              className="neu-inset border-2 border-dashed border-slate-400/50 dark:border-slate-600/50 hover:border-[#0F766E] dark:hover:border-[#14B8A6] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[140px]"
                             >
                               <input
                                 id="jurnal-gallery-file-input"
@@ -2891,19 +2891,19 @@ export default function GuruJurnal({
                                     alt="Preview Foto Galeri"
                                     className="w-full max-h-48 object-cover rounded-xl shadow-sm mx-auto"
                                   />
-                                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                  <p className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                                     Klik untuk memilih foto lain dari perangkat
                                   </p>
                                 </div>
                               ) : (
                                 <div className="space-y-1.5 py-3">
-                                  <div className="w-10 h-10 mx-auto rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 flex items-center justify-center text-lg">
+                                  <div className="w-10 h-10 mx-auto rounded-full neu-card-sm text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center text-lg">
                                     <i className="fa-solid fa-cloud-arrow-up"></i>
                                   </div>
-                                  <div className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                                  <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                                     Pilih Foto Dokumentasi dari Perangkat
                                   </div>
-                                  <div className="text-[10px] text-gray-400">
+                                  <div className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                                     Format gambar JPG, PNG, atau JPEG (GPS otomatis direkam)
                                   </div>
                                 </div>
@@ -2911,13 +2911,13 @@ export default function GuruJurnal({
                             </label>
 
                             {uploadLokasi && (
-                              <div className="p-2 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 flex items-center justify-between text-[11px]">
-                                <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
-                                  <i className="fa-solid fa-location-dot text-red-500"></i>
-                                  <span>{uploadLokasi}</span>
+                              <div className="p-2.5 rounded-xl neu-inset flex items-center justify-between text-[11px]">
+                                <span className="flex items-center gap-1.5 text-[#334155] dark:text-[#CBD5E1]">
+                                  <i className="fa-solid fa-location-dot text-rose-500"></i>
+                                  <span className="font-num">{uploadLokasi}</span>
                                 </span>
                                 {uploadWaktu && (
-                                  <span className="text-gray-400 font-mono text-[10px]">
+                                  <span className="text-[#475569] dark:text-[#94A3B8] font-num text-[10px]">
                                     {uploadWaktu}
                                   </span>
                                 )}
@@ -2927,12 +2927,12 @@ export default function GuruJurnal({
                         )}
 
                         {file && (
-                          <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/80 flex items-center justify-between transition-all">
-                            <div className="flex items-center gap-2 text-xs font-semibold text-blue-800 dark:text-blue-200">
-                              <i className="fa-solid fa-circle-check text-blue-600 dark:text-blue-400 text-base"></i>
+                          <div className="p-3 rounded-xl neu-inset border border-[#0F766E]/25 dark:border-[#14B8A6]/30 flex items-center justify-between transition-all">
+                            <div className="flex items-center gap-2 text-xs font-semibold text-[#0F766E] dark:text-[#14B8A6]">
+                              <i className="fa-solid fa-circle-check text-[#0F766E] dark:text-[#14B8A6] text-base"></i>
                               <div>
                                 <div>Foto dokumentasi siap diunggah</div>
-                                <div className="text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                                <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-normal font-num">
                                   {file.name} ({(file.size / 1024).toFixed(0)} KB)
                                 </div>
                               </div>
@@ -2947,7 +2947,7 @@ export default function GuruJurnal({
                                 setUploadLokasi(null);
                                 setUploadWaktu(null);
                               }}
-                              className="px-2.5 py-1 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition"
+                              className="neu-btn neu-btn-rose px-3 py-1.5 min-h-[36px] text-[11px] font-bold rounded-lg transition"
                             >
                               Ganti Foto
                             </button>
@@ -2956,14 +2956,14 @@ export default function GuruJurnal({
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                        <label className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 ml-1">
                           {tipeJurnal === 'Jurnal KBM' ? 'Keterangan (Opsional)' : 'Catatan Refleksi (Opsional)'}
                         </label>
-                        <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder={tipeJurnal === 'Jurnal KBM' ? 'Tuliskan keterangan atau catatan (opsional)...' : 'Tuliskan catatan refleksi atau kendala...'} className="w-full px-3 py-2 text-sm rounded-xl input-premium resize-none text-gray-900 dark:text-white"></textarea>
+                        <textarea value={refleksi} onChange={e => setRefleksi(e.target.value)} rows={2} placeholder={tipeJurnal === 'Jurnal KBM' ? 'Tuliskan keterangan atau catatan (opsional)...' : 'Tuliskan catatan refleksi atau kendala...'} className="neu-input w-full px-3 py-2.5 text-sm rounded-xl resize-none text-[#0F172A] dark:text-[#F1F5F9]"></textarea>
                     </div>
                     
                     <div className="pt-2">
-                        <button type="submit" disabled={loading || isLocked} className="clay-btn clay-btn-primary btn-click w-full text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-green-900/20 text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+                        <button type="submit" disabled={loading || isLocked} className="neu-btn neu-btn-primary btn-click w-full text-white font-bold py-3.5 min-h-[44px] rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-50">
                             {loading ? 'Memproses...' : <><i className="fa-solid fa-save"></i> {tipeJurnal === 'Jurnal KBM' ? 'Simpan Jurnal KBM' : 'Simpan Jurnal'}</>}
                         </button>
                     </div>
@@ -2983,41 +2983,41 @@ export default function GuruJurnal({
         {allRejectedJournals.length > 0 && (
           <div 
             id="banner-jurnal-ditolak" 
-            className="bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 rounded-2xl p-4 mb-4 shadow-sm no-print"
+            className="neu-card-rose rounded-2xl p-4 mb-4 no-print"
           >
             <div className="flex items-center justify-between gap-2 mb-2">
-              <h4 className="font-bold text-red-800 dark:text-red-300 text-xs sm:text-sm flex items-center gap-2">
-                <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400"></i>
-                Perhatian: Terdapat {allRejectedJournals.length} Jurnal yang Ditolak Admin
+              <h4 className="font-bold text-rose-800 dark:text-rose-200 text-xs sm:text-sm flex items-center gap-2">
+                <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"></i>
+                <span>Perhatian: Terdapat <span className="font-num">{allRejectedJournals.length}</span> Jurnal yang Ditolak Admin</span>
               </h4>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300">
+              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full neu-inset text-rose-700 dark:text-rose-300">
                 Perlu Revisi
               </span>
             </div>
-            <p className="text-[11px] text-red-700 dark:text-red-300 mb-3">
+            <p className="text-[11px] text-rose-700 dark:text-rose-300 mb-3">
               Admin memberikan catatan penolakan pada entri jurnal KBM berikut. Silakan periksa alasan penolakan dan lakukan perbaikan/input ulang:
             </p>
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {allRejectedJournals.map((j: any) => {
                 const alasan = j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan || 'Harap perbaiki dokumentasi atau materi KBM';
                 return (
                   <div 
                     key={j.id || `${j.tanggal}-${j.mapel}-${j.kelas}`}
-                    className="p-3 bg-white/90 dark:bg-gray-800/90 rounded-xl border border-red-200 dark:border-red-900/60 text-xs shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                    className="p-3.5 neu-card-sm rounded-xl border border-rose-300/60 dark:border-rose-800/60 text-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5"
                   >
                     <div>
-                      <div className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5 flex-wrap">
-                        <span className="text-red-600 dark:text-red-400">[{j.tanggal}]</span>
+                      <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5 flex-wrap">
+                        <span className="text-rose-600 dark:text-rose-400 font-num">[{j.tanggal}]</span>
                         <span>{j.mapel || 'Jurnal KBM'}</span>
-                        {j.kelas && j.kelas !== '-' && <span className="text-gray-500 dark:text-gray-400 font-normal">(Kelas {j.kelas})</span>}
-                        {j.jam_ke && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">Jam {j.jam_ke}</span>}
+                        {j.kelas && j.kelas !== '-' && <span className="text-[#475569] dark:text-[#94A3B8] font-normal">(Kelas {j.kelas})</span>}
+                        {j.jam_ke && <span className="text-[10px] font-num px-2 py-0.5 rounded-md neu-inset text-[#475569] dark:text-[#CBD5E1]">Jam {j.jam_ke}</span>}
                       </div>
                       {j.materi && (
-                        <div className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5">
+                        <div className="text-[11px] text-[#334155] dark:text-[#CBD5E1] mt-0.5">
                           <span className="font-medium">Materi:</span> {j.materi}
                         </div>
                       )}
-                      <div className="mt-1.5 text-xs text-red-700 dark:text-red-300 bg-red-50/80 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/40">
+                      <div className="mt-1.5 text-xs text-rose-800 dark:text-rose-200 neu-inset p-2.5 rounded-lg">
                         <span className="font-bold mr-1">Alasan Penolakan:</span>
                         <span className="italic">"{alasan}"</span>
                       </div>
@@ -3032,7 +3032,7 @@ export default function GuruJurnal({
                         if (j.jam_ke) setJamKe(j.jam_ke);
                         if (j.materi) setMateri(j.materi);
                       }}
-                      className="btn-click shrink-0 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                      className="neu-btn neu-btn-rose btn-click shrink-0 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
                     >
                       <i className="fa-solid fa-pen-to-square"></i> Input Ulang
                     </button>

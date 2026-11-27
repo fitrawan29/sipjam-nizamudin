@@ -259,23 +259,33 @@ export default function HistoryView({
                 <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                   <i className="fa-solid fa-clipboard-list text-[#0F766E] dark:text-teal-400"></i> Riwayat Anda
                 </h2>
-                <button type="button" onClick={loadData} className="neu-btn btn-click text-[#334155] dark:text-[#F1F5F9] px-3 py-1.5 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={loadData}
+                  aria-label="Muat Ulang Riwayat"
+                  title="Muat Ulang Riwayat"
+                  className="neu-btn btn-click w-11 h-11 rounded-2xl text-xs font-bold text-[#334155] dark:text-[#F1F5F9]"
+                >
                   <i className={`fa-solid fa-rotate-right ${loading ? 'animate-spin' : ''}`}></i>
                 </button>
             </div>
             {!hideTabSwitch && (
-              <div className="flex gap-2 p-1.5 neu-inset rounded-2xl mb-4">
+              <div role="tablist" aria-label="Kategori Riwayat" className="flex gap-2 p-2 neu-inset rounded-2xl mb-4">
                 <button 
-                  type="button" 
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'presensi'}
                   onClick={() => { setActiveTab('presensi'); setPage(0); setFilterBulan(''); setDataList([]); }} 
-                  className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-xl transition-all ${activeTab === 'presensi' ? 'neu-btn neu-btn-primary text-white' : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'}`}
+                  className={`btn-click flex-1 min-h-[44px] text-xs font-bold py-2 rounded-xl transition-all ${activeTab === 'presensi' ? 'neu-btn neu-btn-primary text-white' : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'}`}
                 >
                   Presensi
                 </button>
                 <button 
-                  type="button" 
+                  type="button"
+                  role="tab"
+                  aria-selected={activeTab === 'jurnal'}
                   onClick={() => { setActiveTab('jurnal'); setPage(0); setFilterBulan(''); setDataList([]); }} 
-                  className={`btn-click flex-1 text-[11px] font-bold py-2 rounded-xl transition-all ${activeTab === 'jurnal' ? 'neu-btn neu-btn-primary text-white' : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'}`}
+                  className={`btn-click flex-1 min-h-[44px] text-xs font-bold py-2 rounded-xl transition-all ${activeTab === 'jurnal' ? 'neu-btn neu-btn-primary text-white' : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'}`}
                 >
                   Jurnal
                 </button>
@@ -288,15 +298,16 @@ export default function HistoryView({
                     type="text" 
                     value={search} 
                     onChange={e => { setSearch(e.target.value); setPage(0); }} 
-                    placeholder={`Cari riwayat ${activeTab}...`} 
-                    className="w-full pl-9 pr-4 py-2.5 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" 
+                    placeholder={`Cari riwayat ${activeTab}...`}
+                    aria-label={`Cari riwayat ${activeTab}`}
+                    className="w-full pl-9 pr-4 py-2.5 min-h-[44px] text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" 
                   />
                 </div>
                 {search && (
                   <button
                     type="button"
                     onClick={() => { setSearch(''); setPage(0); }}
-                    className="neu-btn px-3 py-2.5 text-xs rounded-xl text-[#334155] dark:text-[#F1F5F9] font-semibold shrink-0"
+                    className="neu-btn px-3.5 py-2 min-h-[44px] text-xs rounded-xl text-[#334155] dark:text-[#F1F5F9] font-semibold shrink-0"
                   >
                     Reset
                   </button>
@@ -307,14 +318,16 @@ export default function HistoryView({
                       type="month" 
                       value={filterBulan} 
                       onChange={e => { setFilterBulan(e.target.value); setPage(0); }} 
-                      className="px-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] font-semibold cursor-pointer"
+                      aria-label="Filter Berdasarkan Bulan Presensi"
+                      className="px-3 py-2 min-h-[44px] text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] font-semibold cursor-pointer"
                       title="Filter Berdasarkan Bulan Presensi"
                     />
                     {filterBulan && (
                       <button
                         type="button"
                         onClick={() => { setFilterBulan(''); setPage(0); }}
-                        className="neu-btn px-2.5 py-2 text-xs rounded-xl text-[#334155] dark:text-[#F1F5F9] font-semibold transition"
+                        aria-label="Reset Filter Bulan"
+                        className="neu-btn w-11 h-11 text-xs rounded-xl text-[#334155] dark:text-[#F1F5F9] font-semibold transition"
                         title="Reset Filter Bulan"
                       >
                         <i className="fa-solid fa-xmark"></i>
@@ -436,14 +449,14 @@ export default function HistoryView({
                               <img 
                                 src={transformGoogleDriveUrl(histPhoto)} 
                                 alt="Bukti Foto" 
-                                className="w-8 h-8 object-cover rounded-lg shadow-xs shrink-0"
+                                className="w-8 h-8 object-cover rounded-lg shrink-0"
                                 onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                               />
                               <a 
                                 href={histPhoto} 
                                 target="_blank" 
                                 rel="noreferrer" 
-                                className="neu-btn inline-flex items-center gap-1.5 text-[10px] font-bold text-[#0F766E] dark:text-teal-300 px-2.5 py-1 rounded-lg transition"
+                                className="neu-btn inline-flex items-center gap-1.5 text-[10px] font-bold text-[#0F766E] dark:text-teal-300 px-3 py-1.5 min-h-[38px] rounded-xl transition"
                               >
                                 <i className="fa-solid fa-image text-[9px]"></i> Lihat Bukti Foto
                               </a>
@@ -455,8 +468,7 @@ export default function HistoryView({
                 ))
               ))}
             </div>
-            </div>
-            <div className="flex justify-between items-center mt-5 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
+            <div className="flex flex-wrap justify-between items-center gap-2 mt-5 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
                 <span className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] font-medium">
                   Menampilkan {totalCount > 0 ? page * ITEMS_PER_PAGE + 1 : 0} - {Math.min((page + 1) * ITEMS_PER_PAGE, totalCount)} dari {totalCount} Data
                 </span>
@@ -464,18 +476,21 @@ export default function HistoryView({
                     <button 
                       type="button" 
                       disabled={page === 0}
+                      aria-label="Halaman Sebelumnya"
                       onClick={() => setPage(Math.max(0, page - 1))}
-                      className="neu-btn btn-click w-8 h-8 flex items-center justify-center rounded-lg text-xs disabled:opacity-30 text-[#334155] dark:text-[#F1F5F9]">
+                      className="neu-btn btn-click w-11 h-11 flex items-center justify-center rounded-xl text-xs disabled:opacity-30 text-[#334155] dark:text-[#F1F5F9]">
                       <i className="fa-solid fa-chevron-left"></i>
                     </button>
                     <button 
                       type="button" 
                       disabled={page >= totalPages - 1}
+                      aria-label="Halaman Berikutnya"
                       onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                      className="neu-btn btn-click w-8 h-8 flex items-center justify-center rounded-lg text-xs disabled:opacity-30 text-[#334155] dark:text-[#F1F5F9]">
+                      className="neu-btn btn-click w-11 h-11 flex items-center justify-center rounded-xl text-xs disabled:opacity-30 text-[#334155] dark:text-[#F1F5F9]">
                       <i className="fa-solid fa-chevron-right"></i>
                     </button>
                 </div>
+            </div>
         </div>
     </Wrapper>
   );

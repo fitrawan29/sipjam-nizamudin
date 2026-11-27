@@ -923,12 +923,12 @@ export default function RekapSiswaView({
   if (masterLoaded && !isWaliKelasUser) {
     return (
       <section id="view-rekap-siswa" className="view-section page-enter w-full max-w-full">
-        <div className="glass-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-950/20 shadow-sm">
-          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-inner">
+        <div className="neu-card p-8 text-center max-w-lg mx-auto mt-6 rounded-2xl">
+          <div className="w-16 h-16 neu-inset text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
             <i className="fa-solid fa-lock"></i>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Akses Terblokir</h2>
-          <p className="text-xs text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+          <h2 className="text-xl font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-2">Akses Terblokir</h2>
+          <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mb-6 leading-relaxed">
             Halaman <strong>Presensi Siswa</strong> secara eksklusif hanya dapat diakses oleh Administrator dan Guru yang ditugaskan sebagai <strong>Wali Kelas</strong>. Anda tidak memiliki hak akses untuk membuka halaman ini.
           </p>
         </div>
@@ -953,7 +953,7 @@ export default function RekapSiswaView({
             )}
             <PrintHeader user={user} sekolahId={user?.sekolah_id} />
             {/* Document Print Subheader */}
-            <div className="text-center my-3 print:my-2">
+            <div className="hidden print:block text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] print:text-black uppercase tracking-wider">
                 {activeTab === 'gerbang' 
                   ? 'Laporan Presensi Datang & Pulang Siswa' 
@@ -980,11 +980,13 @@ export default function RekapSiswaView({
             </div>
 
             {/* TAB NAVIGATION: Dedicated Panel / Tab for Presensi Gerbang Piket vs Rekap Absen Siswa */}
-            <div className="flex items-center gap-2 border-b border-slate-300/60 dark:border-slate-700/60 pb-3 mb-4 no-print">
+            <div role="tablist" aria-label="Tab Rekapitulasi Siswa" className="inline-flex flex-wrap items-center gap-2 neu-inset p-1.5 rounded-2xl mb-5 no-print">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'gerbang'}
                 onClick={() => setActiveTab('gerbang')}
-                className={`clay-btn btn-click px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
+                className={`clay-btn btn-click px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                   activeTab === 'gerbang'
                     ? 'clay-btn-mint neu-btn-primary text-white'
                     : 'clay-btn-secondary text-[#334155] dark:text-[#CBD5E1]'
@@ -996,8 +998,10 @@ export default function RekapSiswaView({
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'rekap'}
                 onClick={() => setActiveTab('rekap')}
-                className={`clay-btn btn-click px-4 py-2 rounded-2xl text-xs font-bold transition flex items-center gap-2 ${
+                className={`clay-btn btn-click px-4 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-2 ${
                   activeTab === 'rekap'
                     ? 'clay-btn-mint neu-btn-primary text-white'
                     : 'clay-btn-secondary text-[#334155] dark:text-[#CBD5E1]'
@@ -1013,25 +1017,25 @@ export default function RekapSiswaView({
               <div className="clay-card clay-card-mint p-4 rounded-3xl mb-5 no-print">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="w-9 h-9 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-base shadow-sm shrink-0">
+                    <span className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-base shrink-0">
                       <i className="fa-solid fa-user-shield"></i>
                     </span>
                     <div>
-                      <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5 flex-wrap">
+                      <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5 flex-wrap">
                         <span>Penugasan Wali Kelas</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 text-[10px]">
+                        <span className="px-2 py-0.5 rounded-full bg-teal-500/15 text-[#0F766E] dark:text-teal-300 text-[10px]">
                           {activeWaliKelas?.kelas || 'Kelas'}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-num ${
                           isIntervensiExpired 
-                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' 
-                            : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300'
+                            ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' 
+                            : 'bg-teal-500/15 text-[#0F766E] dark:text-teal-300'
                         }`}>
                           <i className={`fa-solid ${isIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
                           {waliIntervensiStatus.label}
                         </span>
                       </h3>
-                      <p className="text-[11px] text-emerald-700 dark:text-emerald-300">
+                      <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                         Input presensi harian siswa (Hadir, Izin, Sakit, Alpa) dengan sinkronisasi global otomatis ke jurnal semua guru mapel.
                       </p>
                     </div>
@@ -1040,6 +1044,7 @@ export default function RekapSiswaView({
                     {waliKelasList.length > 1 && (
                       <select
                         value={activeWaliKelas?.id}
+                        aria-label="Pilih Kelas Binaan"
                         onChange={e => {
                           const w = waliKelasList.find(item => item.id === e.target.value);
                           if (w) {
@@ -1047,7 +1052,7 @@ export default function RekapSiswaView({
                             setKelas(w.kelas);
                           }
                         }}
-                        className="px-2.5 py-1.5 text-xs rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white border border-emerald-300 dark:border-emerald-700 font-semibold"
+                        className="px-2.5 py-2 min-h-[40px] text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9] font-semibold"
                       >
                         {waliKelasList.map(w => (
                           <option key={w.id} value={w.id}>Kelas {w.kelas}</option>
@@ -1057,7 +1062,7 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setShowWaliInput(!showWaliInput)}
-                      className="btn-click bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition shrink-0"
+                      className="neu-btn neu-btn-primary btn-click text-white px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0"
                     >
                       <i className={`fa-solid ${showWaliInput ? 'fa-xmark' : 'fa-pen-to-square'}`}></i>
                       {showWaliInput ? 'Tutup Form Presensi' : 'Input Presensi Kelas'}
@@ -1089,23 +1094,23 @@ export default function RekapSiswaView({
                         </div>
                       </div>
                     ) : null}
-                    <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-gray-800/80 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/40">
+                    <div className="flex flex-wrap items-center justify-between gap-3 neu-card-sm p-3.5 rounded-xl border border-teal-500/20">
                       <div className="flex items-center gap-2">
-                        <label className="text-xs font-bold text-gray-700 dark:text-gray-300">Tanggal Presensi:</label>
+                        <label className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">Tanggal Presensi:</label>
                         <input
                           type="date"
                           value={waliTanggal}
                           onChange={e => setWaliTanggal(e.target.value)}
-                          className="px-2.5 py-1.5 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600"
+                          className="px-2.5 py-1.5 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 mr-1">Tandai Cepat:</span>
+                      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                        <span className="text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8] mr-1">Tandai Cepat:</span>
                         <button
                           type="button"
                           disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Hadir')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/40 dark:text-green-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="btn-click px-2.5 py-1.5 min-h-[34px] rounded-lg text-[10px] font-bold bg-green-500/15 text-green-700 hover:bg-green-500/25 dark:bg-green-900/40 dark:text-green-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Hadir
                         </button>
@@ -1113,7 +1118,7 @@ export default function RekapSiswaView({
                           type="button"
                           disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Sakit')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/40 dark:text-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="btn-click px-2.5 py-1.5 min-h-[34px] rounded-lg text-[10px] font-bold bg-yellow-500/15 text-yellow-700 hover:bg-yellow-500/25 dark:bg-yellow-900/40 dark:text-yellow-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Sakit
                         </button>
@@ -1121,7 +1126,7 @@ export default function RekapSiswaView({
                           type="button"
                           disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Izin')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/40 dark:text-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="btn-click px-2.5 py-1.5 min-h-[34px] rounded-lg text-[10px] font-bold bg-orange-500/15 text-orange-700 hover:bg-orange-500/25 dark:bg-orange-900/40 dark:text-orange-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Izin
                         </button>
@@ -1129,7 +1134,7 @@ export default function RekapSiswaView({
                           type="button"
                           disabled={isIntervensiExpired || isReadOnly}
                           onClick={() => handleSetAllWaliStatus('Alpa')}
-                          className="btn-click px-2 py-1 rounded-md text-[10px] font-bold bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                          className="btn-click px-2.5 py-1.5 min-h-[34px] rounded-lg text-[10px] font-bold bg-rose-500/15 text-rose-700 hover:bg-rose-500/25 dark:bg-rose-900/40 dark:text-rose-300 transition disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           Semua Alpa
                         </button>
@@ -1137,31 +1142,31 @@ export default function RekapSiswaView({
                     </div>
 
                     {waliLoading ? (
-                      <div className="text-center py-8 text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-center py-8 text-xs text-[#475569] dark:text-[#94A3B8]">
                         <i className="fa-solid fa-circle-notch fa-spin mr-2"></i> Memuat data siswa kelas {activeWaliKelas?.kelas}...
                       </div>
                     ) : waliStudents.length === 0 ? (
-                      <div className="text-center py-6 text-xs text-gray-500 italic">
+                      <div className="text-center py-6 text-xs text-[#475569] dark:text-[#94A3B8] italic">
                         Tidak ada data siswa terdaftar di kelas {activeWaliKelas?.kelas}.
                       </div>
                     ) : (
-                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto custom-scroll pr-1">
+                      <div className="space-y-2.5 max-h-[380px] overflow-y-auto custom-scroll p-2">
                         {waliStudents.map((siswa, idx) => {
                           const currentRec = waliAttendance[siswa.nisn] || { status: '', keterangan: '', logs: [] };
                           return (
                             <div
                               key={siswa.nisn || idx}
-                              className="bg-white dark:bg-gray-800 p-3 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3"
+                              className="neu-card-sm p-3 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3"
                             >
-                              <div className="flex items-start gap-2.5 min-w-[200px]">
-                                <span className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <span className="w-6 h-6 rounded-full neu-inset text-[#475569] dark:text-[#CBD5E1] font-bold font-num text-[10px] flex items-center justify-center shrink-0 mt-0.5">
                                   {idx + 1}
                                 </span>
-                                <div>
-                                  <div className="text-xs font-bold text-gray-900 dark:text-white">
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">
                                     {siswa.nama_siswa}
                                   </div>
-                                  <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                                  <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-num">
                                     NISN: {siswa.nisn || '-'}
                                   </div>
                                   {waliGateLogs[siswa.nisn || siswa.id]?.datang ? (
@@ -1185,14 +1190,14 @@ export default function RekapSiswaView({
                               </div>
 
                               <div className="flex flex-wrap items-center gap-2 md:justify-end flex-1">
-                                <div className="flex gap-1">
+                                <div className="flex flex-wrap gap-1.5">
                                   {(['Hadir', 'Izin', 'Sakit', 'Alpa'] as const).map(st => {
                                     const isSelected = currentRec.status === st;
                                     const colorClasses = 
-                                      st === 'Hadir' ? (isSelected ? 'bg-green-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
-                                      st === 'Izin' ? (isSelected ? 'bg-orange-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
-                                      st === 'Sakit' ? (isSelected ? 'bg-yellow-500 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300') :
-                                      (isSelected ? 'bg-red-600 text-white shadow-sm' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300');
+                                      st === 'Hadir' ? (isSelected ? 'bg-[#0F766E] text-white' : 'neu-btn text-[#334155] dark:text-[#CBD5E1]') :
+                                      st === 'Izin' ? (isSelected ? 'bg-orange-600 text-white' : 'neu-btn text-[#334155] dark:text-[#CBD5E1]') :
+                                      st === 'Sakit' ? (isSelected ? 'bg-[#D97706] text-white' : 'neu-btn text-[#334155] dark:text-[#CBD5E1]') :
+                                      (isSelected ? 'bg-rose-600 text-white' : 'neu-btn text-[#334155] dark:text-[#CBD5E1]');
 
                                     return (
                                       <button
@@ -1200,7 +1205,7 @@ export default function RekapSiswaView({
                                         type="button"
                                         disabled={isIntervensiExpired || isReadOnly}
                                         onClick={() => handleSetWaliStatus(siswa.nisn, st)}
-                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${colorClasses} ${(isIntervensiExpired || isReadOnly) ? 'opacity-40 cursor-not-allowed' : ''}`}
+                                        className={`px-3 py-1.5 min-h-[34px] rounded-xl text-[10px] font-bold transition ${colorClasses} ${(isIntervensiExpired || isReadOnly) ? 'opacity-40 cursor-not-allowed' : ''}`}
                                       >
                                         {st}
                                       </button>
@@ -1210,11 +1215,12 @@ export default function RekapSiswaView({
 
                                 <input
                                   type="text"
+                                  aria-label={`Keterangan kehadiran ${siswa.nama_siswa}`}
                                   disabled={isIntervensiExpired || isReadOnly}
                                   placeholder={isReadOnly ? "Mode monitoring (hanya lihat)..." : isIntervensiExpired ? "Intervensi terkunci..." : "Keterangan / alasan (opsional)..."}
                                   value={currentRec.keterangan || ''}
                                   onChange={e => handleSetWaliKeterangan(siswa.nisn, e.target.value)}
-                                  className={`w-full md:w-56 px-2.5 py-1 text-[11px] rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${(isIntervensiExpired || isReadOnly) ? 'opacity-50 cursor-not-allowed bg-gray-100 dark:bg-gray-900' : ''}`}
+                                  className={`w-full md:w-56 px-2.5 py-1.5 min-h-[34px] text-[11px] rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] ${(isIntervensiExpired || isReadOnly) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 />
                               </div>
                             </div>
@@ -1227,7 +1233,7 @@ export default function RekapSiswaView({
                       <button
                         type="button"
                         onClick={() => setShowWaliInput(false)}
-                        className="btn-click px-3 py-2 rounded-xl text-xs font-bold text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                        className="neu-btn btn-click px-3.5 py-2 min-h-[38px] rounded-xl text-xs font-bold text-[#334155] dark:text-[#CBD5E1] transition"
                       >
                         Tutup
                       </button>
@@ -1267,18 +1273,18 @@ export default function RekapSiswaView({
                 </div>
 
                 {/* Filter bar for Gate Attendance */}
-                <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50 p-4 rounded-2xl space-y-3 no-print">
+                <div className="neu-card-sm border border-teal-500/20 p-4 rounded-2xl space-y-3 no-print">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
                     {/* Class Selection: automatic for Wali Kelas, dropdown for Admin */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
-                        KELAS {!isAdmin && !isKepalaSekolah && !isReadOnly && user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal">(Binaan)</span>}
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                        KELAS {!isAdmin && !isKepalaSekolah && !isReadOnly && user?.role !== 'Admin' && <span className="text-[#0F766E] dark:text-teal-400 font-normal">(Binaan)</span>}
                       </label>
                       {(user?.role === 'Admin' || isAdmin || isKepalaSekolah || isReadOnly) ? (
                         <select
                           value={gerbangKelas}
                           onChange={e => setGerbangKelas(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 font-semibold"
+                          className="w-full px-2.5 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9] font-semibold"
                         >
                           <option value="" disabled>Pilih Kelas...</option>
                           {kelasList.map(k => (
@@ -1289,16 +1295,16 @@ export default function RekapSiswaView({
                         <select
                           value={gerbangKelas}
                           onChange={e => setGerbangKelas(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 font-semibold"
+                          className="w-full px-2.5 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9] font-semibold"
                         >
                           {allowedClasses.map(k => (
                             <option key={k} value={k}>Kelas {k} (Binaan)</option>
                           ))}
                         </select>
                       ) : (
-                        <div className="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-gray-800 border border-emerald-300 dark:border-emerald-700 font-bold text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                        <div className="w-full px-3 py-2 text-xs rounded-xl neu-inset font-bold text-[#0F766E] dark:text-teal-300 flex items-center justify-between">
                           <span>Kelas {gerbangKelas || allowedClasses[0] || user?.penugasan?.kelas_binaan || user?.wali_kelas || '-'}</span>
-                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal flex items-center gap-1">
+                          <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-normal flex items-center gap-1">
                             <i className="fa-solid fa-user-shield text-[9px]"></i> Wali Kelas
                           </span>
                         </div>
@@ -1307,7 +1313,7 @@ export default function RekapSiswaView({
 
                     {/* Date Picker */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                         TANGGAL PRESENSI
                       </label>
                       <div className="flex gap-2">
@@ -1315,12 +1321,12 @@ export default function RekapSiswaView({
                           type="date"
                           value={gerbangTanggal}
                           onChange={e => setGerbangTanggal(e.target.value)}
-                          className="w-full px-2.5 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                          className="w-full px-2.5 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                         <button
                           type="button"
                           onClick={() => setGerbangTanggal(getWitaDateStr())}
-                          className="btn-click px-3 py-2 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition shrink-0"
+                          className="btn-click neu-btn neu-btn-primary px-3 py-2 min-h-[38px] text-xs rounded-xl text-white font-bold transition shrink-0"
                           title="Kembali ke Hari Ini"
                         >
                           Hari Ini
@@ -1330,17 +1336,17 @@ export default function RekapSiswaView({
 
                     {/* Search Student */}
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                         CARI SISWA
                       </label>
                       <div className="relative">
-                        <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                        <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs"></i>
                         <input
                           type="text"
                           placeholder="Cari nama atau NISN..."
                           value={gerbangSearch}
                           onChange={e => setGerbangSearch(e.target.value)}
-                          className="w-full pl-8 pr-3 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                          className="w-full pl-8 pr-3 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
                     </div>
@@ -1349,28 +1355,28 @@ export default function RekapSiswaView({
 
                 {/* Summary Metric Cards: Total Siswa, Hadir Datang, Pulang, Bolos, Belum Presensi */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 no-print">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 p-3 rounded-xl text-center shadow-sm">
-                    <div className="text-xs font-bold text-blue-800 dark:text-blue-300 flex items-center justify-center gap-1.5 mb-1">
-                      <i className="fa-solid fa-users text-blue-500"></i>
+                  <div className="neu-card-sm p-3 rounded-xl text-center">
+                    <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center gap-1.5 mb-1">
+                      <i className="fa-solid fa-users text-sky-600 dark:text-sky-400"></i>
                       <span>Total Siswa</span>
                     </div>
-                    <div className="text-2xl font-black text-blue-600 dark:text-blue-400">{totalGerbangSiswa}</div>
+                    <div className="text-2xl font-black font-num text-sky-700 dark:text-sky-400">{totalGerbangSiswa}</div>
                   </div>
 
-                  <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 p-3 rounded-xl text-center shadow-sm">
-                    <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1.5 mb-1">
-                      <i className="fa-solid fa-door-open text-emerald-500"></i>
+                  <div className="neu-card-sm p-3 rounded-xl text-center">
+                    <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center gap-1.5 mb-1">
+                      <i className="fa-solid fa-door-open text-[#0F766E] dark:text-teal-400"></i>
                       <span>Hadir Datang</span>
                     </div>
-                    <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{totalGerbangDatang}</div>
+                    <div className="text-2xl font-black font-num text-[#0F766E] dark:text-teal-400">{totalGerbangDatang}</div>
                   </div>
 
-                  <div className="bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-800/50 p-3 rounded-xl text-center shadow-sm">
-                    <div className="text-xs font-bold text-sky-800 dark:text-sky-300 flex items-center justify-center gap-1.5 mb-1">
-                      <i className="fa-solid fa-person-walking-arrow-right text-sky-500"></i>
+                  <div className="neu-card-sm p-3 rounded-xl text-center">
+                    <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-center gap-1.5 mb-1">
+                      <i className="fa-solid fa-person-walking-arrow-right text-sky-600 dark:text-sky-400"></i>
                       <span>Pulang</span>
                     </div>
-                    <div className="text-2xl font-black text-sky-600 dark:text-sky-400">{totalGerbangPulang}</div>
+                    <div className="text-2xl font-black font-num text-sky-700 dark:text-sky-400">{totalGerbangPulang}</div>
                   </div>
 
                   <div className="neu-card-sm p-3 rounded-xl text-center">
@@ -1381,7 +1387,7 @@ export default function RekapSiswaView({
                     <div className="text-2xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalGerbangBolos}</div>
                   </div>
 
-                  <div className="neu-card-sm p-3 rounded-xl text-center">
+                  <div className="neu-card-sm col-span-2 sm:col-span-1 p-3 rounded-xl text-center">
                     <div className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center justify-center gap-1.5 mb-1" title="Belum Presensi / Belum Scan">
                       <i className="fa-solid fa-clock-rotate-left text-[#D97706] dark:text-amber-400"></i>
                       <span>Belum Presensi</span>
@@ -1392,12 +1398,12 @@ export default function RekapSiswaView({
 
                 {/* Quick filter pills & Orientation Toolbar */}
                 <div className="flex flex-wrap items-center justify-between gap-2 no-print">
-                  <div className="flex items-center gap-1.5 text-xs">
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
                     <span className="text-[11px] font-bold text-[#475569] dark:text-[#94A3B8] mr-1">Filter:</span>
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('semua')}
-                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[10px] font-bold transition font-num ${
                         gerbangFilterStatus === 'semua'
                           ? 'neu-btn-primary text-white'
                           : 'text-[#334155] dark:text-[#CBD5E1]'
@@ -1408,7 +1414,7 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('datang')}
-                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[10px] font-bold transition font-num ${
                         gerbangFilterStatus === 'datang'
                           ? 'neu-btn-primary text-white'
                           : 'text-[#0F766E] dark:text-teal-300'
@@ -1419,7 +1425,7 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('pulang')}
-                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[10px] font-bold transition font-num ${
                         gerbangFilterStatus === 'pulang'
                           ? 'bg-sky-600 text-white'
                           : 'text-sky-700 dark:text-sky-300'
@@ -1430,7 +1436,7 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('bolos')}
-                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[10px] font-bold transition font-num ${
                         gerbangFilterStatus === 'bolos'
                           ? 'bg-slate-700 text-white'
                           : 'text-[#334155] dark:text-[#CBD5E1]'
@@ -1441,7 +1447,7 @@ export default function RekapSiswaView({
                     <button
                       type="button"
                       onClick={() => setGerbangFilterStatus('belum')}
-                      className={`neu-btn px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      className={`neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[10px] font-bold transition font-num ${
                         gerbangFilterStatus === 'belum'
                           ? 'neu-btn-amber'
                           : 'text-amber-700 dark:text-amber-300'
@@ -1585,14 +1591,14 @@ export default function RekapSiswaView({
                     type="button"
                     onClick={exportGerbangCsv}
                     disabled={gerbangStudents.length === 0}
-                    className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50"
+                    className="neu-btn neu-btn-teal btn-click w-full py-2.5 min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition disabled:opacity-50"
                   >
                     <i className="fa-solid fa-file-excel text-sm"></i> Unduh Excel / CSV
                   </button>
                   <button
                     type="button"
                     onClick={() => triggerPrintWithGps()}
-                    className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition"
+                    className="neu-btn neu-btn-primary btn-click w-full text-white py-2.5 min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition"
                   >
                     <i className="fa-solid fa-print text-sm"></i> Cetak Dokumen
                   </button>
@@ -1603,37 +1609,37 @@ export default function RekapSiswaView({
             {/* PANEL: REKAP ABSEN SISWA */}
             {activeTab === 'rekap' && (
               <div id="panel-rekap-absen-siswa" className="space-y-4 fade-in">
-                <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5 flex items-center gap-2 no-print">
-                  <i className="fa-solid fa-users-viewfinder text-teal-500 dark:text-teal-400 text-base"></i> {mapel ? `Rekap Presensi Mata Pelajaran (${mapel})` : 'Rekap Absensi Kelas (Harian)'}
+                <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-5 flex items-center gap-2 no-print">
+                  <i className="fa-solid fa-users-viewfinder text-[#0F766E] dark:text-teal-400 text-base"></i> {mapel ? `Rekap Presensi Mata Pelajaran (${mapel})` : 'Rekap Absensi Kelas (Harian)'}
                 </h2>
-                <div className="bg-teal-50 dark:bg-teal-900/10 border border-teal-100 dark:border-teal-900/50 p-4 rounded-2xl mb-4 space-y-3 no-print">
+                <div className="neu-card-sm border border-teal-500/20 p-4 rounded-2xl mb-4 space-y-3 no-print">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">DARI TANGGAL</label>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800" />
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">DARI TANGGAL</label>
+                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" />
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">SAMPAI TANGGAL</label>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800" />
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">SAMPAI TANGGAL</label>
+                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]" />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                         KELAS <span className="text-red-500 dark:text-red-400">*</span>
-                        {!isAdmin && !isKepalaSekolah && !isReadOnly && user?.role !== 'Admin' && <span className="text-emerald-600 dark:text-emerald-400 font-normal ml-1">(Binaan)</span>}
+                        {!isAdmin && !isKepalaSekolah && !isReadOnly && user?.role !== 'Admin' && <span className="text-[#0F766E] dark:text-teal-400 font-normal ml-1">(Binaan)</span>}
                       </label>
                       {(user?.role === 'Admin' || isAdmin || isKepalaSekolah || isReadOnly) ? (
-                        <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 font-semibold">
-                          <option value="" disabled className="text-gray-900 dark:text-white dark:bg-gray-800">Pilih...</option>
-                          {kelasList.map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
+                        <select value={kelas} onChange={e => setKelas(e.target.value)} className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] font-semibold">
+                          <option value="" disabled className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">Pilih...</option>
+                          {kelasList.map((k, i) => <option key={i} value={k} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">{k}</option>)}
                         </select>
                       ) : (
                         <select 
                           value={kelas} 
                           onChange={e => setKelas(e.target.value)} 
                           disabled={allowedClasses.length <= 1}
-                          className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 disabled:opacity-80 font-semibold"
+                          className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] disabled:opacity-80 font-semibold"
                         >
                           {allowedClasses.length === 0 ? (
                             <option value="" disabled>Tidak ada kelas binaan</option>
@@ -1648,14 +1654,14 @@ export default function RekapSiswaView({
                       )}
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">MATA PELAJARAN</label>
-                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800">
-                        <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel (Rekap Absensi Kelas Harian)</option>
-                        {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">MATA PELAJARAN</label>
+                      <select value={mapel} onChange={e => setMapel(e.target.value)} className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]">
+                        <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">Semua Mapel (Rekap Absensi Kelas Harian)</option>
+                        {mapelList.map((m, i) => <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">{m}</option>)}
                       </select>
                     </div>
                 </div>
-                <button type="button" onClick={tarikRekap} disabled={loading} className="btn-click w-full bg-teal-600 hover:bg-teal-700 text-white py-2.5 rounded-xl text-xs font-bold mt-2 shadow-md flex items-center justify-center gap-2 transition disabled:opacity-50">
+                <button type="button" onClick={tarikRekap} disabled={loading} className="neu-btn neu-btn-primary btn-click w-full text-white py-2.5 min-h-[42px] rounded-xl text-xs font-bold mt-2 flex items-center justify-center gap-2 transition disabled:opacity-50">
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin text-sm"></i> : <i className="fa-solid fa-search text-sm"></i>} Tampilkan Rekap
                 </button>
             </div>
@@ -1663,42 +1669,42 @@ export default function RekapSiswaView({
             {rekapData ? (
               <div id="hasil-rekap-siswa" className="flex flex-col gap-4 fade-in">
                   {/* Summary Metric Cards */}
-                  <div className={`grid grid-cols-2 sm:grid-cols-4 ${!mapel ? 'md:grid-cols-7' : 'md:grid-cols-4'} gap-2 no-print`}>
-                      <div className="bg-teal-50 dark:bg-teal-900/20 border border-teal-100 dark:border-teal-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-teal-800 dark:text-teal-300">Total Siswa</div>
-                          <div className="text-lg font-black text-teal-600 dark:text-teal-400">{totalSiswa}</div>
+                  <div className={`grid grid-cols-2 sm:grid-cols-4 ${!mapel ? 'md:grid-cols-7' : 'md:grid-cols-4'} gap-2.5 no-print`}>
+                      <div className="neu-card-sm p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">Total Siswa</div>
+                          <div className="text-lg font-black font-num text-[#0F766E] dark:text-teal-400">{totalSiswa}</div>
                       </div>
-                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-green-800 dark:text-green-300">{mapel ? '% Keaktifan KBM' : '% Kehadiran'}</div>
-                          <div className="text-lg font-black text-green-600 dark:text-green-400">{avgKehadiran}%</div>
+                      <div className="neu-card-sm p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">{mapel ? '% Keaktifan KBM' : '% Kehadiran'}</div>
+                          <div className="text-lg font-black font-num text-emerald-700 dark:text-emerald-400">{avgKehadiran}%</div>
                       </div>
-                      <div className="bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/50 p-2.5 rounded-xl text-center">
-                          <div className="text-xs font-bold text-emerald-800 dark:text-emerald-300">Total Hadir</div>
-                          <div className="text-lg font-black text-emerald-600 dark:text-emerald-400">{totalHadir}</div>
+                      <div className="neu-card-sm p-2.5 rounded-xl text-center">
+                          <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">Total Hadir</div>
+                          <div className="text-lg font-black font-num text-[#0F766E] dark:text-teal-400">{totalHadir}</div>
                       </div>
                       {!mapel ? (
                         <>
-                          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-100 dark:border-yellow-800/50 p-2.5 rounded-xl text-center">
-                              <div className="text-xs font-bold text-yellow-800 dark:text-yellow-300">Sakit</div>
-                              <div className="text-lg font-black text-yellow-600 dark:text-yellow-400">{totalSakit}</div>
+                          <div className="neu-card-sm p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-amber-800 dark:text-amber-300">Sakit</div>
+                              <div className="text-lg font-black font-num text-[#D97706] dark:text-amber-400">{totalSakit}</div>
                           </div>
-                          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 p-2.5 rounded-xl text-center">
+                          <div className="neu-card-sm p-2.5 rounded-xl text-center">
                               <div className="text-xs font-bold text-orange-800 dark:text-orange-300">Izin</div>
-                              <div className="text-lg font-black text-orange-600 dark:text-orange-400">{totalIzin}</div>
+                              <div className="text-lg font-black font-num text-orange-700 dark:text-orange-400">{totalIzin}</div>
                           </div>
-                          <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-2.5 rounded-xl text-center">
-                              <div className="text-xs font-bold text-red-800 dark:text-red-300">Alpa</div>
-                              <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
+                          <div className="neu-card-sm p-2.5 rounded-xl text-center">
+                              <div className="text-xs font-bold text-rose-800 dark:text-rose-300">Alpa</div>
+                              <div className="text-lg font-black font-num text-rose-700 dark:text-rose-400">{totalAlpa}</div>
                           </div>
-                          <div className="neu-inset p-2.5 rounded-xl text-center">
+                          <div className="neu-inset p-2.5 rounded-xl text-center col-span-2 sm:col-span-1">
                               <div className="text-xs font-bold text-[#334155] dark:text-[#CBD5E1]">Bolos</div>
                               <div className="text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{totalBolos}</div>
                           </div>
                         </>
                       ) : (
-                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800/50 p-2.5 rounded-xl text-center">
-                            <div className="text-xs font-bold text-red-800 dark:text-red-300">Total Alfa</div>
-                            <div className="text-lg font-black text-red-600 dark:text-red-400">{totalAlpa}</div>
+                        <div className="neu-card-sm p-2.5 rounded-xl text-center">
+                            <div className="text-xs font-bold text-rose-800 dark:text-rose-300">Total Alfa</div>
+                            <div className="text-lg font-black font-num text-rose-700 dark:text-rose-400">{totalAlpa}</div>
                         </div>
                       )}
                   </div>
@@ -1706,20 +1712,21 @@ export default function RekapSiswaView({
                   {/* Student search input & Orientation Toolbar */}
                   <div className="flex flex-wrap items-center justify-between gap-3 no-print">
                       <div className="relative flex-1 min-w-[200px]">
-                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs"></i>
                           <input
                             type="text"
                             placeholder="Cari nama atau NISN siswa..."
+                            aria-label="Cari nama atau NISN siswa"
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                       </div>
                       {search && (
                         <button
                           type="button"
                           onClick={() => setSearch('')}
-                          className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
+                          className="neu-btn px-3 py-2 min-h-[38px] text-xs rounded-xl text-[#334155] dark:text-[#CBD5E1] font-semibold"
                         >
                           Reset
                         </button>
@@ -1791,9 +1798,10 @@ export default function RekapSiswaView({
                                       );
                                     }}
                                     title="Kirim Rekap WhatsApp ke Orang Tua"
-                                    className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 transition inline-flex items-center justify-center cursor-pointer"
+                                    aria-label={`Kirim Rekap WhatsApp ke Orang Tua ${s.nama_siswa}`}
+                                    className="neu-btn w-9 h-9 rounded-xl text-[#0F766E] dark:text-teal-400 transition inline-flex items-center justify-center cursor-pointer"
                                   >
-                                    <i className="fa-brands fa-whatsapp text-sm text-emerald-600"></i>
+                                    <i className="fa-brands fa-whatsapp text-sm text-[#0F766E] dark:text-teal-400"></i>
                                   </button>
                                 </td>
                               </tr>
@@ -1841,16 +1849,16 @@ export default function RekapSiswaView({
                         a.download = mapel ? `Rekap_Presensi_Mapel_${mapel}_${kelas}.csv` : `Rekap_Absensi_Kelas_${kelas}.csv`;
                         a.click();
                         URL.revokeObjectURL(url);
-                      }} className="btn-click w-full bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
+                      }} className="neu-btn neu-btn-teal btn-click w-full py-2.5 min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition">
                         <i className="fa-solid fa-file-excel text-sm"></i> Excel
                       </button>
-                      <button type="button" onClick={() => triggerPrintWithGps()} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-xs font-bold shadow-md flex items-center justify-center gap-2 transition">
+                      <button type="button" onClick={() => triggerPrintWithGps()} className="neu-btn neu-btn-primary btn-click w-full text-white py-2.5 min-h-[42px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition">
                         <i className="fa-solid fa-print text-sm"></i> Cetak Dokumen
                       </button>
                   </div>
               </div>
             ) : (
-              <div id="rekap-siswa-kosong" className="text-center py-10 text-gray-500 dark:text-gray-400 text-[11px] italic no-print">Silakan atur filter dan klik tampilkan.</div>
+              <div id="rekap-siswa-kosong" className="text-center py-10 text-[#475569] dark:text-[#94A3B8] text-[11px] italic no-print">Silakan atur filter dan klik tampilkan.</div>
             )}
             </div>
             )}

@@ -230,6 +230,22 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!selectedClassForWorkspace && !isUnassignedDrawerOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isUnassignedDrawerOpen) {
+          setIsUnassignedDrawerOpen(false);
+          setSelectedUnassignedStudentIds([]);
+        } else if (selectedClassForWorkspace) {
+          setSelectedClassForWorkspace(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedClassForWorkspace, isUnassignedDrawerOpen]);
+
   // Fetch all master data with multi-tenant isolation and defensive schema-cache fallbacks
   const loadAllData = useCallback(async (isManualTrigger = false) => {
     if (!isMountedRef.current) return;
@@ -1113,7 +1129,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       <div className="neu-card-sm p-4 rounded-2xl">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-xl neu-card-primary text-white flex items-center justify-center shrink-0">
               <i className="fa-solid fa-chalkboard-user text-lg"></i>
             </div>
             <div>
@@ -1133,7 +1149,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
               type="button"
               onClick={() => loadAllData(true)}
               disabled={refreshing || loading || actionLoading}
-              className="clay-btn neu-btn-primary px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
+              className="clay-btn neu-btn-primary px-3.5 py-2 min-h-[40px] rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer"
               title="Segarkan data kelas dan alokasi siswa"
             >
               <i className={`fa-solid fa-arrows-rotate ${refreshing ? 'animate-spin' : ''}`}></i>
@@ -1143,7 +1159,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
         </div>
 
         {/* Executive Metric Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
           <div className="neu-inset px-3 py-2 rounded-xl flex items-center justify-between">
             <div className="flex items-center gap-2">
               <i className="fa-solid fa-school text-[#0F766E] dark:text-teal-400 text-xs"></i>
@@ -1533,8 +1549,17 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* 5. CENTRALIZED ALLOCATION WORKSPACE SLIDE-OVER DRAWER   */}
       {/* ======================================================== */}
       {selectedClassForWorkspace && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fadeIn">
-          <div className="w-full max-w-2xl bg-[#E6ECF2] dark:bg-[#1F242D] h-full shadow-2xl flex flex-col border-l border-slate-300/60 dark:border-slate-700/60 animate-slideLeft">
+        <div
+          className="fixed inset-0 z-50 overflow-hidden bg-[#0F172A]/50 dark:bg-black/65 flex justify-end animate-fadeIn"
+          onClick={() => setSelectedClassForWorkspace(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Workspace Kelas ${selectedClassForWorkspace.nama_kelas}`}
+            onClick={(e) => e.stopPropagation()}
+            className="neu-card w-full max-w-2xl bg-[#E6ECF2] dark:bg-[#1F242D] h-full flex flex-col border-l border-slate-300/60 dark:border-slate-700/60 animate-slideLeft"
+          >
             {/* Drawer Header */}
             <div className="p-4 border-b border-slate-300/60 dark:border-slate-700/60 bg-slate-500/5 dark:bg-slate-900/30 flex items-start justify-between gap-3">
               <div>
@@ -1542,7 +1567,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                   <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                     Kelas {selectedClassForWorkspace.nama_kelas}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-teal-500/15 text-[#0F766E] dark:text-teal-300 font-num">
                     Tingkat {selectedClassForWorkspace.tingkat}
                   </span>
                 </div>
@@ -1559,19 +1584,22 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
               </div>
               <button
                 type="button"
+                aria-label="Tutup workspace kelas"
                 onClick={() => setSelectedClassForWorkspace(null)}
-                className="neu-btn w-8 h-8 rounded-xl text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center shrink-0 cursor-pointer"
+                className="neu-btn w-11 h-11 rounded-xl text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
 
             {/* Workspace Drawer Tabs */}
-            <div className="flex items-center border-b border-slate-300/60 dark:border-slate-700/60 px-4">
+            <div role="tablist" aria-label="Menu Workspace Kelas" className="flex items-center border-b border-slate-300/60 dark:border-slate-700/60 px-4">
               <button
                 type="button"
+                role="tab"
+                aria-selected={workspaceTab === 'roster'}
                 onClick={() => setWorkspaceTab('roster')}
-                className={`py-3 px-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer ${
+                className={`py-3 px-3 min-h-[42px] text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer ${
                   workspaceTab === 'roster'
                     ? 'border-[#0F766E] text-[#0F766E] dark:text-teal-400'
                     : 'border-transparent text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
@@ -1586,8 +1614,10 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={workspaceTab === 'inbound'}
                 onClick={() => setWorkspaceTab('inbound')}
-                className={`py-3 px-3 text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer ${
+                className={`py-3 px-3 min-h-[42px] text-xs font-bold border-b-2 flex items-center gap-2 transition cursor-pointer ${
                   workspaceTab === 'inbound'
                     ? 'border-[#0F766E] text-[#0F766E] dark:text-teal-400'
                     : 'border-transparent text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
@@ -1596,7 +1626,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                 <i className="fa-solid fa-user-plus"></i>
                 <span>+ Alokasikan Siswa Masuk</span>
                 {unassignedStudents.length > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-bold">
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-num bg-amber-500/15 text-amber-800 dark:text-amber-300 font-bold">
                     {unassignedStudents.length} Tanpa Rombel
                   </span>
                 )}
@@ -1613,20 +1643,22 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                   {/* Search and Batch Move Bar */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                     <div className="relative flex-1">
-                      <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                      <i className="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs"></i>
                       <input
                         type="text"
+                        aria-label="Cari siswa di kelas ini"
                         value={rosterSearch}
                         onChange={e => setRosterSearch(e.target.value)}
                         placeholder="Cari siswa di kelas ini..."
-                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                        className="neu-input w-full pl-8 pr-3 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                     <div className="w-full sm:w-56 shrink-0">
                       <select
+                        aria-label="Filter Berdasarkan Mata Pelajaran"
                         value={rosterMapelFilter}
                         onChange={e => setRosterMapelFilter(e.target.value)}
-                        className="w-full px-2.5 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-medium"
+                        className="neu-input w-full px-2.5 py-2 min-h-[38px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                         title="Filter Berdasarkan Mata Pelajaran / Agama"
                       >
                         <option value="ALL">Semua Mapel</option>
@@ -1903,7 +1935,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                       <div className="space-y-2">
                         {/* Batch Action Confirmation Bar */}
                         {selectedInboundStudentIds.length > 0 && (
-                          <div className="p-2.5 rounded-xl bg-[#0F766E] text-white flex items-center justify-between gap-2 shadow-sm animate-fadeIn">
+                          <div className="p-2.5 rounded-xl neu-card-primary text-white flex items-center justify-between gap-2 animate-fadeIn">
                             <span className="text-xs font-bold">
                               {selectedInboundStudentIds.length} Siswa Terpilih
                             </span>
@@ -1911,7 +1943,7 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                               type="button"
                               onClick={() => handleInboundAllocate(selectedInboundStudentIds, selectedClassForWorkspace.nama_kelas)}
                               disabled={actionLoading}
-                              className="px-3 py-1.5 rounded-lg bg-[#E6ECF2] text-[#0F766E] text-xs font-black shadow-xs hover:bg-white transition cursor-pointer"
+                              className="px-3 py-1.5 min-h-[36px] rounded-lg bg-[#E6ECF2] hover:bg-[#DDE4EE] dark:bg-[#181C24] dark:hover:bg-[#1F242D] text-[#0F766E] dark:text-[#14B8A6] text-xs font-black shadow-sm transition cursor-pointer"
                             >
                               <i className="fa-solid fa-arrow-down mr-1"></i>
                               Masukkan ke {selectedClassForWorkspace.nama_kelas}
@@ -2016,8 +2048,20 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
       {/* 6. STANDALONE UNALLOCATED STUDENTS DRAWER / MODAL       */}
       {/* ======================================================== */}
       {isUnassignedDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/50 backdrop-blur-xs flex justify-end animate-fadeIn">
-          <div className="w-full max-w-xl bg-[#E6ECF2] dark:bg-[#1F242D] h-full shadow-2xl flex flex-col border-l border-slate-300/60 dark:border-slate-700/60 animate-slideLeft">
+        <div
+          className="fixed inset-0 z-50 overflow-hidden bg-[#0F172A]/50 dark:bg-black/65 flex justify-end animate-fadeIn"
+          onClick={() => {
+            setIsUnassignedDrawerOpen(false);
+            setSelectedUnassignedStudentIds([]);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Alokasi Siswa Tanpa Kelas"
+            onClick={(e) => e.stopPropagation()}
+            className="neu-card w-full max-w-xl bg-[#E6ECF2] dark:bg-[#1F242D] h-full flex flex-col border-l border-slate-300/60 dark:border-slate-700/60 animate-slideLeft"
+          >
             <div className="p-4 border-b border-slate-300/60 dark:border-slate-700/60 bg-amber-500/10 flex items-start justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
@@ -2027,18 +2071,19 @@ export default function AdminKelasView({ user }: AdminKelasViewProps) {
                   <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                     Alokasi Siswa Tanpa Kelas
                   </h3>
-                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
+                  <p className="text-[11px] font-num text-[#475569] dark:text-[#94A3B8]">
                     Total {unassignedStudents.length} siswa aktif belum terdaftar di rombel manapun.
                   </p>
                 </div>
               </div>
               <button
                 type="button"
+                aria-label="Tutup alokasi siswa tanpa kelas"
                 onClick={() => {
                   setIsUnassignedDrawerOpen(false);
                   setSelectedUnassignedStudentIds([]);
                 }}
-                className="neu-btn w-8 h-8 rounded-xl text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center shrink-0 cursor-pointer"
+                className="neu-btn w-11 h-11 rounded-xl text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-white flex items-center justify-center shrink-0 cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>

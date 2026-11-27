@@ -1186,7 +1186,7 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
       <div className="neu-card-sm p-4 rounded-2xl">
         <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center shrink-0 shadow-sm">
+            <div className="w-10 h-10 rounded-xl neu-card-primary text-white flex items-center justify-center shrink-0">
               <i className="fa-solid fa-users-gear text-lg"></i>
             </div>
             <div>
@@ -1287,24 +1287,26 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           <i className="fa-solid fa-search absolute left-3 top-3 text-gray-400 text-xs"></i>
           <input
             type="text"
+            aria-label="Cari guru, NIP, atau username"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(0);
             }}
             placeholder="Cari guru, NIP, atau username..."
-            className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400"
+            className="w-full pl-8 pr-3 py-2 min-h-[40px] text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
           />
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 flex-wrap sm:flex-nowrap">
           <select
+            aria-label="Filter Mata Pelajaran"
             value={filterMapel}
             onChange={(e) => {
               setFilterMapel(e.target.value);
               setPage(0);
             }}
-            className="text-xs py-2 px-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white font-medium"
+            className="text-xs py-2 px-2.5 min-h-[40px] rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9] font-medium"
           >
             <option value="ALL">Semua Mapel</option>
             {mapelOptions.map(m => (
@@ -1313,12 +1315,13 @@ export default function AdminPenggunaView({ user }: AdminPenggunaViewProps) {
           </select>
 
           <select
+            aria-label="Filter Status Akun"
             value={filterStatus}
             onChange={(e) => {
               setFilterStatus(e.target.value);
               setPage(0);
             }}
-            className="text-xs py-2 px-2.5 rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white font-medium"
+            className="text-xs py-2 px-2.5 min-h-[40px] rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9] font-medium"
           >
             <option value="ALL">Semua Status</option>
             <option value="Aktif">Aktif</option>

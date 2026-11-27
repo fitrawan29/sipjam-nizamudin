@@ -27,6 +27,7 @@ export interface HomeViewGuruProps {
   setView: (view: string) => void;
   menuItems?: any[];
   onOpenAccountSettings?: () => void;
+  schoolName?: string;
 }
 
 export default function HomeViewGuru({
@@ -34,6 +35,7 @@ export default function HomeViewGuru({
   setView,
   menuItems: _menuItems = [],
   onOpenAccountSettings,
+  schoolName: initialSchoolName,
 }: HomeViewGuruProps) {
   const timeStr = getWitaTimeStr();
   const hariIni = getWitaDayName();
@@ -57,6 +59,7 @@ export default function HomeViewGuru({
   const [configSyncTick, setConfigSyncTick] = useState(0);
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
   const [schoolName, setSchoolName] = useState<string>(() => {
+    if (initialSchoolName?.trim()) return initialSchoolName.trim();
     if (typeof window !== 'undefined') {
       try {
         const syncRaw = localStorage.getItem('sipjam_config_sync');
@@ -75,6 +78,10 @@ export default function HomeViewGuru({
   });
 
   useEffect(() => {
+    if (initialSchoolName?.trim()) {
+      setSchoolName(initialSchoolName.trim());
+      return;
+    }
     const fetchSchoolName = async () => {
       const sId = user?.sekolah_id || 'a0000000-0000-0000-0000-000000000001';
       try {
@@ -101,7 +108,7 @@ export default function HomeViewGuru({
       } catch (_) {}
     };
     fetchSchoolName();
-  }, [user?.sekolah_id]);
+  }, [user?.sekolah_id, initialSchoolName]);
 
   const { isWaliKelas, assignedKelas } = useWaliKelas(user, false);
   const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
@@ -640,30 +647,30 @@ export default function HomeViewGuru({
 
   const getNextAction = () => {
     if (!dailyState) return null;
-    if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-blue-600 dark:text-blue-400' };
-    if ((dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-blue-600 dark:text-blue-400' };
-    if ((dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) && dailyState.presensiDatang && !dailyState.presensiPulang) return { text: 'Kehadiran sukarela tercatat. Anda bebas pulang kapan saja tanpa kewajiban jurnal/piket.', color: 'text-blue-600 dark:text-blue-400' };
-    if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas lain.`, color: 'text-blue-600 dark:text-blue-400' };
-    if (dailyState.isAlpa && dailyState.presensiDatang) return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang dan pulang).', color: 'text-red-600 dark:text-red-400' };
+    if (dailyState.isLibur) return { text: `Hari ini libur: ${dailyState.keteranganLibur}`, color: 'text-sky-700 dark:text-sky-400' };
+    if ((dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) && !dailyState.presensiDatang) return { text: 'Hari ini Anda tidak memiliki jadwal mengajar (Bebas Presensi, Jurnal, dan Piket).', color: 'text-sky-700 dark:text-sky-400' };
+    if ((dailyState.isNonTeachingDay || (dailyState.aturanKehadiran === 'Hari_Mengajar_Saja' && (!dailyState.jadwalKBM || dailyState.jadwalKBM.length === 0))) && dailyState.presensiDatang && !dailyState.presensiPulang) return { text: 'Kehadiran sukarela tercatat. Anda bebas pulang kapan saja tanpa kewajiban jurnal/piket.', color: 'text-sky-700 dark:text-sky-400' };
+    if (dailyState.isIzinSakit) return { text: `Anda sedang ${dailyState.presensiDatang?.jenis_presensi || dailyState.activeLeaveRecord?.jenis_presensi || 'Izin/Sakit'}. Tidak perlu mengisi tugas lain.`, color: 'text-sky-700 dark:text-sky-400' };
+    if (dailyState.isAlpa && dailyState.presensiDatang) return { text: '⚠️ Anda tercatat Alpa hari ini (tidak melakukan presensi datang dan pulang).', color: 'text-rose-600 dark:text-rose-400' };
     // Rejection messages take high priority — teacher must know to re-submit
-    if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
+    if (dailyState.presensiDatangDitolak) return { text: '⚠️ Presensi Datang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-rose-600 dark:text-rose-400' };
     if (!dailyState.presensiDatang) {
       return isBk
-        ? { text: 'Selamat datang Guru BK. Silakan lakukan Presensi BK terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' }
-        : { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-600 dark:text-amber-400' };
+        ? { text: 'Selamat datang Guru BK. Silakan lakukan Presensi BK terlebih dahulu.', color: 'text-amber-700 dark:text-amber-400' }
+        : { text: 'Silakan lakukan Presensi Datang terlebih dahulu.', color: 'text-amber-700 dark:text-amber-400' };
     }
-    if (dailyState.isPiket && dailyState.laporanPiketDitolak) return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan isi ulang di menu Piket.', color: 'text-red-600 dark:text-red-400' };
-    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${(dailyState.jurnalDitolak || []).length} jurnal Anda ditolak admin. Silakan isi ulang di menu ${isBk ? 'Jurnal BK' : 'Jurnal'}.`, color: 'text-red-600 dark:text-red-400' };
-    if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-red-600 dark:text-red-400' };
-    if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-600 dark:text-amber-400' };
+    if (dailyState.isPiket && dailyState.laporanPiketDitolak) return { text: '⚠️ Laporan Piket Anda ditolak admin. Silakan isi ulang di menu Piket.', color: 'text-rose-600 dark:text-rose-400' };
+    if ((dailyState.jurnalDitolak?.length ?? 0) > 0) return { text: `⚠️ ${(dailyState.jurnalDitolak || []).length} jurnal Anda ditolak admin. Silakan isi ulang di menu ${isBk ? 'Jurnal BK' : 'Jurnal'}.`, color: 'text-rose-600 dark:text-rose-400' };
+    if (dailyState.presensiPulangDitolak) return { text: '⚠️ Presensi Pulang Anda ditolak admin. Silakan isi ulang di menu Presensi.', color: 'text-rose-600 dark:text-rose-400' };
+    if (dailyState.isPiket && !dailyState.laporanPiket) return { text: 'Anda perlu mengisi Laporan Piket hari ini.', color: 'text-amber-700 dark:text-amber-400' };
     if (dailyState.presensiPulang) {
       if (dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat') {
-        return { text: '⚠️ Anda tercatat Pulang Cepat hari ini karena tidak melakukan presensi pulang.', color: 'text-orange-600 dark:text-orange-400' };
+        return { text: '⚠️ Anda tercatat Pulang Cepat hari ini karena tidak melakukan presensi pulang.', color: 'text-amber-700 dark:text-amber-300' };
       }
       if (dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout' || dailyState.presensiPulang.is_auto_checkout) {
-        return { text: 'ℹ️ Presensi pulang Anda dicatat otomatis oleh sistem (Lupa Checkout).', color: 'text-amber-600 dark:text-amber-400' };
+        return { text: 'ℹ️ Presensi pulang Anda dicatat otomatis oleh sistem (Lupa Checkout).', color: 'text-amber-700 dark:text-amber-400' };
       }
-      return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-green-600 dark:text-green-400' };
+      return { text: 'Semua tugas hari ini sudah selesai. Terima kasih!', color: 'text-[#0F766E] dark:text-teal-400' };
     }
 
     const pulangTiming = evaluatePresensiPulangTiming(
@@ -683,37 +690,37 @@ export default function HomeViewGuru({
       const bkFilledCount = dailyState.jurnalBK?.length ?? 0;
       if (bkFilledCount > 0) {
         if (isBeforePulang) {
-          return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`, color: 'text-emerald-600 dark:text-emerald-400' };
+          return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`, color: 'text-[#0F766E] dark:text-teal-400' };
         }
-        return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Lakukan Presensi Pulang jika jam tugas selesai.`, color: 'text-green-600 dark:text-green-400' };
+        return { text: `Jurnal BK hari ini sudah tercatat (${bkFilledCount} sesi). Lakukan Presensi Pulang jika jam tugas selesai.`, color: 'text-[#0F766E] dark:text-teal-400' };
       }
       if (dailyState.canPresensiPulang) {
         if (isBeforePulang) {
-          return { text: `Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi. Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`, color: 'text-emerald-600 dark:text-emerald-400' };
+          return { text: `Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi. Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`, color: 'text-[#0F766E] dark:text-teal-400' };
         }
-        return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi, atau lakukan Presensi Pulang jika jam tugas selesai.', color: 'text-emerald-600 dark:text-emerald-400' };
+        return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi, atau lakukan Presensi Pulang jika jam tugas selesai.', color: 'text-[#0F766E] dark:text-teal-400' };
       }
-      return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi dan konseling siswa.', color: 'text-emerald-600 dark:text-emerald-400' };
+      return { text: 'Layanan BK Aktif: Buka menu Jurnal BK untuk mencatat intervensi dan konseling siswa.', color: 'text-[#0F766E] dark:text-teal-400' };
     }
     if (dailyState.isBlok && !dailyState.isNonTeachingDay && !dailyState.jurnalKegiatan) {
-      return { text: `Periode Sistem Blok: Silakan isi Jurnal Kegiatan (${dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'}).`, color: 'text-amber-600 dark:text-amber-400' };
+      return { text: `Periode Sistem Blok: Silakan isi Jurnal Kegiatan (${dailyState.blokInfo?.nama_kegiatan || 'Kegiatan Blok'}).`, color: 'text-amber-700 dark:text-amber-400' };
     }
-    if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-600 dark:text-amber-400' };
-    if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-600 dark:text-amber-400' };
+    if (!dailyState.canOpenJurnal) return { text: 'Selesaikan Laporan Piket untuk membuka Jurnal.', color: 'text-amber-700 dark:text-amber-400' };
+    if (dailyState.lockedReason && !dailyState.canPresensiPulang) return { text: dailyState.lockedReason, color: 'text-amber-700 dark:text-amber-400' };
     if (dailyState.canPresensiPulang && !dailyState.presensiPulang) {
       if (isBeforePulang) {
         return {
           text: `Semua tugas selesai! Presensi Pulang dibuka pukul ${effectivePulangMulai} WITA.`,
-          color: 'text-emerald-600 dark:text-emerald-400'
+          color: 'text-[#0F766E] dark:text-teal-400'
         };
       }
       if (isAfterPulang) {
         return {
           text: `Waktu Presensi Pulang hari ini telah berakhir (ditutup pukul ${pulangAkhir} WITA).`,
-          color: 'text-amber-600 dark:text-amber-400'
+          color: 'text-amber-700 dark:text-amber-400'
         };
       }
-      return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-green-600 dark:text-green-400' };
+      return { text: 'Semua tugas selesai! Silakan lakukan Presensi Pulang.', color: 'text-[#0F766E] dark:text-teal-400' };
     }
     return null;
   };
@@ -749,7 +756,8 @@ export default function HomeViewGuru({
             <button
               type="button"
               onClick={onOpenAccountSettings}
-              className="neu-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
+              aria-label="Edit Akun"
+              className="neu-btn px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
               title="Ubah Username & Password"
             >
               <i className="fa-solid fa-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
@@ -802,7 +810,8 @@ export default function HomeViewGuru({
                   type="month" 
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="neu-input text-[8px] sm:text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9] px-2 sm:px-3 py-1 rounded-full cursor-pointer shrink-0 w-auto min-w-[100px] max-w-[140px]"
+                  aria-label="Pilih Bulan Statistik Presensi"
+                  className="neu-input text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] px-3 py-1.5 min-h-[40px] rounded-full cursor-pointer shrink-0 w-auto min-w-[130px] max-w-full"
                   title="Pilih Bulan"
                 />
               </div>
@@ -858,7 +867,7 @@ export default function HomeViewGuru({
               </div>
 
               {/* Alpa (A) */}
-              <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3">
+              <div className="clay-card-rose p-3 rounded-2xl flex items-center gap-3 col-span-2 sm:col-span-1">
                 <div className="w-10 h-10 rounded-xl neu-inset text-rose-700 dark:text-rose-300 flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-user-xmark"></i>
                 </div>
@@ -902,7 +911,7 @@ export default function HomeViewGuru({
             <div className="glass-card clay-card-mint p-4 sm:p-5 rounded-3xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#0F766E] text-white flex items-center justify-center text-lg shrink-0">
                     <i className="fa-solid fa-user-shield"></i>
                   </div>
                   <div>
@@ -913,7 +922,7 @@ export default function HomeViewGuru({
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         isWaliIntervensiExpired 
                            ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' 
-                          : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+                          : 'bg-teal-500/15 text-[#0F766E] dark:text-teal-300'
                       }`}>
                         <i className={`fa-solid ${isWaliIntervensiExpired ? 'fa-lock' : 'fa-clock'} mr-1`}></i>
                         {waliStatus.label}
@@ -927,7 +936,7 @@ export default function HomeViewGuru({
                 <button
                   type="button"
                   onClick={() => setView('view-rekap-siswa')}
-                  className="clay-btn clay-btn-primary btn-click px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shrink-0"
+                  className="clay-btn clay-btn-primary btn-click px-4 py-2.5 min-h-[44px] rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shrink-0"
                 >
                   <i className="fa-solid fa-pen-to-square"></i>
                   <span>Input Presensi Siswa</span>
@@ -941,7 +950,7 @@ export default function HomeViewGuru({
             <div className="glass-card clay-card-rose p-4 sm:p-5 rounded-3xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-lg shrink-0">
                     <i className="fa-solid fa-heart-pulse"></i>
                   </div>
                   <div>
@@ -956,7 +965,7 @@ export default function HomeViewGuru({
                 <button
                   type="button"
                   onClick={() => setView('view-jurnal-bk')}
-                  className="clay-btn neu-btn-rose btn-click px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shrink-0 cursor-pointer"
+                  className="clay-btn neu-btn-rose btn-click px-4 py-2.5 min-h-[44px] rounded-2xl text-xs font-bold flex items-center justify-center gap-2 transition shrink-0 cursor-pointer"
                 >
                   <i className="fa-solid fa-pen-to-square"></i>
                   <span>Input Jurnal BK</span>
@@ -1041,7 +1050,7 @@ export default function HomeViewGuru({
                                 e.stopPropagation();
                                 setView(targetView);
                               }}
-                              className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-2.5 py-0.5 rounded-lg flex items-center gap-1 shrink-0 transition"
+                              className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-3 py-1.5 min-h-[36px] rounded-xl flex items-center gap-1 shrink-0 transition"
                             >
                               Buka <i className="fa-solid fa-arrow-right text-[8px]"></i>
                             </button>
@@ -1187,7 +1196,7 @@ export default function HomeViewGuru({
               <div className="p-4 rounded-2xl neu-inset border border-amber-500/25 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-300/60 dark:border-slate-700/60">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-9 h-9 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-sm shadow-sm shrink-0">
+                    <span className="w-9 h-9 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-sm shrink-0">
                       <i className="fa-solid fa-layer-group"></i>
                     </span>
                     <div>
@@ -1376,46 +1385,46 @@ export default function HomeViewGuru({
                         key={jk.id || `${jk.kelas}-${jk.mata_pelajaran}-${idx}`}
                         className="p-3.5 rounded-2xl neu-card-sm flex flex-col justify-between gap-2.5 transition"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md ${gradeBadge} mb-1 leading-none`}>
-                              {jk.kelas}
-                            </span>
-                            <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate" title={jk.mata_pelajaran}>
-                              {jk.mata_pelajaran}
-                            </h4>
-                          </div>
-                          
-                          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenKbmSession(jk, 'absensi')}
-                              className={`neu-btn btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 transition ${
-                                isAbsensiFilled
-                                  ? 'text-emerald-700 dark:text-emerald-300'
-                                  : 'text-sky-700 dark:text-sky-300'
-                              }`}
-                              title="Pengisian Absensi Siswa mapel terkait"
-                            >
-                              <i className={`fa-solid ${isAbsensiFilled ? 'fa-check' : 'fa-users-check'} text-[8px]`}></i>
-                              <span>{isAbsensiFilled ? 'Absensi ✓' : 'Absensi Siswa'}</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenKbmSession(jk, 'jurnal')}
-                              className={`neu-btn btn-click shrink-0 px-2.5 py-0.5 rounded-full text-[9px] font-bold flex items-center gap-1 transition ${
-                                isJurnalFilled
-                                  ? 'text-[#0F766E] dark:text-teal-300'
-                                  : 'text-amber-700 dark:text-amber-300'
-                              }`}
-                              title="Pengisian Jurnal KBM mapel terkait"
-                            >
-                              <i className={`fa-solid ${isJurnalFilled ? 'fa-circle-check' : 'fa-pen-to-square'} text-[8px]`}></i>
-                              <span>{isJurnalFilled ? 'Jurnal ✓' : 'Isi Jurnal'}</span>
-                            </button>
-                          </div>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <span className={`inline-block text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-md ${gradeBadge} mb-1 leading-none`}>
+                            {jk.kelas}
+                          </span>
+                          <h4 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate" title={jk.mata_pelajaran}>
+                            {jk.mata_pelajaran}
+                          </h4>
                         </div>
+                        
+                        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenKbmSession(jk, 'absensi')}
+                            className={`neu-btn btn-click shrink-0 px-2.5 py-1.5 min-h-[34px] rounded-full text-[10px] font-bold flex items-center gap-1 transition ${
+                              isAbsensiFilled
+                                ? 'text-[#0F766E] dark:text-teal-300'
+                                : 'text-sky-700 dark:text-sky-300'
+                            }`}
+                            title="Pengisian Absensi Siswa mapel terkait"
+                          >
+                            <i className={`fa-solid ${isAbsensiFilled ? 'fa-check' : 'fa-users-check'} text-[8px]`}></i>
+                            <span>{isAbsensiFilled ? 'Absensi ✓' : 'Absensi Siswa'}</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleOpenKbmSession(jk, 'jurnal')}
+                            className={`neu-btn btn-click shrink-0 px-2.5 py-1.5 min-h-[34px] rounded-full text-[10px] font-bold flex items-center gap-1 transition ${
+                              isJurnalFilled
+                                ? 'text-[#0F766E] dark:text-teal-300'
+                                : 'text-amber-700 dark:text-amber-300'
+                            }`}
+                            title="Pengisian Jurnal KBM mapel terkait"
+                          >
+                            <i className={`fa-solid ${isJurnalFilled ? 'fa-circle-check' : 'fa-pen-to-square'} text-[8px]`}></i>
+                            <span>{isJurnalFilled ? 'Jurnal ✓' : 'Isi Jurnal'}</span>
+                          </button>
+                        </div>
+                      </div>
 
                         <div className="flex items-center justify-between text-[10px] text-[#475569] dark:text-[#94A3B8] pt-1.5 border-t border-slate-300/50 dark:border-slate-700/50">
                           <span className="flex items-center gap-1 truncate">

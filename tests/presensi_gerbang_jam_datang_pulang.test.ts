@@ -92,7 +92,7 @@ check('R1.4 - PiketView desktop manual table displays Datang time when present a
   );
   // When datangRecord does NOT exist: displays dash indicator "-" alongside action button
   assert(
-    piketSrc.includes('<span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">-</span>'),
+    piketSrc.includes('<span className="text-[#64748B] dark:text-[#94A3B8] font-num text-xs font-semibold">-</span>'),
     'PiketView must display "-" indicator when not presensi yet'
   );
 });
@@ -107,7 +107,7 @@ check('R2.5 - PiketView desktop manual table displays Pulang time when present a
   // When pulangRecord does NOT exist: shows dash indicator "-" alongside action button
   assert(
     piketSrc.includes('Tandai Pulang</span>') &&
-    piketSrc.includes('<span className="text-gray-400 dark:text-gray-500 font-mono text-xs font-semibold">-</span>'),
+    piketSrc.includes('<span className="text-[#64748B] dark:text-[#94A3B8] font-num text-xs font-semibold">-</span>'),
     'PiketView must display "-" indicator in Pulang column when student has not yet checked out'
   );
 });

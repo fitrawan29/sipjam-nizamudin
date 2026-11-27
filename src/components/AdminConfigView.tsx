@@ -7,7 +7,7 @@ import { showToast } from '@/lib/toast';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import AccountSettingsModal from './AccountSettingsModal';
 import AdminBackupView from './AdminBackupView';
-import ClayTabs, { TabItem } from '@/components/ClayTabs';
+import NeuTabs, { TabItem } from '@/components/neu/NeuTabs';
 import { isMasterDataModificationAllowed, getStorageCache, setStorageCache, isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { formatKepalaSekolahLabel, normalizeStatusKepalaSekolah } from '@/utils/textUtils';
 import {
@@ -681,25 +681,26 @@ export default function AdminConfigView({
 
   return (
     <section id="view-admin-config" className="view-section fade-in">
-        <div className="glass-card p-5">
+        <div className="neu-card p-4 sm:p-5">
             <div className="flex flex-wrap justify-between items-center mb-5 gap-2">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-gears text-gray-700 dark:text-gray-300 text-sm"></i> Konfigurasi Sistem
+              <h2 className="text-lg font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+                <i className="fa-solid fa-gears text-[#0F766E] dark:text-[#14B8A6] text-sm"></i> Konfigurasi Sistem
               </h2>
               <button
                 type="button"
                 onClick={() => setAccountModalOpen(true)}
-                className="btn-click text-xs font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition shadow-xs"
+                className="neu-btn min-h-[40px] text-xs font-bold text-[#0F766E] dark:text-[#14B8A6] px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition"
               >
                 <i className="fa-solid fa-user-gear text-xs"></i> Pengaturan Akun & Profil
               </button>
             </div>
 
-            <ClayTabs
+            <NeuTabs
               items={tabs}
               activeTab={activeTab}
               onTabChange={setActiveTab}
-              className="mb-5"
+              className="mb-5 px-2 py-2"
+              ariaLabel="Kategori Konfigurasi Sistem"
             />
 
             {/* TAB 5: BACKUP & DATABASE (Standalone Keep-Alive & Embedding) */}
@@ -712,30 +713,30 @@ export default function AdminConfigView({
               <div className={activeTab === 'umum' ? 'space-y-4' : 'hidden'}>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 ml-1">TAHUN AJARAN</label>
-                      <input type="text" name="tahun_ajaran" value={config.tahun_ajaran} onChange={handleChange} required className="w-full px-3 py-2.5 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                      <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">TAHUN AJARAN</label>
+                      <input type="text" name="tahun_ajaran" value={config.tahun_ajaran} onChange={handleChange} required className="neu-input font-num w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]" />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 ml-1">SEMESTER</label>
-                      <select name="semester" value={config.semester} onChange={handleChange} required className="w-full px-3 py-2.5 text-xs border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                      <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1 ml-1">SEMESTER</label>
+                      <select name="semester" value={config.semester} onChange={handleChange} required className="neu-input w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]">
                         <option value="Ganjil">Ganjil</option>
                         <option value="Genap">Genap</option>
                       </select>
                     </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-regular fa-calendar text-xs text-blue-600 dark:text-blue-400"></i> Waktu Efektif</h3>
+                <div className="neu-inset rounded-2xl p-4">
+                    <h3 className="text-xs font-bold text-[#0F766E] dark:text-teal-300 mb-3 uppercase flex items-center gap-2"><i className="fa-regular fa-calendar text-xs"></i> Waktu Efektif</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Mulai Sem.</label><input type="date" name="waktu_efektif_mulai" value={config.waktu_efektif_mulai} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Akhir Sem.</label><input type="date" name="waktu_efektif_akhir" value={config.waktu_efektif_akhir} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Mulai Sem.</label><input type="date" name="waktu_efektif_mulai" value={config.waktu_efektif_mulai} onChange={handleChange} required className="neu-input font-num w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Akhir Sem.</label><input type="date" name="waktu_efektif_akhir" value={config.waktu_efektif_akhir} onChange={handleChange} required className="neu-input font-num w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Hari Sekolah / Minggu</label>
-                      <select name="hari_sekolah" value={config.hari_sekolah} onChange={handleChange} required className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white">
+                      <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Hari Sekolah / Minggu</label>
+                      <select name="hari_sekolah" value={config.hari_sekolah} onChange={handleChange} required className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]">
                         <option value="6">6 Hari (Senin - Sabtu)</option>
                         <option value="5">5 Hari (Senin - Jumat)</option>
                       </select>
-                      <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1.5 flex items-start gap-1">
+                      <p className="text-[10px] text-[#0F766E] dark:text-[#14B8A6] mt-1.5 flex items-start gap-1">
                         <i className="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
                         <span>
                           {config.hari_sekolah === '5'
@@ -760,7 +761,7 @@ export default function AdminConfigView({
                         value={config.email_tujuan_upload || ''} 
                         onChange={handleChange} 
                         placeholder="Contoh: arsip.sekolah@gmail.com" 
-                        className="neu-input w-full px-3 py-2 rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" 
+                        className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" 
                       />
                       <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1.5 flex items-start gap-1">
                         <i className="fa-solid fa-circle-info mt-0.5 shrink-0"></i>
@@ -776,17 +777,17 @@ export default function AdminConfigView({
 
               {/* TAB 2: JAM KERJA & GPS */}
               <div className={activeTab === 'jam_kerja' ? 'space-y-4' : 'hidden'}>
-                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-amber-800 dark:text-amber-300 mb-3 uppercase flex items-center gap-2"><i className="fa-regular fa-clock text-xs"></i> Pengaturan Jam Presensi</h3>
+                <div className="neu-inset rounded-2xl p-4">
+                    <h3 className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-3 uppercase flex items-center gap-2"><i className="fa-regular fa-clock text-xs"></i> Pengaturan Jam Presensi</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Datang Buka</label><input type="time" name="jam_datang_mulai" value={config.jam_datang_mulai || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Batas Terlambat</label><input type="time" name="jam_datang_batas" value={config.jam_datang_batas || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Datang Tutup</label><input type="time" name="jam_datang_akhir" value={config.jam_datang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Datang Buka</label><input type="time" name="jam_datang_mulai" value={config.jam_datang_mulai || ''} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Batas Terlambat</label><input type="time" name="jam_datang_batas" value={config.jam_datang_batas || ''} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Datang Tutup</label><input type="time" name="jam_datang_akhir" value={config.jam_datang_akhir || ''} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Pulang Buka</label><input type="time" name="jam_pulang_mulai" value={config.jam_pulang_mulai || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Pulang Buka</label><input type="time" name="jam_pulang_mulai" value={config.jam_pulang_mulai || ''} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
                         <div>
-                          <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">
+                          <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                             Jam Pulang Hari Jumat
                           </label>
                           <input 
@@ -795,14 +796,14 @@ export default function AdminConfigView({
                             value={config.jam_pulang_jumat || '11:00'} 
                             onChange={handleChange} 
                             required 
-                            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium" 
+                            className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium" 
                           />
                         </div>
-                        <div><label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">Pulang Tutup</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir || ''} onChange={handleChange} required className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Pulang Tutup</label><input type="time" name="jam_pulang_akhir" value={config.jam_pulang_akhir || ''} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-amber-200 dark:border-amber-900/40 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60 grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-1">
+                          <label className="block text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1 flex items-center gap-1">
                             <i className="fa-solid fa-user-clock text-amber-600 dark:text-amber-400"></i> Batas Intervensi Presensi Siswa
                           </label>
                           <input 
@@ -811,32 +812,32 @@ export default function AdminConfigView({
                             value={config.jam_batas_intervensi_siswa || '08:00'} 
                             onChange={handleChange} 
                             required 
-                            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium" 
+                            className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium" 
                           />
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                          <p className="text-[10px] font-num text-[#475569] dark:text-[#94A3B8] mt-1 leading-tight">
                             Batas waktu intervensi presensi pagi siswa (default 08:00 WITA). Wali Kelas memiliki akses pagi diperpanjang hingga pk. 12:00 WITA.
                           </p>
                         </div>
                         <div>
-                          <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1 flex items-center gap-1">
+                          <label className="block text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1 flex items-center gap-1">
                             <i className="fa-solid fa-stopwatch text-amber-600 dark:text-amber-400"></i> Akumulasi Telat & Penalti
                           </label>
                           <select
                             name="akumulasi_telat_aktif"
                             value={config.akumulasi_telat_aktif ?? 'true'}
                             onChange={handleChange}
-                            className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                            className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                           >
                             <option value="true">Aktif (Penalti Alpa Otomatis)</option>
                             <option value="false">Nonaktif (Tanpa Penalti Alpa)</option>
                           </select>
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
+                          <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 leading-tight">
                             Aktifkan atau nonaktifkan konversi akumulasi keterlambatan menjadi potongan Alpa otomatis.
                           </p>
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            <label className="block text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                               Batas Telat (Jam)
                             </label>
                             <input
@@ -848,14 +849,14 @@ export default function AdminConfigView({
                               onChange={handleChange}
                               disabled={String(config.akumulasi_telat_aktif) === 'false'}
                               required
-                              className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium disabled:opacity-50"
+                              className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium disabled:opacity-50"
                             />
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
-                              Default: 4 jam
+                            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 leading-tight">
+                              Default: <span className="font-num">4</span> jam
                             </p>
                           </div>
                           <div>
-                            <label className="block text-xs font-semibold text-gray-900 dark:text-white mb-1">
+                            <label className="block text-xs font-semibold text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                               Penalti (Hari Alpa)
                             </label>
                             <input
@@ -867,46 +868,46 @@ export default function AdminConfigView({
                               onChange={handleChange}
                               disabled={String(config.akumulasi_telat_aktif) === 'false'}
                               required
-                              className="w-full px-2 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium disabled:opacity-50"
+                              className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium disabled:opacity-50"
                             />
-                            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-tight">
-                              Default: 1 hari
+                            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 leading-tight">
+                              Default: <span className="font-num">1</span> hari
                             </p>
                           </div>
                         </div>
                     </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 italic">
+                    <p className="text-xs text-[#475569] dark:text-[#CBD5E1] mt-2 italic">
                       {String(config.akumulasi_telat_aktif) === 'false'
                         ? '* Penalti Alpa dari akumulasi keterlambatan dinonaktifkan. Jam keterlambatan tetap dicatat tanpa potongan hari Alpa otomatis.'
-                        : `* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total ${config.batas_jam_penalti_telat || '4'} jam keterlambatan = ${config.jumlah_hari_penalti_telat || '1'} Hari Alpa otomatis.`}
+                        : <>* Sistem akan menghitung akumulasi jam keterlambatan (Batas Terlambat). Setiap total <span className="font-num font-semibold">{config.batas_jam_penalti_telat || '4'}</span> jam keterlambatan = <span className="font-num font-semibold">{config.jumlah_hari_penalti_telat || '1'}</span> Hari Alpa otomatis.</>}
                     </p>
                 </div>
 
-                <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-900/30 rounded-2xl p-4">
+                <div className="neu-inset rounded-2xl p-4">
                     <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
-                        <h3 className="text-xs font-bold text-emerald-900 dark:text-emerald-300 uppercase flex items-center gap-2">
+                        <h3 className="text-xs font-bold text-[#0F766E] dark:text-teal-300 uppercase flex items-center gap-2">
                           <i className="fa-solid fa-location-dot text-xs"></i> Kordinat GPS Absensi
                         </h3>
                         <button 
                           type="button" 
                           onClick={handleDetectGps}
-                          className="btn-click text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:hover:bg-emerald-900/70 px-2.5 py-1 rounded-lg border border-emerald-300 dark:border-emerald-700 flex items-center gap-1.5 shadow-sm transition"
+                          className="neu-btn-teal min-h-[40px] text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition"
                         >
                           <i className="fa-solid fa-crosshairs text-xs"></i> Deteksi Lokasi Saat Ini
                         </button>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Latitude</label>
-                            <input type="text" name="gps_lat" value={config.gps_lat} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Latitude</label>
+                            <input type="text" name="gps_lat" value={config.gps_lat} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Longitude</label>
-                            <input type="text" name="gps_lng" value={config.gps_lng} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Longitude</label>
+                            <input type="text" name="gps_lng" value={config.gps_lng} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Radius (Meter)</label>
-                            <input type="number" name="gps_radius" value={config.gps_radius} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Radius (Meter)</label>
+                            <input type="number" name="gps_radius" value={config.gps_radius} onChange={handleChange} required className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" />
                         </div>
                     </div>
                 </div>
@@ -917,36 +918,36 @@ export default function AdminConfigView({
                 <div className="neu-inset rounded-2xl p-4">
                     <h3 className="text-xs font-bold text-[#0F766E] dark:text-teal-300 mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-print text-xs"></i> Pengaturan Kop Surat</h3>
                     <div className="space-y-2.5">
-                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Nama Yayasan</label><input type="text" name="kop_yayasan" value={config.kop_yayasan} onChange={handleChange} className="neu-input w-full px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Contoh: YAYASAN NIZAMUDIN" /></div>
-                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Nama Sekolah</label><input type="text" name="kop_sekolah" value={config.kop_sekolah} onChange={handleChange} required className="neu-input w-full px-2.5 py-1.5 rounded-xl text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]" /></div>
-                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Alamat Lengkap</label><input type="text" name="kop_alamat" value={config.kop_alamat} onChange={handleChange} required className="neu-input w-full px-2.5 py-1.5 rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
-                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">NPSN</label><input type="text" name="kop_npsn" value={config.kop_npsn} onChange={handleChange} className="neu-input w-full px-2.5 py-1.5 rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Nomor Pokok Sekolah Nasional" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Nama Yayasan</label><input type="text" name="kop_yayasan" value={config.kop_yayasan} onChange={handleChange} className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Contoh: YAYASAN NIZAMUDIN" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Nama Sekolah</label><input type="text" name="kop_sekolah" value={config.kop_sekolah} onChange={handleChange} required className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Alamat Lengkap</label><input type="text" name="kop_alamat" value={config.kop_alamat} onChange={handleChange} required className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" /></div>
+                        <div><label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">NPSN</label><input type="text" name="kop_npsn" value={config.kop_npsn} onChange={handleChange} className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Nomor Pokok Sekolah Nasional" /></div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Logo Kiri (Yayasan)</label>
-                                <input type="text" name="logo_kiri" value={config.logo_kiri} onChange={handleChange} required className="neu-input w-full px-2.5 py-1.5 rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Link Hosting / Google Drive" />
+                                <input type="text" name="logo_kiri" value={config.logo_kiri} onChange={handleChange} required className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Link Hosting / Google Drive" />
                                 {config.logo_kiri && (
                                   <div className="mt-1.5 flex items-center gap-2">
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Preview:</span>
+                                    <span className="text-[10px] text-[#475569] dark:text-[#94A3B8]">Preview:</span>
                                     <img 
                                       src={transformGoogleDriveUrl(config.logo_kiri)} 
                                       alt="Preview Logo Kiri" 
-                                      className="w-10 h-10 object-contain border border-gray-200 dark:border-gray-700 rounded bg-white p-0.5 shadow-sm" 
+                                      className="neu-card-sm w-10 h-10 object-contain rounded-xl bg-[#E6ECF2] dark:bg-slate-200 p-1" 
                                       onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
                                     />
                                   </div>
                                 )}
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Logo Kanan (Dinas)</label>
-                                <input type="text" name="logo_kanan" value={config.logo_kanan} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Link Hosting / Google Drive" />
+                                <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">Logo Kanan (Dinas)</label>
+                                <input type="text" name="logo_kanan" value={config.logo_kanan} onChange={handleChange} required className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Link Hosting / Google Drive" />
                                 {config.logo_kanan && (
                                   <div className="mt-1.5 flex items-center gap-2">
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Preview:</span>
+                                    <span className="text-[10px] text-[#475569] dark:text-[#94A3B8]">Preview:</span>
                                     <img 
                                       src={transformGoogleDriveUrl(config.logo_kanan)} 
                                       alt="Preview Logo Kanan" 
-                                      className="w-10 h-10 object-contain border border-gray-200 dark:border-gray-700 rounded bg-white p-0.5 shadow-sm" 
+                                      className="neu-card-sm w-10 h-10 object-contain rounded-xl bg-[#E6ECF2] dark:bg-slate-200 p-1" 
                                       onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} 
                                     />
                                   </div>
@@ -955,19 +956,19 @@ export default function AdminConfigView({
                         </div>
                     </div>
                 </div>
-                <div className="bg-gray-50 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4">
-                    <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs text-blue-600 dark:text-blue-400"></i> Tanda Tangan Laporan & {formatKepalaSekolahLabel(config.status_kepala_sekolah)}</h3>
+                <div className="neu-inset rounded-2xl p-4">
+                    <h3 className="text-xs font-bold text-[#0F766E] dark:text-teal-300 mb-3 uppercase flex items-center gap-2"><i className="fa-solid fa-signature text-xs"></i> Tanda Tangan Laporan & {formatKepalaSekolahLabel(config.status_kepala_sekolah)}</h3>
                     
                     {/* Penunjukan Akun Kepala Sekolah */}
-                    <div className="mb-3 p-3 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-900/40">
-                        <label className="block text-xs font-bold text-gray-900 dark:text-white mb-1 flex items-center gap-1.5">
-                          <i className="fa-solid fa-user-tie text-blue-600 dark:text-blue-400"></i> Penunjukan {formatKepalaSekolahLabel(config.status_kepala_sekolah)} (Dari Data Guru)
+                    <div className="neu-card-sm mb-3 p-3.5 rounded-xl">
+                        <label className="block text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-1.5 flex items-center gap-1.5">
+                          <i className="fa-solid fa-user-tie text-[#0F766E] dark:text-[#14B8A6]"></i> Penunjukan {formatKepalaSekolahLabel(config.status_kepala_sekolah)} (Dari Data Guru)
                         </label>
                         <select
                           name="kepala_sekolah_id"
                           value={config.kepala_sekolah_id || ''}
                           onChange={handleKepsekChange}
-                          className="w-full px-2.5 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                          className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                         >
                           <option value="">-- Pilih Guru yang Ditunjuk sebagai {formatKepalaSekolahLabel(config.status_kepala_sekolah)} --</option>
                           {guruList.map(g => (
@@ -976,14 +977,14 @@ export default function AdminConfigView({
                             </option>
                           ))}
                         </select>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                        <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1.5 leading-relaxed">
                           Guru yang ditunjuk sebagai {formatKepalaSekolahLabel(config.status_kepala_sekolah)} memperoleh akses peninjauan/monitoring fitur Administrator (antara lain Rekap Presensi, Verifikasi, Analitik, Jurnal, dan Presensi Siswa) dalam mode read-only.
                         </p>
                     </div>
 
                     {/* Status Jabatan Kepala Sekolah: Definitif, Plt, Plh */}
                     <div className="mb-3">
-                        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5" htmlFor="status_kepala_sekolah">
+                        <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1" htmlFor="status_kepala_sekolah">
                           Status Jabatan Kepala Sekolah
                         </label>
                         <select
@@ -991,35 +992,35 @@ export default function AdminConfigView({
                           name="status_kepala_sekolah"
                           value={normalizeStatusKepalaSekolah(config.status_kepala_sekolah || 'Definitif')}
                           onChange={handleChange}
-                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white font-medium"
+                          className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                           data-testid="select-status-kepala-sekolah"
                         >
                           <option value="Definitif">Definitif</option>
                           <option value="Plt">Plt (Pelaksana Tugas)</option>
                           <option value="Plh">Plh (Pelaksana Harian)</option>
                         </select>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                        <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] mt-1 leading-relaxed">
                           Tentukan status jabatan Kepala Sekolah (Definitif, Plt, atau Plh). Selain status definitif, awalan status otomatis ditambahkan di depan tulisan Kepala Sekolah pada lembar cetak dokumen, rapor, dan rekapitulasi.
                         </p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                            <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                               {config.status_kepala_sekolah && config.status_kepala_sekolah !== 'Definitif' ? `Nama ${formatKepalaSekolahLabel(config.status_kepala_sekolah)}` : 'Nama Kepala Sekolah'}
                             </label>
-                            <input type="text" name="ttd_kepsek_nama" value={config.ttd_kepsek_nama} onChange={handleChange} required className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                            <input type="text" name="ttd_kepsek_nama" value={config.ttd_kepsek_nama} onChange={handleChange} required className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" />
                         </div>
                         <div>
-                            <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">
+                            <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                               {config.status_kepala_sekolah && config.status_kepala_sekolah !== 'Definitif' ? `NIP ${formatKepalaSekolahLabel(config.status_kepala_sekolah)}` : 'NIP Kepala Sekolah'}
                             </label>
-                            <input type="text" name="ttd_kepsek_nip" value={config.ttd_kepsek_nip} onChange={handleChange} className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" placeholder="Kosongkan jika tidak ada" />
+                            <input type="text" name="ttd_kepsek_nip" value={config.ttd_kepsek_nip} onChange={handleChange} className="neu-input font-num w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" placeholder="Kosongkan jika tidak ada" />
                         </div>
                     </div>
                     <div className="mb-3">
-                        <label className="block text-xs font-medium text-gray-900 dark:text-white mb-0.5">Nama Kota/Kabupaten</label>
-                        <input type="text" name="kota_kabupaten" value={config.kota_kabupaten || config.kota_ttd || ''} onChange={handleChange} placeholder="Contoh: Kab. Bolaangmongondow Timur" className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-700 rounded text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white" />
+                        <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">Nama Kota/Kabupaten</label>
+                        <input type="text" name="kota_kabupaten" value={config.kota_kabupaten || config.kota_ttd || ''} onChange={handleChange} placeholder="Contoh: Kab. Bolaangmongondow Timur" className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9]" />
                     </div>
 
                     {/* Pengaturan Tanda Tangan Pengawas Bina */}
@@ -1039,7 +1040,7 @@ export default function AdminConfigView({
                                 role="switch"
                                 aria-checked={isPengawasAktif}
                                 onClick={handleTogglePengawas}
-                                className={`neu-btn flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition select-none self-start sm:self-auto ${
+                                className={`neu-btn min-h-[40px] flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold cursor-pointer transition select-none self-start sm:self-auto ${
                                     isPengawasAktif
                                         ? 'text-[#0F766E] dark:text-teal-300 ring-1 ring-teal-500/30'
                                         : 'text-[#475569] dark:text-[#94A3B8]'
@@ -1047,11 +1048,11 @@ export default function AdminConfigView({
                             >
                                 <span
                                     className={`relative inline-block w-8 h-4 rounded-full transition-colors duration-200 ease-in-out ${
-                                        isPengawasAktif ? 'bg-[#0F766E]' : 'bg-slate-300 dark:bg-slate-600'
+                                        isPengawasAktif ? 'bg-[#0F766E] dark:bg-[#14B8A6]' : 'bg-slate-300 dark:bg-slate-600'
                                     }`}
                                 >
                                     <span
-                                        className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform duration-200 ease-in-out shadow-xs mt-0.5 ml-0.5 ${
+                                        className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform duration-200 ease-in-out mt-0.5 ml-0.5 ${
                                             isPengawasAktif ? 'translate-x-4' : 'translate-x-0'
                                         }`}
                                     />
@@ -1065,7 +1066,7 @@ export default function AdminConfigView({
                         {isPengawasAktif && (
                             <div className="neu-inset grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3 p-3 rounded-xl">
                                 <div>
-                                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">
+                                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                                         Nama Lengkap Pengawas Bina
                                     </label>
                                     <input
@@ -1075,11 +1076,11 @@ export default function AdminConfigView({
                                         onChange={handleChange}
                                         required={isPengawasAktif}
                                         placeholder="Contoh: Drs. H. Ahmad Dahlan, M.Pd."
-                                        className="neu-input w-full px-2.5 py-1.5 rounded-lg text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
+                                        className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">
+                                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                                         NIP / NIK Pengawas Bina
                                     </label>
                                     <input
@@ -1088,11 +1089,11 @@ export default function AdminConfigView({
                                         value={config.ttd_pengawas_nip}
                                         onChange={handleChange}
                                         placeholder="Contoh: 19680512 199303 1 004"
-                                        className="neu-input w-full px-2.5 py-1.5 rounded-lg text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
+                                        className="neu-input font-num w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-0.5">
+                                    <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">
                                         Jabatan / Sebutan Pengawas
                                     </label>
                                     <input
@@ -1101,7 +1102,7 @@ export default function AdminConfigView({
                                         value={config.ttd_pengawas_jabatan || ''}
                                         onChange={handleChange}
                                         placeholder="Contoh: Pengawas Pembina"
-                                        className="neu-input w-full px-2.5 py-1.5 rounded-lg text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
+                                        className="neu-input w-full px-2.5 py-2 min-h-[40px] rounded-xl text-xs text-[#0F172A] dark:text-[#F1F5F9] font-medium"
                                     />
                                 </div>
                             </div>
@@ -1129,14 +1130,14 @@ export default function AdminConfigView({
                           <i className="fa-solid fa-user-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
                           Pengecualian Kehadiran Guru
                         </h4>
-                        <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-1.5">
+                        <div className="grid grid-cols-1 xs:grid-cols-3 sm:flex sm:flex-wrap items-center gap-2">
                           <button
                             type="button"
                             onClick={() => {
                               setExemptTeacherIds([]);
                               showToast('Kebijakan Kehadiran', 'Seluruh personel disetel Wajib Hadir Setiap Hari.', 'info');
                             }}
-                            className="btn-click neu-btn text-[10px] font-bold text-sky-700 dark:text-sky-300 px-2.5 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                            className="neu-btn min-h-[40px] text-[11px] font-bold text-sky-700 dark:text-sky-300 px-3 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
                           >
                             <i className="fa-solid fa-calendar-check text-[10px]"></i>
                             <span>Set Semua Hadir Setiap Hari</span>
@@ -1148,7 +1149,7 @@ export default function AdminConfigView({
                               setExemptTeacherIds(eligibleTeachers.map(g => g.id).filter(Boolean));
                               showToast('Kebijakan Kehadiran', 'Seluruh guru berjadwal KBM disetel Hanya Hadir di Hari KBM.', 'info');
                             }}
-                            className="btn-click neu-btn text-[10px] font-bold text-emerald-700 dark:text-emerald-300 px-2.5 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                            className="neu-btn min-h-[40px] text-[11px] font-bold text-emerald-700 dark:text-emerald-300 px-3 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
                           >
                             <i className="fa-solid fa-graduation-cap text-[10px]"></i>
                             <span>Set Semua Hanya Hari KBM</span>
@@ -1160,7 +1161,7 @@ export default function AdminConfigView({
                               setExemptTeacherIds(eligibleTeachers.map(g => g.id).filter(Boolean));
                               showToast('Info Kebijakan', `${eligibleTeachers.length} Guru berjadwal disetel Hanya Hari KBM.`, 'info');
                             }}
-                            className="btn-click neu-btn text-[10px] font-bold text-[#0F766E] dark:text-teal-300 px-2.5 py-1.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1"
+                            className="neu-btn min-h-[40px] text-[11px] font-bold text-[#0F766E] dark:text-teal-300 px-3 py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
                           >
                             <i className="fa-solid fa-wand-magic-sparkles text-[10px]"></i>
                             <span>Otomatis Sesuai KBM</span>
@@ -1170,52 +1171,52 @@ export default function AdminConfigView({
 
                       {/* Filter & Search Ringkas */}
                       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <div className="neu-card-sm flex items-center gap-1 p-1 rounded-xl text-[11px] font-semibold overflow-x-auto">
+                        <div className="flex flex-wrap items-center gap-2 px-2 py-2">
+                          <div className="neu-card-sm flex items-center gap-1 p-1.5 rounded-xl text-[11px] font-semibold overflow-x-auto">
                             <button
                               type="button"
                               onClick={() => setAttendanceFilterTab('all')}
-                              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
+                              className={`min-h-[40px] px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                                 attendanceFilterTab === 'all'
-                                  ? 'neu-btn-primary text-white shadow-xs font-bold'
+                                  ? 'neu-btn-primary text-white font-bold'
                                   : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                               }`}
                             >
-                              Semua ({guruList.length})
+                              Semua (<span className="font-num">{guruList.length}</span>)
                             </button>
                             <button
                               type="button"
                               onClick={() => setAttendanceFilterTab('setiap_hari')}
-                              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
+                              className={`min-h-[40px] px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                                 attendanceFilterTab === 'setiap_hari'
                                   ? 'neu-inset text-sky-700 dark:text-sky-300 font-bold'
                                   : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                               }`}
                             >
-                              Setiap Hari ({guruList.filter(g => !exemptTeacherIds.includes(g.id) && !(g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) && !(g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip))).length})
+                              Setiap Hari (<span className="font-num">{guruList.filter(g => !exemptTeacherIds.includes(g.id) && !(g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) && !(g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip))).length}</span>)
                             </button>
                             <button
                               type="button"
                               onClick={() => setAttendanceFilterTab('hanya_kbm')}
-                              className={`px-2.5 py-1 rounded-lg transition whitespace-nowrap ${
+                              className={`min-h-[40px] px-3 py-1.5 rounded-lg transition whitespace-nowrap ${
                                 attendanceFilterTab === 'hanya_kbm'
                                   ? 'neu-inset text-[#0F766E] dark:text-teal-300 font-bold'
                                   : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                               }`}
                             >
-                              Sesuai KBM ({guruList.filter(g => exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) || (g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip))).length})
+                              Sesuai KBM (<span className="font-num">{guruList.filter(g => exemptTeacherIds.includes(g.id) || (g.nama_guru && exemptTeacherIds.includes(g.nama_guru)) || (g.nip && g.nip !== '-' && exemptTeacherIds.includes(g.nip))).length}</span>)
                             </button>
                           </div>
 
-                          <div className="neu-card-sm flex items-center gap-0.5 p-1 rounded-xl text-[10px] font-semibold">
+                          <div className="neu-card-sm flex items-center gap-1 p-1.5 rounded-xl text-[10px] font-semibold">
                             {(['all', 'guru', 'tu', 'kepsek'] as const).map(role => (
                               <button
                                 key={role}
                                 type="button"
                                 onClick={() => setRoleFilterTab(role)}
-                                className={`px-2 py-1 rounded-lg transition whitespace-nowrap ${
+                                className={`min-h-[40px] px-2.5 py-1.5 rounded-lg transition whitespace-nowrap ${
                                   roleFilterTab === role
-                                    ? 'neu-btn-primary text-white shadow-2xs font-bold'
+                                    ? 'neu-btn-primary text-white font-bold'
                                     : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-white'
                                 }`}
                               >
@@ -1226,21 +1227,22 @@ export default function AdminConfigView({
                         </div>
 
                         <div className="relative w-full md:w-56">
-                          <i className="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
+                          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#475569] dark:text-[#94A3B8] text-xs pointer-events-none"></i>
                           <input
                             type="text"
                             placeholder="Cari nama atau NIP..."
                             value={teacherSearch}
                             onChange={e => setTeacherSearch(e.target.value)}
-                            className="neu-input w-full pl-7 pr-3 py-1.5 text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9] focus:outline-hidden"
+                            className="neu-input w-full pl-8 pr-3 py-2 min-h-[40px] text-xs rounded-xl text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                         </div>
                       </div>
 
                       {/* Daftar Guru Sederhana & Responsif */}
-                      <div className="max-h-96 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900/60 custom-scroll">
+                      <div className="neu-card-sm rounded-2xl p-2">
+                        <div className="max-h-96 overflow-y-auto divide-y divide-slate-200/70 dark:divide-slate-700/60 px-2 py-2 custom-scroll">
                         {guruList.length === 0 ? (
-                          <div className="text-center py-6 text-[11px] text-gray-500 italic">
+                          <div className="text-center py-6 text-[11px] text-[#64748B] dark:text-[#94A3B8] italic">
                             Tidak ada data guru ditemukan.
                           </div>
                         ) : (
@@ -1285,14 +1287,14 @@ export default function AdminConfigView({
                               return (
                                 <div
                                   key={g.id}
-                                  className="flex items-center justify-between gap-2 px-3 py-2 text-xs hover:bg-gray-50/80 dark:hover:bg-gray-800/60 transition"
+                                  className="flex items-center justify-between gap-2 px-3 py-2.5 text-xs hover:bg-slate-200/40 dark:hover:bg-slate-700/30 rounded-xl transition"
                                 >
                                   <div className="min-w-0 flex-1">
-                                    <div className="font-semibold text-gray-900 dark:text-white truncate">
+                                    <div className="font-semibold text-[#0F172A] dark:text-[#F1F5F9] truncate">
                                       {g.nama_guru}
                                     </div>
-                                    <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                      {roleMeta}{g.nip && g.nip !== '-' ? ` • ${g.nip}` : ''}
+                                    <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate">
+                                      <span className={kbmCount > 0 && !isKepsek && !isTu && !isBk ? 'font-num' : undefined}>{roleMeta}</span>{g.nip && g.nip !== '-' ? <> • <span className="font-num">{g.nip}</span></> : ''}
                                     </div>
                                   </div>
 
@@ -1307,20 +1309,20 @@ export default function AdminConfigView({
                                         setExemptTeacherIds(prev => [...prev, g.id]);
                                       }
                                     }}
-                                    className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-semibold transition cursor-pointer select-none ${
+                                    className={`shrink-0 min-h-[40px] flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition cursor-pointer select-none ${
                                       isExempt
-                                        ? 'bg-emerald-50 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                        ? 'neu-inset text-[#0F766E] dark:text-[#14B8A6]'
+                                        : 'neu-btn text-[#475569] dark:text-[#CBD5E1]'
                                     }`}
                                     title={isExempt ? 'Hanya Hari KBM' : 'Wajib Hadir Setiap Hari'}
                                   >
                                     <span
                                       className={`relative inline-block w-7 h-3.5 rounded-full transition-colors ${
-                                        isExempt ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600'
+                                        isExempt ? 'bg-[#0F766E] dark:bg-[#14B8A6]' : 'bg-slate-300 dark:bg-slate-600'
                                       }`}
                                     >
                                       <span
-                                        className={`inline-block w-2.5 h-2.5 transform bg-white rounded-full transition-transform shadow-2xs mt-0.5 ml-0.5 ${
+                                        className={`inline-block w-2.5 h-2.5 transform bg-white rounded-full transition-transform mt-0.5 ml-0.5 ${
                                           isExempt ? 'translate-x-3.5' : 'translate-x-0'
                                         }`}
                                       />
@@ -1331,12 +1333,13 @@ export default function AdminConfigView({
                               );
                             })
                         )}
+                        </div>
                       </div>
                     </div>
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="btn-click w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-blue-900/20 text-sm flex justify-center items-center gap-2 mt-4 transition disabled:opacity-50">
+              <button type="submit" disabled={loading} className="neu-btn-primary w-full min-h-[44px] text-white font-bold py-3.5 rounded-2xl text-sm flex justify-center items-center gap-2 mt-4 transition disabled:opacity-50">
                 {loading ? 'Menyimpan...' : <><i className="fa-solid fa-save"></i> Simpan Konfigurasi</>}
               </button>
             </form>

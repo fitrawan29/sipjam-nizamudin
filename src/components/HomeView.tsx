@@ -49,6 +49,7 @@ export default function HomeView({
         setView={setView}
         menuItems={menuItems}
         onOpenAccountSettings={onOpenAccountSettings}
+        schoolName={schoolName}
       />
     );
   }

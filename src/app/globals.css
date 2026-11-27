@@ -386,14 +386,16 @@ body.fade-out {
     color: #FDA4AF;
     border-color: rgba(244, 63, 94, 0.35);
   }
-  .alert-banner-orange {
+  .alert-banner-orange,
+  .alert-banner-amber {
     background-color: var(--neu-inset);
     color: #B45309;
-    border: 1px solid rgba(217, 119, 6, 0.25);
+    border: 1px solid rgba(217, 119, 6, 0.28);
     box-shadow: inset 3px 3px 6px var(--neu-shadow-dark), inset -3px -3px 6px var(--neu-shadow-light);
     @apply rounded-xl p-3 text-xs;
   }
-  .dark .alert-banner-orange {
+  .dark .alert-banner-orange,
+  .dark .alert-banner-amber {
     color: #FCD34D;
     border-color: rgba(245, 158, 11, 0.35);
   }
@@ -459,11 +461,31 @@ body.fade-out {
 
 /* Utilities & Animations */
 @layer utilities {
-  .fade-in {
+  .fade-in,
+  .animate-fade-in,
+  .animate-fadeIn {
     animation: fadeIn 0.3s ease-out forwards;
   }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-in {
+    animation-duration: 0.22s;
+    animation-timing-function: var(--neu-ease);
+    animation-fill-mode: both;
+    animation-name: neuSlideBottomIn;
+  }
+  .zoom-in-95 {
+    animation-name: modalPop;
+  }
+  .slide-in-from-bottom-3,
+  .slide-in-from-bottom-5 {
+    animation-name: neuSlideBottomIn;
+  }
+  @keyframes neuSlideBottomIn {
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
   }
 
@@ -554,6 +576,7 @@ body.fade-out {
 @media screen and (max-width: 768px) {
   input, select, textarea {
     font-size: 16px !important;
+    min-width: 0;
   }
 }
 
@@ -949,7 +972,10 @@ body.fade-out {
   .page-transition,
   .page-enter,
   .modal-pop,
-  .fade-in {
+  .fade-in,
+  .animate-fade-in,
+  .animate-fadeIn,
+  .animate-in {
     animation: none !important;
     transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease !important;
     transform: none !important;

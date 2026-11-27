@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
 import ClayCard from './ClayCard';
@@ -67,14 +67,26 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
   onToggleAiAssistant,
   schoolName = 'SIPJAM',
 }) => {
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  const isTU = isTataUsaha || (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
+  const normRole = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '');
+  const isTU = isTataUsaha || normRole === 'tatausaha';
+  const isOrtu = normRole === 'orangtua' || normRole === 'walimurid';
+  const isSiswa = normRole === 'siswa';
   const isBkRole =
-    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bk' ||
-    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'gurubk' ||
-    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingankonseling' ||
-    (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'bimbingandankonseling' ||
+    normRole === 'bk' ||
+    normRole === 'gurubk' ||
+    normRole === 'bimbingankonseling' ||
+    normRole === 'bimbingandankonseling' ||
     (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase().includes('bimbingan konseling') ||
     (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase().includes('bimbingan dan konseling') ||
     (user?.mata_pelajaran || user?.mataPelajaran || '').toLowerCase().trim() === 'bk';
@@ -87,6 +99,10 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'neu-inset text-blue-800 dark:text-blue-300'
     : isTU
     ? 'neu-inset text-teal-800 dark:text-teal-300'
+    : isOrtu
+    ? 'neu-inset text-sky-800 dark:text-sky-300'
+    : isSiswa
+    ? 'neu-inset text-[#0F766E] dark:text-teal-300'
     : isBkRole
     ? 'neu-inset text-rose-800 dark:text-rose-300'
     : isKepalaSekolah
@@ -103,6 +119,10 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'Administrator'
     : isTU
     ? 'Tata Usaha'
+    : isOrtu
+    ? 'Orang Tua'
+    : isSiswa
+    ? 'Siswa'
     : isBkRole
     ? 'Guru BK'
     : isKepalaSekolah
@@ -119,6 +139,10 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
     ? 'fa-user-shield'
     : isTU
     ? 'fa-id-card-clip'
+    : isOrtu
+    ? 'fa-people-roof'
+    : isSiswa
+    ? 'fa-user-graduate'
     : isBkRole
     ? 'fa-heart-pulse'
     : isKepalaSekolah
@@ -135,22 +159,25 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-xs z-50 transition-opacity animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Menu Navigasi"
+      className="fixed inset-0 bg-slate-900/45 dark:bg-black/65 z-50 transition-opacity animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="w-80 max-w-[88%] h-full bg-[#E6ECF2] dark:bg-[#1F242D] border-r border-white/55 dark:border-white/5 shadow-[12px_0_28px_rgba(163,177,198,0.55)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-5 flex flex-col justify-between transform transition-transform duration-300 ease-out"
+        className="w-80 max-w-[88%] h-full bg-[#E6ECF2] dark:bg-[#1F242D] border-r border-white/55 dark:border-white/5 shadow-[12px_0_28px_rgba(163,177,198,0.55)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-4 sm:p-5 flex flex-col justify-between transform transition-transform duration-300 ease-out"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Header */}
           <div className="flex justify-between items-center pb-4 mb-3 border-b border-slate-300/60 dark:border-slate-700/60">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#0F766E] to-[#115E59] flex items-center justify-center text-white shadow-[3px_3px_8px_rgba(15,118,110,0.35),-2px_-2px_6px_rgba(255,255,255,0.7)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.6)] border border-white/25 font-bold">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-[#0F766E] to-[#115E59] flex items-center justify-center text-white shadow-[3px_3px_8px_rgba(15,118,110,0.35),-2px_-2px_6px_rgba(255,255,255,0.7)] dark:shadow-[3px_3px_8px_rgba(0,0,0,0.6)] border border-white/25 font-bold shrink-0">
                 <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-graduation-cap'} text-sm`}></i>
               </div>
-              <div>
-                <span className="font-extrabold text-sm text-[#0F172A] dark:text-[#F1F5F9] tracking-tight">
+              <div className="min-w-0">
+                <span className="font-extrabold text-sm text-[#0F172A] dark:text-[#F1F5F9] tracking-tight block truncate">
                   {isSuperadmin ? 'Portal Superadmin' : isDinas ? 'Dinas Pendidikan' : 'SIPJAM Menu'}
                 </span>
                 <p className="text-[10px] text-slate-600 dark:text-slate-400 font-medium leading-none mt-0.5 truncate max-w-[170px]">
@@ -161,11 +188,11 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="clay-btn w-9 h-9 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white"
+              className="clay-btn w-11 h-11 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white shrink-0"
               title="Tutup Menu"
               aria-label="Tutup Menu"
             >
-              <i className="fa-solid fa-xmark text-xs"></i>
+              <i className="fa-solid fa-xmark text-sm"></i>
             </button>
           </div>
 
@@ -233,7 +260,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
           )}
 
           {/* Navigation Links with Neumorphism */}
-          <div className="space-y-2 flex-1 overflow-y-auto max-h-[calc(100vh-250px)] pr-1 py-1 custom-scroll">
+          <div className="space-y-2 flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scroll">
             {menuItems.map((item) => {
               const isActive = currentView === item.id;
               return (
@@ -251,10 +278,10 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
                         onNavigate(item.id);
                       }
                     }}
-                    className={`w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center justify-between gap-2.5 transition-all duration-150 select-none cursor-pointer ${
+                    className={`w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center justify-between gap-2.5 transition-all duration-150 select-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400 ${
                       isActive
-                        ? 'neu-inset text-[#0F766E] dark:text-teal-300 border-l-4 border-l-[#0F766E] dark:border-l-teal-400'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-white/35 dark:hover:bg-white/5 border border-transparent'
+                        ? 'neu-inset text-[#0F766E] dark:text-teal-300 ring-1 ring-[#0F766E]/35 dark:ring-teal-400/35'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-900/5 dark:hover:bg-white/5 border border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
@@ -290,14 +317,14 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
 
 
             {/* Quick Actions in Sidebar */}
-            {!isTU && !isBkRole && onOpenAccountSettings && (
+            {!isTU && !isBkRole && !isOrtu && !isSiswa && onOpenAccountSettings && (
               <button
                 type="button"
                 onClick={() => {
                   onClose();
                   onOpenAccountSettings();
                 }}
-                className="w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-white/35 dark:hover:bg-white/5 transition-all cursor-pointer"
+                className="w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 text-slate-700 dark:text-slate-200 hover:bg-slate-900/5 dark:hover:bg-white/5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
               >
                 <div className="w-7 h-7 rounded-xl neu-card-sm flex items-center justify-center text-sky-700 dark:text-sky-300">
                   <i className="fa-solid fa-user-gear text-xs"></i>

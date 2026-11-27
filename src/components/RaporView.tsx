@@ -1315,538 +1315,560 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* HEADER & CONTROLS */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 no-print">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/60 border border-teal-200 dark:border-teal-800 flex items-center justify-center text-teal-700 dark:text-teal-300 text-xl shadow-sm">
-              <i className="fa-solid fa-file-lines"></i>
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                E-Rapor SMA (Kurikulum Deep Learning)
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-teal-100 text-teal-800 dark:bg-teal-900/40 dark:text-teal-300">
-                  {isAdmin || isSuperadmin ? 'Administrator' : isKepalaSekolah ? formatKepalaSekolahLabel(effectiveStatus) : isTataUsaha ? 'Tata Usaha' : 'Wali Kelas'}
-                </span>
-              </h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                Pusat penerbitan dan pengesahan rapor siswa dengan capaian pembelajaran (CP) dan legalitas GPS.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Status saving indicator */}
-            {isSaving ? (
-              <span className="text-[11px] text-teal-600 dark:text-teal-400 font-semibold flex items-center gap-1">
-                <i className="fa-solid fa-spinner fa-spin text-xs"></i>
-                Menyimpan...
-              </span>
-            ) : saveStatus ? (
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                <i className="fa-solid fa-circle-check text-xs"></i>
-                {saveStatus}
-              </span>
-            ) : null}
-
-            {!isTataUsaha && (
-              <button
-                type="button"
-                onClick={handleManualSave}
-                disabled={isSaving}
-                className="px-3 py-1.5 rounded-xl text-xs font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 border border-teal-200 dark:border-teal-700/50 transition cursor-pointer flex items-center gap-1.5"
-                title="Simpan Catatan & Observasi ke Database"
-              >
-                <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
-                Simpan Rapor
-              </button>
-            )}
-
-            {/* Kelas selector */}
-            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Kelas:</span>
-              {/* AST preservation: {isAdmin || isSuperadmin ? ( */}
-              {isAdmin || isSuperadmin || isTataUsaha || isKepalaSekolah ? (
-                <select
-                  value={selectedKelas}
-                  onChange={(e) => setSelectedKelas(e.target.value)}
-                  className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
-                >
-                  {kelasList.map(k => (
-                    <option key={k} value={k} className="dark:bg-gray-800">{k}</option>
-                  ))}
-                </select>
-              ) : (
-                <span className="font-extrabold text-teal-700 dark:text-teal-300">
-                  {selectedKelas || assignedKelas || resolvedAssignedKelas || 'Tidak Ada'}
-                </span>
-              )}
-            </div>
-
-            {/* Semester selector */}
-            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">Semester:</span>
-              <select
-                value={selectedSemester}
-                onChange={(e) => {
-                  const val = e.target.value as 'Ganjil' | 'Genap';
-                  selectedSemesterRef.current = val;
-                  setSelectedSemester(val);
-                }}
-                className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
-              >
-                <option value="Ganjil" className="dark:bg-gray-800">
-                  Ganjil{activeSchoolSemester === 'Ganjil' ? ' (Aktif)' : ''}
-                </option>
-                <option value="Genap" className="dark:bg-gray-800">
-                  Genap{activeSchoolSemester === 'Genap' ? ' (Aktif)' : ''}
-                </option>
-              </select>
-            </div>
-
-            {/* Tahun Ajaran */}
-            <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-600 text-xs">
-              <span className="font-semibold text-gray-600 dark:text-gray-300">T.A.:</span>
-              <select
-                value={selectedTahunAjaran}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  selectedTahunAjaranRef.current = val;
-                  setSelectedTahunAjaran(val);
-                }}
-                className="bg-transparent font-bold text-gray-900 dark:text-white outline-none cursor-pointer"
-              >
-                {tahunAjaranList.map(ta => (
-                  <option key={ta} value={ta} className="dark:bg-gray-800">
-                    {ta}{ta === activeSchoolTahunAjaran ? ' (Aktif)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* TABS & SEARCH */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('ringkasan')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                activeTab === 'ringkasan'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              <i className="fa-solid fa-table-list"></i>
-              Ringkasan Kelas ({students.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('cetak-individu')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-                activeTab === 'cetak-individu'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'bg-gray-100 dark:bg-gray-700/60 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
-              }`}
-            >
-              <i className="fa-solid fa-print"></i>
-              Lembar Rapor Siswa
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {activeTab === 'ringkasan' ? (
-              <div className="relative w-full sm:w-64">
-                <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-                <input
-                  type="text"
-                  placeholder="Cari siswa / NISN..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/30"
-                />
+    <section id="view-rapor" className="space-y-6 pb-12 print:pb-0 print:space-y-0">
+      <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-6 space-y-6 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
+        {/* HEADER & CONTROLS */}
+        <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-5 no-print">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-12 h-12 shrink-0 rounded-2xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-[#14B8A6] text-xl">
+                <i className="fa-solid fa-file-lines"></i>
               </div>
-            ) : (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <select
-                  value={selectedStudent?.nisn || ''}
-                  onChange={(e) => {
-                    const st = students.find(s => s.nisn === e.target.value);
-                    if (st) setSelectedStudent(st);
-                  }}
-                  className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-teal-500/30 w-full sm:w-64 cursor-pointer"
-                >
-                  {students.map(s => (
-                    <option key={s.nisn} value={s.nisn} className="dark:bg-gray-800">
-                      {s.nama_siswa} ({s.nisn})
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  type="button"
-                  onClick={handlePrintRapor}
-                  disabled={isPrinting || !selectedStudent}
-                  className="px-4 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm inline-flex items-center gap-1.5 shrink-0 transition cursor-pointer"
-                >
-                  <i className="fa-solid fa-print"></i>
-                  Cetak (GPS)
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* CONTENT AREA */}
-      {isLoading ? (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-          <i className="fa-solid fa-spinner fa-spin text-3xl text-teal-600 mb-3"></i>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Memuat data rapor Kurikulum Merdeka...</p>
-        </div>
-      ) : students.length === 0 ? (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-          <i className="fa-solid fa-users-slash text-3xl text-gray-400 mb-3"></i>
-          <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">Tidak Ada Siswa di Kelas Ini</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Tidak ditemukan data siswa aktif untuk kelas {selectedKelas}.
-          </p>
-        </div>
-      ) : activeTab === 'ringkasan' ? (
-        /* TAB 1: RINGKASAN RAPOR KELAS */
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-gray-50 dark:bg-gray-900/80 text-gray-700 dark:text-gray-300 font-bold border-b border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th className="py-3 px-3 w-10 text-center">#</th>
-                  <th className="py-3 px-3 w-28">NISN</th>
-                  <th className="py-3 px-3 min-w-[200px]">Nama Siswa</th>
-                  <th className="py-3 px-3 w-14 text-center">L/P</th>
-                  <th className="py-3 px-3 w-28 text-center bg-teal-50/50 dark:bg-teal-950/20 text-teal-900 dark:text-teal-200">
-                    Rata-Rata
-                  </th>
-                  <th className="py-3 px-3 w-36 text-center">Predikat</th>
-                  <th className="py-3 px-3 w-32 text-center" title="Hadir / Sakit / Izin / Alpa">
-                    Kehadiran (H/S/I/A)
-                  </th>
-                  <th className="py-3 px-3 min-w-[250px]">Catatan Wali Kelas</th>
-                  <th className="py-3 px-3 w-24 text-center no-print">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {filteredStudents.map((s, idx) => {
-                  const avgData = studentAverageMap[s.nisn] || { avg: '-', predikat: '-' };
-                  const att = attendanceMap[s.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
-                  const note = catatanWaliMap[s.nisn] || '';
-
-                  return (
-                    <tr key={s.nisn} className="hover:bg-gray-50/70 dark:hover:bg-gray-800/40 transition">
-                      <td className="py-3 px-3 text-center text-gray-400 font-medium">{idx + 1}</td>
-                      <td className="py-3 px-3 font-mono text-gray-600 dark:text-gray-400 text-[11px]">{s.nisn}</td>
-                      <td className="py-3 px-3 font-semibold text-gray-900 dark:text-white">{s.nama_siswa}</td>
-                      <td className="py-3 px-3 text-center text-gray-500">{s.gender || '-'}</td>
-                      <td className="py-3 px-3 text-center font-black text-sm bg-teal-50/30 dark:bg-teal-950/10 text-teal-800 dark:text-teal-300">
-                        {avgData.avg}
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          typeof avgData.avg === 'number'
-                            ? avgData.avg >= 85
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                              : avgData.avg >= 75
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                              : avgData.avg >= 65
-                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                            : 'text-gray-400'
-                        }`}>
-                          {avgData.predikat}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold">
-                          <span className="text-emerald-700 dark:text-emerald-400" title="Hadir">{att.hadir}H</span>
-                          <span className="text-gray-300">/</span>
-                          <span className="text-blue-700 dark:text-blue-400" title="Sakit">{att.sakit}S</span>
-                          <span className="text-gray-300">/</span>
-                          <span className="text-amber-700 dark:text-amber-400" title="Izin">{att.izin}I</span>
-                          <span className="text-gray-300">/</span>
-                          <span className="text-red-700 dark:text-red-400" title="Alpa">{att.alpa}A</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3">
-                        {isTataUsaha ? (
-                          <span className="text-xs text-gray-700 dark:text-gray-300 italic">{note || '-'}</span>
-                        ) : (
-                          <input
-                            type="text"
-                            value={note}
-                            placeholder="Tulis catatan wali kelas..."
-                            onChange={(e) => handleCatatanChange(s.nisn, e.target.value)}
-                            className="w-full text-xs px-2.5 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-gray-800 dark:text-gray-200 focus:bg-white dark:focus:bg-gray-900 outline-none"
-                          />
-                        )}
-                      </td>
-                      <td className="py-3 px-3 text-center no-print">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedStudent(s);
-                            setActiveTab('cetak-individu');
-                          }}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-teal-50 hover:bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:hover:bg-teal-900/50 dark:text-teal-300 transition inline-flex items-center gap-1 cursor-pointer"
-                        >
-                          <i className="fa-solid fa-eye text-[10px]"></i> Rapor
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      ) : (
-        /* TAB 2: CETAK INDIVIDU RAPOR KURIKULUM MERDEKA */
-        selectedStudent ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-10 shadow-sm border border-gray-100 dark:border-gray-700 print:p-0 print:border-none print:shadow-none">
-            {/* SCHOOL PRINT HEADER */}
-            <PrintHeader sekolahId={sekolahId} user={user} />
-
-            <div className="text-center my-6">
-              <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-gray-900 dark:text-white">
-                LAPORAN HASIL BELAJAR (E-RAPOR SMA)
-              </h2>
-              <p className="text-xs text-gray-600 dark:text-gray-300 font-semibold mt-1">
-                KURIKULUM DEEP LEARNING — SEMESTER {selectedSemester.toUpperCase()} TAHUN AJARAN {selectedTahunAjaran}
-              </p>
-            </div>
-
-            {/* STUDENT IDENTITY GRID */}
-            <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs border border-gray-200 dark:border-gray-700 p-4 rounded-xl mb-6 bg-gray-50/40 dark:bg-gray-900/40 print:bg-transparent">
-              <div className="flex">
-                <span className="w-28 font-bold text-gray-600 dark:text-gray-400">Nama Siswa</span>
-                <span className="font-extrabold text-gray-900 dark:text-white">: {selectedStudent.nama_siswa}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28 font-bold text-gray-600 dark:text-gray-400">Kelas</span>
-                <span className="font-extrabold text-gray-900 dark:text-white">: {selectedKelas}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28 font-bold text-gray-600 dark:text-gray-400">NISN</span>
-                <span className="font-mono text-gray-800 dark:text-gray-200">: {selectedStudent.nisn}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28 font-bold text-gray-600 dark:text-gray-400">Semester</span>
-                <span className="text-gray-800 dark:text-gray-200">: {selectedSemester}</span>
-              </div>
-              <div className="flex">
-                <span className="w-28 font-bold text-gray-600 dark:text-gray-400">Tahun Ajaran</span>
-                <span className="text-gray-800 dark:text-gray-200">: {selectedTahunAjaran}</span>
-              </div>
-            </div>
-
-            {/* SUBJECT SCORES & CAPAIAN PEMBELAJARAN TABLE */}
-            <div className="mb-6">
-              <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
-                A. Nilai Capaian Pembelajaran
-              </h3>
-              <div className="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden print:rounded-none">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-bold border-b border-gray-200 dark:border-gray-700 text-[11px]">
-                    <tr>
-                      <th className="py-2.5 px-3 w-10 text-center border-r border-gray-200 dark:border-gray-700">#</th>
-                      <th className="py-2.5 px-3 w-56 border-r border-gray-200 dark:border-gray-700">Mata Pelajaran</th>
-                      <th className="py-2.5 px-3 w-20 text-center border-r border-gray-200 dark:border-gray-700">Nilai Akhir</th>
-                      <th className="py-2.5 px-3 min-w-[260px]">Capaian Kompetensi / Capaian Pembelajaran</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                    {getStudentSubjectScores(selectedStudent).length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="py-4 text-center text-gray-500 italic">
-                          Belum ada mata pelajaran terdaftar untuk kelas ini.
-                        </td>
-                      </tr>
-                    ) : (
-                      getStudentSubjectScores(selectedStudent).map((item, idx) => (
-                        <tr key={item.namaMapel} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20">
-                          <td className="py-2.5 px-3 text-center text-gray-500 border-r border-gray-200 dark:border-gray-700">
-                            {idx + 1}
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
-                            {item.namaMapel}
-                          </td>
-                          <td className="py-2.5 px-3 text-center font-black text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
-                            {item.nilaiAkhir !== null && item.nilaiAkhir !== undefined ? item.nilaiAkhir : '-'}
-                          </td>
-                          <td className="py-2.5 px-3 text-[11px] text-gray-700 dark:text-gray-300 leading-relaxed">
-                            {item.deskripsiCapaian}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* ATTENDANCE SUMMARY & DEEP LEARNING */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 print:grid-cols-2">
-              {/* Rekap Kehadiran */}
-              <div>
-                <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
-                  B. Ketidakhadiran
-                </h3>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden text-xs">
-                  <div className="flex justify-between py-2 px-3 border-b border-gray-100 dark:border-gray-700">
-                    <span className="text-gray-600 dark:text-gray-400">1. Sakit</span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      {attendanceMap[selectedStudent.nisn]?.sakit || 0} hari
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 px-3 border-b border-gray-100 dark:border-gray-700">
-                    <span className="text-gray-600 dark:text-gray-400">2. Izin</span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      {attendanceMap[selectedStudent.nisn]?.izin || 0} hari
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 px-3">
-                    <span className="text-gray-600 dark:text-gray-400">3. Tanpa Keterangan (Alpa)</span>
-                    <span className="font-bold text-gray-900 dark:text-white">
-                      {attendanceMap[selectedStudent.nisn]?.alpa || 0} hari
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Observasi Kurikulum Deep Learning */}
-              <div>
-                <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
-                  C. Observasi Kurikulum Deep Learning
-                </h3>
-                <div className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden text-xs">
-                  <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
-                    <span className="font-bold text-gray-900 dark:text-white">1. Mindful Learning (Kesadaran Belajar)</span>
-                    {!isTataUsaha && (
-                      <input 
-                        type="text" 
-                        className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
-                        placeholder="Catatan mindfulness..." 
-                        value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
-                        onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
-                      />
-                    )}
-                    <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs`}>
-                      {deepLearningMap[selectedStudent.nisn]?.mindful || '-'}
-                    </p>
-                  </div>
-                  <div className="flex flex-col py-1.5 px-3 border-b border-gray-100 dark:border-gray-700">
-                    <span className="font-bold text-gray-900 dark:text-white">2. Meaningful Learning (Pemaknaan Materi)</span>
-                    {!isTataUsaha && (
-                      <input 
-                        type="text" 
-                        className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
-                        placeholder="Catatan meaningfulness..." 
-                        value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
-                        onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
-                      />
-                    )}
-                    <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs`}>
-                      {deepLearningMap[selectedStudent.nisn]?.meaningful || '-'}
-                    </p>
-                  </div>
-                  <div className="flex flex-col py-1.5 px-3">
-                    <span className="font-bold text-gray-900 dark:text-white">3. Joyful Learning (Kegembiraan Belajar)</span>
-                    {!isTataUsaha && (
-                      <input 
-                        type="text" 
-                        className="mt-1 w-full text-xs px-1 py-1 rounded bg-transparent border-b border-dashed border-gray-300 dark:border-gray-600 outline-none print:hidden focus:border-teal-500" 
-                        placeholder="Catatan joyfulness..." 
-                        value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
-                        onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
-                      />
-                    )}
-                    <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 italic mt-0.5 text-xs`}>
-                      {deepLearningMap[selectedStudent.nisn]?.joyful || '-'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Catatan Wali Kelas */}
-            <div className="mb-8">
-              <h3 className="text-xs font-black uppercase text-gray-900 dark:text-white mb-2">
-                D. Catatan Wali Kelas
-              </h3>
-              <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-3 text-xs min-h-[50px] bg-gray-50/30 dark:bg-gray-900/30 print:bg-transparent">
-                {!isTataUsaha && (
-                  <textarea
-                    value={catatanWaliMap[selectedStudent.nisn] ?? ''}
-                    onChange={(e) => handleCatatanChange(selectedStudent.nisn, e.target.value)}
-                    placeholder="Tulis catatan wali kelas..."
-                    rows={2}
-                    className="w-full bg-transparent text-gray-800 dark:text-gray-200 leading-relaxed italic outline-none resize-none print:hidden border-none focus:ring-0 p-0 text-xs"
-                  />
-                )}
-                <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-gray-800 dark:text-gray-200 leading-relaxed italic`}>
-                  {catatanWaliMap[selectedStudent.nisn] ||
-                    'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.'}
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
+                  <span>E-Rapor SMA (Kurikulum Deep Learning)</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-[#0F766E]/10 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6]">
+                    {isAdmin || isSuperadmin ? 'Administrator' : isKepalaSekolah ? formatKepalaSekolahLabel(effectiveStatus) : isTataUsaha ? 'Tata Usaha' : 'Wali Kelas'}
+                  </span>
+                </h1>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Pusat penerbitan dan pengesahan rapor siswa dengan capaian pembelajaran (CP) dan legalitas GPS.
                 </p>
               </div>
             </div>
 
-            {/* PRINT SIGNATURE */}
-            <PrintSignature
-              leftTitle="Mengetahui,"
-              leftSubtitle="Orang Tua / Wali Murid"
-              leftName="..........................................."
-              hideLeftNip={true}
-              rightTitle={`Wali Kelas ${selectedKelas}`}
-              rightName={assignedWaliInfo?.nama_guru || (!isAdmin && !isTataUsaha ? user?.nama : '') || '...........................................'}
-              rightNip={assignedWaliInfo?.nip ?? (!isAdmin && !isTataUsaha ? user?.nip : undefined)}
-              showKepalaSekolah={true}
-              user={user}
-              sekolahId={sekolahId || undefined}
-              statusKepalaSekolah={statusKepalaSekolah}
-            />
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Status saving indicator */}
+              {isSaving ? (
+                <span className="text-[11px] text-[#0F766E] dark:text-[#14B8A6] font-semibold flex items-center gap-1">
+                  <i className="fa-solid fa-spinner fa-spin text-xs"></i>
+                  Menyimpan...
+                </span>
+              ) : saveStatus ? (
+                <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                  <i className="fa-solid fa-circle-check text-xs"></i>
+                  {saveStatus}
+                </span>
+              ) : null}
 
-            {/* ACTION BAR AT BOTTOM */}
-            <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center no-print">
+              {!isTataUsaha && (
+                <button
+                  type="button"
+                  onClick={handleManualSave}
+                  disabled={isSaving}
+                  className="neu-btn neu-btn-teal min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  title="Simpan Catatan & Observasi ke Database"
+                >
+                  <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
+                  Simpan Rapor
+                </button>
+              )}
+
+              {/* Kelas selector */}
+              <div className="flex items-center gap-2 neu-inset px-3 py-1.5 rounded-xl text-xs min-h-[44px]">
+                <label htmlFor="rapor-kelas-select" className="font-semibold text-slate-600 dark:text-slate-300 shrink-0">Kelas:</label>
+                {/* AST preservation: {isAdmin || isSuperadmin ? ( */}
+                {isAdmin || isSuperadmin || isTataUsaha || isKepalaSekolah ? (
+                  <select
+                    id="rapor-kelas-select"
+                    value={selectedKelas}
+                    onChange={(e) => setSelectedKelas(e.target.value)}
+                    className="neu-input px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
+                  >
+                    {kelasList.map(k => (
+                      <option key={k} value={k} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">{k}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="font-extrabold text-[#0F766E] dark:text-[#14B8A6]">
+                    {selectedKelas || assignedKelas || resolvedAssignedKelas || 'Tidak Ada'}
+                  </span>
+                )}
+              </div>
+
+              {/* Semester selector */}
+              <div className="flex items-center gap-2 neu-inset px-3 py-1.5 rounded-xl text-xs min-h-[44px]">
+                <label htmlFor="rapor-semester-select" className="font-semibold text-slate-600 dark:text-slate-300 shrink-0">Semester:</label>
+                <select
+                  id="rapor-semester-select"
+                  value={selectedSemester}
+                  onChange={(e) => {
+                    const val = e.target.value as 'Ganjil' | 'Genap';
+                    selectedSemesterRef.current = val;
+                    setSelectedSemester(val);
+                  }}
+                  className="neu-input px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
+                >
+                  <option value="Ganjil" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                    Ganjil{activeSchoolSemester === 'Ganjil' ? ' (Aktif)' : ''}
+                  </option>
+                  <option value="Genap" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                    Genap{activeSchoolSemester === 'Genap' ? ' (Aktif)' : ''}
+                  </option>
+                </select>
+              </div>
+
+              {/* Tahun Ajaran */}
+              <div className="flex items-center gap-2 neu-inset px-3 py-1.5 rounded-xl text-xs min-h-[44px]">
+                <label htmlFor="rapor-ta-select" className="font-semibold text-slate-600 dark:text-slate-300 shrink-0">T.A.:</label>
+                <select
+                  id="rapor-ta-select"
+                  value={selectedTahunAjaran}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    selectedTahunAjaranRef.current = val;
+                    setSelectedTahunAjaran(val);
+                  }}
+                  className="neu-input font-num px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
+                >
+                  {tahunAjaranList.map(ta => (
+                    <option key={ta} value={ta} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                      {ta}{ta === activeSchoolTahunAjaran ? ' (Aktif)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* TABS & SEARCH */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-5 pt-4 border-t border-slate-300/60 dark:border-slate-700/60">
+            <div
+              role="tablist"
+              aria-label="Navigasi Tampilan E-Rapor"
+              className="neu-inset p-2 rounded-2xl flex flex-wrap items-center gap-2"
+            >
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'ringkasan'}
                 onClick={() => setActiveTab('ringkasan')}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition inline-flex items-center gap-1.5 cursor-pointer"
+                className={`neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'ringkasan'
+                    ? 'neu-btn-teal neu-tab-active bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
+                }`}
               >
-                <i className="fa-solid fa-arrow-left"></i>
-                Kembali ke Ringkasan
+                <i className="fa-solid fa-table-list"></i>
+                Ringkasan Kelas (<span className="font-num">{students.length}</span>)
               </button>
-
               <button
                 type="button"
-                onClick={handlePrintRapor}
-                disabled={isPrinting}
-                className="px-5 py-2.5 rounded-xl text-xs font-black bg-teal-600 hover:bg-teal-700 text-white shadow-md inline-flex items-center gap-2 transition cursor-pointer"
+                role="tab"
+                aria-selected={activeTab === 'cetak-individu'}
+                onClick={() => setActiveTab('cetak-individu')}
+                className={`neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'cetak-individu'
+                    ? 'neu-btn-teal neu-tab-active bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
+                }`}
               >
                 <i className="fa-solid fa-print"></i>
-                Cetak Rapor Resmi (GPS Verified)
+                Lembar Rapor Siswa
               </button>
+            </div>
+
+            <div className="flex items-center gap-3 min-w-0">
+              {activeTab === 'ringkasan' ? (
+                <div className="relative w-full sm:w-64">
+                  <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                  <input
+                    type="text"
+                    aria-label="Cari siswa atau NISN"
+                    placeholder="Cari siswa / NISN..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="neu-input w-full pl-9 pr-3 py-2 min-h-[40px] text-xs rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto min-w-0">
+                  <select
+                    aria-label="Pilih Siswa"
+                    value={selectedStudent?.nisn || ''}
+                    onChange={(e) => {
+                      const st = students.find(s => s.nisn === e.target.value);
+                      if (st) setSelectedStudent(st);
+                    }}
+                    className="neu-input px-3 py-2 min-h-[40px] text-xs font-bold rounded-xl text-slate-900 dark:text-slate-100 w-full sm:w-64 min-w-0 cursor-pointer"
+                  >
+                    {students.map(s => (
+                      <option key={s.nisn} value={s.nisn} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                        {s.nama_siswa} ({s.nisn})
+                      </option>
+                    ))}
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintRapor}
+                    disabled={isPrinting || !selectedStudent}
+                    className="neu-btn neu-btn-teal min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 shrink-0 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <i className="fa-solid fa-print"></i>
+                    Cetak (GPS)
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* CONTENT AREA */}
+        {isLoading ? (
+          <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-12 text-center">
+            <i className="fa-solid fa-spinner fa-spin text-3xl text-[#0F766E] dark:text-[#14B8A6] mb-3"></i>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Memuat data rapor Kurikulum Merdeka...</p>
+          </div>
+        ) : students.length === 0 ? (
+          <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-12 text-center">
+            <i className="fa-solid fa-users-slash text-3xl text-slate-400 mb-3"></i>
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Tidak Ada Siswa di Kelas Ini</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Tidak ditemukan data siswa aktif untuk kelas {selectedKelas}.
+            </p>
+          </div>
+        ) : activeTab === 'ringkasan' ? (
+          /* TAB 1: RINGKASAN RAPOR KELAS */
+          <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-2">
+            <div className="overflow-x-auto rounded-xl">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead className="bg-slate-200/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-300/70 dark:border-slate-700">
+                  <tr>
+                    <th className="py-3 px-3 w-10 text-center">#</th>
+                    <th className="py-3 px-3 w-28">NISN</th>
+                    <th className="py-3 px-3 min-w-[200px]">Nama Siswa</th>
+                    <th className="py-3 px-3 w-14 text-center">L/P</th>
+                    <th className="py-3 px-3 w-28 text-center bg-[#0F766E]/10 dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#14B8A6]">
+                      Rata-Rata
+                    </th>
+                    <th className="py-3 px-3 w-36 text-center">Predikat</th>
+                    <th className="py-3 px-3 w-32 text-center" title="Hadir / Sakit / Izin / Alpa">
+                      Kehadiran (H/S/I/A)
+                    </th>
+                    <th className="py-3 px-3 min-w-[250px]">Catatan Wali Kelas</th>
+                    <th className="py-3 px-3 w-24 text-center no-print">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
+                  {filteredStudents.map((s, idx) => {
+                    const avgData = studentAverageMap[s.nisn] || { avg: '-', predikat: '-' };
+                    const att = attendanceMap[s.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
+                    const note = catatanWaliMap[s.nisn] || '';
+
+                    return (
+                      <tr key={s.nisn} className="hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition">
+                        <td className="py-3 px-3 text-center text-slate-500 dark:text-slate-400 font-medium font-num">{idx + 1}</td>
+                        <td className="py-3 px-3 font-mono font-num text-slate-600 dark:text-slate-400 text-[11px]">{s.nisn}</td>
+                        <td className="py-3 px-3 font-semibold text-slate-900 dark:text-white">{s.nama_siswa}</td>
+                        <td className="py-3 px-3 text-center text-slate-500 dark:text-slate-400">{s.gender || '-'}</td>
+                        <td className="py-3 px-3 text-center font-black font-num text-sm bg-[#0F766E]/5 dark:bg-[#14B8A6]/10 text-[#0F766E] dark:text-[#14B8A6]">
+                          {avgData.avg}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            typeof avgData.avg === 'number'
+                              ? avgData.avg >= 85
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                : avgData.avg >= 75
+                                ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300'
+                                : avgData.avg >= 65
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                : 'bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-300'
+                              : 'text-slate-400'
+                          }`}>
+                            {avgData.predikat}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          <div className="flex items-center justify-center gap-1 text-[10px] font-bold font-num">
+                            <span className="text-emerald-700 dark:text-emerald-400" title="Hadir">{att.hadir}H</span>
+                            <span className="text-slate-400">/</span>
+                            <span className="text-sky-700 dark:text-sky-400" title="Sakit">{att.sakit}S</span>
+                            <span className="text-slate-400">/</span>
+                            <span className="text-amber-700 dark:text-amber-400" title="Izin">{att.izin}I</span>
+                            <span className="text-slate-400">/</span>
+                            <span className="text-rose-700 dark:text-rose-400" title="Alpa">{att.alpa}A</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          {isTataUsaha ? (
+                            <span className="text-xs text-slate-700 dark:text-slate-300 italic">{note || '-'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              aria-label={`Catatan wali kelas untuk ${s.nama_siswa}`}
+                              value={note}
+                              placeholder="Tulis catatan wali kelas..."
+                              onChange={(e) => handleCatatanChange(s.nisn, e.target.value)}
+                              className="neu-input w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 placeholder-slate-400"
+                            />
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center no-print">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedStudent(s);
+                              setActiveTab('cetak-individu');
+                            }}
+                            className="neu-btn neu-btn-teal min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <i className="fa-solid fa-eye text-[11px]"></i> Rapor
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-12 text-center shadow-sm border border-gray-100 dark:border-gray-700">
-            <i className="fa-solid fa-user-xmark text-3xl text-gray-400 mb-3"></i>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-1">Pilih Siswa Terlebih Dahulu</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Silakan pilih siswa dari menu dropdown di atas atau klik tombol &quot;Rapor&quot; pada tabel ringkasan.
-            </p>
-          </div>
-        )
-      )}
-    </div>
+          /* TAB 2: CETAK INDIVIDU RAPOR KURIKULUM MERDEKA */
+          selectedStudent ? (
+            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-8 lg:p-10 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
+              {/* SCHOOL PRINT HEADER */}
+              <PrintHeader sekolahId={sekolahId} user={user} />
+
+              <div className="text-center my-6">
+                <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-slate-900 dark:text-white print:text-black">
+                  LAPORAN HASIL BELAJAR (E-RAPOR SMA)
+                </h2>
+                <p className="text-xs text-slate-600 dark:text-slate-300 print:text-black font-semibold mt-1 font-num">
+                  KURIKULUM DEEP LEARNING — SEMESTER {selectedSemester.toUpperCase()} TAHUN AJARAN {selectedTahunAjaran}
+                </p>
+              </div>
+
+              {/* STUDENT IDENTITY GRID */}
+              <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-6 gap-y-2 text-xs p-4 rounded-xl mb-6 print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                <div className="flex flex-wrap sm:flex-nowrap min-w-0 gap-1">
+                  <span className="w-28 shrink-0 font-bold text-slate-600 dark:text-slate-400 print:text-black">Nama Siswa</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white print:text-black min-w-0 break-words">: {selectedStudent.nama_siswa}</span>
+                </div>
+                <div className="flex flex-wrap sm:flex-nowrap min-w-0 gap-1">
+                  <span className="w-28 shrink-0 font-bold text-slate-600 dark:text-slate-400 print:text-black">Kelas</span>
+                  <span className="font-extrabold text-slate-900 dark:text-white print:text-black min-w-0 break-words">: {selectedKelas}</span>
+                </div>
+                <div className="flex flex-wrap sm:flex-nowrap min-w-0 gap-1">
+                  <span className="w-28 shrink-0 font-bold text-slate-600 dark:text-slate-400 print:text-black">NISN</span>
+                  <span className="font-mono font-num text-slate-800 dark:text-slate-200 print:text-black min-w-0 break-words">: {selectedStudent.nisn}</span>
+                </div>
+                <div className="flex flex-wrap sm:flex-nowrap min-w-0 gap-1">
+                  <span className="w-28 shrink-0 font-bold text-slate-600 dark:text-slate-400 print:text-black">Semester</span>
+                  <span className="text-slate-800 dark:text-slate-200 print:text-black min-w-0 break-words">: {selectedSemester}</span>
+                </div>
+                <div className="flex flex-wrap sm:flex-nowrap min-w-0 gap-1">
+                  <span className="w-28 shrink-0 font-bold text-slate-600 dark:text-slate-400 print:text-black">Tahun Ajaran</span>
+                  <span className="font-num text-slate-800 dark:text-slate-200 print:text-black min-w-0 break-words">: {selectedTahunAjaran}</span>
+                </div>
+              </div>
+
+              {/* SUBJECT SCORES & CAPAIAN PEMBELAJARAN TABLE */}
+              <div className="mb-6">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
+                  A. Nilai Capaian Pembelajaran
+                </h3>
+                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] p-2 rounded-xl print:bg-white print:text-black print:p-0 print:border print:border-black print:shadow-none print:rounded-none">
+                  <div className="overflow-x-auto rounded-lg print:overflow-visible print:rounded-none">
+                    <table className="w-full text-left text-xs border-collapse print:text-black">
+                      <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-bold border-b border-slate-300 dark:border-slate-700 text-[11px] print:bg-white print:text-black print:border-black">
+                        <tr>
+                          <th className="py-2.5 px-3 w-10 text-center border-r border-slate-300/70 dark:border-slate-700 print:border-black">#</th>
+                          <th className="py-2.5 px-3 w-56 border-r border-slate-300/70 dark:border-slate-700 print:border-black">Mata Pelajaran</th>
+                          <th className="py-2.5 px-3 w-20 text-center border-r border-slate-300/70 dark:border-slate-700 print:border-black">Nilai Akhir</th>
+                          <th className="py-2.5 px-3 min-w-[260px]">Capaian Kompetensi / Capaian Pembelajaran</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-300/60 dark:divide-slate-700 print:divide-black">
+                        {getStudentSubjectScores(selectedStudent).length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-4 text-center text-slate-500 print:text-black italic">
+                              Belum ada mata pelajaran terdaftar untuk kelas ini.
+                            </td>
+                          </tr>
+                        ) : (
+                          getStudentSubjectScores(selectedStudent).map((item, idx) => (
+                            <tr key={item.namaMapel} className="hover:bg-slate-200/40 dark:hover:bg-slate-800/30 print:bg-white">
+                              <td className="py-2.5 px-3 text-center text-slate-500 print:text-black font-num border-r border-slate-300/70 dark:border-slate-700 print:border-black">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-slate-900 dark:text-white print:text-black border-r border-slate-300/70 dark:border-slate-700 print:border-black">
+                                {item.namaMapel}
+                              </td>
+                              <td className="py-2.5 px-3 text-center font-black font-num text-slate-900 dark:text-white print:text-black border-r border-slate-300/70 dark:border-slate-700 print:border-black">
+                                {item.nilaiAkhir !== null && item.nilaiAkhir !== undefined ? item.nilaiAkhir : '-'}
+                              </td>
+                              <td className="py-2.5 px-3 text-[11px] text-slate-700 dark:text-slate-300 print:text-black leading-relaxed">
+                                {item.deskripsiCapaian}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* ATTENDANCE SUMMARY & DEEP LEARNING */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 print:grid-cols-2">
+                {/* Rekap Kehadiran */}
+                <div>
+                  <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
+                    B. Ketidakhadiran
+                  </h3>
+                  <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                    <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
+                      <span className="text-slate-600 dark:text-slate-400 print:text-black">1. Sakit</span>
+                      <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
+                        {attendanceMap[selectedStudent.nisn]?.sakit || 0} hari
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
+                      <span className="text-slate-600 dark:text-slate-400 print:text-black">2. Izin</span>
+                      <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
+                        {attendanceMap[selectedStudent.nisn]?.izin || 0} hari
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-2.5 px-3">
+                      <span className="text-slate-600 dark:text-slate-400 print:text-black">3. Tanpa Keterangan (Alpa)</span>
+                      <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
+                        {attendanceMap[selectedStudent.nisn]?.alpa || 0} hari
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observasi Kurikulum Deep Learning */}
+                <div>
+                  <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
+                    C. Observasi Kurikulum Deep Learning
+                  </h3>
+                  <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                    <div className="flex flex-col py-2 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
+                      <span className="font-bold text-slate-900 dark:text-white print:text-black">1. Mindful Learning (Kesadaran Belajar)</span>
+                      {!isTataUsaha && (
+                        <input
+                          type="text"
+                          aria-label="Catatan Mindful Learning"
+                          className="neu-input mt-1.5 w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 print:hidden"
+                          placeholder="Catatan mindfulness..."
+                          value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
+                          onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
+                        />
+                      )}
+                      <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black italic mt-0.5 text-xs`}>
+                        {deepLearningMap[selectedStudent.nisn]?.mindful || '-'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col py-2 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
+                      <span className="font-bold text-slate-900 dark:text-white print:text-black">2. Meaningful Learning (Pemaknaan Materi)</span>
+                      {!isTataUsaha && (
+                        <input
+                          type="text"
+                          aria-label="Catatan Meaningful Learning"
+                          className="neu-input mt-1.5 w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 print:hidden"
+                          placeholder="Catatan meaningfulness..."
+                          value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
+                          onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
+                        />
+                      )}
+                      <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black italic mt-0.5 text-xs`}>
+                        {deepLearningMap[selectedStudent.nisn]?.meaningful || '-'}
+                      </p>
+                    </div>
+                    <div className="flex flex-col py-2 px-3">
+                      <span className="font-bold text-slate-900 dark:text-white print:text-black">3. Joyful Learning (Kegembiraan Belajar)</span>
+                      {!isTataUsaha && (
+                        <input
+                          type="text"
+                          aria-label="Catatan Joyful Learning"
+                          className="neu-input mt-1.5 w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 print:hidden"
+                          placeholder="Catatan joyfulness..."
+                          value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
+                          onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
+                        />
+                      )}
+                      <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black italic mt-0.5 text-xs`}>
+                        {deepLearningMap[selectedStudent.nisn]?.joyful || '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Catatan Wali Kelas */}
+              <div className="mb-8">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
+                  D. Catatan Wali Kelas
+                </h3>
+                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-3 text-xs min-h-[50px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                  {!isTataUsaha && (
+                    <textarea
+                      aria-label="Catatan Wali Kelas"
+                      value={catatanWaliMap[selectedStudent.nisn] ?? ''}
+                      onChange={(e) => handleCatatanChange(selectedStudent.nisn, e.target.value)}
+                      placeholder="Tulis catatan wali kelas..."
+                      rows={2}
+                      className="neu-input w-full text-slate-800 dark:text-slate-200 leading-relaxed italic resize-none print:hidden px-3 py-2 rounded-xl text-xs"
+                    />
+                  )}
+                  <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black leading-relaxed italic`}>
+                    {catatanWaliMap[selectedStudent.nisn] ||
+                      'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* PRINT SIGNATURE */}
+              <PrintSignature
+                leftTitle="Mengetahui,"
+                leftSubtitle="Orang Tua / Wali Murid"
+                leftName="..........................................."
+                hideLeftNip={true}
+                rightTitle={`Wali Kelas ${selectedKelas}`}
+                rightName={assignedWaliInfo?.nama_guru || (!isAdmin && !isTataUsaha ? user?.nama : '') || '...........................................'}
+                rightNip={assignedWaliInfo?.nip ?? (!isAdmin && !isTataUsaha ? user?.nip : undefined)}
+                showKepalaSekolah={true}
+                user={user}
+                sekolahId={sekolahId || undefined}
+                statusKepalaSekolah={statusKepalaSekolah}
+              />
+
+              {/* ACTION BAR AT BOTTOM */}
+              <div className="mt-8 pt-4 border-t border-slate-300/60 dark:border-slate-700/60 flex flex-wrap justify-between items-center gap-3 no-print">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('ringkasan')}
+                  className="neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <i className="fa-solid fa-arrow-left"></i>
+                  Kembali ke Ringkasan
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrintRapor}
+                  disabled={isPrinting}
+                  className="neu-btn neu-btn-teal min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-black inline-flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                >
+                  <i className="fa-solid fa-print"></i>
+                  Cetak Rapor Resmi (GPS Verified)
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-12 text-center">
+              <i className="fa-solid fa-user-xmark text-3xl text-slate-400 mb-3"></i>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Pilih Siswa Terlebih Dahulu</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Silakan pilih siswa dari menu dropdown di atas atau klik tombol &quot;Rapor&quot; pada tabel ringkasan.
+              </p>
+            </div>
+          )
+        )}
+      </div>
+    </section>
   );
 }

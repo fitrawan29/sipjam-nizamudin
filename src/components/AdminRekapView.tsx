@@ -1045,21 +1045,21 @@ export default function AdminRekapView({
                 </div>
             </div>
             <details className="mb-5 text-sm group no-print">
-                <summary className="font-bold text-xs text-gray-900 dark:text-white cursor-pointer outline-none flex items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <summary className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer flex items-center gap-2 mb-2 p-2.5 neu-card-sm rounded-xl">
                     <i className="fa-solid fa-caret-right transition-transform group-open:rotate-90"></i> Filter Rentang Khusus
                 </summary>
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mt-2 space-y-3">
+                <div className="p-3.5 neu-inset rounded-xl mt-2 space-y-3">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="flex-1">
-                          <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">DARI</label>
-                          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-700" />
+                          <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">DARI</label>
+                          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-2.5 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]" />
                         </div>
                         <div className="flex-1">
-                          <label className="block text-xs font-medium text-gray-900 dark:text-white mb-1">SAMPAI</label>
-                          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-700" />
+                          <label className="block text-xs font-medium text-[#0F172A] dark:text-[#F1F5F9] mb-1">SAMPAI</label>
+                          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-2.5 py-2 text-xs rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]" />
                         </div>
                     </div>
-                    <button type="button" onClick={() => tarikDataRekap(true)} disabled={loading} className="btn-click w-full bg-gray-800 dark:bg-gray-600 text-white py-2 rounded-lg text-xs font-bold shadow-sm hover:bg-gray-900 transition disabled:opacity-50">Tarik Data Custom</button>
+                    <button type="button" onClick={() => tarikDataRekap(true)} disabled={loading} className="btn-click w-full neu-btn neu-btn-primary text-white py-2.5 min-h-[40px] rounded-xl text-xs font-bold transition disabled:opacity-50">Tarik Data Custom</button>
                 </div>
             </details>
             
@@ -1105,114 +1105,114 @@ export default function AdminRekapView({
                                       Distribusi proporsional kehadiran fisik di sekolah, tugas dinas luar, dan dispensasi izin/sakit
                                   </p>
                               </div>
-                              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/60 px-2.5 py-1 rounded-full self-start sm:self-auto">
+                              <span className="text-[10px] font-semibold text-[#475569] dark:text-[#CBD5E1] neu-inset px-3 py-1 rounded-full self-start sm:self-auto font-num">
                                   Total Log Presensi: <strong>{totalPresensi}</strong>
                               </span>
                           </div>
 
                           <div className="space-y-3.5 pt-1">
                               <div>
-                                  <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
+                                  <div className="flex justify-between text-xs mb-1 font-bold text-[#334155] dark:text-[#CBD5E1]">
                                       <span className="flex items-center gap-2">
                                           <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block shrink-0"></span>
-                                          Hadir di Sekolah ({totalHadirSemua})
+                                          Hadir di Sekolah (<span className="font-num">{totalHadirSemua}</span>)
                                       </span>
-                                      <span className="text-green-600 dark:text-green-400 font-black">{persentaseKomposisi.hadir}%</span>
+                                      <span className="text-green-600 dark:text-green-400 font-black font-num">{persentaseKomposisi.hadir}%</span>
                                   </div>
-                                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                  <div className="w-full neu-inset rounded-full h-2.5 overflow-hidden">
                                       <div className="bg-green-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.hadir}%` }}></div>
                                   </div>
                               </div>
 
                               <div>
-                                  <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
+                                  <div className="flex justify-between text-xs mb-1 font-bold text-[#334155] dark:text-[#CBD5E1]">
                                       <span className="flex items-center gap-2">
                                           <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block shrink-0"></span>
-                                          Izin / Sakit ({totalIzinSemua + totalSakitSemua})
+                                          Izin / Sakit (<span className="font-num">{totalIzinSemua + totalSakitSemua}</span>)
                                       </span>
-                                      <span className="text-amber-600 dark:text-amber-400 font-black">{persentaseKomposisi.izinSakit}%</span>
+                                      <span className="text-amber-600 dark:text-amber-400 font-black font-num">{persentaseKomposisi.izinSakit}%</span>
                                   </div>
-                                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                                  <div className="w-full neu-inset rounded-full h-2.5 overflow-hidden">
                                       <div className="bg-amber-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.izinSakit}%` }}></div>
                                   </div>
                               </div>
 
                               <div>
-                                  <div className="flex justify-between text-xs mb-1 font-bold text-gray-700 dark:text-gray-200">
+                                  <div className="flex justify-between text-xs mb-1 font-bold text-[#334155] dark:text-[#CBD5E1]">
                                       <span className="flex items-center gap-2">
-                                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shrink-0"></span>
-                                          Dinas Luar ({totalDinasSemua})
+                                          <span className="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block shrink-0"></span>
+                                          Dinas Luar (<span className="font-num">{totalDinasSemua}</span>)
                                       </span>
-                                      <span className="text-blue-600 dark:text-blue-400 font-black">{persentaseKomposisi.dinasLuar}%</span>
+                                      <span className="text-sky-600 dark:text-sky-400 font-black font-num">{persentaseKomposisi.dinasLuar}%</span>
                                   </div>
-                                  <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                                      <div className="bg-blue-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.dinasLuar}%` }}></div>
+                                  <div className="w-full neu-inset rounded-full h-2.5 overflow-hidden">
+                                      <div className="bg-sky-500 h-2.5 rounded-full transition-all duration-500" style={{ width: `${persentaseKomposisi.dinasLuar}%` }}></div>
                                   </div>
                               </div>
                           </div>
                       </div>
 
                       {/* Leaderboard Card with Top 5 / Top 10 Toggle */}
-                      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-gray-100 dark:border-gray-700 gap-3">
+                      <div className="neu-card rounded-2xl p-5">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-300/60 dark:border-slate-700/60 gap-3">
                               <div>
-                                  <div className="flex items-center gap-2">
-                                      <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                      <h3 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                                           <i className="fa-solid fa-trophy text-amber-500"></i>
-                                          <span>Papan Peringkat Kinerja &amp; Kedisiplinan (Top {leaderboardLimit} Guru)</span>
+                                          <span>Papan Peringkat Kinerja &amp; Kedisiplinan (Top <span className="font-num">{leaderboardLimit}</span> Guru)</span>
                                       </h3>
-                                      <div className="inline-flex rounded-lg border border-gray-200 dark:border-gray-700 p-0.5 bg-gray-50 dark:bg-gray-800 text-xs">
+                                      <div className="inline-flex rounded-xl neu-inset p-1 text-xs gap-1">
                                           <button
                                               type="button"
                                               onClick={() => setLeaderboardLimit(5)}
-                                              className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] transition ${leaderboardLimit === 5 ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'}`}
+                                              className={`px-3 py-1.5 min-h-[34px] rounded-lg font-bold text-[11px] transition cursor-pointer ${leaderboardLimit === 5 ? 'neu-btn-primary text-white' : 'text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'}`}
                                           >
                                               Top 5
                                           </button>
                                           <button
                                               type="button"
                                               onClick={() => setLeaderboardLimit(10)}
-                                              className={`px-2.5 py-0.5 rounded-md font-bold text-[11px] transition ${leaderboardLimit === 10 ? 'bg-amber-500 text-white shadow-xs' : 'text-gray-600 dark:text-gray-300 hover:text-gray-900'}`}
+                                              className={`px-3 py-1.5 min-h-[34px] rounded-lg font-bold text-[11px] transition cursor-pointer ${leaderboardLimit === 10 ? 'neu-btn-primary text-white' : 'text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'}`}
                                           >
                                               Top 10
                                           </button>
                                       </div>
                                   </div>
-                                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                                  <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-0.5">
                                       Peringkat teratas berdasarkan ketepatan jam hadir, kepatuhan KBM, dan pemenuhan tugas piket
                                   </p>
                               </div>
-                              <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 italic">
+                              <span className="text-[10px] font-semibold text-[#475569] dark:text-[#94A3B8] italic font-num">
                                   Formula: (Hadir×10) + (Piket×10) + (Jurnal×5) + (Dinas×5)
                               </span>
                           </div>
 
                           {leaderboardTop5.length > 0 ? (
-                              <div className="space-y-3">
+                              <div className="space-y-3 p-1">
                                   {leaderboardTop5.map((guru, idx) => {
                                       const rankBadges = [
-                                          'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-300',
-                                          'bg-slate-200 text-slate-800 border-slate-300 dark:bg-slate-700 dark:text-slate-200',
-                                          'bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/40 dark:text-orange-300',
+                                          'bg-amber-500/15 text-amber-800 border-amber-400/30 dark:bg-amber-900/40 dark:text-amber-300',
+                                          'bg-slate-500/15 text-slate-800 border-slate-400/30 dark:bg-slate-700 dark:text-slate-200',
+                                          'bg-orange-500/15 text-orange-800 border-orange-400/30 dark:bg-orange-900/40 dark:text-orange-300',
                                           'bg-sky-500/15 text-sky-700 border-sky-400/30 dark:bg-sky-900/40 dark:text-sky-300',
                                           'bg-teal-500/15 text-[#0F766E] border-teal-400/30 dark:bg-teal-900/40 dark:text-teal-300',
-                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
-                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
-                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
-                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300',
-                                          'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300'
+                                          'neu-inset text-[#475569] dark:text-[#CBD5E1] border-transparent',
+                                          'neu-inset text-[#475569] dark:text-[#CBD5E1] border-transparent',
+                                          'neu-inset text-[#475569] dark:text-[#CBD5E1] border-transparent',
+                                          'neu-inset text-[#475569] dark:text-[#CBD5E1] border-transparent',
+                                          'neu-inset text-[#475569] dark:text-[#CBD5E1] border-transparent'
                                       ];
                                       return (
-                                          <div key={idx} className="flex items-center justify-between p-3.5 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-xs transition">
+                                          <div key={idx} className="neu-card-sm flex items-center justify-between p-3.5 rounded-xl transition">
                                               <div className="flex items-center gap-3 min-w-0">
-                                                  <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-black shrink-0 ${rankBadges[idx] || rankBadges[rankBadges.length - 1]}`}>
+                                                  <span className={`w-8 h-8 rounded-full border flex items-center justify-center text-xs font-black font-num shrink-0 ${rankBadges[idx] || rankBadges[rankBadges.length - 1]}`}>
                                                       {idx === 0 ? <i className="fa-solid fa-crown text-amber-500"></i> : `#${idx + 1}`}
                                                   </span>
                                                   <div className="min-w-0">
-                                                      <div className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                                                      <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">
                                                           {guru.nama}
                                                       </div>
-                                                      <div className="text-[10px] text-gray-500 dark:text-gray-400 flex flex-wrap gap-2 mt-0.5">
+                                                      <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] flex flex-wrap gap-2 mt-0.5 font-num">
                                                           <span>Hadir: <strong>{guru.hadir}</strong></span>
                                                           <span>•</span>
                                                           <span>Piket: <strong>{guru.piket}</strong></span>
@@ -1284,7 +1284,7 @@ export default function AdminRekapView({
                             <button
                               type="button"
                               onClick={() => setSearch('')}
-                              className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
+                              className="neu-btn px-3 py-2 min-h-[38px] text-xs rounded-xl text-[#334155] dark:text-[#CBD5E1] font-semibold"
                             >
                               Reset pencarian
                             </button>
@@ -1418,16 +1418,16 @@ export default function AdminRekapView({
                                 const telatStr = (r.telatDetik || 0) > 0 ? `${jam > 0 ? `${jam}j ` : ''}${menit}m` : '-';
                                 return (
                                   <tr key={idx} className="border-b border-gray-200 dark:border-gray-700 print:border-black hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium">{idx + 1}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-medium font-num">{idx + 1}</td>
                                     <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black font-semibold text-gray-900 dark:text-white print:text-black">{r.nama}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat || 0}</td>
-                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono text-[11px] print:text-[8pt]">{telatStr}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold font-num text-slate-700 dark:text-slate-300 print:text-black">{r.totalWajib ?? 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-bold font-num text-green-700 dark:text-green-400 print:text-black">{r.hadir || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-blue-700 dark:text-blue-400 print:text-black">{r.dinasLuar || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-yellow-700 dark:text-yellow-400 print:text-black">{r.sakit || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-orange-700 dark:text-orange-400 print:text-black">{r.izin || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-red-700 dark:text-red-400 print:text-black">{r.alpa || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-num text-orange-700 dark:text-orange-400 print:text-black">{r.pulangCepat || 0}</td>
+                                    <td className="px-2 py-1.5 border border-gray-200 dark:border-gray-700 print:border-black text-center font-mono font-num text-[11px] print:text-[8pt]">{telatStr}</td>
                                   </tr>
                                 );
                               })}

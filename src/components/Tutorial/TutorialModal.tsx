@@ -140,16 +140,22 @@ export default function TutorialModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/45 dark:bg-black/65 backdrop-blur-sm transition-opacity animate-in fade-in duration-200">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 dark:bg-black/65 transition-opacity animate-in fade-in duration-200"
+      onClick={onClose}
+    >
       <div 
-        className="neu-card w-full max-w-4xl max-h-[92vh] sm:max-h-[88vh] rounded-3xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Panduan dan Tutorial Lengkap SIPJAM"
+        className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] w-full max-w-4xl max-h-[92dvh] sm:max-h-[88dvh] rounded-3xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
         onClick={e => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="p-4 sm:p-5 border-b border-slate-300/60 dark:border-slate-700/60 bg-[#E6ECF2] dark:bg-[#1F242D] shrink-0">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F766E] to-[#115E59] flex items-center justify-center text-white shadow-sm">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0F766E] to-[#115E59] flex items-center justify-center text-white shrink-0">
                 <i className="fa-solid fa-book-bookmark text-lg"></i>
               </div>
               <div>
@@ -164,7 +170,7 @@ export default function TutorialModal({
             <button
               type="button"
               onClick={onClose}
-              className="neu-btn w-9 h-9 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center"
+              className="neu-btn w-11 h-11 rounded-full text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center justify-center shrink-0"
               title="Tutup panduan (Esc)"
               aria-label="Tutup panduan"
             >
@@ -177,16 +183,18 @@ export default function TutorialModal({
             <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs z-30"></i>
             <input
               type="text"
+              aria-label="Cari tutorial menu atau fitur"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Cari tutorial menu, langkah, fitur (cth: QR piket, sistem blok, nilai, guru inval)..."
-              className="neu-input w-full pl-9 pr-8 py-2.5 text-xs sm:text-sm rounded-xl"
+              className="neu-input w-full pl-9 pr-10 py-2.5 min-h-[40px] text-xs sm:text-sm rounded-xl"
             />
             {searchQuery && (
               <button
                 type="button"
+                aria-label="Hapus pencarian tutorial"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 z-30 text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs cursor-pointer"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center z-30 text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs cursor-pointer"
               >
                 <i className="fa-solid fa-circle-xmark"></i>
               </button>

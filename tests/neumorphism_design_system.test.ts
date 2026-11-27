@@ -155,13 +155,13 @@ const rekapSiswaSrc = fs.readFileSync(path.join(projectRoot, 'src', 'components'
 
 assert(appScreenSrc.includes('<ClayCard variant="mint"') && appScreenSrc.includes('<ClayButton variant="rose"') && appScreenSrc.includes('data-tour="hamburger-btn"'), 'AppScreen preserves shell primitives & tour attrs');
 assert(loginSrc.includes('clay-card w-full max-w-md') && loginSrc.includes('clay-btn clay-btn-primary') && loginSrc.includes('neu-card w-20 h-20'), 'LoginScreen upgraded to Cool Slate Neumorphism');
-assert(accountModalSrc.includes('clay-card bg-[#E6ECF2] dark:bg-[#1F242D]') && accountModalSrc.includes('neu-inset') && accountModalSrc.includes('clay-btn clay-btn-primary'), 'AccountSettingsModal upgraded to Soft-UI');
+assert(accountModalSrc.includes('clay-card neu-card bg-[#E6ECF2] dark:bg-[#1F242D]') && accountModalSrc.includes('neu-inset') && accountModalSrc.includes('clay-btn clay-btn-primary'), 'AccountSettingsModal upgraded to Soft-UI');
 assert(adminHomeSrc.includes('neu-inset') && adminHomeSrc.includes('neu-btn') && adminHomeSrc.includes('clay-card p-4 sm:p-5 space-y-3 rounded-3xl'), 'HomeViewAdmin uses Soft-UI wells and buttons');
 assert(guruHomeSrc.includes('neu-inset') && guruHomeSrc.includes('neu-btn') && guruHomeSrc.includes('clay-btn clay-btn-primary'), 'HomeViewGuru uses Soft-UI wells and actions');
 assert(tuHomeSrc.includes('neu-inset') && tuHomeSrc.includes('neu-btn'), 'HomeViewTU uses Soft-UI wells and actions');
-assert(piketSrc.includes('clay-btn px-4 py-2 rounded-2xl') && piketSrc.includes('clay-btn-mint'), 'PiketView tabs updated cleanly');
+assert(piketSrc.includes('neu-btn px-4 py-2 min-h-[40px] rounded-xl') && piketSrc.includes('neu-btn-primary text-white'), 'PiketView tabs updated to Soft-UI Neumorphism');
 assert(presensiSrc.includes('clay-card p-5 sm:p-6 rounded-3xl') && presensiSrc.includes('neu-inset'), 'GuruPresensi container and alert wells updated');
-assert(jurnalSrc.includes('clay-card p-5 sm:p-6 rounded-3xl') && jurnalSrc.includes('clay-btn clay-btn-primary'), 'GuruJurnal form and actions updated');
+assert(jurnalSrc.includes('neu-card p-5 sm:p-6 rounded-3xl') && jurnalSrc.includes('neu-btn neu-btn-primary'), 'GuruJurnal form and actions updated to Soft-UI Neumorphism');
 assert(adminRekapSrc.includes('clay-btn clay-btn-primary') && adminRekapSrc.includes('font-num'), 'AdminRekapView uses primary button & tabular numerals');
 assert(rekapJurnalSrc.includes('neu-btn neu-btn-primary text-white'), 'RekapJurnalView toggle uses neu-btn-primary');
 assert(rekapSiswaSrc.includes('clay-btn-mint neu-btn-primary text-white') && rekapSiswaSrc.includes('font-num'), 'RekapSiswaView active tabs and numerals updated');

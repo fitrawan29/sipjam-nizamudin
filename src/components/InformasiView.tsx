@@ -36,6 +36,15 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
     loadData();
   }, []);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !submitting) setShowModal(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showModal, submitting]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -620,8 +629,17 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
 
       {/* Compose / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#0F172A]/45 dark:bg-black/65 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="clay-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-lg p-5 sm:p-6 modal-pop max-h-[90vh] overflow-y-auto custom-scroll">
+        <div
+          className="fixed inset-0 bg-[#0F172A]/50 dark:bg-black/65 z-50 flex items-center justify-center p-4"
+          onClick={() => { if (!submitting) setShowModal(false); }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={modalMode === 'create' ? 'Buat Siaran / Pengumuman Baru' : 'Edit Siaran Pengumuman'}
+            onClick={(e) => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-lg p-5 sm:p-6 modal-pop max-h-[90dvh] overflow-y-auto custom-scroll"
+          >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60 mb-4">
               <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
                 <i className="fa-solid fa-bullhorn text-[#0F766E] dark:text-teal-400"></i>
@@ -629,8 +647,9 @@ export default function InformasiView({ user, setView: _setView }: { user: any; 
               </h3>
               <button
                 type="button"
+                aria-label="Tutup modal pengumuman"
                 onClick={() => setShowModal(false)}
-                className="neu-btn w-8 h-8 rounded-full flex items-center justify-center text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] transition"
+                className="neu-btn w-11 h-11 rounded-full flex items-center justify-center text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] transition shrink-0"
               >
                 <i className="fa-solid fa-xmark text-sm"></i>
               </button>

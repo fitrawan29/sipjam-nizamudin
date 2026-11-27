@@ -343,9 +343,9 @@ async function runStudentExamAntiCheatTests() {
   // Verify UjianSiswaView security elements
   assert(
     viewContent.includes('fixed inset-0 z-[99999]') &&
-    viewContent.includes('backdrop-blur-md') &&
+    viewContent.includes('bg-[#0F172A]/85') &&
     viewContent.includes('pointer-events-auto'),
-    'UjianSiswaView declares full-viewport blocking overlay: fixed inset-0 z-[99999] backdrop-blur-md pointer-events-auto'
+    'UjianSiswaView declares full-viewport blocking overlay: fixed inset-0 z-[99999] bg-[#0F172A]/85 pointer-events-auto'
   );
 
   assert(

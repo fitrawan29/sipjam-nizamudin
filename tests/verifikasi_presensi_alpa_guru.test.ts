@@ -56,20 +56,20 @@ async function runTests() {
   test('1.3: AdminVerifView renders dedicated Alpa badge with red styling and icon on unsubmitted presensi cards', () => {
     assert(
       adminVerifContent.includes("isPresensiUnsubmitted ? (") &&
-      adminVerifContent.includes("bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 border border-red-200 dark:border-red-800") &&
+      adminVerifContent.includes("bg-red-500/15 text-red-700 dark:text-red-300 shrink-0") &&
       adminVerifContent.includes("fa-user-xmark mr-1 text-[8px]"),
       'AdminVerifView must render red Alpa badge with user-xmark icon for unsubmitted presensi'
     );
   });
 
-  test('1.4: AdminVerifView renders dedicated red card border and message box for unsubmitted presensi (Alpa)', () => {
+  test('1.4: AdminVerifView renders dedicated red card ring and message box for unsubmitted presensi (Alpa)', () => {
     assert(
-      adminVerifContent.includes("border-red-200/80 dark:border-red-900/40 hover:border-red-400"),
-      'AdminVerifView must render border-red for unsubmitted presensi'
+      adminVerifContent.includes("isPresensiUnsubmitted ? 'ring-1 ring-red-500/35' : ''"),
+      'AdminVerifView must render red ring for unsubmitted presensi'
     );
     assert(
-      adminVerifContent.includes("bg-red-50/70 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 text-xs text-red-900 dark:text-red-200"),
-      'AdminVerifView must render red alert container for Alpa notification'
+      adminVerifContent.includes("neu-inset p-2.5 rounded-xl text-xs text-red-800 dark:text-red-300 space-y-1"),
+      'AdminVerifView must render Soft-UI red alert container for Alpa notification'
     );
   });
 
@@ -86,12 +86,12 @@ async function runTests() {
 
   test('1.6: AdminVerifView submitted cards render Alpa with red badge and Kategori Alpa pill', () => {
     assert(
-      adminVerifContent.includes("(item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'"),
+      adminVerifContent.includes("(item.status_verifikasi === 'Alpa' || item.jenis_presensi === 'Alpa') ? 'bg-red-500/15 text-red-700 dark:text-red-300'"),
       'AdminVerifView must render red status badge for submitted Alpa records'
     );
     assert(
       adminVerifContent.includes("if (jp === 'alpa' || sv === 'alpa') {") &&
-      adminVerifContent.includes("bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300 border border-red-300 dark:border-red-800") &&
+      adminVerifContent.includes("bg-red-500/15 text-red-700 dark:text-red-300 inline-flex items-center gap-1") &&
       adminVerifContent.includes("<i className=\"fa-solid fa-user-xmark text-[10px]\"></i> Alpa"),
       'AdminVerifView must render red Alpa pill in Kategori instead of defaulting to Hadir di Sekolah'
     );

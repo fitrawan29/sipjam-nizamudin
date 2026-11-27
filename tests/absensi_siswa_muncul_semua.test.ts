@@ -177,7 +177,7 @@ async function runAll() {
 
   runTest('3.2: Sub-antarmuka absensi me-render nama siswa (siswa.nama_siswa) secara lengkap', () => {
     assert.ok(
-      jurnalContent.includes('<span className="text-xs font-bold text-gray-900 dark:text-white">{siswa.nama_siswa}</span>'),
+      jurnalContent.includes('<span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">{siswa.nama_siswa}</span>'),
       'Roster list must explicitly render student name'
     );
   });

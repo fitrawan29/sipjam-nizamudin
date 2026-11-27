@@ -181,6 +181,22 @@ export default function RekapJurnalView({
   const [editPhotoPreview, setEditPhotoPreview] = useState<string>('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
+  useEffect(() => {
+    if (!selectedJurnal && !isEditModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isEditModalOpen && !isSavingEdit) {
+          setIsEditModalOpen(false);
+          setEditingJurnal(null);
+        } else if (selectedJurnal) {
+          setSelectedJurnal(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedJurnal, isEditModalOpen, isSavingEdit]);
+
   const checkIsHanyaKbm = useCallback((teacherName?: string, teacherNip?: string, teacherUserId?: string): boolean => {
     const queryObj = {
       id: teacherUserId,
@@ -1653,11 +1669,13 @@ export default function RekapJurnalView({
 
               {/* Mode Toggle: Jurnal Guru Pribadi vs Rekapan Jurnal Per Kelas */}
               {!hideTabSwitch && (isAdmin || isKepalaSekolah || isWaliKelas || waliClasses.length > 0) && (
-                <div className="inline-flex rounded-xl neu-inset p-1 gap-1">
+                <div role="tablist" aria-label="Mode Rekap Jurnal" className="inline-flex rounded-2xl neu-inset p-1.5 gap-1.5">
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={tabMode === 'pribadi'}
                     onClick={() => handleTabChange('pribadi')}
-                    className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 min-h-[38px] text-xs rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                       tabMode === 'pribadi'
                         ? 'neu-btn neu-btn-primary text-white'
                         : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
@@ -1667,8 +1685,10 @@ export default function RekapJurnalView({
                   </button>
                   <button
                     type="button"
+                    role="tab"
+                    aria-selected={tabMode === 'kelas'}
                     onClick={() => handleTabChange('kelas')}
-                    className={`px-3 py-1.5 text-xs rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    className={`px-3.5 py-2 min-h-[38px] text-xs rounded-xl font-bold transition-all flex items-center gap-1.5 ${
                       tabMode === 'kelas'
                         ? 'neu-btn neu-btn-primary text-white'
                         : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
@@ -1723,33 +1743,33 @@ export default function RekapJurnalView({
                         type="date"
                         value={startDate}
                         onChange={e => setStartDate(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">SAMPAI TANGGAL (OPSIONAL)</label>
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">SAMPAI TANGGAL (OPSIONAL)</label>
                       <input
                         type="date"
                         value={endDate}
                         onChange={e => setEndDate(e.target.value)}
-                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                         KELAS / ANGKATAN {tabMode === 'kelas' && !isAdmin && !isKepalaSekolah && waliClasses.length > 0 ? '(Wali Kelas)' : (!isAdmin && !isKepalaSekolah && assignedKelasList.length > 0 ? '(Ditugaskan)' : '')}
                       </label>
                       <select 
                         value={kelas} 
                         onChange={e => setKelas(e.target.value)} 
                         disabled={!isAdmin && !isKepalaSekolah && tabMode === 'kelas' && waliClasses.length === 1}
-                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800 disabled:opacity-80"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9] disabled:opacity-80"
                       >
                         {isAdmin || isKepalaSekolah || tabMode === 'pribadi' ? (
                           <>
-                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">
+                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
                               {!isAdmin && !isKepalaSekolah && assignedKelasList.length > 0
                                 ? (mapel ? `Semua Kelas (${mapel})` : 'Semua Kelas Ditugaskan')
                                 : 'Semua Kelas'}
@@ -1759,12 +1779,12 @@ export default function RekapJurnalView({
                                   ? Array.from(new Set(teacherAssignments.filter(a => (a.nama_mata_pelajaran === mapel || a.nama_mapel === mapel)).map(a => a.kelas).filter(Boolean)))
                                   : assignedKelasList)
                               : kelasList
-                            ).map((k, i) => <option key={i} value={k} className="text-gray-900 dark:text-white dark:bg-gray-800">{k}</option>)}
+                            ).map((k, i) => <option key={i} value={k} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">{k}</option>)}
                           </>
                         ) : (
                           <>
                             {waliClasses.map((w, i) => (
-                              <option key={i} value={w} className="text-gray-900 dark:text-white dark:bg-gray-800">
+                              <option key={i} value={w} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
                                 {w} (Kelas Anda)
                               </option>
                             ))}
@@ -1773,7 +1793,7 @@ export default function RekapJurnalView({
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                         MATA PELAJARAN {!isAdmin && !isKepalaSekolah && assignedMapelList.length > 0 ? '(Ditugaskan)' : ''}
                       </label>
                       <select 
@@ -1788,46 +1808,47 @@ export default function RekapJurnalView({
                             }
                           }
                         }} 
-                        className="w-full px-2 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                        className="w-full px-2.5 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       >
                         {!isAdmin && !isKepalaSekolah && tabMode === 'pribadi' && assignedMapelList.length > 0 ? (
                           <>
-                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">
+                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
                               {kelas ? `Semua Mapel (${kelas})` : 'Semua Mapel Ditugaskan'}
                             </option>
                             {(kelas && teacherAssignments.length > 0
                               ? Array.from(new Set(teacherAssignments.filter(a => a.kelas === kelas).map(a => a.nama_mata_pelajaran || a.nama_mapel).filter(Boolean)))
                               : assignedMapelList
                             ).map((m, i) => (
-                              <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">
+                              <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
                                 {m}
                               </option>
                             ))}
                           </>
                         ) : (
                           <>
-                            <option value="" className="text-gray-900 dark:text-white dark:bg-gray-800">Semua Mapel</option>
-                            {mapelList.map((m, i) => <option key={i} value={m} className="text-gray-900 dark:text-white dark:bg-gray-800">{m}</option>)}
+                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">Semua Mapel</option>
+                            {mapelList.map((m, i) => <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">{m}</option>)}
                           </>
                         )}
                       </select>
                     </div>
                     <div className="flex-1">
-                      <label className="block text-[10px] font-bold text-gray-700 dark:text-white mb-1">CARI MATERI / TOPIK KBM</label>
+                      <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">CARI MATERI / TOPIK KBM</label>
                       <div className="relative">
                         <input 
                           type="text" 
                           value={searchMateri} 
                           onChange={e => setSearchMateri(e.target.value)} 
                           placeholder="Cari materi pembelajaran..." 
-                          className="w-full pl-7 pr-7 py-2 text-xs rounded-lg input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                          className="w-full pl-8 pr-8 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                         />
-                        <i className="fa-solid fa-book-open absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        <i className="fa-solid fa-book-open absolute left-2.5 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs pointer-events-none"></i>
                         {searchMateri && (
                           <button
                             type="button"
+                            aria-label="Hapus filter materi"
                             onClick={() => setSearchMateri('')}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xs"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-[#64748B] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] text-xs"
                             title="Hapus filter materi"
                           >
                             <i className="fa-solid fa-xmark"></i>
@@ -1836,7 +1857,7 @@ export default function RekapJurnalView({
                       </div>
                     </div>
                 </div>
-                <button type="button" onClick={() => tarikRekap()} disabled={loading} className="btn-click neu-btn-primary w-full text-white py-2.5 rounded-xl text-xs font-bold mt-2 flex items-center justify-center gap-2 transition disabled:opacity-50">
+                <button type="button" onClick={() => tarikRekap()} disabled={loading} className="btn-click neu-btn neu-btn-primary w-full text-white py-2.5 min-h-[42px] rounded-xl text-xs font-bold mt-2 flex items-center justify-center gap-2 transition disabled:opacity-50">
                   {loading ? <i className="fa-solid fa-circle-notch fa-spin text-sm"></i> : <i className="fa-solid fa-search text-sm"></i>} Tampilkan Rekap
                 </button>
             </div>
@@ -1845,20 +1866,21 @@ export default function RekapJurnalView({
             {jurnalData && jurnalData.length > 0 && (
               <div className="mb-4 no-print flex items-center gap-2">
                   <div className="relative flex-1">
-                      <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+                      <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] dark:text-[#94A3B8] text-xs"></i>
                       <input
                         type="text"
                         placeholder="Cari materi, kegiatan, kelas, atau mapel..."
+                        aria-label="Cari materi, kegiatan, kelas, atau mapel"
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                        className="w-full pl-8 pr-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                   </div>
                   {search && (
                     <button
                       type="button"
                       onClick={() => setSearch('')}
-                      className="px-3 py-2 text-xs rounded-xl bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-white font-semibold"
+                      className="neu-btn px-3 py-2 min-h-[38px] text-xs rounded-xl text-[#334155] dark:text-[#CBD5E1] font-semibold"
                     >
                       Reset
                     </button>
@@ -1867,7 +1889,7 @@ export default function RekapJurnalView({
             )}
             
             {/* Document Print Subheader */}
-            <div className="text-center my-3 print:my-2">
+            <div className="hidden print:block text-center my-3 print:my-2">
               <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
                 {tabMode === 'kelas' ? `Rekapitulasi Jurnal Pembelajaran Kelas ${kelas || '(Semua Kelas)'}` : `Jurnal KBM (Pembelajaran) Guru ${mapel ? `— ${mapel}` : ''} ${kelas ? `Kelas ${kelas}` : ''}`}
               </h3>
@@ -2545,11 +2567,12 @@ export default function RekapJurnalView({
             id="modal-detail-jurnal" 
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm no-print"
+            aria-label="Detail Jurnal Pembelajaran"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F172A]/50 dark:bg-black/65 no-print"
             onClick={() => setSelectedJurnal(null)}
           >
             <div 
-              className="glass-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto space-y-4"
+              className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90dvh] overflow-y-auto space-y-4"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
@@ -2558,18 +2581,19 @@ export default function RekapJurnalView({
                     <i className="fa-solid fa-book-open"></i>
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Detail Jurnal Pembelajaran
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs font-num text-[#475569] dark:text-[#94A3B8]">
                       {formatHariTanggal(selectedJurnal.tanggal)} &bull; {selectedJurnal.nama_guru || user?.nama || '-'}
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
+                  aria-label="Tutup detail jurnal"
                   onClick={() => setSelectedJurnal(null)}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition"
+                  className="neu-btn w-11 h-11 rounded-full text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] flex items-center justify-center transition shrink-0"
                 >
                   <i className="fa-solid fa-xmark text-sm"></i>
                 </button>
@@ -2577,13 +2601,13 @@ export default function RekapJurnalView({
 
               {/* Prominent Rejection Feedback Banner in Detail Modal */}
               {selectedJurnal.status_verifikasi === 'Ditolak' && (
-                <div id="modal-rejection-banner" className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-xs">
-                  <div className="flex items-center gap-2 font-bold text-red-800 dark:text-red-300 mb-1.5">
-                    <i className="fa-solid fa-triangle-exclamation text-red-600 dark:text-red-400 text-sm"></i>
+                <div id="modal-rejection-banner" className="p-4 rounded-2xl alert-banner-red text-xs">
+                  <div className="flex items-center gap-2 font-bold text-rose-800 dark:text-rose-300 mb-1.5">
+                    <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400 text-sm"></i>
                     <span>Jurnal Ditolak oleh Administrator / Verifikator</span>
                   </div>
-                  <div className="text-red-700 dark:text-red-300 bg-white/70 dark:bg-gray-900/70 p-2.5 rounded-xl border border-red-200 dark:border-red-900/40">
-                    <span className="font-bold text-red-900 dark:text-red-200 block mb-0.5">Catatan / Alasan Penolakan:</span>
+                  <div className="text-rose-700 dark:text-rose-300 neu-inset p-2.5 rounded-xl">
+                    <span className="font-bold text-rose-900 dark:text-rose-200 block mb-0.5">Catatan / Alasan Penolakan:</span>
                     <span className="italic font-medium">
                       "{selectedJurnal.catatan_admin || selectedJurnal.alasan_penolakan || selectedJurnal.catatan_penolakan || selectedJurnal.keterangan_penolakan || 'Harap perbaiki dokumentasi atau materi KBM'}"
                     </span>
@@ -2592,25 +2616,25 @@ export default function RekapJurnalView({
               )}
 
               {/* Grid Metadata Info */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Mata Pelajaran</span>
-                  <span className="font-bold text-gray-900 dark:text-white">{selectedJurnal.mapel || '-'}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                <div className="p-2.5 neu-inset rounded-xl">
+                  <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold">Mata Pelajaran</span>
+                  <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{selectedJurnal.mapel || '-'}</span>
                 </div>
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Kelas</span>
-                  <span className="font-bold text-gray-900 dark:text-white">{selectedJurnal.kelas || '-'}</span>
+                <div className="p-2.5 neu-inset rounded-xl">
+                  <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold">Kelas</span>
+                  <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{selectedJurnal.kelas || '-'}</span>
                 </div>
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Jam Ke / Sesi</span>
-                  <span className="font-bold text-gray-900 dark:text-white">
+                <div className="p-2.5 neu-inset rounded-xl">
+                  <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold">Jam Ke / Sesi</span>
+                  <span className="font-bold font-num text-[#0F172A] dark:text-[#F1F5F9]">
                     {checkIsHanyaKbm(selectedJurnal.nama_guru, undefined, selectedJurnal.user_id)
                       ? 'KBM'
                       : (selectedJurnal.jam_ke ? `Jam ke-${selectedJurnal.jam_ke}` : (selectedJurnal.pertemuan_ke ? `Pertemuan ${selectedJurnal.pertemuan_ke}` : '-'))}
                   </span>
                 </div>
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Status Verifikasi</span>
+                <div className="p-2.5 neu-inset rounded-xl">
+                  <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold">Status Verifikasi</span>
                   {(() => {
                     const isModalTidakMasuk =
                       selectedJurnal.id?.startsWith('unfilled-kbm-') ||
@@ -2645,24 +2669,24 @@ export default function RekapJurnalView({
                     );
                   })()}
                 </div>
-                <div className="p-2.5 bg-gray-50 dark:bg-gray-900/50 rounded-xl col-span-2">
-                  <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold">Lokasi KBM</span>
-                  <span className="font-medium text-gray-900 dark:text-white">{resolveEntryLokasiKbm(selectedJurnal)}</span>
+                <div className="p-2.5 neu-inset rounded-xl sm:col-span-2">
+                  <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold">Lokasi KBM</span>
+                  <span className="font-medium text-[#0F172A] dark:text-[#F1F5F9]">{resolveEntryLokasiKbm(selectedJurnal)}</span>
                 </div>
               </div>
 
               {/* Learning details */}
               <div className="space-y-2.5 text-xs">
                 {selectedJurnal.tujuan_pembelajaran && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Tujuan Pembelajaran (TP)</span>
-                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedJurnal.tujuan_pembelajaran}</p>
+                  <div className="p-3 neu-inset rounded-xl">
+                    <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-1">Tujuan Pembelajaran (TP)</span>
+                    <p className="text-[#0F172A] dark:text-[#F1F5F9] whitespace-pre-wrap">{selectedJurnal.tujuan_pembelajaran}</p>
                   </div>
                 )}
                 {selectedJurnal.kktp && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">KKTP</span>
-                    <p className="text-gray-900 dark:text-white whitespace-pre-wrap">{selectedJurnal.kktp}</p>
+                  <div className="p-3 neu-inset rounded-xl">
+                    <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-1">KKTP</span>
+                    <p className="text-[#0F172A] dark:text-[#F1F5F9] whitespace-pre-wrap">{selectedJurnal.kktp}</p>
                   </div>
                 )}
                 {(() => {
@@ -2699,28 +2723,28 @@ export default function RekapJurnalView({
 
                   return (
                     <>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                        <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Materi / Konten</span>
-                        <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
+                      <div className="p-3 neu-inset rounded-xl">
+                        <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-1">Materi / Konten</span>
+                        <p className="text-[#0F172A] dark:text-[#F1F5F9] font-medium whitespace-pre-wrap">
                           {modalMateri}
                         </p>
                       </div>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                        <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Kegiatan Pembelajaran</span>
-                        <p className="text-gray-900 dark:text-white whitespace-pre-wrap">
+                      <div className="p-3 neu-inset rounded-xl">
+                        <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-1">Kegiatan Pembelajaran</span>
+                        <p className="text-[#0F172A] dark:text-[#F1F5F9] whitespace-pre-wrap">
                           {modalKegiatan}
                         </p>
                       </div>
-                      <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                        <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Absensi Siswa</span>
-                        <p className="text-gray-900 dark:text-white font-medium whitespace-pre-wrap">
+                      <div className="p-3 neu-inset rounded-xl">
+                        <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-1">Absensi Siswa</span>
+                        <p className="text-[#0F172A] dark:text-[#F1F5F9] font-medium font-num whitespace-pre-wrap">
                           {formatAbsensi(selectedJurnal.absensi_siswa, selectedJurnal.detail_absen, selectedJurnal.kehadiran_murid)}
                         </p>
                       </div>
                       {modalRefleksi && (
-                        <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                          <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-1">Catatan Refleksi</span>
-                          <p className="text-gray-900 dark:text-white italic whitespace-pre-wrap">
+                        <div className="p-3 neu-inset rounded-xl">
+                          <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-1">Catatan Refleksi</span>
+                          <p className="text-[#0F172A] dark:text-[#F1F5F9] italic whitespace-pre-wrap">
                             {modalRefleksi}
                           </p>
                         </div>
@@ -2730,19 +2754,19 @@ export default function RekapJurnalView({
                 })()}
                 {/* Photo view */}
                 {(selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto) && (selectedJurnal.foto_kegiatan !== '-' || selectedJurnal.link_bukti_foto !== '-') && (
-                  <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-xl">
-                    <span className="text-gray-500 dark:text-gray-400 block text-[10px] uppercase font-bold mb-2">Dokumentasi Foto</span>
+                  <div className="p-3 neu-inset rounded-xl">
+                    <span className="text-[#475569] dark:text-[#94A3B8] block text-[10px] uppercase font-bold mb-2">Dokumentasi Foto</span>
                     <div className="flex flex-col items-center gap-2">
                       <img 
                         src={transformGoogleDriveUrl(selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto)} 
                         alt="Dokumentasi KBM"
-                        className="max-h-60 w-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm"
+                        className="max-h-60 w-auto rounded-xl object-contain border border-slate-300/60 dark:border-slate-700/60"
                       />
                       <a 
                         href={selectedJurnal.foto_kegiatan || selectedJurnal.link_bukti_foto}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-semibold inline-flex items-center gap-1"
+                        className="text-xs text-[#0F766E] dark:text-teal-400 hover:underline font-semibold inline-flex items-center gap-1 min-h-[36px]"
                       >
                         <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka Gambar Ukuran Penuh
                       </a>
@@ -2761,7 +2785,7 @@ export default function RekapJurnalView({
                         setSelectedJurnal(null);
                         handleOpenEditModal(target);
                       }}
-                      className="btn-click px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                      className="neu-btn neu-btn-amber btn-click px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
                       <i className="fa-solid fa-pen-to-square"></i> Edit Jurnal
                     </button>
@@ -2770,7 +2794,7 @@ export default function RekapJurnalView({
                       onClick={() => {
                         handleDeleteJurnal(selectedJurnal);
                       }}
-                      className="btn-click px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                      className="neu-btn neu-btn-rose btn-click px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-1.5"
                     >
                       <i className="fa-solid fa-trash-can"></i> Hapus Jurnal
                     </button>
@@ -2779,7 +2803,7 @@ export default function RekapJurnalView({
                 <button
                   type="button"
                   onClick={() => setSelectedJurnal(null)}
-                  className="btn-click px-5 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl text-xs font-bold transition ml-auto"
+                  className="neu-btn btn-click px-5 py-2.5 min-h-[40px] text-[#334155] dark:text-[#CBD5E1] rounded-xl text-xs font-bold transition ml-auto"
                 >
                   Tutup
                 </button>
@@ -2794,7 +2818,8 @@ export default function RekapJurnalView({
             id="modal-edit-jurnal" 
             role="dialog"
             aria-modal="true"
-            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm no-print"
+            aria-label="Edit Jurnal KBM"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#0F172A]/50 dark:bg-black/65 no-print"
             onClick={() => {
               if (!isSavingEdit) {
                 setIsEditModalOpen(false);
@@ -2803,32 +2828,33 @@ export default function RekapJurnalView({
             }}
           >
             <div 
-              className="bg-white dark:bg-gray-800 rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[92vh] overflow-y-auto shadow-2xl border border-gray-100 dark:border-gray-700 space-y-4"
+              className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[92dvh] overflow-y-auto space-y-4"
               onClick={e => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-50 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg shadow-inner">
+                  <div className="w-10 h-10 rounded-2xl neu-inset text-[#D97706] dark:text-amber-400 flex items-center justify-center text-lg">
                     <i className="fa-solid fa-pen-to-square"></i>
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white">
+                    <h3 className="text-base font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                       Edit Jurnal KBM
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-[#475569] dark:text-[#94A3B8]">
                       Sesuaikan data jurnal pembelajaran mandiri &bull; Tanpa batasan waktu
                     </p>
                   </div>
                 </div>
                 <button
                   type="button"
+                  aria-label="Tutup modal edit jurnal"
                   disabled={isSavingEdit}
                   onClick={() => {
                     setIsEditModalOpen(false);
                     setEditingJurnal(null);
                   }}
-                  className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white flex items-center justify-center transition disabled:opacity-50"
+                  className="neu-btn w-11 h-11 rounded-full text-[#475569] dark:text-[#CBD5E1] hover:text-[#0F172A] dark:hover:text-[#F1F5F9] flex items-center justify-center transition disabled:opacity-50 shrink-0"
                 >
                   <i className="fa-solid fa-xmark text-sm"></i>
                 </button>
@@ -2836,9 +2862,9 @@ export default function RekapJurnalView({
 
               {/* Rejection Notice if applicable */}
               {editingJurnal.status_verifikasi === 'Ditolak' && (
-                <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-300 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                <div className="p-3 alert-banner-amber rounded-xl text-xs text-amber-800 dark:text-amber-300">
                   <div className="font-bold flex items-center gap-1.5 mb-1">
-                    <i className="fa-solid fa-circle-info text-amber-600"></i>
+                    <i className="fa-solid fa-circle-info text-[#D97706] dark:text-amber-400"></i>
                     <span>Jurnal Sebelumnya Ditolak</span>
                   </div>
                   <p className="text-[11px] leading-relaxed">
@@ -2853,8 +2879,8 @@ export default function RekapJurnalView({
                   <>
                     {/* 1. Nomor */}
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">1</span>
+                      <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">1</span>
                         Nomor (Pertemuan ke-)
                       </label>
                       <input
@@ -2862,14 +2888,14 @@ export default function RekapJurnalView({
                         placeholder="Contoh: 1 atau 4 (Otomatis jika dikosongkan)"
                         value={editPertemuanKe}
                         onChange={e => setEditPertemuanKe(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
 
                     {/* 2. Hari/Tanggal */}
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">2</span>
+                      <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">2</span>
                         Hari/Tanggal <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -2877,14 +2903,14 @@ export default function RekapJurnalView({
                         value={editTanggal}
                         onChange={e => setEditTanggal(e.target.value)}
                         required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
 
                     {/* 3. Materi/Konten */}
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">3</span>
+                      <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">3</span>
                         Materi / Konten Pembelajaran <span className="text-red-500">*</span>
                       </label>
                       <textarea
@@ -2893,19 +2919,19 @@ export default function RekapJurnalView({
                         onChange={e => setEditKonten(e.target.value)}
                         placeholder="Tuliskan uraian materi atau konten pembelajaran..."
                         required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
 
                     {/* 4. Kelas/JP */}
-                    <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2.5">
-                      <span className="block text-[11px] font-bold text-gray-800 dark:text-gray-200">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">4</span>
+                    <div className="p-3 neu-inset rounded-2xl space-y-2.5">
+                      <span className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">4</span>
                         Kelas / Jam Pembelajaran (JP)
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                             Kelas <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -2915,7 +2941,7 @@ export default function RekapJurnalView({
                             onChange={e => setEditKelas(e.target.value)}
                             placeholder="Pilih atau ketik kelas"
                             required
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                           <datalist id="edit-kelas-list">
                             {Array.from(new Set([...kelasList, ...assignedKelasList].filter(Boolean))).map((k: string) => (
@@ -2924,7 +2950,7 @@ export default function RekapJurnalView({
                           </datalist>
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                             JP (Jam Pelajaran)
                           </label>
                           <input
@@ -2932,11 +2958,11 @@ export default function RekapJurnalView({
                             placeholder="Contoh: 1-2 atau 3-4"
                             value={editJamKe}
                             onChange={e => setEditJamKe(e.target.value)}
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                             Mata Pelajaran <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -2946,7 +2972,7 @@ export default function RekapJurnalView({
                             onChange={e => setEditMapel(e.target.value)}
                             placeholder="Pilih atau ketik mata pelajaran"
                             required
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                           <datalist id="edit-mapel-list">
                             {Array.from(new Set([...mapelList, ...assignedMapelList].filter(Boolean))).map((m: string) => (
@@ -2958,19 +2984,19 @@ export default function RekapJurnalView({
                     </div>
 
                     {/* 5. Keadaan Siswa */}
-                    <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-gray-800 dark:text-gray-200">
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">5</span>
+                    <div className="p-3 neu-inset rounded-2xl space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">5</span>
                           Keadaan Siswa (H / I / S / A)
                         </span>
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                        <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono font-num">
                           Total: {editAbsensiCounts.total || (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa)} siswa
                         </span>
                       </div>
-                      <div className="grid grid-cols-5 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-0.5 text-center">
+                          <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-0.5 text-center">
                             Jumlah
                           </label>
                           <input
@@ -2978,11 +3004,11 @@ export default function RekapJurnalView({
                             min="0"
                             value={editAbsensiCounts.total}
                             onChange={e => updateAbsensiCount('total', parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            className="w-full px-1.5 py-1.5 text-center font-bold font-num text-xs rounded-lg neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-green-700 dark:text-green-400 mb-0.5 text-center">
+                          <label className="block text-[10px] font-bold text-[#0F766E] dark:text-teal-400 mb-0.5 text-center">
                             Hadir
                           </label>
                           <input
@@ -2990,11 +3016,11 @@ export default function RekapJurnalView({
                             min="0"
                             value={editAbsensiCounts.hadir}
                             onChange={e => updateAbsensiCount('hadir', parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-green-600 dark:text-green-400"
+                            className="w-full px-1.5 py-1.5 text-center font-bold font-num text-xs rounded-lg neu-input text-[#0F766E] dark:text-teal-400"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-blue-700 dark:text-blue-400 mb-0.5 text-center">
+                          <label className="block text-[10px] font-bold text-sky-700 dark:text-sky-400 mb-0.5 text-center">
                             Sakit
                           </label>
                           <input
@@ -3002,11 +3028,11 @@ export default function RekapJurnalView({
                             min="0"
                             value={editAbsensiCounts.sakit}
                             onChange={e => updateAbsensiCount('sakit', parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400"
+                            className="w-full px-1.5 py-1.5 text-center font-bold font-num text-xs rounded-lg neu-input text-sky-700 dark:text-sky-400"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-amber-700 dark:text-amber-400 mb-0.5 text-center">
+                          <label className="block text-[10px] font-bold text-[#D97706] dark:text-amber-400 mb-0.5 text-center">
                             Izin
                           </label>
                           <input
@@ -3014,11 +3040,11 @@ export default function RekapJurnalView({
                             min="0"
                             value={editAbsensiCounts.izin}
                             onChange={e => updateAbsensiCount('izin', parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-amber-600 dark:text-amber-400"
+                            className="w-full px-1.5 py-1.5 text-center font-bold font-num text-xs rounded-lg neu-input text-[#D97706] dark:text-amber-400"
                           />
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-bold text-red-700 dark:text-red-400 mb-0.5 text-center">
+                        <div className="col-span-2 sm:col-span-1">
+                          <label className="block text-[10px] font-bold text-rose-700 dark:text-rose-400 mb-0.5 text-center">
                             Alpa
                           </label>
                           <input
@@ -3026,31 +3052,31 @@ export default function RekapJurnalView({
                             min="0"
                             value={editAbsensiCounts.alpa}
                             onChange={e => updateAbsensiCount('alpa', parseInt(e.target.value, 10) || 0)}
-                            className="w-full px-1.5 py-1.5 text-center font-bold text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400"
+                            className="w-full px-1.5 py-1.5 text-center font-bold font-num text-xs rounded-lg neu-input text-rose-700 dark:text-rose-400"
                           />
                         </div>
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono italic">
+                      <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono font-num italic">
                         Ringkasan: Total murid: {editAbsensiCounts.total || (editAbsensiCounts.hadir + editAbsensiCounts.izin + editAbsensiCounts.sakit + editAbsensiCounts.alpa)}, Hadir: {editAbsensiCounts.hadir}, Izin: {editAbsensiCounts.izin}, Sakit: {editAbsensiCounts.sakit}, Alpa: {editAbsensiCounts.alpa}
                       </div>
                       <div className="pt-1">
-                        <label className="block text-[10px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                          Catatan Khusus Siswa <span className="text-gray-400 font-normal">(Opsional)</span>
+                        <label className="block text-[10px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                          Catatan Khusus Siswa <span className="text-[#64748B] font-normal">(Opsional)</span>
                         </label>
                         <input
                           type="text"
                           value={editCatatanKhususSiswa}
                           onChange={e => setEditCatatanKhususSiswa(e.target.value)}
                           placeholder="Catatan khusus terkait kehadiran/perilaku siswa (opsional)..."
-                          className="w-full px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-1.5 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
                     </div>
 
                     {/* 6. Tempat/Lokasi KBM */}
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">6</span>
+                      <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">6</span>
                         Tempat / Lokasi KBM <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -3059,7 +3085,7 @@ export default function RekapJurnalView({
                         onChange={e => setEditLokasiKbm(e.target.value)}
                         placeholder="Contoh: Ruang Kelas VIII A, Laboratorium Komputer"
                         required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                   </>
@@ -3068,7 +3094,7 @@ export default function RekapJurnalView({
                   <>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                           Tanggal <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -3076,11 +3102,11 @@ export default function RekapJurnalView({
                           value={editTanggal}
                           onChange={e => setEditTanggal(e.target.value)}
                           required
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                        <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                           Nama Kegiatan <span className="text-red-500">*</span>
                         </label>
                         <input
@@ -3089,12 +3115,12 @@ export default function RekapJurnalView({
                           onChange={e => setEditKonten(e.target.value)}
                           placeholder="Tuliskan nama kegiatan..."
                           required
-                          className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
                         Uraian / Deskripsi <span className="text-red-500">*</span>
                       </label>
                       <textarea
@@ -3103,27 +3129,27 @@ export default function RekapJurnalView({
                         onChange={e => setEditKegiatan(e.target.value)}
                         placeholder="Deskripsikan selengkapnya..."
                         required
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                       />
                     </div>
                   </>
                 )}
 
                 {/* 7. Dokumentasi Foto */}
-                <div className="p-3 bg-gray-50 dark:bg-gray-900/50 rounded-2xl border border-gray-200 dark:border-gray-700 space-y-2">
+                <div className="p-3 neu-inset rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="block text-[11px] font-bold text-gray-800 dark:text-gray-200">
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">7</span>
+                    <span className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">7</span>
                       Dokumentasi Foto KBM
                     </span>
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                    <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-semibold">
                       {editFile ? '✓ Foto Baru Dipilih' : editPhotoPreview ? 'Foto Tersedia' : 'Pilih Foto'}
                     </span>
                   </div>
 
                   {/* Dua Opsi: Live Camera & Upload Foto */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label className="btn-click px-3 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs border border-blue-200 dark:border-blue-800 transition shadow-sm">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <label className="neu-btn btn-click px-3 py-2.5 min-h-[40px] text-sky-700 dark:text-sky-300 rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs transition">
                       <i className="fa-solid fa-camera"></i>
                       <span>Kamera Langsung</span>
                       <input
@@ -3142,7 +3168,7 @@ export default function RekapJurnalView({
                       />
                     </label>
 
-                    <label className="btn-click px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs border border-gray-200 dark:border-gray-700 transition shadow-sm">
+                    <label className="neu-btn btn-click px-3 py-2.5 min-h-[40px] text-[#0F172A] dark:text-[#F1F5F9] rounded-xl cursor-pointer flex items-center justify-center gap-1.5 font-bold text-xs transition">
                       <i className="fa-solid fa-cloud-arrow-up"></i>
                       <span>Upload Foto / Galeri</span>
                       <input
@@ -3166,7 +3192,7 @@ export default function RekapJurnalView({
                       <img 
                         src={transformGoogleDriveUrl(editPhotoPreview)} 
                         alt="Preview Foto"
-                        className="h-24 w-auto rounded-xl object-contain border border-gray-200 dark:border-gray-700 shadow-sm"
+                        className="h-24 w-auto rounded-xl object-contain border border-slate-300/60 dark:border-slate-700/60"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
                           if (target.src !== transformGoogleDriveUrl(editPhotoPreview)) {
@@ -3174,8 +3200,8 @@ export default function RekapJurnalView({
                           }
                         }}
                       />
-                      <div className="space-y-1.5 text-[11px] text-gray-600 dark:text-gray-300">
-                        <p className="font-medium text-gray-800 dark:text-gray-200">
+                      <div className="space-y-1.5 text-[11px] text-[#475569] dark:text-[#CBD5E1]">
+                        <p className="font-medium text-[#0F172A] dark:text-[#F1F5F9]">
                           {editFile ? 'Foto Baru Dipilih (akan menggantikan foto lama)' : 'Foto Dokumentasi Saat Ini Tersimpan'}
                         </p>
                         <div className="flex items-center gap-2 flex-wrap">
@@ -3186,7 +3212,7 @@ export default function RekapJurnalView({
                                 setEditFile(null);
                                 setEditPhotoPreview(editingJurnal.foto_kegiatan || editingJurnal.link_bukti_foto || '');
                               }}
-                              className="text-[10px] text-red-500 hover:underline font-bold"
+                              className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline font-bold"
                             >
                               Batal Ganti Foto
                             </button>
@@ -3195,23 +3221,23 @@ export default function RekapJurnalView({
                       </div>
                     </div>
                   ) : null}
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400 italic">
+                  <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] italic">
                     Foto yang sudah ada akan tetap digunakan bila Anda tidak mengunggah foto baru.
                   </p>
                 </div>
 
                 {/* 8. Keterangan (Opsional) */}
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-100 text-amber-700 text-[9px] font-bold mr-1">8</span>
-                    Keterangan <span className="text-gray-400 font-normal">(Opsional)</span>
+                  <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">8</span>
+                    Keterangan <span className="text-[#64748B] font-normal">(Opsional)</span>
                   </label>
                   <textarea
                     rows={2}
                     value={editRefleksi}
                     onChange={e => setEditRefleksi(e.target.value)}
                     placeholder="Tuliskan keterangan tambahan atau catatan refleksi (opsional)..."
-                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-xl neu-input text-[#0F172A] dark:text-[#F1F5F9]"
                   />
                 </div>
 
@@ -3223,7 +3249,7 @@ export default function RekapJurnalView({
                 </div>
 
                 {/* Modal Footer */}
-                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-gray-100 dark:border-gray-700">
+                <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
                   <button
                     type="button"
                     disabled={isSavingEdit}
@@ -3231,14 +3257,14 @@ export default function RekapJurnalView({
                       setIsEditModalOpen(false);
                       setEditingJurnal(null);
                     }}
-                    className="btn-click px-4 py-2.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl text-xs font-bold transition disabled:opacity-50"
+                    className="neu-btn btn-click px-4 py-2.5 min-h-[42px] text-[#334155] dark:text-[#CBD5E1] rounded-xl text-xs font-bold transition disabled:opacity-50"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
                     disabled={isSavingEdit}
-                    className="btn-click px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                    className="neu-btn neu-btn-amber btn-click px-5 py-2.5 min-h-[42px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {isSavingEdit ? (
                       <>

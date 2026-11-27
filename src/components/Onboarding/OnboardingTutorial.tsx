@@ -359,12 +359,15 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
         ref={tooltipRef}
         data-testid="tooltip-card"
         style={calculateTooltipStyle()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={currentStep.title}
         className="neu-card rounded-2xl p-5 transition-all duration-300 ease-out animate-fadeIn max-h-[calc(100vh-32px)] overflow-y-auto custom-scroll"
       >
         {/* Top Header: Badge, Progress Dots, & Close Button */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
-            <span className="neu-inset px-2.5 py-1 text-[11px] font-bold rounded-full text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5">
+            <span className="neu-inset px-2.5 py-1 text-[11px] font-bold font-num rounded-full text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5">
               <i className="fa-solid fa-sparkles text-amber-500"></i>
               {`Langkah ${currentStepIndex + 1} dari ${steps.length}`}
             </span>
@@ -386,7 +389,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
           <button
             type="button"
             onClick={handleSkip}
-            className="neu-btn w-7 h-7 rounded-lg text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center"
+            className="neu-btn w-10 h-10 rounded-xl text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center shrink-0"
             title="Tutup tutorial"
             aria-label="Tutup tutorial"
           >
@@ -404,13 +407,13 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
           </p>
         </div>
 
-        {/* Consolidated Sub-Tabs Indicator (ClayTabs Pointer) */}
+        {/* Consolidated Sub-Tabs Indicator (NeuTabs Pointer) */}
         {currentStep.subTabs && currentStep.subTabs.length > 0 && (
           <div data-testid="subtab-pointer" className="mb-4 pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
             <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5">
               <span className="text-[11px] font-bold text-[#0F766E] dark:text-teal-300 flex items-center gap-1.5 shrink-0">
                 <i className="fa-solid fa-layer-group text-xs"></i>
-                <span>Sub-Tab Terpadu (ClayTabs):</span>
+                <span>Sub-Tab Terpadu (NeuTabs):</span>
               </span>
               {currentStep.activeSubTab && (
                 <span className="text-[10px] text-amber-700 dark:text-amber-400 font-medium shrink-0">

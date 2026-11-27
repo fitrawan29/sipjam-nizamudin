@@ -425,6 +425,18 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
   const [selectedKelas, setSelectedKelas] = useState('');
   const [file, setFile] = useState<File | null>(null);
 
+  useEffect(() => {
+    if (!previewDoc && !showSyaratModal) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showSyaratModal) setShowSyaratModal(false);
+        else if (previewDoc) setPreviewDoc(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewDoc, showSyaratModal]);
+
   const loadAllData = useCallback(async () => {
     try {
       setFetching(true);
@@ -1278,59 +1290,60 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
 
   return (
     <section id="view-dokumen" className="view-section page-enter">
-      <div className="glass-card p-4 sm:p-6 mb-6">
+      <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] p-4 sm:p-6 mb-6 print:bg-white print:text-black print:shadow-none print:border-none print:p-0 print:mb-0">
         {/* Print Header (Official School Kop) */}
         <PrintHeader user={user} sekolahId={user?.sekolah_id} />
 
         {/* Document Print Subheader */}
         <div className="hidden print:block text-center my-3 print:my-2">
-          <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-white print:text-black uppercase tracking-wider">
+          <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white print:text-black uppercase tracking-wider">
             {isAdmin
               ? 'Rekapitulasi Matriks Kelengkapan Perangkat Pembelajaran Dewan Guru'
               : 'Laporan Kelengkapan Perangkat Pembelajaran Kurikulum Merdeka'}
           </h3>
-          <div className="text-xs text-gray-600 dark:text-gray-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
+          <div className="text-xs text-slate-600 dark:text-slate-400 print:text-black mt-1 flex flex-wrap justify-center gap-3 sm:gap-6 font-medium">
             {!isAdmin && (
-              <span>Guru: <strong>{user?.nama || '-'}</strong> {user?.nip ? `(NIP. ${user.nip})` : ''}</span>
+              <span>Guru: <strong>{user?.nama || '-'}</strong> {user?.nip ? <span className="font-num">(NIP. {user.nip})</span> : ''}</span>
             )}
-            <span>Tahun Ajaran: <strong>{tahunAjaran}</strong></span>
-            <span>Dicetak: <strong>{tanggalCetak}</strong></span>
+            <span>Tahun Ajaran: <strong className="font-num">{tahunAjaran}</strong></span>
+            <span>Dicetak: <strong className="font-num">{tanggalCetak}</strong></span>
           </div>
         </div>
 
         {/* Print Orientation Toolbar & Button */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4 no-print">
-                    <button
+          <button
             type="button"
             onClick={() => triggerPrintWithGps()}
-            className="btn-click bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-md flex items-center gap-1.5 transition"
+            className="neu-btn neu-btn-teal min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition cursor-pointer"
           >
             <i className="fa-solid fa-print"></i> Cetak Dokumen
           </button>
         </div>
 
         {/* Header Title */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-gray-100 dark:border-gray-800 pb-4 no-print">
-          <div>
-            <h2 className="text-xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              <span className="w-9 h-9 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shadow-sm">
-                <i className="fa-solid fa-folder-open text-sm"></i>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 border-b border-slate-300/60 dark:border-slate-700/60 pb-4 no-print">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white flex items-center gap-2.5 min-w-0">
+              <span className="w-11 h-11 shrink-0 rounded-2xl neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center">
+                <i className="fa-solid fa-folder-open text-base"></i>
               </span>
-              Perangkat Pembelajaran Kurikulum Merdeka
+              <span className="min-w-0 break-words">Perangkat Pembelajaran Kurikulum Merdeka</span>
             </h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {isAdmin
                 ? 'Matriks kelengkapan dokumen administrasi KBM per guru dan per mata pelajaran.'
                 : 'Kelola dan unggah dokumen administrasi pembelajaran Anda.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={loadAllData}
               title="Muat Ulang Data"
-              className="btn-click w-9 h-9 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white rounded-xl text-xs font-bold shadow-sm border border-gray-200 dark:border-gray-700 flex justify-center items-center"
+              aria-label="Muat Ulang Data"
+              className="neu-btn w-10 h-10 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:text-[#0F766E] dark:hover:text-[#14B8A6] flex justify-center items-center cursor-pointer"
             >
               <i className={`fa-solid fa-rotate-right ${fetching ? 'animate-spin' : ''}`}></i>
             </button>
@@ -1338,55 +1351,71 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         </div>
 
         {/* Tab Selector */}
-        <div className="flex gap-2 mb-6 overflow-x-auto custom-scroll pb-1 no-print">
+        <div
+          role="tablist"
+          aria-label="Navigasi Perangkat Pembelajaran"
+          className="neu-inset p-2 rounded-2xl flex flex-wrap gap-2 mb-6 no-print"
+        >
           {isAdmin ? (
             <>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'matrix'}
                 onClick={() => setActiveTab('matrix')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                className={`neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   activeTab === 'matrix'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    ? 'neu-btn-teal neu-tab-active bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                 }`}
               >
-                <i className="fa-solid fa-table-cells mr-1.5 text-amber-600 dark:text-amber-400"></i> Matriks Guru ({totalGuru})
+                <i className="fa-solid fa-table-cells"></i>
+                Matriks Guru (<span className="font-num">{totalGuru}</span>)
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'syarat'}
                 onClick={() => setActiveTab('syarat')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                className={`neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   activeTab === 'syarat'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    ? 'neu-btn-teal neu-tab-active bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                 }`}
               >
-                <i className="fa-solid fa-list-check mr-1.5 text-amber-600 dark:text-amber-400"></i> Kelola Syarat Dokumen ({syaratList.length})
+                <i className="fa-solid fa-list-check"></i>
+                Kelola Syarat Dokumen (<span className="font-num">{syaratList.length}</span>)
               </button>
             </>
           ) : (
             <>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'list'}
                 onClick={() => setActiveTab('list')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                className={`neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   activeTab === 'list'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    ? 'neu-btn-teal neu-tab-active bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                 }`}
               >
-                <i className="fa-solid fa-file-lines mr-1.5 text-amber-600 dark:text-amber-400"></i> Dokumen Saya ({dokumenList.length})
+                <i className="fa-solid fa-file-lines"></i>
+                Dokumen Saya (<span className="font-num">{dokumenList.length}</span>)
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'upload'}
                 onClick={() => setActiveTab('upload')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                className={`neu-btn min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer inline-flex items-center gap-1.5 ${
                   activeTab === 'upload'
-                    ? 'bg-amber-50 text-amber-700 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-                    : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    ? 'neu-btn-teal neu-tab-active bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                    : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                 }`}
               >
-                <i className="fa-solid fa-cloud-arrow-up mr-1.5 text-amber-600 dark:text-amber-400"></i> Upload Baru
+                <i className="fa-solid fa-cloud-arrow-up"></i>
+                Upload Baru
               </button>
             </>
           )}
@@ -1398,70 +1427,71 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         {isAdmin && activeTab === 'matrix' && (
           <div className="space-y-6 fade-in no-print">
             {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 p-3.5 rounded-2xl">
-                <div className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wide">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+                <div className="text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] uppercase tracking-wide">
                   Total Dewan Guru
                 </div>
-                <div className="text-xl font-black text-amber-900 dark:text-white mt-1">
-                  {totalGuru} <span className="text-xs font-normal text-gray-500">Guru</span>
+                <div className="text-xl font-black font-num text-slate-900 dark:text-white mt-1">
+                  {totalGuru} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Guru</span>
                 </div>
               </div>
 
-              <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 p-3.5 rounded-2xl">
-                <div className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 uppercase tracking-wide">
-                  Dokumen Lengkap (6/6)
+              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+                <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
+                  Dokumen Lengkap (<span className="font-num">6/6</span>)
                 </div>
-                <div className="text-xl font-black text-emerald-700 dark:text-emerald-400 mt-1">
+                <div className="text-xl font-black font-num text-emerald-700 dark:text-emerald-400 mt-1">
                   {totalLengkap}{' '}
-                  <span className="text-xs font-normal text-gray-500">
+                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
                     ({totalGuru > 0 ? Math.round((totalLengkap / totalGuru) * 100) : 0}%)
                   </span>
                 </div>
               </div>
 
-              <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800/50 p-3.5 rounded-2xl">
-                <div className="text-[10px] font-bold text-rose-800 dark:text-rose-400 uppercase tracking-wide">
-                  Belum Lengkap (&lt;6)
+              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+                <div className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">
+                  Belum Lengkap (<span className="font-num">&lt;6</span>)
                 </div>
-                <div className="text-xl font-black text-rose-700 dark:text-rose-400 mt-1">
-                  {totalBelumLengkap} <span className="text-xs font-normal text-gray-500">Guru</span>
+                <div className="text-xl font-black font-num text-rose-700 dark:text-rose-400 mt-1">
+                  {totalBelumLengkap} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Guru</span>
                 </div>
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/50 p-3.5 rounded-2xl">
-                <div className="text-[10px] font-bold text-blue-800 dark:text-blue-400 uppercase tracking-wide">
+              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+                <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
                   Menunggu Verifikasi
                 </div>
-                <div className="text-xl font-black text-blue-700 dark:text-blue-400 mt-1">
-                  {totalMenungguVerif} <span className="text-xs font-normal text-gray-500">Dokumen</span>
+                <div className="text-xl font-black font-num text-amber-700 dark:text-amber-400 mt-1">
+                  {totalMenungguVerif} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">Dokumen</span>
                 </div>
               </div>
             </div>
 
             {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-gray-400 text-xs"></i>
+            <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center">
+              <div className="relative flex-1 min-w-0">
+                <i className="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
                 <input
                   type="text"
+                  aria-label="Cari nama guru, NIP, atau mata pelajaran"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Cari nama guru, NIP, atau mata pelajaran..."
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 placeholder-gray-400"
+                  className="w-full pl-9 pr-3 py-2.5 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                 />
               </div>
 
-              <div className="flex gap-1.5 overflow-x-auto custom-scroll pb-1">
+              <div className="neu-inset p-2 rounded-2xl flex flex-wrap sm:flex-nowrap gap-1.5 overflow-x-auto custom-scroll">
                 {(['Semua', 'Lengkap', 'Belum Lengkap', 'Menunggu'] as const).map(f => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setStatusFilter(f)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all pill-interactive ${
+                    className={`neu-btn min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                       statusFilter === f
-                        ? 'bg-amber-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+                        ? 'neu-btn-teal bg-[#0F766E] dark:bg-[#14B8A6] text-white'
+                        : 'text-slate-700 dark:text-slate-300 hover:text-[#0F766E] dark:hover:text-[#14B8A6]'
                     }`}
                   >
                     {f === 'Semua' ? 'Semua Guru' : f}
@@ -1472,7 +1502,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
 
             {/* Minimalist Cards Grid Per-Teacher Per-Subject */}
             {filteredTeacherSubjectCards.length === 0 ? (
-              <div className="text-center py-12 text-gray-400 text-xs italic bg-gray-50 dark:bg-gray-800/30 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+              <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] text-center py-12 px-4 text-slate-500 dark:text-slate-400 text-xs italic rounded-2xl">
                 Tidak ada data guru atau mata pelajaran yang cocok dengan filter atau pencarian.
               </div>
             ) : (
@@ -1481,151 +1511,156 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                   const tOpen = expandedTeacherId === g.teacher.id;
                   const doneCount = g.cards.filter(c => c.isComplete).length;
                   return (
-                    <div key={g.teacher.id} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/90 dark:border-gray-700/80 p-4 shadow-sm">
-                      <div
+                    <div key={g.teacher.id} className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4">
+                      <button
+                        type="button"
                         onClick={() => setExpandedTeacherId(tOpen ? null : g.teacher.id)}
-                        className="flex items-center justify-between gap-2.5 cursor-pointer"
+                        aria-expanded={tOpen}
+                        className="w-full flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 cursor-pointer text-left min-h-[44px] rounded-xl"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/40">
+                          <div className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] font-black text-xs flex items-center justify-center shrink-0">
                             {(g.teacher.nama_guru || 'G').charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">{g.teacher.nama_guru}</h4>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400">{g.cards.length} Mapel/Kelas</div>
+                            <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">{g.teacher.nama_guru}</h4>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                              <span className="font-num">{g.cards.length}</span> Mapel/Kelas
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg ${doneCount === g.cards.length ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'}`}>
+                          <span className={`text-[10px] font-bold font-num px-2.5 py-1 rounded-lg ${doneCount === g.cards.length ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-[#0F766E]/10 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6]'}`}>
                             {doneCount}/{g.cards.length} Lengkap
                           </span>
-                          <i className={`fa-solid fa-chevron-down text-[9px] text-gray-400 transition-transform duration-200 ${tOpen ? 'rotate-180' : ''}`}></i>
+                          <i className={`fa-solid fa-chevron-down text-[10px] text-slate-500 transition-transform duration-200 ${tOpen ? 'rotate-180 text-[#0F766E] dark:text-[#14B8A6]' : ''}`}></i>
                         </div>
-                      </div>
+                      </button>
                       {tOpen && (
-                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 grid grid-cols-1 md:grid-cols-2 gap-3 fade-in">
-                {g.cards.map((card) => {
-                  const isExpanded = expandedCardKey === card.cardKey;
-                  return (
-                    <div
-                      key={card.cardKey}
-                      onClick={() => setExpandedCardKey(isExpanded ? null : card.cardKey)}
-                      className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200/90 dark:border-gray-700/80 p-4 shadow-sm hover:shadow-md transition-all cursor-pointer card-interactive flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Header: Teacher Name, Subject Badge, & Progress Pill */}
-                        <div className="flex items-start justify-between gap-2.5">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-black text-xs flex items-center justify-center shrink-0 border border-amber-200/60 dark:border-amber-800/40">
-                              {(card.subject.nama_mapel || 'M').charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
-                                {card.subject.nama_mapel}
-                              </h4>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[10px] font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/80 px-2 py-0.5 rounded-md truncate">
-                                  {card.subject.kelas ? `Kelas ${card.subject.kelas}` : 'Semua Kelas'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Status Badge & Percentage */}
-                          <div className="text-right shrink-0">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg inline-block ${
-                              card.isComplete
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                                : card.hasPending
-                                ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300'
-                                : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
-                            }`}>
-                              {card.completedCount}/{card.totalRequired} Dokumen ({card.completionRate}%)
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Slim Minimalist Progress Bar */}
-                        <div className="mt-3">
-                          <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                card.isComplete ? 'bg-emerald-500' : card.completionRate >= 50 ? 'bg-amber-500' : 'bg-rose-500'
-                              }`}
-                              style={{ width: `${card.completionRate}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Click prompt indicator */}
-                        <div className="mt-2.5 flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500">
-                          <span>{isExpanded ? 'Klik untuk menutup rincian' : 'Klik untuk rincian dokumen'}</span>
-                          <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isExpanded ? 'rotate-180 text-amber-600 dark:text-amber-400' : ''}`}></i>
-                        </div>
-
-                        {/* Expandable Breakdown Drawer */}
-                        {isExpanded && (
-                          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 space-y-2 fade-in" onClick={e => e.stopPropagation()}>
-                            <div className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">
-                              Rincian Syarat Dokumen:
-                            </div>
-                            {card.requiredDocs.map((item, rIdx) => {
-                              const up = item.uploadedDoc;
-                              return (
-                                <div
-                                  key={rIdx}
-                                  className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-900/50 border border-gray-100 dark:border-gray-700/60 flex items-center justify-between gap-2"
-                                >
-                                  <div className="min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] font-black text-gray-900 dark:text-white uppercase px-1.5 py-0.5 rounded bg-amber-100/70 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200">
-                                        {item.req.kode_dokumen}
-                                      </span>
-                                      <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-200 truncate">
-                                        {item.req.nama_dokumen}
-                                      </span>
+                        <div className="mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60 grid grid-cols-1 md:grid-cols-2 gap-3 fade-in">
+                          {g.cards.map((card) => {
+                            const isExpanded = expandedCardKey === card.cardKey;
+                            return (
+                              <div
+                                key={card.cardKey}
+                                onClick={() => setExpandedCardKey(isExpanded ? null : card.cardKey)}
+                                className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 transition-all cursor-pointer card-interactive flex flex-col justify-between min-w-0"
+                              >
+                                <div>
+                                  {/* Header: Teacher Name, Subject Badge, & Progress Pill */}
+                                  <div className="flex flex-wrap sm:flex-nowrap items-start justify-between gap-2.5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <div className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] font-black text-xs flex items-center justify-center shrink-0">
+                                        {(card.subject.nama_mapel || 'M').charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                                          {card.subject.nama_mapel}
+                                        </h4>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                          <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-slate-200/70 dark:bg-slate-700/80 px-2 py-0.5 rounded-md truncate">
+                                            {card.subject.kelas ? `Kelas ${card.subject.kelas}` : 'Semua Kelas'}
+                                          </span>
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="text-[9px] text-gray-400 dark:text-gray-500 mt-0.5">
-                                      Format: {item.req.format_dokumen} {item.req.wajib ? '• (Wajib)' : '• (Opsional)'}
+
+                                    {/* Status Badge & Percentage */}
+                                    <div className="text-right shrink-0">
+                                      <span className={`text-[10px] font-bold font-num px-2 py-0.5 rounded-lg inline-block ${
+                                        card.isComplete
+                                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                          : card.hasPending
+                                          ? 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300'
+                                          : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                                      }`}>
+                                        {card.completedCount}/{card.totalRequired} Dokumen ({card.completionRate}%)
+                                      </span>
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-1.5 shrink-0">
-                                    {up ? (
-                                      <>
-                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                          up.status_verifikasi === 'Disetujui'
-                                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                                            : up.status_verifikasi === 'Ditolak'
-                                            ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
-                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
-                                        }`}>
-                                          {up.status_verifikasi || 'Menunggu'}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setPreviewDoc(up)}
-                                          className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-800/40 flex items-center justify-center text-xs transition"
-                                          title="Buka / Verifikasi Dokumen"
-                                        >
-                                          <i className="fa-solid fa-eye"></i>
-                                        </button>
-                                      </>
-                                    ) : (
-                                      <span className="text-[9px] font-semibold text-gray-400 bg-gray-200/60 dark:bg-gray-800 px-2 py-0.5 rounded">
-                                        Belum Diunggah
-                                      </span>
-                                    )}
+                                  {/* Slim Minimalist Progress Bar */}
+                                  <div className="mt-3">
+                                    <div className="neu-inset w-full h-2 rounded-full overflow-hidden p-0.5">
+                                      <div
+                                        className={`h-full rounded-full transition-all duration-300 ${
+                                          card.isComplete ? 'bg-emerald-500' : card.completionRate >= 50 ? 'bg-[#0F766E] dark:bg-[#14B8A6]' : 'bg-rose-500'
+                                        }`}
+                                        style={{ width: `${card.completionRate}%` }}
+                                      />
+                                    </div>
                                   </div>
+
+                                  {/* Click prompt indicator */}
+                                  <div className="mt-2.5 flex items-center justify-between text-[10px] text-slate-500 dark:text-slate-400">
+                                    <span>{isExpanded ? 'Klik untuk menutup rincian' : 'Klik untuk rincian dokumen'}</span>
+                                    <i className={`fa-solid fa-chevron-down text-[9px] transition-transform duration-200 ${isExpanded ? 'rotate-180 text-[#0F766E] dark:text-[#14B8A6]' : ''}`}></i>
+                                  </div>
+
+                                  {/* Expandable Breakdown Drawer */}
+                                  {isExpanded && (
+                                    <div className="mt-3 pt-3 border-t border-slate-300/60 dark:border-slate-700/60 space-y-2 fade-in" onClick={e => e.stopPropagation()}>
+                                      <div className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 tracking-wider">
+                                        Rincian Syarat Dokumen:
+                                      </div>
+                                      {card.requiredDocs.map((item, rIdx) => {
+                                        const up = item.uploadedDoc;
+                                        return (
+                                          <div
+                                            key={rIdx}
+                                            className="p-2.5 rounded-xl neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2"
+                                          >
+                                            <div className="min-w-0">
+                                              <div className="flex items-center gap-1.5 min-w-0">
+                                                <span className="text-[10px] font-black uppercase px-1.5 py-0.5 rounded bg-[#0F766E]/10 dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#14B8A6] shrink-0">
+                                                  {item.req.kode_dokumen}
+                                                </span>
+                                                <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">
+                                                  {item.req.nama_dokumen}
+                                                </span>
+                                              </div>
+                                              <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                                Format: {item.req.format_dokumen} {item.req.wajib ? '• (Wajib)' : '• (Opsional)'}
+                                              </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              {up ? (
+                                                <>
+                                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded ${
+                                                    up.status_verifikasi === 'Disetujui'
+                                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                                                      : up.status_verifikasi === 'Ditolak'
+                                                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300'
+                                                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300'
+                                                  }`}>
+                                                    {up.status_verifikasi || 'Menunggu'}
+                                                  </span>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => setPreviewDoc(up)}
+                                                    className="neu-btn neu-btn-teal w-10 h-10 rounded-xl flex items-center justify-center text-xs transition cursor-pointer"
+                                                    title="Buka / Verifikasi Dokumen"
+                                                    aria-label="Buka atau Verifikasi Dokumen"
+                                                  >
+                                                    <i className="fa-solid fa-eye"></i>
+                                                  </button>
+                                                </>
+                                              ) : (
+                                                <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-200/70 dark:bg-slate-800 px-2 py-1 rounded">
+                                                  Belum Diunggah
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
@@ -1642,13 +1677,13 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         {isAdmin && activeTab === 'syarat' && (
           <div className="space-y-6 fade-in no-print">
             {/* Header & Filter Toolbar */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-amber-50/50 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200 dark:border-amber-800/50">
-              <div>
-                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <i className="fa-solid fa-gear text-amber-600 dark:text-amber-400"></i>
+            <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 rounded-2xl">
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <i className="fa-solid fa-gear text-[#0F766E] dark:text-[#14B8A6]"></i>
                   Standar &amp; Syarat Dokumen Per Mata Pelajaran
                 </h3>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                   Atur jenis dokumen kurikulum, format file yang diizinkan, dan apakah dokumen tersebut wajib diunggah guru.
                 </p>
               </div>
@@ -1657,7 +1692,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 <button
                   type="button"
                   onClick={handleOpenAddSyarat}
-                  className="btn-click bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-md flex items-center gap-1.5 transition shrink-0"
+                  className="neu-btn neu-btn-teal min-h-[40px] text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 transition shrink-0 cursor-pointer"
                 >
                   <i className="fa-solid fa-plus text-xs"></i> Tambah Syarat Dokumen
                 </button>
@@ -1665,109 +1700,114 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
             </div>
 
             {/* Syarat Filters */}
-            <div className="flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 whitespace-nowrap">Filter Mapel:</span>
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <label htmlFor="filter-syarat-mapel" className="text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">Filter Mapel:</label>
                 <select
+                  id="filter-syarat-mapel"
                   value={filterSyaratMapel}
                   onChange={e => setFilterSyaratMapel(e.target.value)}
-                  className="px-3 py-1.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 font-semibold"
+                  className="px-3 py-2 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 font-semibold cursor-pointer"
                 >
-                  <option value="Semua">Semua Kategori Mapel</option>
-                  <option value="Semua Mapel">Semua Mapel (Global)</option>
+                  <option value="Semua" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">Semua Kategori Mapel</option>
+                  <option value="Semua Mapel" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">Semua Mapel (Global)</option>
                   {Array.from(new Set(syaratList.map(s => s.nama_mapel).filter(m => m && m !== 'Semua Mapel'))).map(m => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m} value={m} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">{m}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="text-xs text-gray-500 dark:text-gray-400">
-                Total <strong>{syaratList.length}</strong> syarat dokumen terdaftar
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Total <strong className="font-num text-slate-800 dark:text-slate-200">{syaratList.length}</strong> syarat dokumen terdaftar
               </div>
             </div>
 
             {/* Syarat List Table */}
-            <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm bg-white dark:bg-gray-800">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-gray-900/60 text-gray-700 dark:text-gray-300 uppercase text-[10px] font-bold border-b border-gray-200 dark:border-gray-700">
-                  <tr>
-                    <th className="p-3 text-center w-12">No</th>
-                    <th className="p-3">Mata Pelajaran</th>
-                    <th className="p-3">Kode</th>
-                    <th className="p-3">Nama Dokumen &amp; Panduan</th>
-                    <th className="p-3">Format</th>
-                    <th className="p-3 text-center">Status</th>
-                    <th className="p-3 text-center">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {syaratList
-                    .filter(s => filterSyaratMapel === 'Semua' || s.nama_mapel === filterSyaratMapel)
-                    .map((s, idx) => (
-                      <tr key={s.id} className="hover:bg-amber-50/30 dark:hover:bg-amber-950/10 transition">
-                        <td className="p-3 text-center font-bold text-gray-400">{s.urutan ?? idx + 1}</td>
-                        <td className="p-3">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                            s.nama_mapel === 'Semua Mapel'
-                              ? 'bg-teal-500/15 text-[#0F766E] dark:bg-teal-900/30 dark:text-teal-300'
-                              : 'bg-sky-500/15 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
-                          }`}>
-                            {s.nama_mapel}
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono font-bold text-amber-700 dark:text-amber-400">
-                          {s.kode_dokumen}
-                        </td>
-                        <td className="p-3">
-                          <div className="font-bold text-gray-900 dark:text-white">{s.nama_dokumen}</div>
-                          {s.deskripsi && (
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{s.deskripsi}</div>
-                          )}
-                        </td>
-                        <td className="p-3">
-                          <span className="text-[10px] font-mono bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-700 dark:text-gray-200">
-                            {s.format_dokumen}
-                          </span>
-                        </td>
-                        <td className="p-3 text-center">
-                          {s.wajib !== false ? (
-                            <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                              Wajib
+            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-2">
+              <div className="overflow-x-auto rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-200/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 uppercase text-[10px] font-bold border-b border-slate-300/70 dark:border-slate-700">
+                    <tr>
+                      <th className="p-3 text-center w-12">No</th>
+                      <th className="p-3">Mata Pelajaran</th>
+                      <th className="p-3">Kode</th>
+                      <th className="p-3">Nama Dokumen &amp; Panduan</th>
+                      <th className="p-3">Format</th>
+                      <th className="p-3 text-center">Status</th>
+                      <th className="p-3 text-center">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-300/50 dark:divide-slate-700/60">
+                    {syaratList
+                      .filter(s => filterSyaratMapel === 'Semua' || s.nama_mapel === filterSyaratMapel)
+                      .map((s, idx) => (
+                        <tr key={s.id} className="hover:bg-slate-200/40 dark:hover:bg-slate-800/40 transition">
+                          <td className="p-3 text-center font-bold font-num text-slate-500 dark:text-slate-400">{s.urutan ?? idx + 1}</td>
+                          <td className="p-3">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                              s.nama_mapel === 'Semua Mapel'
+                                ? 'bg-[#0F766E]/15 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6]'
+                                : 'bg-sky-500/15 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300'
+                            }`}>
+                              {s.nama_mapel}
                             </span>
-                          ) : (
-                            <span className="bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                              Opsional
+                          </td>
+                          <td className="p-3 font-mono font-bold text-[#0F766E] dark:text-[#14B8A6]">
+                            {s.kode_dokumen}
+                          </td>
+                          <td className="p-3">
+                            <div className="font-bold text-slate-900 dark:text-white">{s.nama_dokumen}</div>
+                            {s.deskripsi && (
+                              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{s.deskripsi}</div>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <span className="text-[10px] font-mono bg-slate-200/70 dark:bg-slate-700 px-2 py-0.5 rounded text-slate-700 dark:text-slate-200">
+                              {s.format_dokumen}
                             </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-center">
-                          {!isReadOnly ? (
-                            <div className="flex items-center justify-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditSyarat(s)}
-                                title="Edit Syarat"
-                                className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 flex items-center justify-center text-xs transition"
-                              >
-                                <i className="fa-solid fa-pen-to-square"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSyarat(s)}
-                                title="Hapus Syarat"
-                                className="w-7 h-7 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 flex items-center justify-center text-xs transition"
-                              >
-                                <i className="fa-solid fa-trash"></i>
-                              </button>
-                            </div>
-                          ) : (
-                            <span className="text-[10px] text-gray-400 dark:text-gray-500 italic">Read-only</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                          </td>
+                          <td className="p-3 text-center">
+                            {s.wajib !== false ? (
+                              <span className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Wajib
+                              </span>
+                            ) : (
+                              <span className="bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                                Opsional
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3 text-center">
+                            {!isReadOnly ? (
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditSyarat(s)}
+                                  title="Edit Syarat"
+                                  aria-label={`Edit Syarat ${s.nama_dokumen}`}
+                                  className="neu-btn w-10 h-10 rounded-xl text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center text-xs transition cursor-pointer"
+                                >
+                                  <i className="fa-solid fa-pen-to-square"></i>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSyarat(s)}
+                                  title="Hapus Syarat"
+                                  aria-label={`Hapus Syarat ${s.nama_dokumen}`}
+                                  className="neu-btn neu-btn-rose w-10 h-10 rounded-xl flex items-center justify-center text-xs transition cursor-pointer"
+                                >
+                                  <i className="fa-solid fa-trash"></i>
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">Read-only</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
@@ -1779,18 +1819,18 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
           <div className="space-y-6 fade-in no-print">
             {/* Subject-Grouped 6-Document Matrix for Teacher */}
             <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <h3 className="text-xs font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                  <i className="fa-solid fa-layer-group text-amber-600 dark:text-amber-400"></i>
+              <div className="flex flex-wrap justify-between items-center gap-2">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <i className="fa-solid fa-layer-group text-[#0F766E] dark:text-[#14B8A6]"></i>
                   Matriks Kelengkapan Dokumen Per Mata Pelajaran
                 </h3>
-                <span className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-                  {myTeacherSubjects.length} Rombel / Mapel Diampu
+                <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                  <span className="font-num">{myTeacherSubjects.length}</span> Rombel / Mapel Diampu
                 </span>
               </div>
 
               {myTeacherSubjects.map((sub, sIdx) => {
-                const completedInSubject = KURIKULUM_DOCS.filter(d => 
+                const completedInSubject = KURIKULUM_DOCS.filter(d =>
                   matchDocToTypeForSubject(dokumenList, d.id, sub.nama_mapel, sub.kelas)
                 ).length;
                 const percentage = Math.round((completedInSubject / 6) * 100);
@@ -1798,28 +1838,28 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 return (
                   <div
                     key={`${sub.nama_mapel}-${sub.kelas}-${sIdx}`}
-                    className="bg-white dark:bg-gray-800 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-4 shadow-sm space-y-3"
+                    className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 space-y-3"
                   >
                     {/* Subject Header with Progress */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-gray-100 dark:border-gray-700">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                          <h4 className="font-bold text-sm text-gray-900 dark:text-white">
+                    <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-300/60 dark:border-slate-700/60">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#0F766E] dark:bg-[#14B8A6] shrink-0"></span>
+                          <h4 className="font-bold text-sm text-slate-900 dark:text-white">
                             {sub.nama_mapel}
                           </h4>
                           {sub.kelas && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#0F766E]/10 dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#14B8A6]">
                               Kelas {sub.kelas}
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-md ${
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[11px] font-bold font-num px-2.5 py-0.5 rounded-md ${
                           completedInSubject === 6
                             ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300'
-                            : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'
+                            : 'bg-[#0F766E]/10 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6]'
                         }`}>
                           {completedInSubject}/6 Selesai ({percentage}%)
                         </span>
@@ -1835,29 +1875,27 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                         return (
                           <div
                             key={doc.id}
-                            className={`p-3 rounded-xl border flex flex-col justify-between min-h-[95px] transition ${
-                              isUploaded
-                                ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
-                                : 'bg-gray-50/60 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700'
+                            className={`neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] p-3 rounded-xl flex flex-col justify-between min-h-[115px] min-w-0 gap-2 transition ${
+                              isUploaded ? 'ring-1 ring-emerald-500/40 dark:ring-emerald-400/30' : ''
                             }`}
                           >
-                            <div className="flex justify-between items-start">
-                              <span className="font-bold text-xs text-gray-900 dark:text-white">{doc.short}</span>
-                              <span className={`text-[11px] ${isUploaded ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>
+                            <div className="flex justify-between items-start gap-1">
+                              <span className="font-bold text-xs text-slate-900 dark:text-white">{doc.short}</span>
+                              <span className={`text-[11px] ${isUploaded ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
                                 <i className={`fa-solid ${isUploaded ? 'fa-circle-check' : 'fa-circle-notch'}`}></i>
                               </span>
                             </div>
 
-                            <div className="my-1">
+                            <div>
                               <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded inline-block ${
                                 isUploaded
                                   ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
-                                  : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                                  : 'bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
                               }`}>
                                 {isUploaded ? 'Sudah Diunggah' : 'Belum Diunggah'}
                               </span>
                               {isUploaded && matchDoc?.status_verifikasi && (
-                                <div className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                                <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                                   {matchDoc.status_verifikasi}
                                 </div>
                               )}
@@ -1868,17 +1906,17 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                                 <button
                                   type="button"
                                   onClick={() => setPreviewDoc(matchDoc!)}
-                                  className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                                  className="neu-btn neu-btn-teal min-h-[40px] w-full px-2.5 py-2 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 cursor-pointer"
                                 >
-                                  <i className="fa-solid fa-eye text-[9px]"></i> Lihat
+                                  <i className="fa-solid fa-eye text-[10px]"></i> Lihat
                                 </button>
                               ) : (
                                 <button
                                   type="button"
                                   onClick={() => handleTriggerDirectUpload(doc.name, sub.nama_mapel, sub.kelas)}
-                                  className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 flex items-center gap-1"
+                                  className="neu-btn min-h-[40px] w-full px-2.5 py-2 rounded-xl text-[11px] font-bold text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center gap-1 cursor-pointer"
                                 >
-                                  <i className="fa-solid fa-upload text-[9px]"></i> Unggah
+                                  <i className="fa-solid fa-upload text-[10px]"></i> Unggah
                                 </button>
                               )}
                             </div>
@@ -1893,49 +1931,49 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
 
             {/* Uploaded Documents List */}
             <div>
-              <h3 className="text-xs font-bold text-gray-900 dark:text-white mb-3">
-                Riwayat Dokumen yang Telah Anda Unggah ({dokumenList.length})
+              <h3 className="text-xs font-bold text-slate-900 dark:text-white mb-3">
+                Riwayat Dokumen yang Telah Anda Unggah (<span className="font-num">{dokumenList.length}</span>)
               </h3>
 
               {dokumenList.length === 0 ? (
-                <div className="text-center py-12 text-gray-400 text-xs italic bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] text-center py-12 px-4 text-slate-500 dark:text-slate-400 text-xs italic rounded-2xl">
                   Belum ada dokumen yang diunggah. Klik tab &quot;Upload Baru&quot; untuk mengunggah berkas.
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 p-1">
                   {dokumenList.map(dok => (
                     <div
                       key={dok.id}
-                      className="bg-white dark:bg-gray-800 p-3.5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-2xs flex flex-col justify-between gap-3"
+                      className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl flex flex-col justify-between gap-3 min-w-0"
                     >
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 min-w-0">
                         <div className="flex justify-between items-start gap-1">
-                          <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">
+                          <span className="text-[10px] font-bold uppercase text-[#0F766E] dark:text-[#14B8A6]">
                             {dok.jenis_dokumen}
                           </span>
                           <span
-                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                            className={`text-[9px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
                               dok.status_verifikasi === 'Disetujui'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                                 : dok.status_verifikasi === 'Ditolak'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                                : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                             }`}
                           >
                             {dok.status_verifikasi || 'Menunggu'}
                           </span>
                         </div>
-                        <h4 className="text-xs font-bold text-gray-900 dark:text-white leading-tight">
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight break-words">
                           {`${dok.mapel || '-'} - ${dok.kelas ? extractTingkat(dok.kelas) : '-'} - ${dok.nama_guru || '-'}`}
                         </h4>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                        <div className="text-[10px] font-num text-slate-500 dark:text-slate-400">
                           {dok.timestamp ? formatTimestampWita(dok.timestamp) : '-'}
                         </div>
 
                         {dok.catatan_admin && (
-                          <div className="p-2 bg-gray-50 dark:bg-gray-900 rounded-lg text-[10px] border border-gray-100 dark:border-gray-700">
-                            <span className="font-bold block text-gray-700 dark:text-gray-300">Catatan Admin:</span>
-                            <span className="text-gray-600 dark:text-gray-400 italic">{dok.catatan_admin}</span>
+                          <div className="neu-inset p-2.5 rounded-xl text-[10px]">
+                            <span className="font-bold block text-slate-700 dark:text-slate-300">Catatan Admin:</span>
+                            <span className="text-slate-600 dark:text-slate-400 italic break-words">{dok.catatan_admin}</span>
                           </div>
                         )}
                       </div>
@@ -1945,9 +1983,9 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                           href={dok.link_file}
                           target="_blank"
                           rel="noreferrer"
-                          className="w-full text-center text-[11px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/50 py-1.5 rounded-lg transition border border-amber-200 dark:border-amber-800"
+                          className="neu-btn neu-btn-teal min-h-[40px] w-full flex items-center justify-center text-xs font-bold py-2 px-3 rounded-xl transition"
                         >
-                          <i className="fa-solid fa-file-pdf mr-1 text-red-500"></i> Buka Dokumen
+                          <i className="fa-solid fa-file-pdf mr-1.5"></i> Buka Dokumen
                         </a>
                       )}
                     </div>
@@ -1963,25 +2001,26 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         {/* ========================================================================= */}
         {!isAdmin && activeTab === 'upload' && (
           <div id="dokumen-content-upload" className="fade-in max-w-xl mx-auto no-print">
-            <div className="bg-white dark:bg-gray-800/90 p-5 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-                <i className="fa-solid fa-cloud-arrow-up text-amber-600 dark:text-amber-400"></i>
+            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-5 sm:p-6 rounded-2xl">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                <i className="fa-solid fa-cloud-arrow-up text-[#0F766E] dark:text-[#14B8A6]"></i>
                 Upload Perangkat Pembelajaran Baru
               </h3>
               <form onSubmit={submitDokumen} className="space-y-4">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                    Jenis Dokumen Kurikulum Merdeka <span className="text-red-500">*</span>
+                  <label htmlFor="upload-jenis-dokumen" className="block text-[11px] font-bold text-slate-900 dark:text-white mb-1.5 ml-1">
+                    Jenis Dokumen Kurikulum Merdeka <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="upload-jenis-dokumen"
                     required
                     value={jenis}
                     onChange={e => setJenis(e.target.value)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    className="w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 cursor-pointer"
                   >
-                    <option value="" disabled>-- Pilih Jenis Dokumen --</option>
+                    <option value="" disabled className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">-- Pilih Jenis Dokumen --</option>
                     {KURIKULUM_DOCS.map(d => (
-                      <option key={d.id} value={d.name}>
+                      <option key={d.id} value={d.name} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
                         {d.name} ({d.short})
                       </option>
                     ))}
@@ -1990,16 +2029,17 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    <label htmlFor="upload-mapel-input" className="block text-[11px] font-bold text-slate-900 dark:text-white mb-1.5 ml-1">
                       Mata Pelajaran
                     </label>
                     <input
+                      id="upload-mapel-input"
                       type="text"
                       list="mapel-upload-options"
                       value={selectedMapel}
                       onChange={e => setSelectedMapel(e.target.value)}
                       placeholder="Contoh: Matematika"
-                      className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                      className="w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                     />
                     <datalist id="mapel-upload-options">
                       {availableMapels.map((m, idx) => (
@@ -2008,16 +2048,17 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                     </datalist>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
+                    <label htmlFor="upload-kelas-input" className="block text-[11px] font-bold text-slate-900 dark:text-white mb-1.5 ml-1">
                       Kelas
                     </label>
                     <input
+                      id="upload-kelas-input"
                       type="text"
                       list="kelas-upload-options"
                       value={selectedKelas}
                       onChange={e => setSelectedKelas(e.target.value)}
                       placeholder="Contoh: X Merdeka"
-                      className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                      className="w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                     />
                     <datalist id="kelas-upload-options">
                       {allKelasOptions.map((k, idx) => (
@@ -2028,29 +2069,31 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                    Judul / Deskripsi Dokumen <span className="text-red-500">*</span>
+                  <label htmlFor="upload-judul-input" className="block text-[11px] font-bold text-slate-900 dark:text-white mb-1.5 ml-1">
+                    Judul / Deskripsi Dokumen <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="upload-judul-input"
                     type="text"
                     required
                     value={judul}
                     onChange={e => setJudul(e.target.value)}
-                    className="w-full px-3 py-2.5 text-xs rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800"
+                    className="w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                     placeholder="Contoh: Modul Ajar Matematika Bab 1 Kelas X Merdeka"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-900 dark:text-white mb-1.5 ml-1">
-                    Upload Berkas (PDF / Dokumen) <span className="text-red-500">*</span>
+                  <label htmlFor="upload-file-input" className="block text-[11px] font-bold text-slate-900 dark:text-white mb-1.5 ml-1">
+                    Upload Berkas (PDF / Dokumen) <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="upload-file-input"
                     type="file"
                     required
                     accept=".pdf,image/*,.docx,.doc"
                     onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
-                    className="w-full px-3 py-2 text-xs rounded-xl input-premium bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                    className="w-full px-3 py-2 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100"
                   />
                 </div>
 
@@ -2058,7 +2101,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                   <button
                     type="submit"
                     disabled={loading}
-                    className="btn-click w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3 rounded-xl shadow-md text-xs flex items-center justify-center gap-2 transition disabled:opacity-50"
+                    className="neu-btn neu-btn-teal w-full font-bold min-h-[44px] py-3 rounded-xl text-xs flex items-center justify-center gap-2 transition disabled:opacity-50 cursor-pointer"
                   >
                     {loading ? (
                       <>
@@ -2097,14 +2140,14 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
               <tbody>
                 {teacherPrintRows.map(row => (
                   <tr key={`${row.index}-${row.kode}-${row.mapelKelas}`} className="border-b border-black print:border-black">
-                    <td className="px-2 py-1.5 border border-black text-center font-medium align-top">{row.index}</td>
+                    <td className="px-2 py-1.5 border border-black text-center font-medium font-num align-top">{row.index}</td>
                     <td className="px-2 py-1.5 border border-black text-center font-mono font-bold align-top">{row.kode}</td>
                     <td className="px-2 py-1.5 border border-black align-top font-semibold">{row.nama}</td>
                     <td className="px-2 py-1.5 border border-black align-top">{row.mapelKelas}</td>
                     <td className="px-2 py-1.5 border border-black text-center align-top font-mono">{row.format}</td>
                     <td className="px-2 py-1.5 border border-black text-center align-top font-medium">{row.statusUnggah}</td>
                     <td className="px-2 py-1.5 border border-black text-center align-top font-medium">{row.statusVerif}</td>
-                    <td className="px-2 py-1.5 border border-black text-center align-top">{row.tanggal}</td>
+                    <td className="px-2 py-1.5 border border-black text-center font-num align-top">{row.tanggal}</td>
                   </tr>
                 ))}
               </tbody>
@@ -2124,7 +2167,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
               <tbody>
                 {syaratList.map((s, idx) => (
                   <tr key={s.id || idx} className="border-b border-black print:border-black">
-                    <td className="px-2 py-1.5 border border-black text-center font-medium align-top">{s.urutan ?? idx + 1}</td>
+                    <td className="px-2 py-1.5 border border-black text-center font-medium font-num align-top">{s.urutan ?? idx + 1}</td>
                     <td className="px-2 py-1.5 border border-black align-top">{s.nama_mapel}</td>
                     <td className="px-2 py-1.5 border border-black text-center font-mono font-bold align-top">{s.kode_dokumen}</td>
                     <td className="px-2 py-1.5 border border-black align-top font-semibold">{s.nama_dokumen}</td>
@@ -2156,9 +2199,9 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                   const mapelStr = item.teacherMapel.map(m => m.nama_mapel).filter(Boolean).join(', ') || item.teacher.mata_pelajaran || '-';
                   return (
                     <tr key={item.teacher.id || idx} className="border-b border-black print:border-black">
-                      <td className="px-2 py-1.5 border border-black text-center font-medium align-top">{idx + 1}</td>
+                      <td className="px-2 py-1.5 border border-black text-center font-medium font-num align-top">{idx + 1}</td>
                       <td className="px-2 py-1.5 border border-black font-semibold align-top">{item.teacher.nama_guru}</td>
-                      <td className="px-2 py-1.5 border border-black text-center font-mono align-top">{item.teacher.nip || '-'}</td>
+                      <td className="px-2 py-1.5 border border-black text-center font-mono font-num align-top">{item.teacher.nip || '-'}</td>
                       <td className="px-2 py-1.5 border border-black align-top">{mapelStr}</td>
                       {KURIKULUM_DOCS.map(doc => {
                         const d = item.docStatusMap[doc.id];
@@ -2168,7 +2211,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                           </td>
                         );
                       })}
-                      <td className="px-2 py-1.5 border border-black text-center font-bold align-top">
+                      <td className="px-2 py-1.5 border border-black text-center font-bold font-num align-top">
                         {item.completedCount}/6 ({item.completionRate}%)
                       </td>
                     </tr>
@@ -2195,46 +2238,56 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
       {/* QUICK PREVIEW & VERIFICATION MODAL FOR ADMIN & TEACHERS                   */}
       {/* ========================================================================= */}
       {previewDoc && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-gray-800 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
-            <div className="flex justify-between items-start pb-3 border-b border-gray-100 dark:border-gray-800">
-              <div>
-                <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400">
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewDoc(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Pratinjau dokumen ${previewDoc.judul || previewDoc.jenis_dokumen}`}
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl w-full max-w-lg p-5 sm:p-6 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll"
+          >
+            <div className="flex justify-between items-start gap-3 pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold uppercase text-[#0F766E] dark:text-[#14B8A6]">
                   {previewDoc.jenis_dokumen}
                 </span>
-                <h3 className="text-base font-bold text-gray-900 dark:text-white mt-0.5 leading-snug">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5 leading-snug break-words">
                   {previewDoc.judul}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setPreviewDoc(null)}
-                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition"
+                aria-label="Tutup pratinjau dokumen"
+                className="neu-btn w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white shrink-0 cursor-pointer"
               >
-                <i className="fa-solid fa-xmark text-sm"></i>
+                <i className="fa-solid fa-xmark text-base"></i>
               </button>
             </div>
 
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-800">
-                <span className="text-gray-500 dark:text-gray-400">Nama Guru Pengunggah:</span>
-                <span className="font-bold text-gray-900 dark:text-white">{previewDoc.nama_guru}</span>
+            <div className="neu-inset p-3.5 rounded-xl space-y-2 text-xs">
+              <div className="flex flex-wrap justify-between gap-2 py-1.5 border-b border-slate-300/50 dark:border-slate-700/50">
+                <span className="text-slate-500 dark:text-slate-400">Nama Guru Pengunggah:</span>
+                <span className="font-bold text-slate-900 dark:text-white">{previewDoc.nama_guru}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-800">
-                <span className="text-gray-500 dark:text-gray-400">Tanggal Upload:</span>
-                <span className="text-gray-900 dark:text-white font-medium">
+              <div className="flex flex-wrap justify-between gap-2 py-1.5 border-b border-slate-300/50 dark:border-slate-700/50">
+                <span className="text-slate-500 dark:text-slate-400">Tanggal Upload:</span>
+                <span className="text-slate-900 dark:text-white font-medium font-num">
                   {previewDoc.timestamp ? formatTimestampWita(previewDoc.timestamp) : '-'}
                 </span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-gray-50 dark:border-gray-800 items-center">
-                <span className="text-gray-500 dark:text-gray-400">Status Verifikasi:</span>
+              <div className="flex flex-wrap justify-between gap-2 py-1.5 items-center">
+                <span className="text-slate-500 dark:text-slate-400">Status Verifikasi:</span>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded ${
                     previewDoc.status_verifikasi === 'Disetujui'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                       : previewDoc.status_verifikasi === 'Ditolak'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                      : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
+                      : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
                   }`}
                 >
                   {previewDoc.status_verifikasi || 'Menunggu'}
@@ -2242,11 +2295,11 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
               </div>
 
               {previewDoc.catatan_admin && (
-                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700">
-                  <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <div className="pt-2 border-t border-slate-300/50 dark:border-slate-700/50">
+                  <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
                     Catatan Verifikasi Admin:
                   </span>
-                  <p className="text-gray-600 dark:text-gray-300 italic text-xs leading-relaxed">
+                  <p className="text-slate-600 dark:text-slate-300 italic text-xs leading-relaxed">
                     {previewDoc.catatan_admin}
                   </p>
                 </div>
@@ -2259,34 +2312,34 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 href={previewDoc.link_file}
                 target="_blank"
                 rel="noreferrer"
-                className="btn-click w-full block text-center bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-white py-2.5 rounded-xl text-xs font-bold transition shadow-sm"
+                className="neu-btn min-h-[44px] w-full flex items-center justify-center text-slate-900 dark:text-white py-2.5 px-4 rounded-xl text-xs font-bold transition"
               >
-                <i className="fa-solid fa-arrow-up-right-from-square mr-1.5 text-blue-500"></i> Buka Dokumen di Tab Baru
+                <i className="fa-solid fa-arrow-up-right-from-square mr-1.5 text-[#0F766E] dark:text-[#14B8A6]"></i> Buka Dokumen di Tab Baru
               </a>
             )}
 
             {/* Admin Verification Actions */}
             {isAdmin && !isReadOnly && (
-              <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => handleVerifyDokumen(previewDoc.id, 'Disetujui')}
-                  className="btn-click flex-1 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5"
+                  className="neu-btn neu-btn-teal min-h-[44px] flex-1 text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <i className="fa-solid fa-check"></i> Setujui Dokumen
                 </button>
                 <button
                   type="button"
                   onClick={() => handleVerifyDokumen(previewDoc.id, 'Ditolak')}
-                  className="btn-click flex-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold py-2 rounded-xl transition shadow-sm flex items-center justify-center gap-1.5"
+                  className="neu-btn neu-btn-rose min-h-[44px] flex-1 text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <i className="fa-solid fa-xmark"></i> Tolak Dokumen
                 </button>
               </div>
             )}
             {isAdmin && isReadOnly && (
-              <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                <div className="p-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl text-center text-xs text-amber-800 dark:text-amber-300 font-medium">
+              <div className="pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+                <div className="neu-inset p-2.5 rounded-xl text-center text-xs text-amber-700 dark:text-amber-300 font-medium">
                   <i className="fa-solid fa-lock mr-1.5"></i> Mode Peninjau (Read-Only) &mdash; Aksi verifikasi dinonaktifkan
                 </div>
               </div>
@@ -2299,136 +2352,152 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
       {/* ADMIN MODAL: ADD / EDIT SYARAT DOKUMEN                                    */}
       {/* ========================================================================= */}
       {showSyaratModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl border border-gray-100 dark:border-gray-800 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll">
-            <div className="flex justify-between items-center pb-3 border-b border-gray-100 dark:border-gray-800">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <i className="fa-solid fa-list-check text-amber-600 dark:text-amber-400"></i>
-                {editingSyarat ? 'Edit Syarat Dokumen' : 'Tambah Syarat Dokumen Baru'}
+        <div
+          className="fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowSyaratModal(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={editingSyarat ? 'Edit Syarat Dokumen' : 'Tambah Syarat Dokumen Baru'}
+            onClick={e => e.stopPropagation()}
+            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl w-full max-w-md p-5 sm:p-6 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll"
+          >
+            <div className="flex justify-between items-center gap-3 pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">
+                <i className="fa-solid fa-list-check text-[#0F766E] dark:text-[#14B8A6] shrink-0"></i>
+                <span className="truncate">{editingSyarat ? 'Edit Syarat Dokumen' : 'Tambah Syarat Dokumen Baru'}</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setShowSyaratModal(false)}
-                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition"
+                aria-label="Tutup modal syarat dokumen"
+                className="neu-btn w-11 h-11 rounded-xl flex items-center justify-center text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white shrink-0 cursor-pointer"
               >
-                <i className="fa-solid fa-xmark text-sm"></i>
+                <i className="fa-solid fa-xmark text-base"></i>
               </button>
             </div>
 
             <form onSubmit={handleSaveSyarat} className="space-y-3 text-xs">
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Mata Pelajaran <span className="text-red-500">*</span>
+                <label htmlFor="syarat-mapel-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Mata Pelajaran <span className="text-rose-500">*</span>
                 </label>
                 <input
+                  id="syarat-mapel-input"
                   type="text"
                   list="syarat-mapel-list"
                   required
                   value={syaratMapel}
                   onChange={e => setSyaratMapel(e.target.value)}
                   placeholder="Contoh: Semua Mapel atau Matematika"
-                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                  className="w-full px-3 py-2 min-h-[40px] rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                 />
                 <datalist id="syarat-mapel-list">
                   <option value="Semua Mapel" />
                   {availableMapels.map((m, i) => <option key={i} value={m} />)}
                 </datalist>
-                <span className="text-[10px] text-gray-400 mt-0.5 block">Gunakan &quot;Semua Mapel&quot; untuk standar global seluruh guru.</span>
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 block">Gunakan &quot;Semua Mapel&quot; untuk standar global seluruh guru.</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                    Kode Singkat <span className="text-red-500">*</span>
+                  <label htmlFor="syarat-kode-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Kode Singkat <span className="text-rose-500">*</span>
                   </label>
                   <input
+                    id="syarat-kode-input"
                     type="text"
                     required
                     value={syaratKode}
                     onChange={e => setSyaratKode(e.target.value)}
                     placeholder="Contoh: CP, ATP, MA"
-                    className="w-full px-3 py-2 rounded-xl input-premium uppercase font-mono text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                    className="w-full px-3 py-2 min-h-[40px] rounded-xl input-premium neu-input uppercase font-mono text-slate-900 dark:text-slate-100 placeholder-slate-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                  <label htmlFor="syarat-urutan-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Urutan Tampilan
                   </label>
                   <input
+                    id="syarat-urutan-input"
                     type="number"
                     min="1"
                     value={syaratUrutan}
                     onChange={e => setSyaratUrutan(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                    className="w-full px-3 py-2 min-h-[40px] rounded-xl input-premium neu-input font-num text-slate-900 dark:text-slate-100"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
-                  Nama Lengkap Dokumen <span className="text-red-500">*</span>
+                <label htmlFor="syarat-nama-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Nama Lengkap Dokumen <span className="text-rose-500">*</span>
                 </label>
                 <input
+                  id="syarat-nama-input"
                   type="text"
                   required
                   value={syaratNama}
                   onChange={e => setSyaratNama(e.target.value)}
                   placeholder="Contoh: Analisis Capaian Pembelajaran (CP)"
-                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                  className="w-full px-3 py-2 min-h-[40px] rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="syarat-format-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Format Dokumen Diizinkan
                 </label>
                 <input
+                  id="syarat-format-input"
                   type="text"
                   value={syaratFormat}
                   onChange={e => setSyaratFormat(e.target.value)}
                   placeholder="Contoh: PDF, DOCX"
-                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                  className="w-full px-3 py-2 min-h-[40px] rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 dark:text-gray-300 mb-1">
+                <label htmlFor="syarat-deskripsi-input" className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                   Petunjuk / Deskripsi Dokumen (Opsional)
                 </label>
                 <textarea
+                  id="syarat-deskripsi-input"
                   rows={2}
                   value={syaratDeskripsi}
                   onChange={e => setSyaratDeskripsi(e.target.value)}
                   placeholder="Catatan panduan pengunggahan bagi guru..."
-                  className="w-full px-3 py-2 rounded-xl input-premium text-gray-900 dark:text-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700"
+                  className="w-full px-3 py-2 rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 placeholder-slate-400"
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-1">
+              <div className="flex items-center gap-2.5 pt-1">
                 <input
                   type="checkbox"
                   id="syarat-wajib-toggle"
                   checked={syaratWajib}
                   onChange={e => setSyaratWajib(e.target.checked)}
-                  className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                  className="w-4 h-4 rounded border-slate-400 text-[#0F766E] dark:text-[#14B8A6] focus:ring-[#0F766E] cursor-pointer"
                 />
-                <label htmlFor="syarat-wajib-toggle" className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                <label htmlFor="syarat-wajib-toggle" className="text-xs font-bold text-slate-800 dark:text-slate-200 cursor-pointer">
                   Wajib diunggah untuk kelengkapan 100%
                 </label>
               </div>
 
-              <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-slate-300/60 dark:border-slate-700/60">
                 <button
                   type="button"
                   onClick={() => setShowSyaratModal(false)}
-                  className="btn-click flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 py-2 rounded-xl font-bold transition"
+                  className="neu-btn min-h-[44px] flex-1 text-slate-700 dark:text-slate-200 py-2.5 rounded-xl font-bold transition cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={syaratSaving}
-                  className="btn-click flex-1 bg-amber-600 hover:bg-amber-700 text-white py-2 rounded-xl font-bold transition shadow-sm disabled:opacity-50"
+                  className="neu-btn neu-btn-teal min-h-[44px] flex-1 py-2.5 rounded-xl font-bold transition disabled:opacity-50 cursor-pointer"
                 >
                   {syaratSaving ? 'Menyimpan...' : 'Simpan Syarat'}
                 </button>

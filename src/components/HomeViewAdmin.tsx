@@ -1067,7 +1067,8 @@ export default function HomeViewAdmin({
             <button
               type="button"
               onClick={onOpenAccountSettings}
-              className="neu-btn px-3 py-1.5 rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
+              aria-label="Edit Akun"
+              className="neu-btn px-3 py-2 min-h-[44px] rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5 transition ml-auto shrink-0 cursor-pointer"
               title="Ubah Username & Password"
             >
               <i className="fa-solid fa-gear text-xs text-[#0F766E] dark:text-teal-400"></i>
@@ -1170,9 +1171,9 @@ export default function HomeViewAdmin({
           {holidayInfo?.isHoliday && (
             <div
               data-testid="holiday-banner"
-              className="clay-card alert-banner-amber p-3.5 sm:p-4 rounded-2xl text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3"
+              className="alert-banner-amber p-3.5 sm:p-4 rounded-2xl text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-3"
             >
-              <div className="w-9 h-9 rounded-xl neu-inset text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl neu-card-sm text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-umbrella-beach text-base"></i>
               </div>
               <div className="flex-1 min-w-0">
@@ -1186,9 +1187,9 @@ export default function HomeViewAdmin({
 
           {/* Active Blok Alert for Admin */}
           {activeBlokToday && (
-            <div className="clay-card clay-card-amber alert-banner-amber p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="clay-card clay-card-amber border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-[#D97706] text-white flex items-center justify-center text-lg shrink-0">
                   <i className="fa-solid fa-layer-group"></i>
                 </div>
                 <div>
@@ -1267,7 +1268,7 @@ export default function HomeViewAdmin({
                   type="button"
                   onClick={loadAdminMatrix}
                   disabled={adminLoading}
-                  className="clay-btn btn-click px-3 py-1.5 text-[#334155] dark:text-[#F1F5F9] rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
+                  className="clay-btn btn-click px-3.5 py-2 min-h-[44px] text-[#334155] dark:text-[#F1F5F9] rounded-xl text-xs font-bold flex items-center gap-1.5 transition"
                 >
                   <i className={`fa-solid fa-rotate-right ${adminLoading ? 'animate-spin' : ''}`}></i>
                   <span>Refresh</span>
@@ -1279,18 +1280,21 @@ export default function HomeViewAdmin({
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-1">
               {/* Search Box */}
               <div className="relative flex-1">
-                <i className="fa-solid fa-search absolute left-3.5 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
+                <i className="fa-solid fa-search absolute left-3.5 top-3.5 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                 <input 
                   type="text"
                   value={matrixSearch}
                   onChange={e => setMatrixSearch(e.target.value)}
                   placeholder="Cari nama guru, NIP, atau mata pelajaran..."
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
+                  aria-label="Cari nama guru, NIP, atau mata pelajaran"
+                  className="w-full pl-9 pr-9 py-2.5 min-h-[44px] text-xs rounded-xl input-premium text-[#0F172A] dark:text-[#F1F5F9]"
                 />
                 {matrixSearch && (
                   <button 
+                    type="button"
+                    aria-label="Hapus pencarian"
                     onClick={() => setMatrixSearch('')}
-                    className="absolute right-3 top-2.5 text-xs text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9]"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-lg text-xs text-[#475569] hover:text-[#0F172A] dark:text-[#94A3B8] dark:hover:text-[#F1F5F9] cursor-pointer"
                   >
                     <i className="fa-solid fa-xmark"></i>
                   </button>
@@ -1298,13 +1302,13 @@ export default function HomeViewAdmin({
               </div>
 
               {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1 sm:pb-0 shrink-0">
+              <div className="flex items-center gap-2 overflow-x-auto custom-scroll px-2 py-2 shrink-0">
                 {(['Semua', 'Tugas Lengkap', 'Belum Lengkap'] as const).map(f => (
                   <button
                     key={f}
                     type="button"
                     onClick={() => setMatrixFilter(f)}
-                    className={`neu-btn px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition ${
+                    className={`neu-btn px-3.5 py-2 min-h-[40px] rounded-full text-xs font-bold whitespace-nowrap transition ${
                       matrixFilter === f
                         ? 'neu-btn-primary text-white'
                         : 'text-[#334155] dark:text-[#CBD5E1]'

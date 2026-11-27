@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { supabase, getActiveTenantContext } from '@/lib/supabaseClient';
 import { isMasterDataModificationAllowed } from '@/lib/dataIntegrityGuard';
 import Swal from 'sweetalert2';
@@ -138,6 +138,15 @@ export default function NaikKelasModal({
 
     return mapping;
   }, [students]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !loading) onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, loading, onClose]);
 
   if (!isOpen) return null;
 
@@ -364,8 +373,17 @@ export default function NaikKelasModal({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F172A]/45 dark:bg-black/65 backdrop-blur-xs overflow-y-auto">
-      <div className="clay-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-2xl overflow-hidden my-8">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0F172A]/50 dark:bg-black/65 overflow-y-auto"
+      onClick={() => { if (!loading) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Proses Kenaikan Kelas Siswa"
+        onClick={(e) => e.stopPropagation()}
+        className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl w-full max-w-2xl overflow-hidden my-8 max-h-[92dvh] flex flex-col"
+      >
         
         {/* Modal Header */}
         <div className="px-6 py-4 bg-[#0F766E] text-white flex justify-between items-center">
@@ -380,20 +398,23 @@ export default function NaikKelasModal({
           </div>
           <button
             type="button"
+            aria-label="Tutup modal kenaikan kelas"
             onClick={onClose}
             disabled={loading}
-            className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition disabled:opacity-50"
+            className="w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center transition disabled:opacity-50 shrink-0"
           >
             <i className="fa-solid fa-xmark text-sm"></i>
           </button>
         </div>
 
         {/* Operational Mode Navigation Tabs */}
-        <div className="grid grid-cols-3 border-b border-slate-300/60 dark:border-slate-700/60 neu-inset p-1.5 gap-1.5 text-xs font-bold">
+        <div role="tablist" aria-label="Mode Kenaikan Kelas" className="grid grid-cols-1 sm:grid-cols-3 border-b border-slate-300/60 dark:border-slate-700/60 neu-inset p-2 gap-2 text-xs font-bold">
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'perorangan'}
             onClick={() => setMode('perorangan')}
-            className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 ${
+            className={`py-2.5 px-3 min-h-[40px] rounded-xl transition flex items-center justify-center gap-1.5 ${
               mode === 'perorangan'
                 ? 'neu-btn neu-btn-primary text-white'
                 : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
@@ -405,8 +426,10 @@ export default function NaikKelasModal({
 
           <button
             type="button"
+            role="tab"
+            aria-selected={mode === 'per_kelas'}
             onClick={() => setMode('per_kelas')}
-            className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 ${
+            className={`py-2.5 px-3 min-h-[40px] rounded-xl transition flex items-center justify-center gap-1.5 ${
               mode === 'per_kelas'
                 ? 'neu-btn neu-btn-primary text-white'
                 : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'

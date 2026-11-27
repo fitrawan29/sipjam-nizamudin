@@ -1196,13 +1196,13 @@ export default function BkJurnalView({
       {/* Header Banner */}
       <div className="neu-card-sm p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center shrink-0 shadow-sm">
+          <div className="w-10 h-10 rounded-xl neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
             <i className="fa-solid fa-heart-pulse text-lg"></i>
           </div>
           <div>
             <h2 className="text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
               <span>Jurnal Bimbingan Konseling (BK)</span>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-500/15 text-rose-700 dark:text-rose-300">
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#0F766E]/10 dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#14B8A6] border border-[#0F766E]/20 dark:border-[#14B8A6]/25">
                 Bebas Rombel & Jadwal
               </span>
             </h2>
@@ -1213,19 +1213,21 @@ export default function BkJurnalView({
         </div>
 
         {/* Action Tabs */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 bg-white/80 dark:bg-gray-800/80 p-1 rounded-xl border border-rose-200/60 dark:border-rose-900/40 max-w-full">
+        <div role="tablist" aria-label="Menu Jurnal Bimbingan Konseling" className="flex flex-wrap sm:flex-nowrap items-center gap-1.5 neu-inset p-2 rounded-2xl max-w-full">
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'riwayat'}
             onClick={() => setActiveTab('riwayat')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'riwayat'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'neu-btn neu-btn-primary text-white'
+                : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
             }`}
           >
             <i className="fa-solid fa-clock-rotate-left text-[11px]"></i>
             <span>Riwayat & Rekap</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-num ${activeTab === 'riwayat' ? 'bg-white/20 text-white' : 'neu-inset text-[#0F766E] dark:text-[#14B8A6]'}`}>
               {entries.length}
             </span>
           </button>
@@ -1233,11 +1235,13 @@ export default function BkJurnalView({
           {!isReadOnly && (
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'input'}
               onClick={() => setActiveTab('input')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 activeTab === 'input'
-                  ? 'bg-rose-600 text-white shadow-xs'
-                  : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'neu-btn neu-btn-primary text-white'
+                  : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
               }`}
             >
               <i className={`fa-solid ${editingId ? 'fa-pen-to-square' : 'fa-plus'} text-[11px]`}></i>
@@ -1247,11 +1251,13 @@ export default function BkJurnalView({
 
           <button
             type="button"
+            role="tab"
+            aria-selected={activeTab === 'cetak'}
             onClick={() => setActiveTab('cetak')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'cetak'
-                ? 'bg-rose-600 text-white shadow-xs'
-                : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'neu-btn neu-btn-primary text-white'
+                : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
             }`}
           >
             <i className="fa-solid fa-print text-[11px]"></i>
@@ -1262,17 +1268,17 @@ export default function BkJurnalView({
 
       {/* TAB 1: FORM INPUT / EDIT */}
       {activeTab === 'input' && !isReadOnly && (
-        <div className="glass-card p-5 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-4">
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
-            <h3 className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">
-              <i className="fa-solid fa-clipboard-user text-rose-600"></i>
+        <div className="neu-card p-5 sm:p-6 rounded-3xl space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-300/50 dark:border-slate-700/50 pb-3">
+            <h3 className="font-bold text-sm text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-2">
+              <i className="fa-solid fa-clipboard-user text-[#0F766E] dark:text-[#14B8A6]"></i>
               <span>{editingId ? 'Ubah Catatan Konseling BK' : 'Formulir Catat Bimbingan Konseling'}</span>
             </h3>
             {editingId && (
               <button
                 type="button"
                 onClick={handleResetForm}
-                className="text-xs text-rose-600 hover:underline font-semibold"
+                className="text-xs text-[#0F766E] dark:text-[#14B8A6] hover:underline font-semibold min-h-[36px] px-2"
               >
                 Batal Edit / Tambah Baru
               </button>
@@ -1284,20 +1290,20 @@ export default function BkJurnalView({
             {(() => {
               const isMultiStudent = isMultiStudentService(formData.jenis_layanan);
               return (
-                <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2.5">
+                <div className="p-4 rounded-2xl neu-inset space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                      <i className={`fa-solid ${isMultiStudent ? 'fa-users text-rose-600' : 'fa-user-graduate text-rose-600'}`}></i>
+                    <label className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                      <i className={`fa-solid ${isMultiStudent ? 'fa-users text-[#0F766E] dark:text-[#14B8A6]' : 'fa-user-graduate text-[#0F766E] dark:text-[#14B8A6]'}`}></i>
                       <span>
                         {isMultiStudent ? 'Siswa yang Dibimbing (Multi-Siswa / Kelompok)' : 'Siswa yang Dibimbing'}{' '}
-                        <span className="text-red-500">*</span>
+                        <span className="text-rose-500">*</span>
                       </span>
                     </label>
                     {(selectedStudents.length > 0 || formData.nama_siswa) && (
                       <button
                         type="button"
                         onClick={handleClearStudent}
-                        className="text-[11px] text-rose-600 hover:text-rose-700 font-bold flex items-center gap-1 cursor-pointer"
+                        className="text-[11px] text-[#0F766E] dark:text-[#14B8A6] hover:underline font-bold flex items-center gap-1 cursor-pointer min-h-[36px] px-2"
                       >
                         <i className="fa-solid fa-arrows-rotate text-[10px]"></i>
                         <span>{isMultiStudent ? 'Reset Pilihan Siswa' : 'Ganti Siswa'}</span>
@@ -1310,12 +1316,12 @@ export default function BkJurnalView({
                     <div className="space-y-2.5">
                       {/* Selected Students Chips Display */}
                       {selectedStudents.length > 0 ? (
-                        <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-rose-200 dark:border-rose-900/60 space-y-2 shadow-xs">
+                        <div className="p-3 neu-card-sm rounded-xl space-y-2">
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-bold text-gray-700 dark:text-gray-300">
-                              Siswa Terpilih ({selectedStudents.length}):
+                            <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">
+                              Siswa Terpilih (<span className="font-num">{selectedStudents.length}</span>):
                             </span>
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                            <span className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                               Dapat memilih lintas kelas
                             </span>
                           </div>
@@ -1323,16 +1329,16 @@ export default function BkJurnalView({
                             {selectedStudents.map(s => (
                               <div
                                 key={s.id}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs shadow-2xs"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg neu-inset text-xs"
                               >
-                                <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
-                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 font-semibold font-mono">
+                                <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{s.nama_siswa}</span>
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-[#0F766E]/10 dark:bg-[#14B8A6]/15 text-[#0F766E] dark:text-[#14B8A6] font-semibold font-num">
                                   {s.kelas}
                                 </span>
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveStudent(s.id)}
-                                  className="text-gray-400 hover:text-red-600 ml-0.5 transition cursor-pointer p-0.5"
+                                  className="text-[#475569] hover:text-rose-600 dark:text-[#94A3B8] dark:hover:text-rose-400 ml-0.5 transition cursor-pointer p-1"
                                   title={`Hapus ${s.nama_siswa}`}
                                 >
                                   <i className="fa-solid fa-xmark text-xs"></i>
@@ -1342,7 +1348,7 @@ export default function BkJurnalView({
                           </div>
                         </div>
                       ) : (
-                        <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-dashed border-gray-300 dark:border-gray-700 text-center text-xs text-gray-500">
+                        <div className="p-3 neu-card-sm rounded-xl border border-dashed border-slate-400/50 dark:border-slate-600/50 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
                           Belum ada siswa dipilih. Gunakan pencarian di bawah untuk memilih siswa bimbingan kelompok.
                         </div>
                       )}
@@ -1353,7 +1359,7 @@ export default function BkJurnalView({
                           <select
                             value={studentClassFilter}
                             onChange={e => setStudentClassFilter(e.target.value)}
-                            className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                            className="neu-input px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                           >
                             <option value="all">Semua Kelas</option>
                             {availableClasses.map(c => (
@@ -1362,7 +1368,7 @@ export default function BkJurnalView({
                           </select>
 
                           <div className="relative flex-1">
-                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                             <input
                               type="text"
                               value={studentSearch}
@@ -1372,14 +1378,14 @@ export default function BkJurnalView({
                               }}
                               onFocus={() => setIsSelectingStudent(true)}
                               placeholder="Cari nama atau NISN siswa untuk ditambahkan ke kelompok..."
-                              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                              className="neu-input w-full pl-9 pr-3 py-2 min-h-[40px] rounded-xl text-xs"
                             />
                           </div>
                         </div>
 
                         {/* Multi-Student List Dropdown */}
                         {(isSelectingStudent || selectedStudents.length === 0) && (
-                          <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md divide-y divide-gray-100 dark:divide-gray-700">
+                          <div className="max-h-48 overflow-y-auto rounded-xl neu-card-sm p-2 space-y-1 custom-scroll">
                             {filteredStudents.length > 0 ? (
                               filteredStudents.slice(0, 30).map(s => {
                                 const isSelected = selectedStudents.some(item => item.id === s.id);
@@ -1387,8 +1393,8 @@ export default function BkJurnalView({
                                   <div
                                     key={s.id}
                                     onClick={() => handleToggleStudent(s)}
-                                    className={`p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer flex items-center justify-between text-xs transition ${
-                                      isSelected ? 'bg-rose-50/70 dark:bg-rose-950/50' : ''
+                                    className={`p-2.5 min-h-[40px] rounded-lg hover:bg-[#0F766E]/10 dark:hover:bg-[#14B8A6]/15 cursor-pointer flex items-center justify-between text-xs transition ${
+                                      isSelected ? 'bg-[#0F766E]/15 dark:bg-[#14B8A6]/20' : ''
                                     }`}
                                   >
                                     <div className="flex items-center gap-2">
@@ -1396,23 +1402,23 @@ export default function BkJurnalView({
                                         type="checkbox"
                                         checked={isSelected}
                                         readOnly
-                                        className="rounded text-rose-600 focus:ring-rose-500 h-3.5 w-3.5 pointer-events-none"
+                                        className="rounded accent-[#0F766E] dark:accent-[#14B8A6] h-4 w-4 pointer-events-none"
                                       />
                                       <div>
-                                        <span className={`font-bold ${isSelected ? 'text-rose-700 dark:text-rose-300' : 'text-gray-900 dark:text-white'}`}>
+                                        <span className={`font-bold ${isSelected ? 'text-[#0F766E] dark:text-[#14B8A6]' : 'text-[#0F172A] dark:text-[#F1F5F9]'}`}>
                                           {s.nama_siswa}
                                         </span>
-                                        <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-2 font-mono">
+                                        <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] ml-2 font-num">
                                           NISN: {s.nisn || '-'}
                                         </span>
                                       </div>
                                     </div>
                                     <div className="flex items-center gap-1.5">
-                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                      <span className="text-[10px] font-bold font-num px-2 py-0.5 rounded-md neu-inset text-[#334155] dark:text-[#CBD5E1]">
                                         {s.kelas}
                                       </span>
                                       {isSelected && (
-                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                                           Dipilih
                                         </span>
                                       )}
@@ -1421,7 +1427,7 @@ export default function BkJurnalView({
                                 );
                               })
                             ) : (
-                              <div className="p-3 text-center text-xs text-gray-500">
+                              <div className="p-3 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
                                 Tidak ditemukan siswa yang cocok.
                               </div>
                             )}
@@ -1433,21 +1439,21 @@ export default function BkJurnalView({
                     // Single-Student Mode UI
                     formData.nama_siswa && !isSelectingStudent ? (
                       // Selected Student Card
-                      <div className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-rose-200 dark:border-rose-900/60 flex items-center justify-between shadow-xs">
+                      <div className="p-3 neu-card-sm rounded-xl flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300 flex items-center justify-center font-bold text-xs">
+                          <div className="w-9 h-9 rounded-full neu-inset text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center font-bold text-xs">
                             {formData.nama_siswa.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="text-xs font-bold text-gray-900 dark:text-white">
+                            <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                               {formData.nama_siswa}
                             </div>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
-                              Kelas: <span className="font-bold text-gray-700 dark:text-gray-300">{formData.kelas}</span> &bull; NISN: {formData.nisn || '-'}
+                            <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-num">
+                              Kelas: <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{formData.kelas}</span> &bull; NISN: {formData.nisn || '-'}
                             </div>
                           </div>
                         </div>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                           Terpilih
                         </span>
                       </div>
@@ -1458,7 +1464,7 @@ export default function BkJurnalView({
                           <select
                             value={studentClassFilter}
                             onChange={e => setStudentClassFilter(e.target.value)}
-                            className="px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                            className="neu-input px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                           >
                             <option value="all">Semua Kelas</option>
                             {availableClasses.map(c => (
@@ -1467,7 +1473,7 @@ export default function BkJurnalView({
                           </select>
 
                           <div className="relative flex-1">
-                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                            <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                             <input
                               type="text"
                               value={studentSearch}
@@ -1477,34 +1483,34 @@ export default function BkJurnalView({
                               }}
                               onFocus={() => setIsSelectingStudent(true)}
                               placeholder="Ketik nama atau NISN siswa dari seluruh kelas..."
-                              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                              className="neu-input w-full pl-9 pr-3 py-2 min-h-[40px] rounded-xl text-xs"
                             />
                           </div>
                         </div>
 
                         {/* Student Search Dropdown */}
                         {isSelectingStudent && (
-                          <div className="max-h-48 overflow-y-auto rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-md divide-y divide-gray-100 dark:divide-gray-700">
+                          <div className="max-h-48 overflow-y-auto rounded-xl neu-card-sm p-2 space-y-1 custom-scroll">
                             {filteredStudents.length > 0 ? (
                               filteredStudents.slice(0, 30).map(s => (
                                 <div
                                   key={s.id}
                                   onClick={() => handleSelectStudent(s)}
-                                  className="p-2.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 cursor-pointer flex items-center justify-between text-xs transition"
+                                  className="p-2.5 min-h-[40px] rounded-lg hover:bg-[#0F766E]/10 dark:hover:bg-[#14B8A6]/15 cursor-pointer flex items-center justify-between text-xs transition"
                                 >
                                   <div>
-                                    <span className="font-bold text-gray-900 dark:text-white">{s.nama_siswa}</span>
-                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 ml-2 font-mono">
+                                    <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9]">{s.nama_siswa}</span>
+                                    <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] ml-2 font-num">
                                       NISN: {s.nisn || '-'}
                                     </span>
                                   </div>
-                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                                  <span className="text-[10px] font-bold font-num px-2 py-0.5 rounded-md neu-inset text-[#334155] dark:text-[#CBD5E1]">
                                     {s.kelas}
                                   </span>
                                 </div>
                               ))
                             ) : (
-                              <div className="p-3 text-center text-xs text-gray-500">
+                              <div className="p-3 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
                                 Tidak ditemukan siswa yang cocok.
                               </div>
                             )}
@@ -1520,7 +1526,7 @@ export default function BkJurnalView({
             {/* Date, Time, Bidang, Layanan */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Tanggal Bimbingan *
                 </label>
                 <input
@@ -1528,12 +1534,12 @@ export default function BkJurnalView({
                   required
                   value={formData.tanggal}
                   onChange={e => setFormData(prev => ({ ...prev, tanggal: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold font-num"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Waktu Pelaksanaan *
                 </label>
                 <input
@@ -1542,18 +1548,18 @@ export default function BkJurnalView({
                   value={formData.waktu}
                   onChange={e => setFormData(prev => ({ ...prev, waktu: e.target.value }))}
                   placeholder="Contoh: 09:30 atau 09:30 - 10:15"
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-mono"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-num"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Bidang Bimbingan *
                 </label>
                 <select
                   value={formData.bidang_bimbingan}
                   onChange={e => setFormData(prev => ({ ...prev, bidang_bimbingan: e.target.value as any }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   {BIDANG_BIMBINGAN_OPTIONS.map(b => (
                     <option key={b} value={b}>{b}</option>
@@ -1562,7 +1568,7 @@ export default function BkJurnalView({
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Jenis Layanan *
                 </label>
                 <select
@@ -1593,7 +1599,7 @@ export default function BkJurnalView({
                       detail_layanan: updatedDetail
                     }));
                   }}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   {JENIS_LAYANAN_OPTIONS.map(j => (
                     <option key={j} value={j}>{j}</option>
@@ -1605,7 +1611,7 @@ export default function BkJurnalView({
             {/* Tempat & Status */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Tempat Layanan
                 </label>
                 <input
@@ -1613,18 +1619,18 @@ export default function BkJurnalView({
                   value={formData.tempat_layanan}
                   onChange={e => setFormData(prev => ({ ...prev, tempat_layanan: e.target.value }))}
                   placeholder="Contoh: Ruang BK, Kelas, Gazebo..."
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Status Penanganan *
                 </label>
                 <select
                   value={formData.status}
                   onChange={e => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-                  className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   {STATUS_OPTIONS.map(s => (
                     <option key={s} value={s}>{s}</option>
@@ -1635,13 +1641,13 @@ export default function BkJurnalView({
 
             {/* Dynamic Fields for 11 BK Services */}
             {activeServiceConfig && activeServiceConfig.fields.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 space-y-2.5">
-                <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 pb-1.5">
-                  <label className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
-                    <i className="fa-solid fa-sliders text-rose-600"></i>
+              <div className="p-4 rounded-2xl neu-inset space-y-3">
+                <div className="flex items-center justify-between border-b border-slate-300/50 dark:border-slate-700/50 pb-2">
+                  <label className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] flex items-center gap-1.5">
+                    <i className="fa-solid fa-sliders text-[#0F766E] dark:text-[#14B8A6]"></i>
                     <span>Detail Khusus Layanan: {activeServiceConfig.name}</span>
                   </label>
-                  <span className="text-[10px] text-gray-500 italic hidden sm:inline">
+                  <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] italic hidden sm:inline">
                     {activeServiceConfig.description}
                   </span>
                 </div>
@@ -1660,8 +1666,8 @@ export default function BkJurnalView({
                           : ''
                       }
                     >
-                      <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
-                        {f.label} {f.required && <span className="text-red-500">*</span>}
+                      <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
+                        {f.label} {f.required && <span className="text-rose-500">*</span>}
                       </label>
                       <input
                         type="text"
@@ -1677,7 +1683,7 @@ export default function BkJurnalView({
                           }));
                         }}
                         placeholder={f.placeholder}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                        className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs"
                       />
                     </div>
                   ))}
@@ -1688,8 +1694,8 @@ export default function BkJurnalView({
             {/* Catatan Kasus & Permasalahan */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
-                  Catatan Kasus / Uraian Bimbingan <span className="text-red-500">*</span>
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
+                  Catatan Kasus / Uraian Bimbingan <span className="text-rose-500">*</span>
                 </label>
                 <textarea
                   required
@@ -1697,27 +1703,35 @@ export default function BkJurnalView({
                   value={formData.catatan}
                   onChange={e => setFormData(prev => ({ ...prev, catatan: e.target.value }))}
                   placeholder="Uraikan gambaran permasalahan, keluhan siswa, latar belakang kasus, atau temuan konseling..."
-                  className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs leading-relaxed"
+                  className="neu-input w-full p-3 rounded-xl text-xs leading-relaxed"
                 ></textarea>
               </div>
 
               {/* Documentation Section */}
               <div>
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
                   Dokumentasi
                 </label>
-                <div className="flex gap-2 mb-2">
+                <div className="flex gap-2 mb-2 neu-inset p-1.5 rounded-2xl">
                   <button
                     type="button"
                     onClick={() => setDocMode('camera')}
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-800 dark:text-slate-200 transition"
+                    className={`flex-1 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold transition ${
+                      docMode === 'camera'
+                        ? 'neu-btn neu-btn-primary text-white'
+                        : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
+                    }`}
                   >
                     <i className="fa-solid fa-camera mr-2"></i> Kamera
                   </button>
                   <button
                     type="button"
                     onClick={() => setDocMode('upload')}
-                    className="flex-1 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-800 dark:text-slate-200 transition"
+                    className={`flex-1 px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold transition ${
+                      docMode === 'upload'
+                        ? 'neu-btn neu-btn-primary text-white'
+                        : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
+                    }`}
                   >
                     <i className="fa-solid fa-upload mr-2"></i> Unggah
                   </button>
@@ -1734,18 +1748,18 @@ export default function BkJurnalView({
                 )}
 
                 {docMode === 'upload' && (
-                  <div className="mb-2 p-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                  <div className="mb-2 p-3 rounded-xl neu-inset border border-dashed border-slate-400/50 dark:border-slate-600/50">
                     <input
                       type="file"
                       accept="image/*,application/pdf"
                       onChange={handleDocUpload}
-                      className="text-xs text-slate-600 dark:text-slate-400 w-full"
+                      className="text-xs text-[#475569] dark:text-[#94A3B8] w-full"
                     />
                   </div>
                 )}
                 
                 {docPreviewUrl && (
-                  <div className="mt-2 text-[10px] text-emerald-600 font-bold flex items-center gap-2">
+                  <div className="mt-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-2">
                     <i className="fa-solid fa-check-circle"></i> Berkas terpilih: {docFile?.name || 'Foto'}
                   </div>
                 )}
@@ -1754,8 +1768,8 @@ export default function BkJurnalView({
 
             {/* Rencana Tindak Lanjut */}
             <div>
-              <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 block mb-1">
-                Rencana Tindak Lanjut / Kesepakatan <span className="text-red-500">*</span>
+              <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] block mb-1">
+                Rencana Tindak Lanjut / Kesepakatan <span className="text-rose-500">*</span>
               </label>
               <textarea
                 required
@@ -1763,17 +1777,17 @@ export default function BkJurnalView({
                 value={formData.tindak_lanjut}
                 onChange={e => setFormData(prev => ({ ...prev, tindak_lanjut: e.target.value }))}
                 placeholder="Tuliskan kesepakatan bimbingan, komitmen siswa, jadwal sesi lanjutan, atau koordinasi dengan orang tua/wali kelas..."
-                className="w-full p-3 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs leading-relaxed"
+                className="neu-input w-full p-3 rounded-xl text-xs leading-relaxed"
               ></textarea>
             </div>
 
             {/* Dokumentasi Bimbingan Konseling (Live Camera & Upload Dokumen) */}
-            <div className="space-y-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div className="space-y-2 pt-2 border-t border-slate-300/50 dark:border-slate-700/50">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                  <i className="fa-solid fa-camera-retro text-rose-600"></i>
+                <label className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center gap-1.5">
+                  <i className="fa-solid fa-camera-retro text-[#0F766E] dark:text-[#14B8A6]"></i>
                   <span>Dokumentasi Layanan BK</span>
-                  <span className="text-[10px] text-gray-400 font-normal">(Foto Live atau Upload Dokumen)</span>
+                  <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-normal">(Foto Live atau Upload Dokumen)</span>
                 </label>
                 {formData.link_dokumen && (
                   <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -1783,14 +1797,14 @@ export default function BkJurnalView({
               </div>
 
               {/* Mode Selector Toggle */}
-              <div className="flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 gap-1 text-xs">
+              <div className="flex rounded-2xl neu-inset p-1.5 gap-1.5 text-xs">
                 <button
                   type="button"
                   onClick={() => setDocMode(prev => prev === 'camera' ? 'none' : 'camera')}
-                  className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                  className={`flex-1 py-2 min-h-[40px] rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${
                     docMode === 'camera'
-                      ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      ? 'neu-btn neu-btn-primary text-white'
+                      : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                   }`}
                 >
                   <i className="fa-solid fa-camera"></i> Kamera Live
@@ -1798,10 +1812,10 @@ export default function BkJurnalView({
                 <button
                   type="button"
                   onClick={() => setDocMode(prev => prev === 'upload' ? 'none' : 'upload')}
-                  className={`flex-1 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition ${
+                  className={`flex-1 py-2 min-h-[40px] rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${
                     docMode === 'upload'
-                      ? 'bg-white dark:bg-gray-700 text-rose-600 dark:text-rose-400 shadow-sm'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                      ? 'neu-btn neu-btn-primary text-white'
+                      : 'text-[#475569] dark:text-[#94A3B8] hover:text-[#0F172A] dark:hover:text-[#F1F5F9]'
                   }`}
                 >
                   <i className="fa-solid fa-file-arrow-up"></i> Upload Dokumen / Foto
@@ -1810,7 +1824,7 @@ export default function BkJurnalView({
 
               {/* Kamera Live Mode */}
               {docMode === 'camera' && (
-                <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700 p-2 bg-gray-50 dark:bg-gray-850">
+                <div className="rounded-2xl overflow-hidden neu-inset p-2">
                   <CameraSelfieCapture
                     key="cam-jurnal-bk"
                     initialFacingMode="environment"
@@ -1836,7 +1850,7 @@ export default function BkJurnalView({
                 <div className="space-y-2">
                   <label
                     htmlFor="jurnal-bk-doc-file-input"
-                    className="border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-rose-500 dark:hover:border-rose-500 rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center bg-gray-50/50 dark:bg-gray-800/30 min-h-[120px]"
+                    className="neu-inset border-2 border-dashed border-slate-400/50 dark:border-slate-600/50 hover:border-[#0F766E] dark:hover:border-[#14B8A6] rounded-2xl p-4 text-center cursor-pointer transition flex flex-col items-center justify-center min-h-[120px]"
                   >
                     <input
                       id="jurnal-bk-doc-file-input"
@@ -1852,17 +1866,17 @@ export default function BkJurnalView({
                           <img
                             src={docPreviewUrl}
                             alt="Preview Dokumentasi BK"
-                            className="max-h-36 mx-auto rounded-lg object-contain shadow-xs mb-2 border border-gray-200 dark:border-gray-700"
+                            className="max-h-36 mx-auto rounded-lg object-contain shadow-xs mb-2 border border-slate-300/60 dark:border-slate-700"
                           />
                         ) : (
-                          <div className="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto text-xl mb-1">
+                          <div className="w-12 h-12 rounded-xl neu-card-sm text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center mx-auto text-xl mb-1">
                             <i className="fa-solid fa-file-lines"></i>
                           </div>
                         )}
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">
+                        <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                           {docFile.name}
                         </p>
-                        <p className="text-[10px] text-gray-500 font-mono">
+                        <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-num">
                           {(docFile.size / 1024).toFixed(0)} KB &bull; Klik untuk ganti berkas
                         </p>
                       </div>
@@ -1871,20 +1885,20 @@ export default function BkJurnalView({
                         <img
                           src={docPreviewUrl}
                           alt="Dokumentasi Tersimpan"
-                          className="max-h-36 mx-auto rounded-lg object-contain shadow-xs mb-2 border border-gray-200 dark:border-gray-700"
+                          className="max-h-36 mx-auto rounded-lg object-contain shadow-xs mb-2 border border-slate-300/60 dark:border-slate-700"
                         />
-                        <p className="text-xs font-bold text-gray-800 dark:text-gray-200">Dokumentasi Terlampir</p>
-                        <p className="text-[10px] text-gray-500">Klik untuk memilih file baru pengganti</p>
+                        <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">Dokumentasi Terlampir</p>
+                        <p className="text-[10px] text-[#475569] dark:text-[#94A3B8]">Klik untuk memilih file baru pengganti</p>
                       </div>
                     ) : (
                       <div className="space-y-1">
-                        <div className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center mx-auto text-base">
+                        <div className="w-10 h-10 rounded-xl neu-card-sm text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center mx-auto text-base">
                           <i className="fa-solid fa-cloud-arrow-up"></i>
                         </div>
-                        <p className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                        <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                           Pilih Dokumen / Foto dari Perangkat
                         </p>
-                        <p className="text-[10px] text-gray-500">
+                        <p className="text-[10px] text-[#475569] dark:text-[#94A3B8]">
                           Mendukung gambar (JPG, PNG, WebP) dan dokumen (PDF, Word) maks. 10MB
                         </p>
                       </div>
@@ -1895,10 +1909,10 @@ export default function BkJurnalView({
 
               {/* Active File / Preview Bar */}
               {(docFile || docPreviewUrl || formData.link_dokumen) && (
-                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200/60 dark:border-rose-900/40 text-xs">
+                <div className="flex items-center justify-between p-2.5 rounded-xl neu-inset text-xs">
                   <div className="flex items-center gap-2 overflow-hidden">
-                    <i className="fa-solid fa-paperclip text-rose-600 dark:text-rose-400 shrink-0"></i>
-                    <span className="truncate text-[11px] font-medium text-gray-700 dark:text-gray-300">
+                    <i className="fa-solid fa-paperclip text-[#0F766E] dark:text-[#14B8A6] shrink-0"></i>
+                    <span className="truncate text-[11px] font-medium text-[#334155] dark:text-[#CBD5E1]">
                       {docFile ? docFile.name : formData.link_dokumen ? 'Dokumentasi terlampir' : 'Foto siap'}
                     </span>
                   </div>
@@ -1909,7 +1923,7 @@ export default function BkJurnalView({
                       setDocPreviewUrl(null);
                       setFormData(prev => ({ ...prev, link_dokumen: '' }));
                     }}
-                    className="text-[11px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 hover:underline shrink-0 ml-2"
+                    className="text-[11px] font-bold text-rose-600 hover:text-rose-700 dark:text-rose-400 hover:underline shrink-0 ml-2 min-h-[36px] px-2"
                   >
                     <i className="fa-solid fa-trash-can mr-1"></i> Hapus
                   </button>
@@ -1918,19 +1932,19 @@ export default function BkJurnalView({
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-300/50 dark:border-slate-700/50">
               <button
                 type="button"
                 onClick={handleResetForm}
                 disabled={saving || isUploadingDoc}
-                className="px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-xs font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition disabled:opacity-50"
+                className="neu-btn px-4 py-2 min-h-[40px] rounded-xl text-xs font-semibold text-[#334155] dark:text-[#CBD5E1] transition disabled:opacity-50"
               >
                 Reset
               </button>
               <button
                 type="submit"
                 disabled={saving || isUploadingDoc}
-                className="clay-btn px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-sm flex items-center gap-2 transition disabled:opacity-50"
+                className="neu-btn neu-btn-primary px-5 py-2 min-h-[40px] rounded-xl text-white text-xs font-bold flex items-center gap-2 transition disabled:opacity-50"
               >
                 <i className={`fa-solid ${saving || isUploadingDoc ? 'fa-spinner animate-spin' : 'fa-floppy-disk'}`}></i>
                 <span>{isUploadingDoc ? 'Mengunggah Berkas...' : saving ? 'Menyimpan...' : editingId ? 'Simpan Perubahan' : 'Simpan Jurnal BK'}</span>
@@ -1945,35 +1959,35 @@ export default function BkJurnalView({
         <div className="space-y-4">
           {/* Quick Metrics */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            <div className="glass-card p-3 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+            <div className="neu-card-sm p-3 rounded-2xl flex items-center gap-2.5">
+              <div className="neu-inset w-9 h-9 rounded-xl text-[#0F766E] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-list-check"></i>
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-medium">Total Sesi</span>
-                <span className="text-sm font-black text-gray-900 dark:text-white">{entries.length}</span>
+                <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] block font-medium">Total Sesi</span>
+                <span className="text-sm font-black font-num text-[#0F172A] dark:text-[#F1F5F9]">{entries.length}</span>
               </div>
             </div>
 
-            <div className="glass-card p-3 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+            <div className="neu-card-sm p-3 rounded-2xl flex items-center gap-2.5">
+              <div className="neu-inset w-9 h-9 rounded-xl text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-hourglass-half"></i>
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-medium">Penanganan</span>
-                <span className="text-sm font-black text-amber-600 dark:text-amber-400">
+                <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] block font-medium">Penanganan</span>
+                <span className="text-sm font-black font-num text-amber-600 dark:text-amber-400">
                   {entries.filter(e => e.status === 'Dalam Penanganan').length}
                 </span>
               </div>
             </div>
 
-            <div className="glass-card p-3 rounded-2xl border border-gray-200 dark:border-gray-800 flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <div className="neu-card-sm p-3 rounded-2xl flex items-center gap-2.5">
+              <div className="neu-inset w-9 h-9 rounded-xl text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <i className="fa-solid fa-circle-check"></i>
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 block font-medium">Selesai</span>
-                <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] block font-medium">Selesai</span>
+                <span className="text-sm font-black font-num text-emerald-600 dark:text-emerald-400">
                   {entries.filter(e => e.status === 'Selesai').length}
                 </span>
               </div>
@@ -1993,17 +2007,17 @@ export default function BkJurnalView({
           </div>
 
           {/* Filter Bar */}
-          <div className="glass-card p-3.5 rounded-2xl border border-gray-200 dark:border-gray-800 space-y-2.5">
+          <div className="neu-card-sm p-3.5 rounded-2xl space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-xs">
               {/* Search */}
               <div className="relative sm:col-span-2">
-                <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-3 text-[#475569] dark:text-[#94A3B8] text-xs"></i>
                 <input
                   type="text"
                   value={filterSearch}
                   onChange={e => setFilterSearch(e.target.value)}
                   placeholder="Cari nama siswa, NISN, kelas, atau kata kunci kasus..."
-                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                  className="neu-input w-full pl-9 pr-3 py-2 min-h-[40px] rounded-xl text-xs"
                 />
               </div>
 
@@ -2012,7 +2026,7 @@ export default function BkJurnalView({
                 <select
                   value={filterLayanan}
                   onChange={e => setFilterLayanan(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   <option value="all">Semua Layanan</option>
                   {JENIS_LAYANAN_OPTIONS.map(l => (
@@ -2026,7 +2040,7 @@ export default function BkJurnalView({
                 <select
                   value={filterBidang}
                   onChange={e => setFilterBidang(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   <option value="all">Semua Bidang</option>
                   {BIDANG_BIMBINGAN_OPTIONS.map(b => (
@@ -2040,7 +2054,7 @@ export default function BkJurnalView({
                 <select
                   value={filterStatus}
                   onChange={e => setFilterStatus(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   <option value="all">Semua Status</option>
                   {STATUS_OPTIONS.map(s => (
@@ -2054,7 +2068,7 @@ export default function BkJurnalView({
                 <select
                   value={filterCounselor}
                   onChange={e => setFilterCounselor(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs font-semibold"
+                  className="neu-input w-full px-3 py-2 min-h-[40px] rounded-xl text-xs font-semibold"
                 >
                   <option value="all">Semua Guru BK</option>
                   {counselorOptions.map(c => (
@@ -2065,23 +2079,23 @@ export default function BkJurnalView({
             </div>
 
             {/* Date Range Row */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100 dark:border-gray-800 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-300/50 dark:border-slate-700/50 text-xs">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold text-gray-500">Rentang Tanggal:</span>
+                <span className="text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8]">Rentang Tanggal:</span>
                 <input
                   type="date"
                   value={filterStartDate}
                   onChange={e => setFilterStartDate(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                  className="neu-input px-2.5 py-1.5 min-h-[40px] rounded-xl text-xs font-num"
                 />
-                <span className="text-gray-400">-</span>
+                <span className="text-[#475569] dark:text-[#94A3B8]">-</span>
                 <input
                   type="date"
                   value={filterEndDate}
                   onChange={e => setFilterEndDate(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                  className="neu-input px-2.5 py-1.5 min-h-[40px] rounded-xl text-xs font-num"
                 />
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -2089,7 +2103,7 @@ export default function BkJurnalView({
                       setFilterStartDate(today);
                       setFilterEndDate(today);
                     }}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition"
+                    className="neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-semibold text-[#334155] dark:text-[#CBD5E1] transition"
                   >
                     Hari Ini
                   </button>
@@ -2104,7 +2118,7 @@ export default function BkJurnalView({
                       setFilterStartDate(startOfMonth);
                       setFilterEndDate(endOfMonth);
                     }}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition"
+                    className="neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-semibold text-[#334155] dark:text-[#CBD5E1] transition"
                   >
                     Bulan Ini
                   </button>
@@ -2114,7 +2128,7 @@ export default function BkJurnalView({
                       setFilterStartDate('');
                       setFilterEndDate('');
                     }}
-                    className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition"
+                    className="neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[11px] font-semibold text-[#334155] dark:text-[#CBD5E1] transition"
                   >
                     Semua
                   </button>
@@ -2123,7 +2137,7 @@ export default function BkJurnalView({
                   <button
                     type="button"
                     onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
-                    className="text-[11px] text-rose-600 hover:underline font-semibold ml-1"
+                    className="text-[11px] text-rose-600 dark:text-rose-400 hover:underline font-semibold ml-1 min-h-[36px] px-1.5"
                   >
                     Reset Tanggal
                   </button>
@@ -2134,35 +2148,35 @@ export default function BkJurnalView({
                 <button
                   type="button"
                   onClick={handleExportCsv}
-                  className="btn-click inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300/60 text-xs font-bold transition shadow-xs"
+                  className="neu-btn neu-btn-teal inline-flex items-center gap-1.5 px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold transition"
                   title="Unduh data sesuai filter aktif ke format CSV / Excel"
                 >
-                  <i className="fa-solid fa-file-excel text-emerald-600"></i>
+                  <i className="fa-solid fa-file-excel"></i>
                   <span>Ekspor CSV</span>
                 </button>
-                <div className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                  Menampilkan <strong>{filteredEntries.length}</strong> dari <strong>{entries.length}</strong> entri
+                <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] font-medium">
+                  Menampilkan <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{filteredEntries.length}</strong> dari <strong className="font-num text-[#0F172A] dark:text-[#F1F5F9]">{entries.length}</strong> entri
                 </div>
               </div>
             </div>
           </div>
 
           {/* Entries Table */}
-          <div className="glass-card rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-xs">
+          <div className="neu-card rounded-2xl overflow-hidden">
             {loading ? (
-              <div className="p-8 text-center text-xs text-gray-500">
-                <i className="fa-solid fa-spinner animate-spin mr-2"></i>
+              <div className="p-8 text-center text-xs text-[#475569] dark:text-[#94A3B8]">
+                <i className="fa-solid fa-spinner animate-spin mr-2 text-[#0F766E] dark:text-[#14B8A6]"></i>
                 Memuat catatan jurnal bimbingan konseling...
               </div>
             ) : filteredEntries.length === 0 ? (
               <div className="p-10 text-center space-y-2">
-                <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400 flex items-center justify-center mx-auto text-lg">
+                <div className="w-12 h-12 rounded-full neu-inset text-[#475569] dark:text-[#94A3B8] flex items-center justify-center mx-auto text-lg">
                   <i className="fa-solid fa-folder-open"></i>
                 </div>
-                <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                <div className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">
                   Belum ada catatan jurnal BK yang sesuai
                 </div>
-                <p className="text-[11px] text-gray-500 max-w-sm mx-auto">
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] max-w-sm mx-auto">
                   {!isReadOnly
                     ? 'Klik tab "Catat Bimbingan" di atas untuk menambahkan sesi konseling siswa baru.'
                     : 'Tidak ada data bimbingan konseling pada filter yang dipilih.'}
@@ -2172,7 +2186,7 @@ export default function BkJurnalView({
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="bg-gray-50/80 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 font-bold text-[11px]">
+                    <tr className="neu-inset border-b border-slate-300/50 dark:border-slate-700/50 text-[#475569] dark:text-[#94A3B8] font-bold text-[11px]">
                       <th className="py-2.5 px-3">Tanggal & Waktu</th>
                       <th className="py-2.5 px-3">Siswa & Kelas</th>
                       <th className="py-2.5 px-3">Layanan & Bidang</th>
@@ -2184,30 +2198,30 @@ export default function BkJurnalView({
                       {!isReadOnly && <th className="py-2.5 px-3 text-center">Aksi</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  <tbody className="divide-y divide-slate-300/40 dark:divide-slate-700/50">
                     {filteredEntries.map(item => (
-                      <tr key={item.id} className="hover:bg-rose-50/30 dark:hover:bg-rose-950/20 transition">
+                      <tr key={item.id} className="hover:bg-[#0F766E]/5 dark:hover:bg-[#14B8A6]/10 transition">
                         <td className="py-2.5 px-3 align-top whitespace-nowrap">
-                          <div className="font-bold text-gray-900 dark:text-white font-mono text-[11px]">
+                          <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9] font-num text-[11px]">
                             {item.tanggal}
                           </div>
-                          <div className="text-[10px] text-gray-500 font-mono">
+                          <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-num">
                             {item.waktu} &bull; {item.tempat_layanan || 'Ruang BK'}
                           </div>
                         </td>
                         <td className="py-2.5 px-3 align-top max-w-[220px]">
-                          <div className="font-bold text-gray-900 dark:text-white break-words">
+                          <div className="font-bold text-[#0F172A] dark:text-[#F1F5F9] break-words">
                             {item.nama_siswa}
                           </div>
-                          <div className="text-[10px] text-gray-500 break-words mt-0.5">
-                            Kelas: <span className="font-bold text-gray-700 dark:text-gray-300">{item.kelas}</span>
-                            {item.nisn && <span className="font-mono"> &bull; {item.nisn}</span>}
+                          <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] break-words mt-0.5">
+                            Kelas: <span className="font-bold text-[#0F172A] dark:text-[#F1F5F9] font-num">{item.kelas}</span>
+                            {item.nisn && <span className="font-num"> &bull; {item.nisn}</span>}
                           </div>
                           {((Array.isArray(item.peserta_didik) && item.peserta_didik.length > 1) ||
                             (Array.isArray(item.detail_layanan?.peserta_didik) && item.detail_layanan.peserta_didik.length > 1) ||
                             item.sasaran === 'Kelompok' ||
                             isMultiStudentService(item.jenis_layanan)) && (
-                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300 text-[9px] font-bold border border-rose-200 dark:border-rose-900">
+                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-[#0F766E]/10 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6] text-[9px] font-bold font-num border border-[#0F766E]/20 dark:border-[#14B8A6]/25">
                               <i className="fa-solid fa-users text-[8px]"></i>
                               <span>
                                 Kelompok ({
@@ -2220,13 +2234,13 @@ export default function BkJurnalView({
                           )}
                         </td>
                         <td className="py-2.5 px-3 align-top whitespace-nowrap space-y-1">
-                          <div className="font-semibold text-gray-800 dark:text-gray-200 text-[11px]">
+                          <div className="font-semibold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
                             {item.jenis_layanan}
                           </div>
                           <div>{renderBidangBadge(item.bidang_bimbingan)}</div>
                         </td>
                         <td className="py-2.5 px-3 align-top max-w-xs">
-                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[11px] line-clamp-3 hover:line-clamp-none">
+                          <p className="text-[#334155] dark:text-[#CBD5E1] leading-relaxed text-[11px] line-clamp-3 hover:line-clamp-none">
                             {item.catatan}
                           </p>
                           {item.detail_layanan && typeof item.detail_layanan === 'object' && Object.keys(item.detail_layanan).length > 0 && (
@@ -2236,9 +2250,9 @@ export default function BkJurnalView({
                                 .map(([k, v]) => (
                                   <span
                                     key={k}
-                                    className="inline-block px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] text-gray-600 dark:text-gray-300 font-mono"
+                                    className="inline-block px-1.5 py-0.5 rounded neu-inset text-[10px] text-[#475569] dark:text-[#CBD5E1] font-mono"
                                   >
-                                    <span className="font-semibold text-gray-700 dark:text-gray-200">
+                                    <span className="font-semibold text-[#0F172A] dark:text-[#F1F5F9]">
                                       {k.replace(/_/g, ' ')}:
                                     </span>{' '}
                                     {v}
@@ -2248,7 +2262,7 @@ export default function BkJurnalView({
                           )}
                         </td>
                         <td className="py-2.5 px-3 align-top max-w-xs">
-                          <p className="text-gray-700 dark:text-gray-300 leading-relaxed text-[11px] line-clamp-3 hover:line-clamp-none">
+                          <p className="text-[#334155] dark:text-[#CBD5E1] leading-relaxed text-[11px] line-clamp-3 hover:line-clamp-none">
                             {item.tindak_lanjut}
                           </p>
                         </td>
@@ -2256,22 +2270,22 @@ export default function BkJurnalView({
                           <div className="flex flex-col items-center gap-1">
                             {renderStatusBadge(item.status)}
                             {item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:text-emerald-300">
                                 Terverifikasi
                               </span>
                             ) : item.status_verifikasi === 'Ditolak' ? (
                               <span
-                                className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 text-red-700 border border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800"
+                                className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/30 dark:text-rose-300"
                                 title={item.alasan_penolakan || item.catatan_admin || 'Ditolak admin'}
                               >
                                 Ditolak
                               </span>
                             ) : item.status_verifikasi === 'Dispensasi' ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-50 text-sky-700 border border-sky-200 dark:bg-sky-950/50 dark:text-sky-300 dark:border-sky-800">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500/15 text-sky-700 border border-sky-500/30 dark:text-sky-300">
                                 Dispensasi
                               </span>
                             ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/15 text-amber-700 border border-amber-500/30 dark:text-amber-300">
                                 Menunggu Verifikasi
                               </span>
                             )}
@@ -2282,17 +2296,17 @@ export default function BkJurnalView({
                             <button
                               type="button"
                               onClick={() => handleViewDocument(item)}
-                              className="btn-click inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800 text-[11px] font-semibold transition"
+                              className="neu-btn inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[36px] rounded-lg text-[#0F766E] dark:text-[#14B8A6] text-[11px] font-semibold transition"
                               title="Lihat berkas dokumentasi"
                             >
                               <i className="fa-solid fa-paperclip text-xs"></i>
                               <span>Lihat</span>
                             </button>
                           ) : (
-                            <span className="text-gray-400 text-[11px]">-</span>
+                            <span className="text-[#475569] dark:text-[#94A3B8] text-[11px]">-</span>
                           )}
                         </td>
-                        <td className="py-2.5 px-3 align-top whitespace-nowrap text-[11px] text-gray-600 dark:text-gray-400">
+                        <td className="py-2.5 px-3 align-top whitespace-nowrap text-[11px] text-[#475569] dark:text-[#94A3B8]">
                           {item.nama_guru}
                         </td>
                         {!isReadOnly && (
@@ -2301,7 +2315,7 @@ export default function BkJurnalView({
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(item)}
-                                className="neu-btn btn-click p-1.5 rounded-lg text-[#0F766E] dark:text-teal-400 text-xs transition"
+                                className="neu-btn btn-click p-2 min-w-[36px] min-h-[36px] rounded-lg text-[#0F766E] dark:text-teal-400 text-xs transition"
                                 title="Edit jurnal BK"
                               >
                                 <i className="fa-solid fa-pen-to-square"></i>
@@ -2309,7 +2323,7 @@ export default function BkJurnalView({
                               <button
                                 type="button"
                                 onClick={() => handleDeleteEntry(item)}
-                                className="btn-click p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 dark:bg-red-900/40 dark:text-red-300 text-xs transition"
+                                className="neu-btn neu-btn-rose btn-click p-2 min-w-[36px] min-h-[36px] rounded-lg text-xs transition"
                                 title="Hapus jurnal BK"
                               >
                                 <i className="fa-solid fa-trash-can"></i>
@@ -2330,36 +2344,36 @@ export default function BkJurnalView({
       {/* TAB 3: CETAK DOKUMEN RESMI */}
       {activeTab === 'cetak' && (
         <div className="space-y-4 max-w-full overflow-hidden print:overflow-visible">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 neu-card-sm p-3 sm:p-3.5 rounded-2xl no-print">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 neu-card p-3.5 sm:p-4 rounded-2xl no-print">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <div>
-                <h4 className="font-bold text-xs text-gray-900 dark:text-white">
+                <h4 className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">
                   Pratinjau Cetak Laporan Bimbingan Konseling
                 </h4>
-                <p className="text-[11px] text-gray-500">
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8]">
                   Dokumen resmi rekapitulasi layanan BK sekolah untuk arsip dan pengesahan Kepala Sekolah.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                <span className="text-[11px] font-semibold text-gray-500">Periode:</span>
+                <span className="text-[11px] font-semibold text-[#475569] dark:text-[#94A3B8]">Periode:</span>
                 <input
                   type="date"
                   value={filterStartDate}
                   onChange={e => setFilterStartDate(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                  className="neu-input px-2.5 py-1.5 min-h-[40px] rounded-xl text-xs font-num"
                 />
-                <span className="text-gray-400">-</span>
+                <span className="text-[#475569] dark:text-[#94A3B8]">-</span>
                 <input
                   type="date"
                   value={filterEndDate}
                   onChange={e => setFilterEndDate(e.target.value)}
-                  className="px-2 py-1 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-xs"
+                  className="neu-input px-2.5 py-1.5 min-h-[40px] rounded-xl text-xs font-num"
                 />
                 {(filterStartDate || filterEndDate) && (
                   <button
                     type="button"
                     onClick={() => { setFilterStartDate(''); setFilterEndDate(''); }}
-                    className="text-[10px] text-rose-600 hover:underline font-semibold"
+                    className="text-[10px] text-rose-600 dark:text-rose-400 hover:underline font-semibold min-h-[36px] px-1.5"
                   >
                     Reset
                   </button>
@@ -2370,7 +2384,7 @@ export default function BkJurnalView({
               <button
                 type="button"
                 onClick={handleExportCsv}
-                className="clay-btn px-3 py-2 sm:px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                className="neu-btn neu-btn-teal px-3.5 py-2 min-h-[40px] rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                 title="Ekspor data jurnal BK ke format CSV / Excel"
               >
                 <i className="fa-solid fa-file-excel"></i>
@@ -2379,7 +2393,7 @@ export default function BkJurnalView({
               <button
                 type="button"
                 onClick={() => triggerPrintWithGps()}
-                className="clay-btn px-3.5 py-2 sm:px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+                className="neu-btn neu-btn-primary px-4 py-2 min-h-[40px] rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <i className="fa-solid fa-print"></i>
                 <span>Cetak Sekarang</span>
@@ -2388,18 +2402,18 @@ export default function BkJurnalView({
           </div>
 
           {/* Printable Layout Container */}
-          <div className="bg-white text-black p-3.5 sm:p-6 md:p-8 rounded-2xl shadow-sm border border-gray-300 max-w-full overflow-hidden print:overflow-visible print:border-none print:shadow-none print:p-0 print:rounded-none">
+          <div className="neu-card text-[#0F172A] dark:text-[#F1F5F9] p-3.5 sm:p-6 md:p-8 rounded-2xl max-w-full overflow-hidden print:bg-white print:text-black print:overflow-visible print:border-none print:shadow-none print:p-0 print:rounded-none">
             <PrintHeader user={user} sekolahId={user?.sekolah_id || sekolahId} />
 
             {/* Document Print Subheader */}
             <div className="text-center my-3 print:my-2 px-1">
-              <h3 className="text-sm sm:text-base font-bold text-gray-900 print:text-black uppercase tracking-wider">
+              <h3 className="text-sm sm:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] print:text-black uppercase tracking-wider">
                 JURNAL KEGIATAN BIMBINGAN DAN KONSELING (BK)
               </h3>
-              <div className="text-xs text-gray-600 print:text-black mt-1 flex flex-wrap justify-center gap-2 sm:gap-6 font-medium">
+              <div className="text-xs text-[#475569] dark:text-[#94A3B8] print:text-black mt-1 flex flex-wrap justify-center gap-2 sm:gap-6 font-medium">
                 <span>Guru BK: <strong>{filterCounselor !== 'all' ? filterCounselor : counselorName}</strong></span>
                 {filterStartDate || filterEndDate ? (
-                  <span>Periode: <strong>{filterStartDate || '...'} s/d {filterEndDate || '...'}</strong></span>
+                  <span>Periode: <strong className="font-num">{filterStartDate || '...'} s/d {filterEndDate || '...'}</strong></span>
                 ) : (
                   <span>Periode: <strong>Semua Periode</strong></span>
                 )}
@@ -2410,41 +2424,41 @@ export default function BkJurnalView({
             </div>
 
             {/* Mobile Swipe Hint */}
-            <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1 sm:hidden no-print">
-              <span className="inline-flex items-center gap-1 text-[10px] text-gray-500">
-                <i className="fa-solid fa-table text-gray-400"></i>
+            <div className="flex items-center justify-between text-[11px] text-[#475569] dark:text-[#94A3B8] mb-1 sm:hidden no-print">
+              <span className="inline-flex items-center gap-1 text-[10px]">
+                <i className="fa-solid fa-table"></i>
                 Pratinjau Tabel Laporan
               </span>
-              <span className="inline-flex items-center gap-1 text-rose-600 font-semibold text-[10px]">
+              <span className="inline-flex items-center gap-1 text-[#0F766E] dark:text-[#14B8A6] font-semibold text-[10px]">
                 <i className="fa-solid fa-arrows-left-right text-[9px] animate-pulse"></i>
                 Geser tabel ke samping
               </span>
             </div>
 
-            <div className="w-full overflow-x-auto rounded-xl border border-gray-200 print:border-none print:overflow-visible my-2 print:my-2 custom-scroll">
-              <table className="w-full text-left border-collapse border border-black text-xs min-w-[760px] sm:min-w-full print:min-w-0">
+            <div className="w-full overflow-x-auto rounded-xl border border-slate-300/60 dark:border-slate-700/60 print:border-none print:overflow-visible my-2 print:my-2 custom-scroll">
+              <table className="w-full text-left border-collapse border border-slate-400/70 dark:border-slate-600 print:border-black text-xs min-w-[760px] sm:min-w-full print:min-w-0">
                 <thead>
-                  <tr className="bg-gray-100 border-b border-black text-center font-bold">
-                    <th className="border border-black p-2 w-8 text-center print:w-8">No</th>
-                    <th className="border border-black p-2 w-24 print:w-24">Tanggal / Waktu</th>
-                    <th className="border border-black p-2 w-36 print:w-36">Nama Siswa / Kelas</th>
-                    <th className="border border-black p-2 w-32 print:w-32">Bidang / Layanan</th>
-                    <th className="border border-black p-2 min-w-[140px] print:min-w-0">Catatan Kasus / Bimbingan</th>
-                    <th className="border border-black p-2 min-w-[140px] print:min-w-0">Rencana Tindak Lanjut</th>
-                    <th className="border border-black p-2 w-24 print:w-24 text-center">Status</th>
-                    <th className="border border-black p-2 w-24 print:w-24 text-center">Dokumentasi</th>
-                    <th className="border border-black p-2 w-28 print:w-28">Guru BK</th>
+                  <tr className="bg-slate-200/70 dark:bg-slate-800/70 print:bg-gray-100 border-b border-slate-400/70 dark:border-slate-600 print:border-black text-center font-bold">
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-8 text-center print:w-8">No</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-24 print:w-24">Tanggal / Waktu</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-36 print:w-36">Nama Siswa / Kelas</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-32 print:w-32">Bidang / Layanan</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 min-w-[140px] print:min-w-0">Catatan Kasus / Bimbingan</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 min-w-[140px] print:min-w-0">Rencana Tindak Lanjut</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-24 print:w-24 text-center">Status</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-24 text-center print:w-24">Dokumentasi</th>
+                    <th className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 w-28 print:w-28">Guru BK</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredEntries.map((e, idx) => (
-                    <tr key={e.id} className="border-b border-black align-top">
-                      <td className="border border-black p-2 text-center">{idx + 1}</td>
-                      <td className="border border-black p-2">
-                        <div className="font-bold">{e.tanggal}</div>
-                        <div className="text-[10px] text-gray-600">{e.waktu}</div>
+                    <tr key={e.id} className="border-b border-slate-400/70 dark:border-slate-600 print:border-black align-top">
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 text-center font-num">{idx + 1}</td>
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2">
+                        <div className="font-bold font-num">{e.tanggal}</div>
+                        <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num">{e.waktu}</div>
                       </td>
-                      <td className="border border-black p-2">
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2">
                         {(() => {
                           const multiList: Array<{ nama_siswa: string; kelas?: string; nisn?: string }> =
                             (Array.isArray(e.peserta_didik) && e.peserta_didik.length > 0)
@@ -2462,14 +2476,14 @@ export default function BkJurnalView({
                           if (multiList.length > 1) {
                             return (
                               <div>
-                                <div className="font-bold text-[10px] text-gray-800 underline mb-0.5">
+                                <div className="font-bold text-[10px] text-[#0F172A] dark:text-[#F1F5F9] print:text-gray-800 underline mb-0.5 font-num">
                                   Kelompok ({multiList.length} Siswa):
                                 </div>
                                 <ol className="list-decimal list-inside text-[10px] space-y-0.5">
                                   {multiList.map((s, sIdx) => (
                                     <li key={sIdx} className="leading-tight">
                                       <span className="font-semibold">{s.nama_siswa}</span>
-                                      <span className="text-[9px] text-gray-600"> ({s.kelas}{s.nisn ? ` • ${s.nisn}` : ''})</span>
+                                      <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num"> ({s.kelas}{s.nisn ? ` • ${s.nisn}` : ''})</span>
                                     </li>
                                   ))}
                                 </ol>
@@ -2480,24 +2494,24 @@ export default function BkJurnalView({
                           return (
                             <div>
                               <div className="font-bold">{e.nama_siswa}</div>
-                              <div className="text-[10px]">Kelas: {e.kelas}</div>
-                              {e.nisn && <div className="text-[9px] text-gray-600">NISN: {e.nisn}</div>}
+                              <div className="text-[10px] font-num">Kelas: {e.kelas}</div>
+                              {e.nisn && <div className="text-[9px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num">NISN: {e.nisn}</div>}
                             </div>
                           );
                         })()}
                       </td>
-                      <td className="border border-black p-2">
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2">
                         <div className="font-semibold">{e.jenis_layanan}</div>
-                        <div className="text-[10px] text-gray-600">({e.bidang_bimbingan})</div>
+                        <div className="text-[10px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600">({e.bidang_bimbingan})</div>
                       </td>
-                      <td className="border border-black p-2 text-[11px] leading-tight">{e.catatan}</td>
-                      <td className="border border-black p-2 text-[11px] leading-tight">{e.tindak_lanjut}</td>
-                      <td className="border border-black p-2 text-center text-[10px] font-bold">{e.status}</td>
-                      <td className="border border-black p-1 text-center align-middle">
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 text-[11px] leading-tight">{e.catatan}</td>
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 text-[11px] leading-tight">{e.tindak_lanjut}</td>
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 text-center text-[10px] font-bold">{e.status}</td>
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-1 text-center align-middle">
                         {(() => {
                           const docUrl = e.link_dokumen?.trim();
                           if (!docUrl || docUrl === '-') {
-                            return <span className="text-gray-400 text-[10px] italic">-</span>;
+                            return <span className="text-[#475569] dark:text-[#94A3B8] print:text-gray-400 text-[10px] italic">-</span>;
                           }
                           const isImg = docUrl.startsWith('data:image') ||
                             /\.(jpg|jpeg|png|webp|gif|bmp)($|\?)/i.test(docUrl) ||
@@ -2527,14 +2541,14 @@ export default function BkJurnalView({
                           }
 
                           return (
-                            <div className="text-[9px] text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
-                              <i className="fa-solid fa-file-lines text-xs block mb-0.5 text-gray-500"></i>
+                            <div className="text-[9px] text-[#334155] dark:text-[#CBD5E1] print:text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
+                              <i className="fa-solid fa-file-lines text-xs block mb-0.5 text-[#475569] dark:text-[#94A3B8] print:text-gray-500"></i>
                               <span>{docUrl.replace(/^file:/, '')}</span>
                             </div>
                           );
                         })()}
                       </td>
-                      <td className="border border-black p-2 text-[10px]">{e.nama_guru}</td>
+                      <td className="border border-slate-400/70 dark:border-slate-600 print:border-black p-2 text-[10px]">{e.nama_guru}</td>
                     </tr>
                   ))}
                   {filteredEntries.length === 0 && (

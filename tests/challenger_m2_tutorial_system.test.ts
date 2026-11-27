@@ -422,7 +422,7 @@ assert(onboardingSource.includes("placement === 'center'"), 'OnboardingTutorial 
 assert(onboardingSource.includes('[isOpen, currentStepIndex, steps.length, userRole]'), 'OnboardingTutorial keydown listener specifies explicit dependency array without churn');
 assert(onboardingSource.includes("activeTag === 'input' || activeTag === 'textarea'"), 'OnboardingTutorial keydown listener guards against active text inputs');
 assert(onboardingSource.includes('currentStep.targetSubTabId'), 'OnboardingTutorial supports sub-tab fallback selector matching');
-assert(onboardingSource.includes('bg-emerald-100'), 'OnboardingTutorial highlights active focused sub-tab with emerald badge');
+assert(onboardingSource.includes('neu-inset text-[#0F766E]'), 'OnboardingTutorial highlights active focused sub-tab with Deep Teal Soft-UI badge');
 
 // ====================================================================
 // SUMMARY & EXIT CODE

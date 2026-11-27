@@ -76,7 +76,7 @@ export default function UpdateNotificationToast() {
     <aside
       role="alert"
       aria-live="polite"
-      className="neu-card fixed bottom-6 right-4 sm:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] rounded-2xl p-3.5 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-3"
+      className="neu-card fixed bottom-24 sm:bottom-6 right-4 sm:right-6 z-50 max-w-sm w-[calc(100vw-2rem)] rounded-2xl p-3.5 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-3"
     >
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="neu-inset w-9 h-9 rounded-xl flex items-center justify-center text-[#0F766E] dark:text-teal-400 shrink-0 text-sm">
@@ -96,7 +96,7 @@ export default function UpdateNotificationToast() {
         <button
           type="button"
           onClick={handleUpdate}
-          className="neu-btn neu-btn-primary px-3 py-1.5 min-h-[36px] text-xs font-bold rounded-xl flex items-center gap-1"
+          className="neu-btn neu-btn-primary px-3 py-2 min-h-[44px] text-xs font-bold rounded-xl flex items-center gap-1"
         >
           <i className="fa-solid fa-rotate-right text-[10px]"></i>
           Muat Ulang
@@ -106,7 +106,7 @@ export default function UpdateNotificationToast() {
           onClick={() => setShow(false)}
           title="Tutup pemberitahuan"
           aria-label="Tutup pemberitahuan"
-          className="neu-btn w-8 h-8 flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 text-xs"
+          className="neu-btn w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl text-slate-600 dark:text-slate-300 text-xs"
         >
           <i className="fa-solid fa-xmark"></i>
         </button>

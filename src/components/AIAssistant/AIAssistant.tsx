@@ -239,7 +239,7 @@ export function AIAssistant({
       {/* Floating Trigger Button Container */}
       {isVisible && (
         <div className="fixed bottom-5 right-5 z-[45] flex items-center group/ai-btn no-print print:hidden">
-          {/* Quick dismiss/hide button on hover or focus */}
+          {/* Quick dismiss/hide button accessible on touch & hover */}
           <button
             type="button"
             onClick={(e) => {
@@ -248,7 +248,7 @@ export function AIAssistant({
             }}
             title="Sembunyikan tombol asisten"
             aria-label="Sembunyikan tombol asisten"
-            className="neu-btn absolute -top-1.5 -right-1.5 z-10 w-6 h-6 rounded-full hover:text-rose-600 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[10px] transition-all opacity-0 group-hover/ai-btn:opacity-100 focus:opacity-100 cursor-pointer"
+            className="neu-btn absolute -top-2 -right-2 z-10 w-8 h-8 rounded-full hover:text-rose-600 text-slate-600 dark:text-slate-300 flex items-center justify-center text-[11px] transition-all opacity-90 sm:opacity-0 sm:group-hover/ai-btn:opacity-100 focus:opacity-100 cursor-pointer"
           >
             <i className="fa-solid fa-xmark"></i>
           </button>
@@ -275,17 +275,18 @@ export function AIAssistant({
       {isVisible && isOpen && (
         <div
           role="dialog"
+          aria-modal="true"
           aria-label="Panel Asisten AI SIPJAM"
-          className="neu-card fixed bottom-20 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[75vh] h-[480px] z-[45] flex flex-col rounded-3xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 no-print print:hidden"
+          className="neu-card fixed bottom-22 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[calc(100dvh-7.5rem)] h-[480px] z-[45] flex flex-col rounded-3xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 no-print print:hidden"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-[#0F766E] to-[#115E59] text-white px-4 py-3 flex items-center justify-between border-b border-white/15">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-amber-300 border border-white/25">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-amber-300 border border-white/25 shrink-0">
                 <i className="fa-solid fa-robot text-sm"></i>
               </div>
-              <div>
-                <h3 className="font-bold text-sm leading-tight text-white flex items-center gap-1.5">
+              <div className="min-w-0">
+                <h3 className="font-bold text-sm leading-tight text-white flex items-center gap-1.5 truncate">
                   Asisten AI SIPJAM
                 </h3>
                 <div className="flex items-center gap-1.5 text-[10px] text-teal-100 font-medium">
@@ -295,13 +296,13 @@ export function AIAssistant({
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
                 onClick={initChat}
                 title="Mulai ulang percakapan"
                 aria-label="Mulai ulang percakapan"
-                className="w-7 h-7 rounded-lg hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-xs cursor-pointer"
+                className="w-9 h-9 rounded-xl hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-xs cursor-pointer"
               >
                 <i className="fa-solid fa-rotate-right"></i>
               </button>
@@ -310,7 +311,7 @@ export function AIAssistant({
                 onClick={() => handleToggleVisibility(false)}
                 title="Sembunyikan tombol asisten"
                 aria-label="Sembunyikan tombol asisten"
-                className="w-7 h-7 rounded-lg hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-xs cursor-pointer"
+                className="w-9 h-9 rounded-xl hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-xs cursor-pointer"
               >
                 <i className="fa-solid fa-eye-slash"></i>
               </button>
@@ -319,7 +320,7 @@ export function AIAssistant({
                 onClick={() => setIsOpen(false)}
                 title="Tutup asisten"
                 aria-label="Tutup asisten"
-                className="w-7 h-7 rounded-lg hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-sm cursor-pointer"
+                className="w-9 h-9 rounded-xl hover:bg-white/15 text-teal-100 hover:text-white flex items-center justify-center transition-colors text-sm cursor-pointer"
               >
                 <i className="fa-solid fa-xmark"></i>
               </button>
@@ -337,7 +338,7 @@ export function AIAssistant({
                 <div
                   className={`max-w-[85%] rounded-2xl p-3 ${
                     msg.sender === 'user'
-                      ? 'bg-[#0F766E] text-white rounded-br-none shadow-sm'
+                      ? 'neu-card-primary rounded-br-none'
                       : 'neu-card-sm text-[#0F172A] dark:text-[#F1F5F9] rounded-bl-none'
                   }`}
                 >
@@ -380,7 +381,7 @@ export function AIAssistant({
                         key={item.id}
                         type="button"
                         onClick={() => handleSuggestionClick(item.question)}
-                        className="neu-btn text-left w-full justify-start px-2.5 py-1.5 rounded-xl text-[#0F766E] dark:text-teal-300 text-[11px]"
+                        className="neu-btn text-left w-full justify-start px-3 py-2 min-h-[40px] rounded-xl text-[#0F766E] dark:text-teal-300 text-[11px]"
                       >
                         <i className="fa-solid fa-arrow-turn-down-right mr-1.5 text-[9px]"></i>
                         {item.question}
@@ -401,7 +402,7 @@ export function AIAssistant({
                           key={cat}
                           type="button"
                           onClick={() => handleCategoryClick(cat)}
-                          className="neu-btn px-2.5 py-1 rounded-lg text-[10px] font-semibold text-[#0F766E] dark:text-teal-300"
+                          className="neu-btn px-3 py-1.5 min-h-[36px] rounded-xl text-[10px] font-semibold text-[#0F766E] dark:text-teal-300"
                         >
                           {cat}
                         </button>
@@ -422,7 +423,7 @@ export function AIAssistant({
                         key={s.id}
                         type="button"
                         onClick={() => handleSuggestionClick(s.question)}
-                        className="neu-btn text-left w-full justify-start px-2.5 py-1.5 rounded-xl text-[#0F766E] dark:text-teal-300 text-[11px]"
+                        className="neu-btn text-left w-full justify-start px-3 py-2 min-h-[40px] rounded-xl text-[#0F766E] dark:text-teal-300 text-[11px]"
                       >
                         <i className="fa-solid fa-circle-question mr-1.5 text-[10px]"></i>
                         {s.question}
@@ -445,14 +446,14 @@ export function AIAssistant({
               onKeyDown={handleKeyDown}
               placeholder="Ketik pertanyaan seputar SIPJAM..."
               aria-label="Ketik pertanyaan"
-              className="neu-input flex-1 text-xs rounded-xl px-3 py-2"
+              className="neu-input flex-1 text-xs rounded-xl px-3 py-2.5 min-h-[44px]"
             />
             <button
               type="button"
               onClick={() => handleSendMessage()}
               disabled={!inputText.trim()}
               aria-label="Kirim pertanyaan"
-              className="neu-btn neu-btn-primary w-9 h-9 rounded-xl disabled:opacity-40 flex items-center justify-center shrink-0"
+              className="neu-btn neu-btn-primary w-11 h-11 rounded-xl disabled:opacity-40 flex items-center justify-center shrink-0"
             >
               <i className="fa-solid fa-paper-plane text-xs"></i>
             </button>

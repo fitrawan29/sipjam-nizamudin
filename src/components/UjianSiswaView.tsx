@@ -239,7 +239,7 @@ export default function UjianSiswaView({
         <div className="max-w-3xl mx-auto w-full my-auto space-y-6">
           <div className="clay-card p-6 sm:p-8 rounded-3xl">
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-[#0F766E] flex items-center justify-center text-white text-2xl shadow-sm shrink-0">
+              <div className="w-14 h-14 rounded-2xl neu-card-primary flex items-center justify-center text-white text-2xl shrink-0">
                 <i className="fa-solid fa-graduation-cap text-amber-300"></i>
               </div>
               <div>
@@ -647,7 +647,10 @@ export default function UjianSiswaView({
       {(violationModalOpen || isBlocked) && examStatus === 'ongoing' && (
         <div
           id="anti-cheat-violation-modal"
-          className="fixed inset-0 z-[99999] w-screen h-screen bg-[#0F172A]/85 backdrop-blur-md flex items-center justify-center p-4 pointer-events-auto"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="Peringatan Keamanan Ujian"
+          className="fixed inset-0 z-[99999] w-screen h-screen bg-[#0F172A]/85 flex items-center justify-center p-4 pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="clay-card max-w-md w-full p-6 sm:p-8 rounded-3xl ring-2 ring-rose-500/70 text-center animate-in fade-in zoom-in-95 duration-200">

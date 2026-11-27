@@ -83,8 +83,8 @@ assert(
 );
 
 assert(
-  appScreenSource.includes('title="Aktif"') && appScreenSource.includes('bg-emerald-500'),
-  'Profile card includes green online active indicator badge'
+  appScreenSource.includes('title="Aktif"') && appScreenSource.includes('bg-teal-500'),
+  'Profile card includes teal online active indicator badge'
 );
 
 assert(
@@ -106,29 +106,29 @@ assert(
 );
 
 assert(
-  appScreenSource.includes('bg-purple-100 text-purple-700') &&
+  appScreenSource.includes('neu-inset text-amber-800 dark:text-amber-300') &&
   appScreenSource.includes('Superadmin'),
-  'Superadmin badge uses purple styling and "Superadmin" label'
+  'Superadmin badge uses Cool Slate amber inset styling and "Superadmin" label'
 );
 
 assert(
   appScreenSource.includes("'fa-user-shield'") &&
-  appScreenSource.includes('bg-blue-100 text-blue-700') &&
+  appScreenSource.includes('neu-inset text-blue-800 dark:text-blue-300') &&
   appScreenSource.includes('Administrator'),
-  'Administrator badge uses fa-user-shield icon, blue styling, and "Administrator" label'
+  'Administrator badge uses fa-user-shield icon, Cool Slate blue inset styling, and "Administrator" label'
 );
 
 assert(
   appScreenSource.includes('isWaliKelas') &&
-  appScreenSource.includes('bg-teal-100 text-teal-800') &&
+  appScreenSource.includes('neu-inset text-teal-800 dark:text-teal-300') &&
   appScreenSource.includes('Guru (Wali Kelas)'),
-  'Wali Kelas badge uses teal styling and "Guru (Wali Kelas)" label'
+  'Wali Kelas badge uses teal inset styling and "Guru (Wali Kelas)" label'
 );
 
 assert(
-  appScreenSource.includes('bg-emerald-100 text-emerald-800') &&
+  appScreenSource.includes('neu-inset text-[#0F766E] dark:text-teal-300') &&
   appScreenSource.includes("'fa-chalkboard-user'"),
-  'Regular Guru badge uses emerald styling and fa-chalkboard-user icon'
+  'Regular Guru badge uses Deep Teal Cool Slate inset styling and fa-chalkboard-user icon'
 );
 
 // 1.5 Drawer Action Buttons
