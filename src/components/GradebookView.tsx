@@ -4738,7 +4738,7 @@ export default function GradebookView({
                                   onKeyDown={e => handleCellKeyDown(e, idx, 0)}
                                   onFocus={e => e.target.select()}
                                   placeholder="-"
-                                  className={`neu-input w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-bold font-num transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
+                                  className={`neu-input z-0 w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-sans font-bold font-num [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
                                     dirtyGrades[`${student.nisn}_${diagnostikCol.id}`]
                                       ? 'ring-2 ring-amber-400/70 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
                                       : 'text-[#0F172A] dark:text-[#F1F5F9]'
@@ -4780,7 +4780,7 @@ export default function GradebookView({
                                       onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
                                       onFocus={e => e.target.select()}
                                       placeholder="-"
-                                      className={`neu-input w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-bold font-num transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
+                                      className={`neu-input z-0 w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-sans font-bold font-num [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
                                         isDirty
                                           ? 'ring-2 ring-amber-400/70 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
                                           : 'text-[#0F172A] dark:text-[#F1F5F9]'
@@ -4824,7 +4824,7 @@ export default function GradebookView({
                                       onKeyDown={e => handleCellKeyDown(e, idx, colIndex)}
                                       onFocus={e => e.target.select()}
                                       placeholder="-"
-                                      className={`neu-input w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-bold font-num transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
+                                      className={`neu-input z-0 w-16 mx-auto text-center py-1 px-1 rounded-lg text-xs font-sans font-bold font-num [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition focus-visible:ring-2 focus-visible:ring-[#0F766E] ${
                                         isDirty
                                           ? 'ring-2 ring-amber-400/70 bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200'
                                           : 'text-[#0F172A] dark:text-[#F1F5F9]'
