@@ -614,7 +614,10 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
 
   // Fetch students, attendance, real Merdeka academic data, and notes for selected class
   const fetchClassData = useCallback(async () => {
-    if (!selectedKelas) return;
+    if (!selectedKelas) {
+      setIsLoading(false);
+      return;
+    }
     const currentReqId = ++fetchClassRequestId.current;
     if (catatanDebounceRef.current) {
       clearTimeout(catatanDebounceRef.current);
@@ -626,37 +629,38 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     }
     setIsLoading(true);
     try {
-      // 1. Fetch Students: .select('id, nisn, nama_siswa, kelas, gender')
+      // 1. Fetch Students: use select('*') so optional columns (e.g. agama) never trigger PGRST204 if absent
       let sQuery = supabase
         .from('data_siswa')
-        .select('id, nisn, nama_siswa, kelas, gender, agama')
+        .select('*')
         .eq('kelas', selectedKelas);
       if (sekolahId) sQuery = sQuery.eq('sekolah_id', sekolahId);
       let { data: sData, error: sErr } = await sQuery;
 
-      if (sErr) throw sErr;
+      let effectiveStudentsData = !sErr ? sData : null;
 
-      let effectiveStudentsData = sData;
-
-      // Fallback 1: Jika dengan sekolah_id kosong, coba query tanpa batasan sekolah_id
-      if ((!effectiveStudentsData || effectiveStudentsData.length === 0) && sekolahId) {
-        const { data: noSchData } = await supabase
+      // Fallback 1: Jika dengan sekolah_id kosong/error, coba query tanpa batasan sekolah_id
+      if ((!effectiveStudentsData || effectiveStudentsData.length === 0) && (sekolahId || sErr)) {
+        const { data: noSchData, error: noSchErr } = await supabase
           .from('data_siswa')
-          .select('id, nisn, nama_siswa, kelas, gender, agama')
+          .select('*')
           .eq('kelas', selectedKelas);
-        if (noSchData && noSchData.length > 0) {
+        if (!noSchErr && noSchData && noSchData.length > 0) {
           effectiveStudentsData = noSchData;
+          sErr = null;
+        } else if (sErr && noSchErr) {
+          throw noSchErr;
         }
       }
 
       // Fallback 2: Pencocokan ekuivalensi kelas (Romawi vs Arab, spasi, awalan 'Kelas', suffix Merdeka)
       let resolvedClassKey = selectedKelas;
       if (!effectiveStudentsData || effectiveStudentsData.length === 0) {
-        let allSiswaQ = supabase.from('data_siswa').select('id, nisn, nama_siswa, kelas, gender, agama');
+        let allSiswaQ = supabase.from('data_siswa').select('*');
         if (sekolahId) allSiswaQ = allSiswaQ.eq('sekolah_id', sekolahId);
         let { data: allSiswa } = await allSiswaQ;
         if ((!allSiswa || allSiswa.length === 0) && sekolahId) {
-          const { data: globalSiswa } = await supabase.from('data_siswa').select('id, nisn, nama_siswa, kelas, gender, agama');
+          const { data: globalSiswa } = await supabase.from('data_siswa').select('*');
           allSiswa = globalSiswa;
         }
         if (allSiswa && allSiswa.length > 0) {
