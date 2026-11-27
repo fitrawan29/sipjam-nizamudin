@@ -4524,14 +4524,19 @@ export default function GradebookView({
             </div>
           ) : (
             <div className="neu-card-sm rounded-2xl overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
-              <div className="overflow-x-auto max-h-[600px] custom-scroll relative print:overflow-visible print:max-h-none">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll relative touch-pan-x overscroll-x-contain print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   {/* Table Header */}
                   <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 shadow-sm print:bg-gray-100 print:text-black">
                     {/* Upper Category Row */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
+                      <th colSpan={2} className="md:hidden sticky left-0 z-30 py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                         Identitas Siswa
+                      </th>
+                      <th colSpan={3} className="hidden md:table-cell sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
+                        Identitas Siswa
+                      </th>
+                      <th className="py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                       </th>
                       <th className="py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-sky-500/10 text-sky-800 dark:text-sky-300">
                         Diagnostik (Baseline)
@@ -4555,10 +4560,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
-                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-1.5 md:px-2.5 w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px] text-center">#</th>
+                      <th className="hidden md:table-cell sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[32px] md:left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 md:px-3 w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]">Nama Siswa</th>
+                      <th className="py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
 
                       {/* Diagnostik Column */}
                       {diagnostikCol && (
@@ -4700,14 +4705,15 @@ export default function GradebookView({
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
                           {/* Student Info */}
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-1.5 md:px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
-                            <span className="truncate block">{student.nama_siswa}</span>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                            <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
+                            <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 text-center text-[#475569] dark:text-[#94A3B8] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
+                          <td className="py-2 px-2 text-center text-[#475569] dark:text-[#94A3B8] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -4857,9 +4863,13 @@ export default function GradebookView({
                   {/* Table Footer: Class Average */}
                   <tfoot className="bg-[#DDE4EE] dark:bg-[#181C24] font-extrabold border-t-2 border-slate-300/70 dark:border-slate-700 text-[#0F172A] dark:text-[#F1F5F9]">
                     <tr>
-                      <td colSpan={4} className="sticky left-0 z-10 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-3 text-right border-r border-slate-300/60 dark:border-slate-700">
+                      <td colSpan={2} className="md:hidden sticky left-0 z-10 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2 text-right border-r border-slate-300/60 dark:border-slate-700 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]">
                         Rata-rata Kelas:
                       </td>
+                      <td colSpan={3} className="hidden md:table-cell sticky left-0 z-10 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-3 text-right border-r border-slate-300/60 dark:border-slate-700 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]">
+                        Rata-rata Kelas:
+                      </td>
+                      <td className="py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700"></td>
                       {diagnostikCol && (
                         <td className="py-2.5 px-2 text-center font-num text-sky-700 dark:text-sky-300 border-r border-slate-300/60 dark:border-slate-700">
                           {(() => {
@@ -4986,13 +4996,18 @@ export default function GradebookView({
             </div>
           ) : (
             <div className="neu-card-sm rounded-2xl overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
-              <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll touch-pan-x overscroll-x-contain print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 shadow-sm print:bg-gray-100 print:text-black">
                     {/* Upper Category Row */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
+                      <th colSpan={2} className="md:hidden sticky left-0 z-30 py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                         Identitas Siswa
+                      </th>
+                      <th colSpan={3} className="hidden md:table-cell sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
+                        Identitas Siswa
+                      </th>
+                      <th className="py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                       </th>
                       <th
                         colSpan={tpList.length + 1}
@@ -5018,10 +5033,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
-                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-1.5 md:px-2.5 w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px] text-center">#</th>
+                      <th className="hidden md:table-cell sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[32px] md:left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 md:px-3 w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]">Nama Siswa</th>
+                      <th className="py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
 
                       {/* Header per TP - Formatif */}
                       {tpList.map(tp => (
@@ -5087,14 +5102,15 @@ export default function GradebookView({
                           key={student.nisn}
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 text-center text-[#475569] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-1.5 md:px-2.5 text-center text-[#475569] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
-                            <span className="truncate block">{student.nama_siswa}</span>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                            <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
+                            <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
+                          <td className="py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -5317,13 +5333,18 @@ export default function GradebookView({
           {/* Table Container */}
           {activeAttendanceView === 'mapel' ? (
             <div className="neu-card-sm rounded-2xl overflow-hidden print:overflow-visible print:max-h-none print:border-none print:shadow-none">
-              <div className="overflow-x-auto max-h-[600px] custom-scroll print:overflow-visible print:max-h-none">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll touch-pan-x overscroll-x-contain print:overflow-visible print:max-h-none">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-30 shadow-sm print:bg-gray-100 print:text-black">
                     {/* Category Header Row */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 text-[11px] font-black uppercase tracking-wider">
-                      <th colSpan={4} className="sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
+                      <th colSpan={2} className="md:hidden sticky left-0 z-30 py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                         Identitas Siswa
+                      </th>
+                      <th colSpan={3} className="hidden md:table-cell sticky left-0 z-30 py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
+                        Identitas Siswa
+                      </th>
+                      <th className="py-2.5 px-2 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black">
                       </th>
                       <th colSpan={16} className="py-2.5 px-3 border-r border-slate-300/60 dark:border-slate-700/60 text-center bg-teal-500/15 text-[#0F766E] dark:text-teal-300">
                         16 Pertemuan KBM Sesi Tatap Muka
@@ -5335,10 +5356,10 @@ export default function GradebookView({
 
                     {/* Column Headers */}
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
-                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-1.5 md:px-2.5 w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px] text-center">#</th>
+                      <th className="hidden md:table-cell sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[32px] md:left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2 px-2 md:px-3 w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]">Nama Siswa</th>
+                      <th className="py-2 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
 
                       {/* 16 Session Columns */}
                       {sessions.map(sess => (
@@ -5414,14 +5435,15 @@ export default function GradebookView({
                           key={student.nisn}
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-1.5 md:px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
-                            <span className="truncate block">{student.nama_siswa}</span>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                            <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
+                            <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 text-center text-[#475569] dark:text-[#94A3B8] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
+                          <td className="py-2 px-2 text-center text-[#475569] dark:text-[#94A3B8] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">
                             {student.gender || '-'}
                           </td>
 
@@ -5487,14 +5509,14 @@ export default function GradebookView({
                   </p>
                 </div>
               </div>
-              <div className="overflow-x-auto max-h-[600px] custom-scroll">
+              <div className="overflow-x-auto max-h-[600px] custom-scroll touch-pan-x overscroll-x-contain">
                 <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
                   <thead className="bg-[#DDE4EE] dark:bg-[#181C24] text-[#0F172A] dark:text-[#F1F5F9] sticky top-0 z-20 print:bg-gray-100 print:text-black">
                     <tr className="border-b border-slate-300/60 dark:border-slate-700/60 font-bold text-[11px]">
-                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2.5 w-10 min-w-[40px] max-w-[40px] text-center">#</th>
-                      <th className="sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
-                      <th className="sticky left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-3 w-[200px] min-w-[200px] max-w-[200px]">Nama Siswa</th>
-                      <th className="sticky left-[336px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
+                      <th className="sticky left-0 z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-1.5 md:px-2.5 w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px] text-center">#</th>
+                      <th className="hidden md:table-cell sticky left-[40px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2.5 w-24 min-w-[96px] max-w-[96px]">NISN</th>
+                      <th className="sticky left-[32px] md:left-[136px] z-30 bg-[#DDE4EE] dark:bg-[#181C24] print:bg-gray-100 print:text-black py-2.5 px-2 md:px-3 w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]">Nama Siswa</th>
+                      <th className="py-2.5 px-2 w-12 min-w-[48px] max-w-[48px] text-center border-r border-slate-300/60 dark:border-slate-700/60">L/P</th>
                       <th className="py-2.5 px-3 text-center text-emerald-700 dark:text-emerald-300 border-r border-slate-300/60 dark:border-slate-700/60">Hadir</th>
                       <th className="py-2.5 px-3 text-center text-sky-700 dark:text-sky-300 border-r border-slate-300/60 dark:border-slate-700/60">Sakit</th>
                       <th className="py-2.5 px-3 text-center text-amber-700 dark:text-amber-300 border-r border-slate-300/60 dark:border-slate-700/60">Izin</th>
@@ -5510,12 +5532,13 @@ export default function GradebookView({
                       const dStat = dailyClassAttendance[student.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0, total: 0, percentage: 100 };
                       return (
                         <tr key={student.nisn} className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 group">
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 text-center text-[#475569] font-medium font-num w-10 min-w-[40px] max-w-[40px]">{idx + 1}</td>
-                          <td className="sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
-                          <td className="sticky left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[200px] min-w-[200px] max-w-[200px] truncate" title={student.nama_siswa}>
-                            <span className="truncate block">{student.nama_siswa}</span>
+                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-1.5 md:px-2.5 text-center text-[#475569] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                            <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
+                            <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
-                          <td className="sticky left-[336px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">{student.gender || '-'}</td>
+                          <td className="py-2.5 px-2 text-center text-[#475569] border-r border-slate-300/60 dark:border-slate-700/60 w-12 min-w-[48px] max-w-[48px]">{student.gender || '-'}</td>
                           <td className="py-2.5 px-3 text-center font-bold font-num text-emerald-700 dark:text-emerald-400 border-r border-slate-300/60 dark:border-slate-700/60">{dStat.hadir}</td>
                           <td className="py-2.5 px-3 text-center font-bold font-num text-sky-700 dark:text-sky-400 border-r border-slate-300/60 dark:border-slate-700/60">{dStat.sakit}</td>
                           <td className="py-2.5 px-3 text-center font-bold font-num text-amber-700 dark:text-amber-400 border-r border-slate-300/60 dark:border-slate-700/60">{dStat.izin}</td>
