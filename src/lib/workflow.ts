@@ -3137,5 +3137,201 @@ export function evaluatePresensiPulangTiming(
   };
 }
 
+export const REJECTION_REPAIR_WINDOW_DAYS = 7;
+
+export interface RejectedRepairItem {
+  id: string;
+  category: 'Presensi' | 'Jurnal KBM' | 'Jurnal Kegiatan' | 'Jurnal BK' | 'Laporan Piket';
+  tanggal: string;
+  detail: string;
+  alasan: string;
+  daysElapsed: number;
+  remainingDays: number;
+  deadlineDate: string;
+  isWithinWindow: boolean;
+  targetView: string;
+  raw?: any;
+}
+
+/**
+ * Menghitung sisa masa perbaikan 7 hari berjalan setelah penolakan oleh Admin.
+ */
+export function evaluate7DayRepairWindow(
+  recordDateOrIso?: string | null,
+  todayStrInput?: string
+): {
+  daysElapsed: number;
+  remainingDays: number;
+  deadlineDate: string;
+  isWithinWindow: boolean;
+} {
+  const todayStr = todayStrInput || getWitaDateStr();
+  const baseDateStr = extractWitaDateStr(recordDateOrIso) || todayStr;
+  const parseUtc = (dStr: string) => {
+    const [y, m, d] = dStr.split('-').map(Number);
+    return Date.UTC(y || 2026, (m || 1) - 1, d || 1);
+  };
+  const diffMs = parseUtc(todayStr) - parseUtc(baseDateStr);
+  const daysElapsed = Math.max(0, Math.floor(diffMs / 86400000));
+  const remainingDays = Math.max(0, REJECTION_REPAIR_WINDOW_DAYS - daysElapsed);
+  const deadlineMs = parseUtc(baseDateStr) + REJECTION_REPAIR_WINDOW_DAYS * 86400000;
+  const dObj = new Date(deadlineMs);
+  const deadlineDate = `${dObj.getUTCFullYear()}-${String(dObj.getUTCMonth() + 1).padStart(2, '0')}-${String(dObj.getUTCDate()).padStart(2, '0')}`;
+  return {
+    daysElapsed,
+    remainingDays,
+    deadlineDate,
+    isWithinWindow: daysElapsed <= REJECTION_REPAIR_WINDOW_DAYS,
+  };
+}
+
+/**
+ * Mengambil daftar pengajuan yang ditolak Admin (Presensi, Jurnal KBM/Kegiatan/BK, Laporan Piket)
+ * untuk ditampilkan di dashboard dengan batas masa perbaikan 7 hari berjalan.
+ */
+export async function fetchUserRejectedItemsWithin7Days(
+  dbClient: any,
+  user: any,
+  options?: { isBk?: boolean; isTu?: boolean }
+): Promise<RejectedRepairItem[]> {
+  if (!user?.nama && !user?.id) return [];
+  const cleanName = String(user?.nama || '').split(',')[0].trim();
+  const todayStr = getWitaDateStr();
+
+  const buildFilter = (q: any, nameCol: string) => {
+    let next = q.eq('status_verifikasi', 'Ditolak');
+    if (user?.sekolah_id) next = next.eq('sekolah_id', user.sekolah_id);
+    if (user?.id && cleanName) {
+      next = next.or(`user_id.eq.${user.id},${nameCol}.ilike."%${cleanName}%"`);
+    } else if (user?.id) {
+      next = next.eq('user_id', user.id);
+    } else if (cleanName) {
+      next = next.ilike(nameCol, `%${cleanName}%`);
+    }
+    return next.limit(20);
+  };
+
+  const safeQuery = async (promise: Promise<any>) => {
+    try {
+      const res = await promise;
+      return Array.isArray(res?.data) ? res.data : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const [presensiRows, jurnalRows, bkRows, piketRows] = await Promise.all([
+    safeQuery(buildFilter(dbClient.from('presensi_guru').select('*').order('timestamp', { ascending: false }), 'nama_guru')),
+    safeQuery(buildFilter(dbClient.from('jurnal_pembelajaran').select('*').order('tanggal', { ascending: false }), 'nama_guru')),
+    options?.isBk
+      ? safeQuery(buildFilter(dbClient.from('jurnal_bk').select('*').order('tanggal', { ascending: false }), 'nama_guru'))
+      : Promise.resolve([]),
+    safeQuery(buildFilter(dbClient.from('laporan_piket').select('*').order('tanggal', { ascending: false }), 'guru_pelapor')),
+  ]);
+
+  const items: RejectedRepairItem[] = [];
+
+  for (const p of presensiRows) {
+    const tgl = extractWitaDateStr(p.tanggal_mulai || p.timestamp) || todayStr;
+    const win = evaluate7DayRepairWindow(p.updated_at || tgl, todayStr);
+    if (!win.isWithinWindow) continue;
+    items.push({
+      id: `presensi-${p.id}`,
+      category: 'Presensi',
+      tanggal: tgl,
+      detail: `Presensi ${p.tipe_absen || 'Datang'}${p.jenis_presensi ? ` (${p.jenis_presensi})` : ''}`,
+      alasan: p.catatan_admin || p.alasan_penolakan || 'Ditolak Admin, silakan perbaiki presensi.',
+      ...win,
+      targetView: 'view-guru-presensi',
+      raw: p,
+    });
+  }
+
+  for (const j of jurnalRows) {
+    const tgl = extractWitaDateStr(j.tanggal || j.timestamp) || todayStr;
+    const win = evaluate7DayRepairWindow(j.updated_at || tgl, todayStr);
+    if (!win.isWithinWindow) continue;
+    const isKegiatan = j.keterangan === 'Jurnal Kegiatan' || j.mapel === 'Jurnal Kegiatan' || j.mapel === '-';
+    items.push({
+      id: `jurnal-${j.id}`,
+      category: isKegiatan ? 'Jurnal Kegiatan' : 'Jurnal KBM',
+      tanggal: tgl,
+      detail: isKegiatan
+        ? `Jurnal Kegiatan: ${j.materi || j.kegiatan || '-'}`
+        : `${j.mapel || 'Jurnal KBM'}${j.kelas && j.kelas !== '-' ? ` (Kelas ${j.kelas})` : ''}`,
+      alasan: j.catatan_admin || j.alasan_penolakan || 'Ditolak Admin, silakan perbaiki jurnal.',
+      ...win,
+      targetView: 'view-guru-jurnal',
+      raw: j,
+    });
+  }
+
+  for (const b of bkRows) {
+    const tgl = extractWitaDateStr(b.tanggal || b.created_at) || todayStr;
+    const win = evaluate7DayRepairWindow(b.updated_at || tgl, todayStr);
+    if (!win.isWithinWindow) continue;
+    items.push({
+      id: `bk-${b.id}`,
+      category: 'Jurnal BK',
+      tanggal: tgl,
+      detail: `${b.jenis_layanan || 'Layanan BK'}${b.nama_siswa ? ` - ${b.nama_siswa}` : ''}`,
+      alasan: b.alasan_penolakan || b.catatan_admin || 'Ditolak Admin, silakan perbaiki jurnal BK.',
+      ...win,
+      targetView: 'view-jurnal-bk',
+      raw: b,
+    });
+  }
+
+  for (const l of piketRows) {
+    const tgl = extractWitaDateStr(l.tanggal || l.timestamp) || todayStr;
+    const win = evaluate7DayRepairWindow(l.updated_at || tgl, todayStr);
+    if (!win.isWithinWindow) continue;
+    items.push({
+      id: `piket-${l.id}`,
+      category: 'Laporan Piket',
+      tanggal: tgl,
+      detail: `Laporan Piket (${tgl})`,
+      alasan: l.catatan_admin || l.alasan_penolakan || 'Ditolak Admin, silakan perbaiki laporan piket.',
+      ...win,
+      targetView: 'view-piket',
+      raw: l,
+    });
+  }
+
+  return items.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+}
+
+/**
+ * Label dan kelas badge status verifikasi untuk tampilan role Guru, Guru BK, dan TU.
+ */
+export function getVerifStatusBadgeMeta(status?: string | null): {
+  label: string;
+  badgeClass: string;
+} {
+  const s = (status || '').trim();
+  if (s === 'Disetujui' || s === 'Diverifikasi') {
+    return {
+      label: 'Terverifikasi',
+      badgeClass: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    };
+  }
+  if (s === 'Ditolak') {
+    return {
+      label: 'Ditolak',
+      badgeClass: 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+    };
+  }
+  if (s === 'Dispensasi') {
+    return {
+      label: 'Dispensasi',
+      badgeClass: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+    };
+  }
+  return {
+    label: s || 'Menunggu',
+    badgeClass: 'bg-amber-500/15 text-amber-800 dark:text-amber-300',
+  };
+}
+
 
 

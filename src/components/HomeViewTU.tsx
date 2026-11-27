@@ -13,6 +13,7 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { renderUserAvatar } from '@/lib/avatars';
 import { AppUser } from '@/types/user';
+import { fetchUserRejectedItemsWithin7Days, RejectedRepairItem, getVerifStatusBadgeMeta } from '@/lib/workflow';
 
 export interface HomeViewTUProps {
   user: AppUser;
@@ -114,6 +115,7 @@ export default function HomeViewTU({
   // Operational State & Stats
   const [dailyState, setDailyState] = useState<TUDailyState | null>(null);
   const [loadingState, setLoadingState] = useState(false);
+  const [rejected7Days, setRejected7Days] = useState<RejectedRepairItem[]>([]);
   const [attendanceStats, setAttendanceStats] = useState({
     hadir: 0,
     dinasLuar: 0,
@@ -502,6 +504,9 @@ export default function HomeViewTU({
     } finally {
       setLoadingState(false);
     }
+      fetchUserRejectedItemsWithin7Days(supabase, user, { isTu: true })
+        .then(setRejected7Days)
+        .catch(() => {});
   }, [user?.nama, user?.id, user?.sekolah_id, selectedMonth, hariIni]);
 
   // Initial and reactive sync
@@ -518,7 +523,7 @@ export default function HomeViewTU({
       if (tuRealtimeTimer) clearTimeout(tuRealtimeTimer);
       tuRealtimeTimer = setTimeout(() => {
         loadTuData();
-      }, 3000);
+      }, 600);
     };
 
     const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
@@ -527,6 +532,7 @@ export default function HomeViewTU({
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru', ...rtFilter }, scheduleTuRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran', ...rtFilter }, scheduleTuRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket', ...rtFilter }, scheduleTuRefresh)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pengaturan', ...rtFilter }, scheduleTuRefresh)
       .subscribe();
 
@@ -583,7 +589,7 @@ export default function HomeViewTU({
   // Build Workflow Steps for Tata Usaha
   const getWorkflowSteps = () => {
     if (!dailyState) return [];
-    const steps: { label: string; status: 'done' | 'active' | 'locked' | 'skipped'; detail: string; icon: string; targetView?: string }[] = [];
+    const steps: { label: string; status: 'done' | 'active' | 'locked' | 'skipped'; detail: string; icon: string; targetView?: string; verifStatus?: string | null }[] = [];
 
     // Step 1: Presensi Datang
     if (dailyState.isLibur) {
@@ -602,7 +608,8 @@ export default function HomeViewTU({
         status: 'active',
         detail: '⚠️ Ditolak Admin — Silakan isi ulang',
         icon: 'fa-right-to-bracket',
-        targetView: 'view-guru-presensi'
+        targetView: 'view-guru-presensi',
+        verifStatus: 'Ditolak'
       });
       return steps;
     } else if (dailyState.presensiDatang) {
@@ -614,7 +621,8 @@ export default function HomeViewTU({
           label: 'Presensi Datang',
           status: 'skipped',
           detail: 'Tercatat Alpa (Tidak Melakukan Presensi)',
-          icon: 'fa-user-xmark'
+          icon: 'fa-user-xmark',
+          verifStatus: 'Alpa'
         });
         return steps;
       }
@@ -622,7 +630,8 @@ export default function HomeViewTU({
         label: 'Presensi Datang',
         status: 'done',
         detail: `${jp} · ${timeOnly} WITA`,
-        icon: 'fa-right-to-bracket'
+        icon: 'fa-right-to-bracket',
+        verifStatus: dailyState.presensiDatang.status_verifikasi || 'Menunggu'
       });
     } else {
       steps.push({
@@ -653,14 +662,16 @@ export default function HomeViewTU({
           label: 'Laporan Piket',
           status: 'active',
           detail: '⚠️ Ditolak Admin — Silakan hubungi Admin/Koordinator Piket',
-          icon: 'fa-shield-halved'
+          icon: 'fa-shield-halved',
+          verifStatus: 'Ditolak'
         });
       } else if (dailyState.laporanPiket) {
         steps.push({
           label: 'Laporan Piket',
           status: 'done',
           detail: 'Laporan piket selesai dilaporkan',
-          icon: 'fa-shield-halved'
+          icon: 'fa-shield-halved',
+          verifStatus: dailyState.laporanPiket.status_verifikasi || 'Menunggu'
         });
       } else {
         steps.push({
@@ -680,7 +691,8 @@ export default function HomeViewTU({
         status: 'active',
         detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`,
         icon: 'fa-book-journal-whills',
-        targetView: 'view-guru-jurnal'
+        targetView: 'view-guru-jurnal',
+        verifStatus: 'Ditolak'
       });
     } else if (dailyState.jurnalKegiatan) {
       const judul = dailyState.jurnalKegiatan.materi || dailyState.jurnalKegiatan.kegiatan || 'Jurnal Kegiatan Selesai';
@@ -688,7 +700,8 @@ export default function HomeViewTU({
         label: 'Jurnal Kegiatan',
         status: 'done',
         detail: `Selesai diisi: ${judul}`,
-        icon: 'fa-book-journal-whills'
+        icon: 'fa-book-journal-whills',
+        verifStatus: dailyState.jurnalKegiatan.status_verifikasi || 'Menunggu'
       });
     } else {
       const isWaitingPiket = dailyState.isPiket && !dailyState.laporanPiket;
@@ -708,7 +721,8 @@ export default function HomeViewTU({
         status: 'active',
         detail: '⚠️ Ditolak Admin — Silakan isi ulang',
         icon: 'fa-right-from-bracket',
-        targetView: 'view-guru-presensi'
+        targetView: 'view-guru-presensi',
+        verifStatus: 'Ditolak'
       });
     } else if (dailyState.presensiPulang) {
       const ts = dailyState.presensiPulang.timestamp || '';
@@ -721,14 +735,16 @@ export default function HomeViewTU({
           status: 'active',
           detail: `⚠️ Pulang Cepat · ${timeOnly} WITA`,
           icon: 'fa-person-walking-dashed-line-arrow-right',
-          targetView: 'view-guru-presensi'
+          targetView: 'view-guru-presensi',
+          verifStatus: dailyState.presensiPulang.status_verifikasi
         });
       } else {
         steps.push({
           label: 'Presensi Pulang',
           status: 'done',
           detail: isAuto ? `Lupa Checkout · ${timeOnly} WITA` : `Pulang · ${timeOnly} WITA`,
-          icon: isAuto ? 'fa-clock-rotate-left' : 'fa-right-from-bracket'
+          icon: isAuto ? 'fa-clock-rotate-left' : 'fa-right-from-bracket',
+          verifStatus: dailyState.presensiPulang.status_verifikasi || 'Menunggu'
         });
       }
     } else if (dailyState.canPresensiPulang) {
@@ -1025,6 +1041,52 @@ export default function HomeViewTU({
         </div>
       </div>
 
+      {/* Penolakan Admin & Masa Perbaikan 7 Hari */}
+      {rejected7Days.length > 0 && (
+        <div className="clay-card p-4 sm:p-5 rounded-3xl border border-rose-500/30 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+              <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"></i>
+              <span>Perlu Perbaikan ({rejected7Days.length} Ditolak Admin)</span>
+            </h3>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300">
+              Batas 7 Hari Berjalan
+            </span>
+          </div>
+          <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1]">
+            Anda memiliki kesempatan melakukan perbaikan selama <strong>7 hari berjalan</strong> setelah penolakan oleh Admin.
+          </p>
+          <div className="space-y-2">
+            {rejected7Days.map((item) => (
+              <div key={item.id} className="neu-inset p-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300">
+                      {item.category}
+                    </span>
+                    <span className="text-[10px] font-num font-semibold text-[#475569] dark:text-[#94A3B8]">
+                      {item.tanggal}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                      {item.remainingDays === 0 ? 'Hari terakhir perbaikan' : `Sisa ${item.remainingDays} hari (s/d ${item.deadlineDate})`}
+                    </span>
+                  </div>
+                  <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">{item.detail}</p>
+                  <p className="text-[11px] text-rose-700 dark:text-rose-300 italic">&ldquo;{item.alasan}&rdquo;</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setView(item.targetView)}
+                  className="neu-btn neu-btn-rose btn-click text-[11px] font-bold px-3.5 py-2 min-h-[38px] rounded-xl shrink-0 flex items-center gap-1.5 self-start sm:self-center"
+                >
+                  <i className="fa-solid fa-pen-to-square text-[10px]"></i> Perbaiki
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Section 2: Status Tugas Hari Ini (Workflow Status Tracker) */}
       <div className="clay-card p-4 sm:p-5 rounded-3xl">
         <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-3 flex items-center gap-2">
@@ -1079,14 +1141,24 @@ export default function HomeViewTU({
 
                   <div className="flex-grow min-w-0 pb-1">
                     <div className="flex items-center justify-between gap-2">
-                      <p className={`text-[11px] font-bold ${
-                        step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
-                        step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
-                        step.status === 'skipped' ? 'text-sky-700 dark:text-sky-400' :
-                        'text-[#475569] dark:text-[#94A3B8]'
-                      }`}>
-                        {step.label}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                        <p className={`text-[11px] font-bold ${
+                          step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
+                          step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
+                          step.status === 'skipped' ? 'text-sky-700 dark:text-sky-400' :
+                          'text-[#475569] dark:text-[#94A3B8]'
+                        }`}>
+                          {step.label}
+                        </p>
+                        {step.verifStatus && (() => {
+                          const meta = getVerifStatusBadgeMeta(step.verifStatus);
+                          return (
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${meta.badgeClass}`}>
+                              {meta.label}
+                            </span>
+                          );
+                        })()}
+                      </div>
 
                       {isClickable && step.targetView && (
                         <button

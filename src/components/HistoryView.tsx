@@ -46,8 +46,25 @@ export default function HistoryView({
       loadData();
     };
 
+    let rtTimer: NodeJS.Timeout | null = null;
+    const scheduleRefresh = () => {
+      if (rtTimer) clearTimeout(rtTimer);
+      rtTimer = setTimeout(() => {
+        loadData();
+      }, 600);
+    };
+
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
+    const channel = supabase
+      .channel(`realtime-history-${user?.id || user?.nama || 'anon'}-${activeTab}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru', ...rtFilter }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran', ...rtFilter }, scheduleRefresh)
+      .subscribe();
+
     window.addEventListener('sipjam:presensi_updated', handlePresensiUpdated);
     return () => {
+      if (rtTimer) clearTimeout(rtTimer);
+      supabase.removeChannel(channel);
       window.removeEventListener('sipjam:presensi_updated', handlePresensiUpdated);
     };
   }, [activeTab, filterBulan]);

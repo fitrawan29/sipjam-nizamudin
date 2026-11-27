@@ -14,7 +14,10 @@ import {
   isJurnalMatchJadwal,
   evaluatePresensiPulangTiming,
   hasAttendanceData,
-  hasJournalContent
+  hasJournalContent,
+  fetchUserRejectedItemsWithin7Days,
+  RejectedRepairItem,
+  getVerifStatusBadgeMeta
 } from '@/lib/workflow';
 import { supabase } from '@/lib/supabaseClient';
 import { getTeacherDisciplineWarnings, TeacherWarningSummary } from '@/lib/warningSystem';
@@ -59,6 +62,7 @@ export default function HomeViewGuru({
   const [telatConfig, setTelatConfig] = useState({ aktif: true, batasJam: 4, penaltiHari: 1 });
   const [configSyncTick, setConfigSyncTick] = useState(0);
   const [teacherWarnings, setTeacherWarnings] = useState<TeacherWarningSummary | null>(null);
+  const [rejected7Days, setRejected7Days] = useState<RejectedRepairItem[]>([]);
   const [schoolName, setSchoolName] = useState<string>(() => {
     if (initialSchoolName?.trim()) return initialSchoolName.trim();
     if (typeof window !== 'undefined') {
@@ -327,6 +331,9 @@ export default function HomeViewGuru({
         getTeacherDisciplineWarnings(user.nama, user.sekolah_id, selectedMonth)
           .then(setTeacherWarnings)
           .catch(err => console.error('Error refreshing discipline warnings:', err));
+        fetchUserRejectedItemsWithin7Days(supabase, user, { isBk })
+          .then(setRejected7Days)
+          .catch(() => {});
       } catch (err) {
         console.error('Error refreshing guru daily state:', err);
       } finally {
@@ -368,6 +375,15 @@ export default function HomeViewGuru({
         refreshDailyWorkflow();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk', ...rtFilter }, () => {
+        refreshDailyWorkflow();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'presensi_guru', ...rtFilter }, () => {
+        refreshDailyWorkflow();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_pembelajaran', ...rtFilter }, () => {
+        refreshDailyWorkflow();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket', ...rtFilter }, () => {
         refreshDailyWorkflow();
       })
       .on('broadcast', { event: 'config_updated' }, () => {
@@ -438,7 +454,7 @@ export default function HomeViewGuru({
   // Workflow steps for teacher
   const getWorkflowSteps = () => {
     if (!dailyState) return [];
-    const steps: { label: string; status: 'done' | 'active' | 'locked' | 'skipped'; detail: string; icon: string }[] = [];
+    const steps: { label: string; status: 'done' | 'active' | 'locked' | 'skipped'; detail: string; icon: string; verifStatus?: string | null }[] = [];
 
     const pulangTiming = evaluatePresensiPulangTiming(
       dailyState.jamPresensi || {
@@ -473,17 +489,17 @@ export default function HomeViewGuru({
 
     if (dailyState.presensiDatangDitolak) {
       // Presensi datang was rejected — show as needing re-submission
-      steps.push({ label: 'Presensi Datang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-to-bracket' });
+      steps.push({ label: 'Presensi Datang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-to-bracket', verifStatus: 'Ditolak' });
       return steps;
     } else if (dailyState.presensiDatang) {
       const jp = dailyState.presensiDatang.jenis_presensi;
       const ts = dailyState.presensiDatang.timestamp || '';
       const timeOnly = formatPresensiTime(ts) || (ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : ''));
       if (jp === 'Alpa' || dailyState.isAlpa || dailyState.presensiDatang.status_verifikasi === 'Alpa') {
-        steps.push({ label: 'Presensi Datang', status: 'skipped', detail: 'Tercatat Alpa (Tidak Presensi)', icon: 'fa-user-xmark' });
+        steps.push({ label: 'Presensi Datang', status: 'skipped', detail: 'Tercatat Alpa (Tidak Presensi)', icon: 'fa-user-xmark', verifStatus: 'Alpa' });
         return steps;
       }
-      steps.push({ label: 'Presensi Datang', status: 'done', detail: `${jp} · ${timeOnly} WITA`, icon: 'fa-right-to-bracket' });
+      steps.push({ label: 'Presensi Datang', status: 'done', detail: `${jp} · ${timeOnly} WITA`, icon: 'fa-right-to-bracket', verifStatus: dailyState.presensiDatang.status_verifikasi || 'Menunggu' });
     } else {
       steps.push({ label: 'Presensi Datang', status: 'active', detail: 'Belum presensi hari ini', icon: 'fa-right-to-bracket' });
       return steps;
@@ -498,9 +514,9 @@ export default function HomeViewGuru({
     // Step 2: Piket
     if (dailyState.isPiket) {
       if (dailyState.laporanPiketDitolak) {
-        steps.push({ label: 'Laporan Piket', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-shield-halved' });
+        steps.push({ label: 'Laporan Piket', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-shield-halved', verifStatus: 'Ditolak' });
       } else if (dailyState.laporanPiket) {
-        steps.push({ label: 'Laporan Piket', status: 'done', detail: 'Sudah diisi', icon: 'fa-shield-halved' });
+        steps.push({ label: 'Laporan Piket', status: 'done', detail: 'Sudah diisi', icon: 'fa-shield-halved', verifStatus: dailyState.laporanPiket.status_verifikasi || 'Menunggu' });
       } else {
         steps.push({ label: 'Laporan Piket', status: 'active', detail: 'Belum mengisi laporan piket', icon: 'fa-shield-halved' });
       }
@@ -510,12 +526,16 @@ export default function HomeViewGuru({
     const hasJurnalDitolak = (dailyState.jurnalDitolak?.length ?? 0) > 0;
     const bkCount = dailyState.jurnalBK?.length ?? 0;
     if (isBk) {
+      const bkLatestVerif = (dailyState.jurnalBK || [])[0]?.status_verifikasi || null;
+      const bkAllVerified = bkCount > 0 && (dailyState.jurnalBK || []).every((b: any) => b.status_verifikasi === 'Disetujui' || b.status_verifikasi === 'Diverifikasi');
+      const bkVerifLabel = hasJurnalDitolak ? 'Ditolak' : bkAllVerified ? 'Disetujui' : bkLatestVerif;
       if (hasJurnalDitolak && bkCount === 0) {
         steps.push({
           label: 'Jurnal BK (Konseling)',
           status: 'active',
           detail: `⚠️ Ditolak Admin — Silakan perbaiki di menu Jurnal BK (${dailyState.jurnalDitolak.length} entri)`,
-          icon: 'fa-heart-pulse'
+          icon: 'fa-heart-pulse',
+          verifStatus: 'Ditolak'
         });
       } else if (bkCount > 0) {
         steps.push({
@@ -524,7 +544,8 @@ export default function HomeViewGuru({
           detail: hasJurnalDitolak
             ? `Sudah mengisi ${bkCount} jurnal BK (ada ${dailyState.jurnalDitolak.length} ditolak admin)`
             : `Sudah mengisi ${bkCount} jurnal layanan BK hari ini`,
-          icon: 'fa-heart-pulse'
+          icon: 'fa-heart-pulse',
+          verifStatus: bkVerifLabel
         });
       } else {
         steps.push({
@@ -538,52 +559,60 @@ export default function HomeViewGuru({
       steps.push({ label: 'Bebas Jurnal', status: 'skipped', detail: 'Tidak ada jadwal mengajar hari ini', icon: 'fa-book-journal-whills' });
     } else if (dailyState.isBlok) {
       if (hasJurnalDitolak) {
-        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
+        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills', verifStatus: 'Ditolak' });
       } else if (dailyState.jurnalKegiatan) {
-        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'done', detail: 'Jurnal kegiatan blok selesai diisi', icon: 'fa-book-journal-whills' });
+        steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: 'done', detail: 'Jurnal kegiatan blok selesai diisi', icon: 'fa-book-journal-whills', verifStatus: dailyState.jurnalKegiatan.status_verifikasi || 'Menunggu' });
       } else {
         const canOpen = dailyState.canOpenJurnal;
         steps.push({ label: 'Jurnal Kegiatan (Sistem Blok)', status: canOpen ? 'active' : 'locked', detail: canOpen ? `Kegiatan: ${dailyState.blokInfo?.nama_kegiatan || 'Sistem Blok'}` : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
       }
     } else if (dailyState.isDinasLuar || (dailyState.jadwalKBM || []).length === 0) {
       if (hasJurnalDitolak) {
-        steps.push({ label: 'Jurnal Kegiatan', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills' });
+        steps.push({ label: 'Jurnal Kegiatan', status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri)`, icon: 'fa-book-journal-whills', verifStatus: 'Ditolak' });
       } else if (dailyState.jurnalKegiatan) {
-        steps.push({ label: 'Jurnal Kegiatan', status: 'done', detail: 'Sudah diisi', icon: 'fa-book-journal-whills' });
+        steps.push({ label: 'Jurnal Kegiatan', status: 'done', detail: 'Sudah diisi', icon: 'fa-book-journal-whills', verifStatus: dailyState.jurnalKegiatan.status_verifikasi || 'Menunggu' });
       } else {
         const canOpen = dailyState.canOpenJurnal;
         steps.push({ label: 'Jurnal Kegiatan', status: canOpen ? 'active' : 'locked', detail: canOpen ? 'Belum mengisi jurnal kegiatan' : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
       }
     } else {
-      const filled = (dailyState.jurnalKBM || []).filter(j => hasJournalContent(j)).length;
+      const filledJurnals = (dailyState.jurnalKBM || []).filter(j => hasJournalContent(j));
+      const filled = filledJurnals.length;
       const total = (dailyState.jadwalKBM || []).length;
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang?.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang?.jenis_presensi === 'Pulang Cepat';
+      const kbmVerifStatus = hasJurnalDitolak
+        ? 'Ditolak'
+        : filled > 0
+        ? (filledJurnals.every((j: any) => j.status_verifikasi === 'Disetujui' || j.status_verifikasi === 'Diverifikasi')
+            ? 'Disetujui'
+            : (filledJurnals[0]?.status_verifikasi || 'Menunggu'))
+        : null;
       if (isPulangCepat && total > filled) {
         steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: 'active', detail: `⚠️ Tidak Masuk Kelas (${total - filled} jam pelajaran)`, icon: 'fa-triangle-exclamation' });
       } else if (hasJurnalDitolak) {
-        steps.push({ label: `Jurnal KBM`, status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri ditolak)`, icon: 'fa-book-journal-whills' });
+        steps.push({ label: `Jurnal KBM`, status: 'active', detail: `⚠️ Ditolak Admin — Silakan isi ulang (${dailyState.jurnalDitolak.length} entri ditolak)`, icon: 'fa-book-journal-whills', verifStatus: 'Ditolak' });
       } else if (filled >= total) {
-        steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: 'done', detail: 'Semua jurnal KBM sudah diisi', icon: 'fa-book-journal-whills' });
+        steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: 'done', detail: 'Semua jurnal KBM sudah diisi', icon: 'fa-book-journal-whills', verifStatus: kbmVerifStatus });
       } else {
         const canOpen = dailyState.canOpenJurnal;
-        steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: canOpen ? 'active' : 'locked', detail: canOpen ? `Masih ada ${total - filled} jurnal yang belum diisi` : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills' });
+        steps.push({ label: `Jurnal KBM (${filled}/${total})`, status: canOpen ? 'active' : 'locked', detail: canOpen ? `Masih ada ${total - filled} jurnal yang belum diisi` : 'Selesaikan piket dahulu', icon: 'fa-book-journal-whills', verifStatus: kbmVerifStatus });
       }
     }
 
     // Step 4: Presensi Pulang
     if (dailyState.presensiPulangDitolak) {
-      steps.push({ label: 'Presensi Pulang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-from-bracket' });
+      steps.push({ label: 'Presensi Pulang', status: 'active', detail: '⚠️ Ditolak Admin — Silakan isi ulang', icon: 'fa-right-from-bracket', verifStatus: 'Ditolak' });
     } else if (dailyState.presensiPulang) {
       const isPulangCepat = dailyState.isPulangCepat || dailyState.presensiPulang.status_verifikasi === 'Pulang Cepat' || dailyState.presensiPulang.jenis_presensi === 'Pulang Cepat';
       const isLupaCheckout = dailyState.presensiPulang.status_verifikasi === 'Lupa Checkout' || dailyState.presensiPulang.is_auto_checkout;
       const ts = dailyState.presensiPulang.timestamp || '';
       const timeOnly = formatPresensiTime(ts) || (ts.includes(' ') ? ts.split(' ')[1]?.substring(0, 5) : (ts.includes('T') ? ts.split('T')[1]?.substring(0, 5) : ''));
       if (isPulangCepat) {
-        steps.push({ label: 'Presensi Pulang', status: 'active', detail: `⚠️ Pulang Cepat · ${timeOnly} WITA`, icon: 'fa-person-walking-dashed-line-arrow-right' });
+        steps.push({ label: 'Presensi Pulang', status: 'active', detail: `⚠️ Pulang Cepat · ${timeOnly} WITA`, icon: 'fa-person-walking-dashed-line-arrow-right', verifStatus: dailyState.presensiPulang.status_verifikasi });
       } else if (isLupaCheckout) {
-        steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Lupa Checkout · ${timeOnly} WITA`, icon: 'fa-clock-rotate-left' });
+        steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Lupa Checkout · ${timeOnly} WITA`, icon: 'fa-clock-rotate-left', verifStatus: dailyState.presensiPulang.status_verifikasi });
       } else {
-        steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket' });
+        steps.push({ label: 'Presensi Pulang', status: 'done', detail: `Pulang · ${timeOnly} WITA`, icon: 'fa-right-from-bracket', verifStatus: dailyState.presensiPulang.status_verifikasi || 'Menunggu' });
       }
     } else if (isExemptNonTeachingDay) {
       steps.push({ label: 'Bebas Pulang', status: 'skipped', detail: 'Hari ini tidak ada jadwal mengajar (Bebas Pulang)', icon: 'fa-calendar-check' });
@@ -1008,6 +1037,52 @@ export default function HomeViewGuru({
             Target Jurnal Hari Ini, Jurnal Terisi vs Total Target, Bebas Mengajar Hari Ini, Belum Lengkap
           */}
 
+          {/* Penolakan Admin & Masa Perbaikan 7 Hari */}
+          {rejected7Days.length > 0 && (
+            <div className="clay-card p-4 sm:p-5 rounded-3xl border border-rose-500/30 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 flex items-center gap-2">
+                  <i className="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"></i>
+                  <span>Perlu Perbaikan ({rejected7Days.length} Ditolak Admin)</span>
+                </h3>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300">
+                  Batas 7 Hari Berjalan
+                </span>
+              </div>
+              <p className="text-[11px] text-[#475569] dark:text-[#CBD5E1]">
+                Anda memiliki kesempatan melakukan perbaikan selama <strong>7 hari berjalan</strong> setelah penolakan oleh Admin.
+              </p>
+              <div className="space-y-2">
+                {rejected7Days.map((item) => (
+                  <div key={item.id} className="neu-inset p-3 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300">
+                          {item.category}
+                        </span>
+                        <span className="text-[10px] font-num font-semibold text-[#475569] dark:text-[#94A3B8]">
+                          {item.tanggal}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                          {item.remainingDays === 0 ? 'Hari terakhir perbaikan' : `Sisa ${item.remainingDays} hari (s/d ${item.deadlineDate})`}
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">{item.detail}</p>
+                      <p className="text-[11px] text-rose-700 dark:text-rose-300 italic">&ldquo;{item.alasan}&rdquo;</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setView(item.targetView)}
+                      className="neu-btn neu-btn-rose btn-click text-[11px] font-bold px-3.5 py-2 min-h-[38px] rounded-xl shrink-0 flex items-center gap-1.5 self-start sm:self-center"
+                    >
+                      <i className="fa-solid fa-pen-to-square text-[10px]"></i> Perbaiki
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Section 2: Workflow Status Tracker (Status Tugas Hari Ini) */}
           <div className="clay-card p-4 sm:p-5 rounded-3xl">
             <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-3 flex items-center gap-2">
@@ -1063,14 +1138,24 @@ export default function HomeViewGuru({
 
                       <div className="flex-grow min-w-0 pb-1">
                         <div className="flex items-center justify-between gap-2">
-                          <p className={`text-[11px] font-bold ${
-                            step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
-                            step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
-                            step.status === 'skipped' ? 'text-sky-700 dark:text-sky-400' :
-                            'text-[#475569] dark:text-[#94A3B8]'
-                          }`}>
-                            {step.label}
-                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <p className={`text-[11px] font-bold ${
+                              step.status === 'done' ? 'text-emerald-700 dark:text-emerald-400' :
+                              step.status === 'active' ? 'text-amber-800 dark:text-amber-300' :
+                              step.status === 'skipped' ? 'text-sky-700 dark:text-sky-400' :
+                              'text-[#475569] dark:text-[#94A3B8]'
+                            }`}>
+                              {step.label}
+                            </p>
+                            {step.verifStatus && (() => {
+                              const meta = getVerifStatusBadgeMeta(step.verifStatus);
+                              return (
+                                <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${meta.badgeClass}`}>
+                                  {meta.label}
+                                </span>
+                              );
+                            })()}
+                          </div>
 
                           {isClickable && targetView && (
                             <button

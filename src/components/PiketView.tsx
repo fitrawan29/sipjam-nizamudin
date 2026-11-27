@@ -1299,6 +1299,25 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
     if (laporan) setLaporanPiket(laporan);
   };
 
+  useEffect(() => {
+    let rtTimer: NodeJS.Timeout | null = null;
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
+    const channel = supabase
+      .channel(`realtime-laporan-piket-${user?.id || user?.nama || 'anon'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'laporan_piket', ...rtFilter }, () => {
+        if (rtTimer) clearTimeout(rtTimer);
+        rtTimer = setTimeout(() => {
+          fetchDataPiket();
+        }, 600);
+      })
+      .subscribe();
+
+    return () => {
+      if (rtTimer) clearTimeout(rtTimer);
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, user?.nama, user?.sekolah_id]);
+
   const syncJadwalPiketForDay = async (day: string) => {
     try {
       let penugasanQuery = supabase
@@ -1590,6 +1609,9 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
         return showToast('Gagal Upload', err.message, 'error');
       }
 
+      const isFotoPersonalLengkap = Boolean(fileUrl && fileUrl.trim().length > 0 && fileUrl !== 'pending:uploading' && fileUrl !== 'gagal_upload');
+      const statusVerifikasiPersonalPiket = isFotoPersonalLengkap ? 'Disetujui' : 'Menunggu';
+
       const newLaporan = {
         id: crypto.randomUUID(),
         timestamp: getWitaTimestamp(),
@@ -1599,7 +1621,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
         rekap_absen_kelas: JSON.stringify({}),
         catatan_apel: catatan || 'Laporan Pribadi Piket',
         link_foto: fileUrl,
-        status_verifikasi: 'Menunggu',
+        status_verifikasi: statusVerifikasiPersonalPiket,
         kehadiran_guru_piket: 'Hadir',
         ...(user?.sekolah_id ? { sekolah_id: user.sekolah_id } : {})
       };

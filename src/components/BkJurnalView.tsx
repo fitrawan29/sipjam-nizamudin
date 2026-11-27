@@ -8,6 +8,7 @@ import { triggerPrintWithGps } from '@/utils/printWithGps';
 import CameraSelfieCapture from './CameraSelfieCapture';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { getWitaDateStr, getWitaTimeStr } from '@/lib/wita';
+import { evaluate7DayRepairWindow } from '@/lib/workflow';
 import { transformGoogleDriveUrl, getGoogleDriveThumbnailUrl, isGoogleDriveUrl } from '@/lib/imageUrl';
 import { generateCsvString, triggerCsvDownload } from '@/lib/csvExport';
 
@@ -435,6 +436,34 @@ export default function BkJurnalView({
     }
   }, [draftKey, isReadOnly, loadEntries, loadStudents]);
 
+  // Realtime sync for jurnal_bk so Admin verification/rejection updates immediately for Guru BK
+  useEffect(() => {
+    let rtTimer: NodeJS.Timeout | null = null;
+    const rtFilter = user?.sekolah_id ? { filter: `sekolah_id=eq.${user.sekolah_id}` } : {};
+    const channel = supabase
+      .channel(`realtime-bk-jurnal-${user?.id || user?.nama || 'anon'}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'jurnal_bk', ...rtFilter }, () => {
+        if (rtTimer) clearTimeout(rtTimer);
+        rtTimer = setTimeout(() => {
+          loadEntries();
+        }, 600);
+      })
+      .subscribe();
+
+    const handleBkUpdated = () => loadEntries();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('sipjam:jurnal_bk_updated', handleBkUpdated);
+    }
+
+    return () => {
+      if (rtTimer) clearTimeout(rtTimer);
+      supabase.removeChannel(channel);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('sipjam:jurnal_bk_updated', handleBkUpdated);
+      }
+    };
+  }, [user?.id, user?.nama, user?.sekolah_id, loadEntries]);
+
   // Auto-save form draft
   useEffect(() => {
     if (isReadOnly || editingId || typeof window === 'undefined') return;
@@ -855,9 +884,16 @@ export default function BkJurnalView({
     };
 
     const editingEntry = editingId ? entries.find(e => e.id === editingId) : null;
+    const isAutoVerifBkLengkap = Boolean(
+      formData.bidang_bimbingan?.trim() &&
+      formData.jenis_layanan?.trim() &&
+      formData.catatan?.trim() &&
+      formData.tindak_lanjut?.trim()
+    );
+    const autoVerifStatusBk: 'Disetujui' | 'Menunggu' = isAutoVerifBkLengkap ? 'Disetujui' : 'Menunggu';
     const shouldResetVerif = !editingId || editingEntry?.status_verifikasi === 'Ditolak';
     const verifPayload = shouldResetVerif
-      ? { status_verifikasi: 'Menunggu' as const, catatan_admin: null, alasan_penolakan: null }
+      ? { status_verifikasi: autoVerifStatusBk, catatan_admin: null, alasan_penolakan: null }
       : {};
     const payloadWithVerif = { ...recordPayload, ...verifPayload };
     const isMissingOptionalCol = (err: any) => {
@@ -1022,6 +1058,17 @@ export default function BkJurnalView({
   // Start Edit
   const handleStartEdit = (entry: JurnalBkEntry) => {
     if (isReadOnly) return;
+    if (entry.status_verifikasi === 'Ditolak') {
+      const win = evaluate7DayRepairWindow(entry.updated_at || entry.tanggal);
+      if (!win.isWithinWindow) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Masa Perbaikan Berakhir',
+          text: `Batas waktu perbaikan 7 hari berjalan setelah penolakan (s/d ${win.deadlineDate}) telah berakhir. Hubungi Admin untuk Dispensasi.`
+        });
+        return;
+      }
+    }
     setEditingId(entry.id);
     const canonicalService = getCanonicalServiceName(entry.jenis_layanan) || entry.jenis_layanan;
 

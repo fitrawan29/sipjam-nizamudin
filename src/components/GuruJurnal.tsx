@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { showToast } from '@/lib/toast';
-import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance, hasJournalContent, isValidLokasiKbm, resolveTeacherLokasiKbm } from '@/lib/workflow';
+import { getGuruDailyState, GuruDailyState, isJurnalMatchJadwal, getActiveSistemBlok, connectGuruMapelWithJadwal, filterGuruMapelByHari, resolveCanonicalClass, normalizeTeacherIdentityName, isTeacherRecordMatch, isTeacherNameEquivalent, parseLegacyOrModernAttendance, hasJournalContent, isValidLokasiKbm, resolveTeacherLokasiKbm, evaluate7DayRepairWindow } from '@/lib/workflow';
 import { uploadToDrive } from '@/lib/driveUpload';
 import { transformGoogleDriveUrl } from '@/lib/imageUrl';
 import { getWitaDateStr, getWitaDayName, getWitaTimestamp, formatPresensiTime } from '@/lib/wita';
@@ -3000,6 +3000,7 @@ export default function GuruJurnal({
             <div className="space-y-2.5">
               {allRejectedJournals.map((j: any) => {
                 const alasan = j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan || 'Harap perbaiki dokumentasi atau materi KBM';
+                const repairWin = evaluate7DayRepairWindow(j.updated_at || j.tanggal);
                 return (
                   <div 
                     key={j.id || `${j.tanggal}-${j.mapel}-${j.kelas}`}
@@ -3011,6 +3012,11 @@ export default function GuruJurnal({
                         <span>{j.mapel || 'Jurnal KBM'}</span>
                         {j.kelas && j.kelas !== '-' && <span className="text-[#475569] dark:text-[#94A3B8] font-normal">(Kelas {j.kelas})</span>}
                         {j.jam_ke && <span className="text-[10px] font-num px-2 py-0.5 rounded-md neu-inset text-[#475569] dark:text-[#CBD5E1]">Jam {j.jam_ke}</span>}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${repairWin.isWithinWindow ? 'bg-amber-500/15 text-amber-800 dark:text-amber-300' : 'bg-slate-500/15 text-slate-600 dark:text-slate-400'}`}>
+                          {repairWin.isWithinWindow
+                            ? (repairWin.remainingDays === 0 ? 'Hari terakhir perbaikan' : `Sisa ${repairWin.remainingDays} hari perbaikan`)
+                            : 'Masa perbaikan 7 hari berakhir'}
+                        </span>
                       </div>
                       {j.materi && (
                         <div className="text-[11px] text-[#334155] dark:text-[#CBD5E1] mt-0.5">
@@ -3024,7 +3030,10 @@ export default function GuruJurnal({
                     </div>
                     <button
                       type="button"
+                      disabled={!repairWin.isWithinWindow}
                       onClick={() => {
+                        if (!repairWin.isWithinWindow) return;
+                        if (j.tanggal) setTanggal(j.tanggal);
                         handleTabChange('input');
                         if (j.mapel) setMapel(j.mapel);
                         if (j.kelas) setKelas(j.kelas);
