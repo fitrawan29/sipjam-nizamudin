@@ -159,7 +159,7 @@ export const NeuTabs: React.FC<NeuTabsProps> = ({
             'clay-btn-secondary text-slate-700 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white';
         }
 
-        const buttonClasses = `clay-btn btn-click rounded-2xl font-bold whitespace-nowrap transition-all duration-150 inline-flex items-center gap-2 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2 dark:focus-visible:ring-teal-400 dark:focus-visible:ring-offset-[#1F242D] ${sizeClasses} ${stateClasses}`;
+        const buttonClasses = `clay-btn btn-click rounded-2xl font-bold whitespace-nowrap transition-[transform,box-shadow,background-color,border-color,color] duration-150 ease-[cubic-bezier(0.22,1,0.36,1)] inline-flex items-center gap-2 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] focus-visible:ring-offset-2 dark:focus-visible:ring-teal-400 dark:focus-visible:ring-offset-[#1F242D] ${sizeClasses} ${stateClasses}`;
 
         return (
           <button

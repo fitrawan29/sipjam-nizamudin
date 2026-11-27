@@ -28,7 +28,7 @@
   --neu-accent-hover: #0D645D;
   --neu-amber: #D97706;
   --neu-muted: #475569;
-  --neu-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --neu-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --sat: env(safe-area-inset-top, 0px);
   --sar: env(safe-area-inset-right, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -138,13 +138,14 @@ body.fade-out {
   }
 
   .glass-card {
-    @apply rounded-3xl relative z-10 transition-all duration-200 ease-out;
+    @apply rounded-3xl relative z-10;
     background-color: var(--neu-surface);
     color: var(--foreground);
     border: 1px solid var(--neu-edge);
     box-shadow:
       8px 8px 18px var(--neu-shadow-dark),
       -8px -8px 18px var(--neu-shadow-light);
+    transition: box-shadow 0.2s var(--neu-ease), transform 0.2s var(--neu-ease), background-color 0.25s ease, border-color 0.2s ease;
     transform: translateZ(0);
   }
 
@@ -432,8 +433,9 @@ body.fade-out {
   }
 
   .btn-click {
-    @apply cursor-pointer relative z-20 transition-all duration-150 ease-out;
+    @apply cursor-pointer relative z-20;
     touch-action: manipulation;
+    transition: transform 0.16s var(--neu-ease), box-shadow 0.16s var(--neu-ease), background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
   .btn-click:hover {
     transform: translateY(-1px);
@@ -443,11 +445,13 @@ body.fade-out {
   }
 
   .card-interactive {
-    @apply transition-all duration-200 ease-out hover:-translate-y-0.5;
+    @apply hover:-translate-y-0.5;
+    transition: transform 0.22s var(--neu-ease), box-shadow 0.22s var(--neu-ease), background-color 0.25s ease, border-color 0.2s ease;
   }
 
   .pill-interactive {
-    @apply transition-all duration-150 ease-out active:scale-95;
+    @apply active:scale-95;
+    transition: transform 0.16s var(--neu-ease), background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
   }
 
   .squircle-icon {
@@ -464,15 +468,15 @@ body.fade-out {
   .fade-in,
   .animate-fade-in,
   .animate-fadeIn {
-    animation: fadeIn 0.3s ease-out forwards;
+    animation: fadeIn 0.24s var(--neu-ease) forwards;
   }
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translate3d(0, 8px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
   }
 
   .animate-in {
-    animation-duration: 0.22s;
+    animation-duration: 0.24s;
     animation-timing-function: var(--neu-ease);
     animation-fill-mode: both;
     animation-name: neuSlideBottomIn;
@@ -485,39 +489,55 @@ body.fade-out {
     animation-name: neuSlideBottomIn;
   }
   @keyframes neuSlideBottomIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translate3d(0, 10px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+
+  @keyframes slideLeft {
+    from { opacity: 0; transform: translate3d(28px, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  .animate-slideLeft {
+    animation: slideLeft 0.26s var(--neu-ease) both;
+  }
+
+  @keyframes slideRight {
+    from { opacity: 0; transform: translate3d(-28px, 0, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  .animate-slideRight {
+    animation: slideRight 0.26s var(--neu-ease) both;
   }
 
   @keyframes pageEnter {
     0% {
       opacity: 0;
-      transform: translateY(8px) scale(0.995);
+      transform: translate3d(0, 6px, 0) scale(0.996);
     }
     100% {
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translate3d(0, 0, 0) scale(1);
     }
   }
 
   @keyframes modalPop {
     0% {
       opacity: 0;
-      transform: scale(0.95) translateY(8px);
+      transform: scale(0.96) translate3d(0, 6px, 0);
     }
     100% {
       opacity: 1;
-      transform: scale(1) translateY(0);
+      transform: scale(1) translate3d(0, 0, 0);
     }
   }
 
   .page-transition,
   .page-enter {
-    animation: pageEnter 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: pageEnter 0.26s var(--neu-ease) forwards;
   }
 
   .modal-pop {
-    animation: modalPop 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: modalPop 0.24s var(--neu-ease) forwards;
   }
 
   .custom-scroll::-webkit-scrollbar {
@@ -975,7 +995,11 @@ body.fade-out {
   .fade-in,
   .animate-fade-in,
   .animate-fadeIn,
-  .animate-in {
+  .animate-in,
+  .animate-slideLeft,
+  .animate-slideRight,
+  .animate-bell-shake,
+  .swal2-popup {
     animation: none !important;
     transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease !important;
     transform: none !important;

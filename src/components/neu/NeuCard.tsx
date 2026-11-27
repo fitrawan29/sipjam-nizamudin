@@ -72,7 +72,7 @@ export const NeuCard: React.FC<NeuCardProps> = ({
 
   return (
     <Component
-      className={`relative z-10 transition-all duration-200 ease-out ${effectiveBase} ${radiusClass} ${interactiveClass} ${className}`}
+      className={`relative z-10 transition-[transform,box-shadow,background-color,border-color] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${effectiveBase} ${radiusClass} ${interactiveClass} ${className}`}
       {...props}
     >
       {children}

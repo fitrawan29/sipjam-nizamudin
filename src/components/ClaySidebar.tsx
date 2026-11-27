@@ -166,7 +166,7 @@ export const ClaySidebar: React.FC<ClaySidebarProps> = ({
       onClick={onClose}
     >
       <div
-        className="w-80 max-w-[88%] h-full bg-[#E6ECF2] dark:bg-[#1F242D] border-r border-white/55 dark:border-white/5 shadow-[12px_0_28px_rgba(163,177,198,0.55)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-4 sm:p-5 flex flex-col justify-between transform transition-transform duration-300 ease-out"
+        className="w-80 max-w-[88%] h-full bg-[#E6ECF2] dark:bg-[#1F242D] border-r border-white/55 dark:border-white/5 shadow-[12px_0_28px_rgba(163,177,198,0.55)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-4 sm:p-5 flex flex-col justify-between animate-slideRight"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col h-full overflow-hidden">
