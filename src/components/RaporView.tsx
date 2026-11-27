@@ -1233,7 +1233,8 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
           predikatBadge: res.predikatBadge,
           deskripsiCapaian: res.deskripsiCapaian
         };
-      });
+      })
+      .filter(item => typeof item.nilaiAkhir === 'number' && !isNaN(item.nilaiAkhir) && item.nilaiAkhir >= 1);
     },
     [activeMapels, tpList, columnsList, gradesMap]
   );
@@ -1688,7 +1689,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                         {getStudentSubjectScores(selectedStudent).length === 0 ? (
                           <tr>
                             <td colSpan={4} className="py-4 text-center text-slate-500 print:text-black italic">
-                              Belum ada mata pelajaran terdaftar untuk kelas ini.
+                              Belum ada mata pelajaran yang memiliki nilai untuk siswa ini.
                             </td>
                           </tr>
                         ) : (
