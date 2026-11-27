@@ -12,6 +12,7 @@ import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { getSemesterDateRange } from '@/lib/workflow';
 import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+import { downloadRaporXlsx, downloadRaporDocx, RaporExportPayload } from '@/utils/raporExport';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { isMatchingWaliGuru } from '@/lib/presensiIntervensi';
 
@@ -149,6 +150,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
   const [deepLearningMap, setDeepLearningMap] = useState<Record<string, { mindful: string; meaningful: string; joyful: string }>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<'xlsx' | 'docx' | null>(null);
 
   // Real Kurikulum Merdeka Academic Pipeline
   const [activeMapels, setActiveMapels] = useState<string[]>([]);
@@ -1319,6 +1321,70 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     }
   };
 
+  // Download rapor in .xlsx or .docx format
+  const handleDownloadRapor = async (format: 'xlsx' | 'docx') => {
+    if (!selectedStudent || isExporting) return;
+    setIsExporting(format);
+    try {
+      let schoolName: string | undefined = user?.sekolah_nama || undefined;
+      let kepalaSekolahNama: string | undefined;
+      let kepalaSekolahNip: string | undefined;
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('sipjam_config_sync');
+          if (raw) {
+            const cfg = JSON.parse(raw)?.config || {};
+            schoolName = cfg.kop_sekolah || cfg.NAMA_SEKOLAH || schoolName;
+            kepalaSekolahNama = cfg.nama_kepsek || cfg.KEPALA_SEKOLAH || undefined;
+            kepalaSekolahNip = cfg.nip_kepsek || cfg.NIP_KEPALA_SEKOLAH || undefined;
+          }
+        } catch {
+          // ignore localStorage parse errors
+        }
+      }
+
+      const gradedScores = getStudentSubjectScores(selectedStudent).map(item => ({
+        namaMapel: item.namaMapel,
+        nilaiAkhir: Number(item.nilaiAkhir),
+        deskripsiCapaian: item.deskripsiCapaian
+      }));
+
+      const att = attendanceMap[selectedStudent.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
+      const dl = deepLearningMap[selectedStudent.nisn] || { mindful: '', meaningful: '', joyful: '' };
+      const payload: RaporExportPayload = {
+        schoolName,
+        namaSiswa: selectedStudent.nama_siswa,
+        nisn: selectedStudent.nisn,
+        kelas: selectedKelas,
+        semester: selectedSemester,
+        tahunAjaran: selectedTahunAjaran,
+        scores: gradedScores,
+        attendance: { sakit: att.sakit || 0, izin: att.izin || 0, alpa: att.alpa || 0 },
+        deepLearning: { mindful: dl.mindful || '', meaningful: dl.meaningful || '', joyful: dl.joyful || '' },
+        catatanWali:
+          catatanWaliMap[selectedStudent.nisn] ||
+          'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.',
+        waliNama: assignedWaliInfo?.nama_guru || (!isAdmin && !isTataUsaha ? user?.nama : '') || '...........................................',
+        waliNip: assignedWaliInfo?.nip ?? (!isAdmin && !isTataUsaha ? user?.nip : undefined),
+        kepalaSekolahLabel: kepalaSekolahNama ? formatKepalaSekolahLabel(effectiveStatus) : undefined,
+        kepalaSekolahNama,
+        kepalaSekolahNip
+      };
+
+      if (format === 'xlsx') {
+        await downloadRaporXlsx(payload);
+      } else {
+        await downloadRaporDocx(payload);
+      }
+      showToast(`Rapor berhasil diunduh (.${format})`, 'success');
+    } catch (err: any) {
+      console.error(`[RaporView] Export .${format} error:`, err);
+      showToast(`Gagal mengunduh rapor (.${format})`, 'error');
+    } finally {
+      setIsExporting(null);
+    }
+  };
+
   return (
     <section id="view-rapor" className="space-y-6 pb-12 print:pb-0 print:space-y-0">
       <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-6 space-y-6 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
@@ -1512,6 +1578,28 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                   >
                     <i className="fa-solid fa-print"></i>
                     Cetak (GPS)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadRapor('xlsx')}
+                    disabled={isExporting !== null || !selectedStudent}
+                    className="neu-btn min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-1.5 shrink-0 transition cursor-pointer disabled:opacity-50"
+                    title="Download Rapor (.xlsx)"
+                  >
+                    <i className={`fa-solid ${isExporting === 'xlsx' ? 'fa-spinner fa-spin' : 'fa-file-excel'}`}></i>
+                    .xlsx
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadRapor('docx')}
+                    disabled={isExporting !== null || !selectedStudent}
+                    className="neu-btn min-h-[40px] px-3 py-2 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-400 inline-flex items-center gap-1.5 shrink-0 transition cursor-pointer disabled:opacity-50"
+                    title="Download Rapor (.docx)"
+                  >
+                    <i className={`fa-solid ${isExporting === 'docx' ? 'fa-spinner fa-spin' : 'fa-file-word'}`}></i>
+                    .docx
                   </button>
                 </div>
               )}
@@ -1852,15 +1940,37 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                   Kembali ke Ringkasan
                 </button>
 
-                <button
-                  type="button"
-                  onClick={handlePrintRapor}
-                  disabled={isPrinting}
-                  className="neu-btn neu-btn-teal min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-black inline-flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
-                >
-                  <i className="fa-solid fa-print"></i>
-                  Cetak Rapor Resmi (GPS Verified)
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadRapor('xlsx')}
+                    disabled={isExporting !== null}
+                    className="neu-btn min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-700 dark:text-emerald-400 inline-flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <i className={`fa-solid ${isExporting === 'xlsx' ? 'fa-spinner fa-spin' : 'fa-file-excel'}`}></i>
+                    Download .xlsx
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDownloadRapor('docx')}
+                    disabled={isExporting !== null}
+                    className="neu-btn min-h-[44px] px-4 py-2.5 rounded-xl text-xs font-bold text-blue-700 dark:text-blue-400 inline-flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <i className={`fa-solid ${isExporting === 'docx' ? 'fa-spinner fa-spin' : 'fa-file-word'}`}></i>
+                    Download .docx
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handlePrintRapor}
+                    disabled={isPrinting}
+                    className="neu-btn neu-btn-teal min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-black inline-flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <i className="fa-solid fa-print"></i>
+                    Cetak Rapor Resmi (GPS Verified)
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
