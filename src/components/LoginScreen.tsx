@@ -74,14 +74,14 @@ export default function LoginScreen({ onLoginSuccess }: { onLoginSuccess: (user:
 
   return (
     <div id="login-screen" className="flex-grow flex flex-col items-center justify-center p-5 sm:p-6 relative overflow-hidden h-full">
-      <div className="clay-card w-full max-w-md p-6 sm:p-8 rounded-3xl text-center relative z-10 mx-auto">
+      <div className="clay-card w-full max-w-md p-6 sm:p-8 lg:p-10 rounded-3xl text-center relative z-10 mx-auto">
         <div className="neu-card w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 p-2">
           <div className="w-full h-full rounded-2xl bg-gradient-to-br from-[#0F766E] to-[#115E59] flex items-center justify-center shadow-inner">
             <i className="fa-solid fa-graduation-cap text-3xl text-white"></i>
           </div>
         </div>
-        <h1 className="text-2xl font-extrabold text-[#0F172A] dark:text-[#F1F5F9] tracking-tight mb-1">SIPJAM Portal</h1>
-        <h2 className="text-[11px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-7">Presensi & Jurnal Multi-Sekolah</h2>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-[#0F172A] dark:text-[#F1F5F9] tracking-tight mb-1">SIPJAM Portal</h1>
+        <h2 className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-7">Presensi & Jurnal Multi-Sekolah</h2>
         
         <form onSubmit={handleLogin} className="text-left space-y-4 relative z-20">
             <div>

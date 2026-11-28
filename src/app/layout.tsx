@@ -40,8 +40,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" className="light" suppressHydrationWarning>
+    <html lang="id" className="light" data-ui-preset="bento-clean" suppressHydrationWarning>
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem('sipjam_ui_preset');if(p==='bento-clean'||p==='warm-paper'||p==='glass-teal'||p==='neu-classic'){document.documentElement.dataset.uiPreset=p;}var t=localStorage.getItem('sipjam_theme');if(t==='dark'){document.documentElement.classList.add('dark');document.documentElement.classList.remove('light');}}catch(e){}})();`,
+          }}
+        />
         <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
       </head>

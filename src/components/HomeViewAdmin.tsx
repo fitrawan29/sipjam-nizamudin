@@ -1083,17 +1083,17 @@ export default function HomeViewAdmin({
 
         <div className="relative z-10 grid grid-cols-3 gap-2.5 text-center pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
-            <p className={`text-[10px] sm:text-xs font-bold truncate ${holidayInfo?.isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-[#0F766E] dark:text-teal-400'}`}>
+            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
+            <p className={`text-xs sm:text-sm font-bold truncate ${holidayInfo?.isHoliday ? 'text-amber-600 dark:text-amber-400' : 'text-[#0F766E] dark:text-teal-400'}`}>
               {holidayInfo?.isHoliday ? 'Hari Libur' : 'Hari Kerja'}
             </p>
           </div>
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
+            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+            <p className="text-[11px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
+            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
             <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
@@ -1138,7 +1138,7 @@ export default function HomeViewAdmin({
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-[#475569] dark:text-[#94A3B8] uppercase tracking-wider">Total Guru</p>
                 <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{adminKPIs.totalGuru}</p>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Terdaftar</p>
+                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate">Terdaftar</p>
               </div>
             </div>
 
@@ -1152,7 +1152,7 @@ export default function HomeViewAdmin({
                 <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                   {adminKPIs.sudahDatang} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.wajibDatang}</span>
                 </p>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Hadir / Izin / TL</p>
+                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate">Hadir / Izin / TL</p>
               </div>
             </div>
 
@@ -1166,7 +1166,7 @@ export default function HomeViewAdmin({
                 <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                   {adminKPIs.jurnalLengkap} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.wajibJurnal}</span>
                 </p>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Selesai / Mengisi Penuh</p>
+                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate">Selesai / Mengisi Penuh</p>
               </div>
             </div>
 
@@ -1180,7 +1180,7 @@ export default function HomeViewAdmin({
                 <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                   {adminKPIs.piketSelesai} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.totalPiket || 0}</span>
                 </p>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan masuk</p>
+                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan masuk</p>
               </div>
             </div>
 
@@ -1194,7 +1194,7 @@ export default function HomeViewAdmin({
                 <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">
                   {adminKPIs.sudahPulang} <span className="text-xs text-[#475569] dark:text-[#94A3B8] font-normal">/ {adminKPIs.wajibPulang}</span>
                 </p>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Sudah checkout</p>
+                <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] truncate">Sudah checkout</p>
               </div>
             </div>
           </div>

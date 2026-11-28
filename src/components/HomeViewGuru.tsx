@@ -769,16 +769,16 @@ export default function HomeViewGuru({
               {renderUserAvatar(user?.avatar, 'w-10 h-10 sm:w-11 sm:h-11')}
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold text-[#0F766E] dark:text-teal-400 tracking-wide">
+              <p className="text-[11px] font-semibold text-[#0F766E] dark:text-teal-400 tracking-wide">
                 {getWitaGreeting(timeStr)},
               </p>
               <div className="flex items-center gap-2">
-                <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Guru'}</h2>
-                <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
+                <h2 className="font-bold text-sm sm:text-base lg:text-lg text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Guru'}</h2>
+                <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[10px] uppercase shrink-0">
                   {user?.role || 'Guru'}
                 </span>
               </div>
-              <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] font-mono mt-0.5 tracking-wider truncate flex items-center gap-1.5">
                 <span>{user?.username || ''}</span>
                 <span className="truncate font-sans font-medium">{schoolName}</span>
               </p>
@@ -801,15 +801,15 @@ export default function HomeViewGuru({
 
         <div className="relative z-10 grid grid-cols-3 gap-2.5 text-center pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
-            <p className="text-[10px] sm:text-xs font-bold text-[#0F766E] dark:text-teal-400 truncate">Aktif</p>
+            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
+            <p className="text-xs sm:text-sm font-bold text-[#0F766E] dark:text-teal-400 truncate">Aktif</p>
           </div>
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
-            <p className="text-[10px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
+            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+            <p className="text-[11px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
+            <p className="text-[10px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
             <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
@@ -1083,8 +1083,10 @@ export default function HomeViewGuru({
             </div>
           )}
 
+          {/* Desktop 2-Column Workspace: Status Tugas (Left) + Jadwal Mengajar (Right) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           {/* Section 2: Workflow Status Tracker (Status Tugas Hari Ini) */}
-          <div className="clay-card p-4 sm:p-5 rounded-3xl">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl lg:col-span-5">
             <h3 className="text-xs sm:text-sm font-bold text-[#0F172A] dark:text-[#F1F5F9] mb-3 flex items-center gap-2">
               <i className="fa-solid fa-list-check text-[#0F766E] dark:text-teal-400"></i> Status Tugas Hari Ini
             </h3>
@@ -1200,7 +1202,7 @@ export default function HomeViewGuru({
           */}
 
           {/* Section 3: Jadwal Mengajar Hari Ini Widget */}
-          <div className="clay-card p-4 sm:p-5 rounded-3xl">
+          <div className="clay-card p-4 sm:p-5 rounded-3xl lg:col-span-7">
             <div className="flex items-center justify-between gap-2 mb-3">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl neu-inset text-[#0F766E] dark:text-teal-400 flex items-center justify-center text-sm">
@@ -1589,6 +1591,7 @@ export default function HomeViewGuru({
                 </div>
               </div>
             )}
+          </div>
           </div>
     </section>
   );

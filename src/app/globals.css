@@ -82,8 +82,22 @@ body.fade-out {
   }
   @media (min-width: 1024px) {
     .mobile-container {
-      max-width: 1280px;
+      max-width: 100%;
     }
+  }
+
+  /* Token-aware shell surface for Header, Sidebar, and Mobile Bottom Nav */
+  .neu-shell-surface {
+    background-color: var(--neu-surface);
+    border-color: var(--neu-edge);
+    transition: background-color 0.25s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+  }
+  html[data-ui-preset="neu-classic"] .neu-shell-surface {
+    background-color: var(--neu-bg);
+  }
+  html[data-ui-preset="glass-teal"] .neu-shell-surface {
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
   }
 
   /* Core Monochromatic Neumorphism Surfaces (with backward-compatible Clay/Glass aliases) */
@@ -588,7 +602,12 @@ body.fade-out {
   }
   main.pt-20 {
     padding-top: calc(5rem + env(safe-area-inset-top, 0px));
-    padding-bottom: calc(2rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  @media (min-width: 1024px) {
+    main.pt-20 {
+      padding-bottom: 2rem;
+    }
   }
 }
 

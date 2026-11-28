@@ -262,6 +262,7 @@ export default function AppScreen({
     return () => window.removeEventListener('popstate', handlePopState);
   }, [isSuperadmin, isDinas, isSiswa, isOrangTua, isTataUsaha, isBk]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [desktopSidebarCollapsed, setDesktopSidebarCollapsed] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
 
   useEffect(() => {
@@ -984,16 +985,275 @@ export default function AppScreen({
     </div>
   );
 
+  const activeMenuItem = consolidatedMenuItems.find((item) => item.id === currentView);
+  const mobileBottomItems = consolidatedMenuItems.slice(0, 4);
+
+  const renderSidebarInner = (isCollapsed = false, isMobileDrawer = false) => (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className={`flex items-center pb-4 mb-3 border-b border-slate-300/60 dark:border-slate-700/60 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center' : ''}`}>
+          <div className="w-9 h-9 bg-gradient-to-br from-[#0F766E] to-[#115E59] rounded-2xl flex items-center justify-center text-white border border-white/25 font-bold shrink-0">
+            <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-graduation-cap'}`}></i>
+          </div>
+          {!isCollapsed && (
+            <div className="min-w-0">
+              <span className="font-extrabold text-sm text-[#0F172A] dark:text-[#F1F5F9] tracking-tight block truncate">
+                {isSuperadmin ? 'Portal Superadmin' : isDinas ? 'Dinas Pendidikan' : 'SIPJAM'}
+              </span>
+              <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400 block truncate max-w-[140px]">
+                {isDinas ? (user?.kota_kabupaten || 'Pengawas Wilayah') : (schoolData?.nama || 'Sekolah')}
+              </span>
+            </div>
+          )}
+        </div>
+        {isMobileDrawer && (
+          <button type="button" onClick={toggleSidebar} aria-label="Tutup Menu" title="Tutup Menu" className="clay-btn w-11 h-11 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white shrink-0">
+            <i className="fa-solid fa-xmark text-sm"></i>
+          </button>
+        )}
+      </div>
+
+      {/* User Identity Card */}
+      {!isCollapsed ? (
+        <ClayCard variant="mint" rounded="2xl" className="mb-3 p-3 flex items-center gap-3">
+          <div className="relative w-11 h-11 rounded-full neu-inset p-0.5 shrink-0 overflow-hidden flex items-center justify-center">
+            {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
+            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-teal-500 border-2 border-[#E6ECF2] dark:border-[#1F242D]" title="Aktif"></span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F1F5F9] truncate" title={user?.nama || 'Pengguna SIPJAM'}>
+              {user?.nama || 'Pengguna SIPJAM'}
+            </h3>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                isSuperadmin
+                  ? 'neu-inset text-amber-800 dark:text-amber-300'
+                  : isDinas
+                  ? 'neu-inset text-sky-800 dark:text-sky-300'
+                  : isAdmin
+                  ? 'neu-inset text-blue-800 dark:text-blue-300'
+                  : isTataUsaha
+                  ? 'neu-inset text-teal-800 dark:text-teal-300'
+                  : isOrangTua
+                  ? 'neu-inset text-sky-800 dark:text-sky-300'
+                  : isSiswa
+                  ? 'neu-inset text-[#0F766E] dark:text-teal-300'
+                  : isBk
+                  ? 'neu-inset text-rose-800 dark:text-rose-300'
+                  : isKepalaSekolah
+                  ? 'neu-inset text-amber-900 dark:text-amber-300'
+                  : isWaliKelas
+                  ? 'neu-inset text-teal-800 dark:text-teal-300'
+                  : 'neu-inset text-[#0F766E] dark:text-teal-300'
+              }`}>
+                <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isOrangTua ? 'fa-people-roof' : isSiswa ? 'fa-user-graduate' : isBk ? 'fa-heart-pulse' : isKepalaSekolah ? 'fa-user-tie' : 'fa-chalkboard-user'} text-[9px]`}></i>
+                {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isOrangTua ? 'Orang Tua' : isSiswa ? 'Siswa' : isBk ? 'Guru BK' : isKepalaSekolah ? formatKepalaSekolahLabel(statusKepalaSekolah) : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
+              </span>
+              {(user?.username || user?.nip) && (
+                <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
+                  {user?.username || user?.nip}
+                </span>
+              )}
+              {isDinas && user?.kota_kabupaten && (
+                <div className="w-full text-[10px] text-sky-700 dark:text-sky-300 font-semibold truncate mt-1 flex items-center gap-1">
+                  <i className="fa-solid fa-map-location-dot text-[10px] text-[#0F766E] dark:text-teal-400"></i>
+                  <span>Wilayah: {user.kota_kabupaten}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </ClayCard>
+      ) : (
+        <div className="mb-3 flex justify-center">
+          <div className="relative w-10 h-10 rounded-full neu-inset p-0.5 shrink-0 overflow-hidden flex items-center justify-center" title={user?.nama || 'Pengguna SIPJAM'}>
+            {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-9 h-9')}
+          </div>
+        </div>
+      )}
+
+      {(isSuperadmin || isDinas) && !isCollapsed && (
+        <div className="mb-3 p-2.5 rounded-2xl neu-inset">
+          <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <i className="fa-solid fa-satellite-dish text-[#0F766E] dark:text-teal-400"></i> {isDinas ? 'Sekolah Binaan:' : 'Sekolah yang Dipantau:'}
+          </div>
+          <select
+            aria-label="Ganti Sekolah yang Dipantau di Sidebar"
+            value={activeTargetSchool?.id || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (!val) {
+                clearActiveTargetSchool();
+                setActiveTargetSchoolState(null);
+              } else {
+                const sch = satelliteSchools.find(s => s.id === val);
+                if (sch) {
+                  setActiveTargetSchool(sch);
+                  setActiveTargetSchoolState(sch);
+                }
+              }
+            }}
+            className="w-full text-xs font-semibold py-1.5 px-2.5 rounded-xl neu-input cursor-pointer"
+          >
+            <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform (Semua)'}</option>
+            {(isDinas
+              ? satelliteSchools.filter(s => {
+                  const userRegion = (user?.kota_kabupaten || '').trim().toLowerCase();
+                  const schoolRegion = (s.kota_kabupaten || '').trim().toLowerCase();
+                  return Boolean(userRegion && schoolRegion && userRegion === schoolRegion);
+                })
+              : satelliteSchools
+            ).map(sch => (
+              <option key={sch.id} value={sch.id}>
+                🏫 {sch.nama}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className={`space-y-1.5 flex-1 min-h-0 overflow-y-auto py-1.5 custom-scroll ${isCollapsed ? 'px-1' : 'px-1'}`}>
+        {consolidatedMenuItems.map(item => {
+          const isActive = currentView === item.id;
+          return (
+            <React.Fragment key={item.id}>
+              {/* AST preservation: data-tour={item.id} */}
+              <button
+                key={item.id}
+                type="button"
+                data-tour={(item as any).dataTour || item.id}
+                onClick={() => handleNavigation(item.id)}
+                title={isCollapsed ? item.label : undefined}
+                className={`w-full text-left ${isCollapsed ? 'px-2 justify-center' : 'px-3 justify-between'} py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 transition-all duration-150 select-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400 ${
+                  isActive
+                    ? 'neu-inset text-[#0F766E] dark:text-teal-300 ring-1 ring-[#0F766E]/35 dark:ring-teal-400/35'
+                    : 'text-slate-700 hover:bg-slate-900/5 dark:text-slate-200 dark:hover:bg-white/5 border border-transparent'
+                }`}
+              >
+                <span className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'justify-center' : 'truncate'}`}>
+                  <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
+                    isActive
+                      ? 'bg-[#0F766E] text-white dark:bg-teal-500 dark:text-slate-950'
+                      : 'neu-card-sm text-slate-600 dark:text-slate-300'
+                  }`}>
+                    <i className={`fa-solid ${item.icon} text-xs`}></i>
+                  </span>
+                  {!isCollapsed && <span className="truncate">{item.label}</span>}
+                </span>
+                {!isCollapsed && item.badge !== undefined && item.badge !== null && item.badge !== '' && (
+                  <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full shrink-0 neu-inset text-[#0F766E] dark:text-teal-300">
+                    {typeof item.badge === 'number' && item.badge > 99 ? '99+' : item.badge}
+                  </span>
+                )}
+              </button>
+            </React.Fragment>
+          );
+        })}
+
+        <div className="pt-2 mt-2 border-t border-slate-300/50 dark:border-slate-700/50 space-y-1.5">
+          {!isTataUsaha && !isBk && !isOrangTua && !isSiswa && (
+            <button
+              type="button"
+              onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
+              title={isCollapsed ? 'Pengaturan Akun' : undefined}
+              className={`w-full text-left ${isCollapsed ? 'px-2 justify-center' : 'px-3'} py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-900/5 dark:text-slate-200 dark:hover:bg-white/5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400`}
+            >
+              <span className="w-7 h-7 rounded-xl neu-card-sm flex items-center justify-center text-sky-700 dark:text-sky-300 shrink-0">
+                <i className="fa-solid fa-user-gear text-xs"></i>
+              </span>
+              {!isCollapsed && <span>Pengaturan Akun</span>}
+            </button>
+          )}
+          {!isTataUsaha && (
+            <button
+              type="button"
+              onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
+              className={`clay-btn clay-btn-mint w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start px-3'} gap-2.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-bold`}
+              title="Buka panduan & tutorial lengkap seluruh menu"
+            >
+              <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-teal-300 shrink-0">
+                <i className="fa-solid fa-book-bookmark text-xs"></i>
+              </span>
+              {!isCollapsed && <span className="truncate">Panduan & Tutorial</span>}
+            </button>
+          )}
+          {!isSuperadmin && !isTataUsaha && (
+            <button
+              type="button"
+              onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
+              className={`clay-btn clay-btn-amber w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start px-3'} gap-2.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold`}
+              title="Buka kembali panduan tutorial interaktif"
+            >
+              <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-amber-700 dark:text-amber-300 shrink-0">
+                <i className="fa-solid fa-graduation-cap text-xs"></i>
+              </span>
+              {!isCollapsed && <span className="truncate">Lihat Tutorial Lagi</span>}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              const nextVal = !showAiAssistant;
+              setShowAiAssistant(nextVal);
+              try {
+                localStorage.setItem('sipjam_ai_assistant_visible', String(nextVal));
+              } catch {}
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('sipjam:ai_assistant_visibility', { detail: { visible: nextVal } }));
+              }
+            }}
+            className={`clay-btn clay-btn-secondary w-full ${isCollapsed ? 'justify-center px-2' : 'justify-start px-3'} gap-2.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold`}
+            title={showAiAssistant ? 'Sembunyikan tombol asisten AI di layar' : 'Tampilkan tombol asisten AI di layar'}
+          >
+            <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-teal-300 shrink-0">
+              <i className={`fa-solid ${showAiAssistant ? 'fa-eye-slash text-slate-500 dark:text-slate-400' : 'fa-robot'} text-xs`}></i>
+            </span>
+            {!isCollapsed && <span className="truncate">{showAiAssistant ? 'Sembunyikan Tombol AI' : 'Tampilkan Tombol AI'}</span>}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex-col h-full w-full flex">
-      <header className="bg-[#E6ECF2] dark:bg-[#1F242D] px-3 sm:px-6 py-2.5 sm:py-3 flex justify-between items-center gap-2 shrink-0 z-40 fixed top-0 w-full shadow-[0_6px_16px_rgba(163,177,198,0.45)] dark:shadow-[0_6px_18px_rgba(0,0,0,0.6)] border-b border-white/50 dark:border-white/5 left-1/2 -translate-x-1/2 max-w-[1280px] print:hidden no-print">
+      {/* Desktop Persistent Sidebar (>= 1024px) */}
+      <aside
+        aria-label="Navigasi Utama Desktop"
+        className={`hidden lg:flex fixed top-0 left-0 bottom-0 z-40 flex-col neu-shell-surface border-r p-4 transition-all duration-200 print:hidden no-print ${
+          desktopSidebarCollapsed ? 'w-[78px]' : 'w-64'
+        }`}
+      >
+        {renderSidebarInner(desktopSidebarCollapsed, false)}
+      </aside>
+
+      <header className={`neu-shell-surface px-3 sm:px-6 py-2.5 sm:py-3 flex justify-between items-center gap-2 shrink-0 z-30 fixed top-0 right-0 left-0 shadow-[0_2px_10px_rgba(15,23,42,0.06)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.45)] border-b transition-all duration-200 print:hidden no-print ${
+        desktopSidebarCollapsed ? 'lg:left-[78px]' : 'lg:left-64'
+      }`}>
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-            <button type="button" data-tour="hamburger-btn" onClick={toggleSidebar} aria-label="Buka Menu Navigasi" className="clay-btn btn-click w-10 h-11 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-[#0F172A] dark:text-[#F1F5F9] shrink-0">
+            <button
+              type="button"
+              data-tour="hamburger-btn"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+                  setDesktopSidebarCollapsed((prev) => !prev);
+                } else {
+                  toggleSidebar();
+                }
+              }}
+              aria-label="Buka atau Lipat Menu Navigasi"
+              className="clay-btn btn-click w-10 h-11 sm:w-10 sm:h-10 rounded-2xl flex items-center justify-center text-[#0F172A] dark:text-[#F1F5F9] shrink-0"
+            >
                 <i className="fa-solid fa-bars text-sm"></i>
             </button>
             <button type="button" onClick={() => handleNavigation(defaultHomeView)} className="text-left min-w-0 truncate text-sm md:text-base font-bold text-[#0F172A] dark:text-[#F1F5F9] cursor-pointer tracking-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400 rounded-lg px-1">
-              SIPJAM <span className="text-[#0F766E] dark:text-teal-400 font-black">
-                {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : (schoolData?.nama || 'Sekolah')}
+              <span className="lg:hidden">
+                SIPJAM <span className="text-[#0F766E] dark:text-teal-400 font-black">
+                  {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : (schoolData?.nama || 'Sekolah')}
+                </span>
+              </span>
+              <span className="hidden lg:inline-flex items-center gap-2">
+                <span className="text-[#0F766E] dark:text-teal-400 font-black">{activeMenuItem?.label || 'Dashboard'}</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">&bull; {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : (schoolData?.nama || 'Sekolah')}</span>
               </span>
             </button>
             {(isSuperadmin || isDinas) && (
@@ -1081,220 +1341,61 @@ export default function AppScreen({
         </div>
       </header>
 
-      {/* Sidebar Overlay */}
+      {/* Mobile Sidebar Drawer Overlay (< 1024px) */}
       {sidebarOpen && (
         <div
           role="dialog"
           aria-modal="true"
           aria-label="Menu Navigasi"
-          className="fixed inset-0 bg-slate-900/45 dark:bg-black/65 z-50 transition-opacity animate-in fade-in duration-200"
+          className="lg:hidden fixed inset-0 bg-slate-900/45 dark:bg-black/65 z-50 transition-opacity animate-in fade-in duration-200"
           onClick={toggleSidebar}
         >
-          <div className="w-80 max-w-[88%] bg-[#E6ECF2] dark:bg-[#1F242D] border-r border-white/55 dark:border-white/5 h-full shadow-[12px_0_28px_rgba(163,177,198,0.55)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-4 sm:p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
-            <div className="flex flex-col h-full overflow-hidden">
-              <div className="flex justify-between items-center pb-4 mb-3 border-b border-slate-300/60 dark:border-slate-700/60">
-                <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 bg-gradient-to-br from-[#0F766E] to-[#115E59] rounded-2xl flex items-center justify-center text-white border border-white/25 font-bold shrink-0">
-                        <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : 'fa-graduation-cap'}`}></i>
-                    </div>
-                    <span className="font-extrabold text-sm text-[#0F172A] dark:text-[#F1F5F9] tracking-tight truncate">
-                      {isSuperadmin ? 'Portal Superadmin' : isDinas ? 'Dinas Pendidikan' : 'SIPJAM Menu'}
-                    </span>
-                </div>
-                <button type="button" onClick={toggleSidebar} aria-label="Tutup Menu" title="Tutup Menu" className="clay-btn w-11 h-11 rounded-full flex items-center justify-center text-slate-700 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white shrink-0">
-                    <i className="fa-solid fa-xmark text-sm"></i>
-                </button>
-              </div>
-
-              {/* User Identity Card */}
-              <ClayCard variant="mint" rounded="2xl" className="mb-3 p-3 flex items-center gap-3">
-                <div className="relative w-11 h-11 rounded-full neu-inset p-0.5 shrink-0 overflow-hidden flex items-center justify-center">
-                  {renderUserAvatar(currentUser?.avatar || user?.avatar, 'w-10 h-10')}
-                  <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-teal-500 border-2 border-[#E6ECF2] dark:border-[#1F242D]" title="Aktif"></span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-bold text-xs sm:text-sm text-[#0F172A] dark:text-[#F1F5F9] truncate" title={user?.nama || 'Pengguna SIPJAM'}>
-                    {user?.nama || 'Pengguna SIPJAM'}
-                  </h3>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      isSuperadmin
-                        ? 'neu-inset text-amber-800 dark:text-amber-300'
-                        : isDinas
-                        ? 'neu-inset text-sky-800 dark:text-sky-300'
-                        : isAdmin
-                        ? 'neu-inset text-blue-800 dark:text-blue-300'
-                        : isTataUsaha
-                        ? 'neu-inset text-teal-800 dark:text-teal-300'
-                        : isOrangTua
-                        ? 'neu-inset text-sky-800 dark:text-sky-300'
-                        : isSiswa
-                        ? 'neu-inset text-[#0F766E] dark:text-teal-300'
-                        : isBk
-                        ? 'neu-inset text-rose-800 dark:text-rose-300'
-                        : isKepalaSekolah
-                        ? 'neu-inset text-amber-900 dark:text-amber-300'
-                        : isWaliKelas
-                        ? 'neu-inset text-teal-800 dark:text-teal-300'
-                        : 'neu-inset text-[#0F766E] dark:text-teal-300'
-                    }`}>
-                      <i className={`fa-solid ${isSuperadmin ? 'fa-crown' : isDinas ? 'fa-building-columns' : isAdmin ? 'fa-user-shield' : isTataUsaha ? 'fa-id-card-clip' : isOrangTua ? 'fa-people-roof' : isSiswa ? 'fa-user-graduate' : isBk ? 'fa-heart-pulse' : isKepalaSekolah ? 'fa-user-tie' : 'fa-chalkboard-user'} text-[8px]`}></i>
-                      {isSuperadmin ? 'Superadmin' : isDinas ? 'Dinas Pendidikan' : isAdmin ? 'Administrator' : isTataUsaha ? 'Tata Usaha' : isOrangTua ? 'Orang Tua' : isSiswa ? 'Siswa' : isBk ? 'Guru BK' : isKepalaSekolah ? formatKepalaSekolahLabel(statusKepalaSekolah) : isWaliKelas ? 'Guru (Wali Kelas)' : 'Guru'}
-                    </span>
-                    {(user?.username || user?.nip) && (
-                      <span className="text-[10px] text-slate-600 dark:text-slate-400 font-mono truncate max-w-[85px]" title={user?.username || user?.nip}>
-                        {user?.username || user?.nip}
-                      </span>
-                    )}
-                    {isDinas && user?.kota_kabupaten && (
-                      <div className="w-full text-[10px] text-sky-700 dark:text-sky-300 font-semibold truncate mt-1 flex items-center gap-1">
-                        <i className="fa-solid fa-map-location-dot text-[9px] text-[#0F766E] dark:text-teal-400"></i>
-                        <span>Wilayah: {user.kota_kabupaten}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ClayCard>
-
-              {(isSuperadmin || isDinas) && (
-                <div className="mb-3 p-2.5 rounded-2xl neu-inset">
-                  <div className="text-[10px] font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <i className="fa-solid fa-satellite-dish text-[#0F766E] dark:text-teal-400"></i> {isDinas ? 'Sekolah Binaan:' : 'Sekolah yang Dipantau:'}
-                  </div>
-                  <select
-                    aria-label="Ganti Sekolah yang Dipantau di Sidebar"
-                    value={activeTargetSchool?.id || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) {
-                        clearActiveTargetSchool();
-                        setActiveTargetSchoolState(null);
-                      } else {
-                        const sch = satelliteSchools.find(s => s.id === val);
-                        if (sch) {
-                          setActiveTargetSchool(sch);
-                          setActiveTargetSchoolState(sch);
-                        }
-                      }
-                    }}
-                    className="w-full text-xs font-semibold py-1.5 px-2.5 rounded-xl neu-input cursor-pointer"
-                  >
-                    <option value="">{isDinas ? '🌐 Ringkasan Wilayah' : '🌐 Master Platform (Semua)'}</option>
-                    {(isDinas
-                      ? satelliteSchools.filter(s => {
-                          const userRegion = (user?.kota_kabupaten || '').trim().toLowerCase();
-                          const schoolRegion = (s.kota_kabupaten || '').trim().toLowerCase();
-                          return Boolean(userRegion && schoolRegion && userRegion === schoolRegion);
-                        })
-                      : satelliteSchools
-                    ).map(sch => (
-                      <option key={sch.id} value={sch.id}>
-                        🏫 {sch.nama}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="space-y-2 flex-1 min-h-0 overflow-y-auto px-2 py-2 custom-scroll">
-                {consolidatedMenuItems.map(item => (
-                  <React.Fragment key={item.id}>
-                    {/* AST preservation: data-tour={item.id} */}
-                    <button
-                      key={item.id}
-                      type="button"
-                      data-tour={(item as any).dataTour || item.id}
-                      onClick={() => handleNavigation(item.id)}
-                      className={`w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center justify-between gap-2.5 transition-all duration-150 select-none cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400 ${
-                        currentView === item.id 
-                          ? 'neu-inset text-[#0F766E] dark:text-teal-300 ring-1 ring-[#0F766E]/35 dark:ring-teal-400/35' 
-                          : 'text-slate-700 hover:bg-slate-900/5 dark:text-slate-200 dark:hover:bg-white/5 border border-transparent'
-                      }`}
-                    >
-                      <span className="flex items-center gap-2.5 min-w-0 truncate">
-                        <span className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-                          currentView === item.id
-                            ? 'bg-[#0F766E] text-white dark:bg-teal-500 dark:text-slate-950'
-                            : 'neu-card-sm text-slate-600 dark:text-slate-300'
-                        }`}>
-                          <i className={`fa-solid ${item.icon} text-xs`}></i>
-                        </span>
-                        <span className="truncate">{item.label}</span>
-                      </span>
-                      {item.badge !== undefined && item.badge !== null && item.badge !== '' && (
-                        <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full shrink-0 neu-inset text-[#0F766E] dark:text-teal-300">
-                          {typeof item.badge === 'number' && item.badge > 99 ? '99+' : item.badge}
-                        </span>
-                      )}
-                    </button>
-                  </React.Fragment>
-                ))}
-
-                {!isTataUsaha && !isBk && !isOrangTua && !isSiswa && (
-                  <button
-                    type="button"
-                    onClick={() => { setSidebarOpen(false); setIsAccountModalOpen(true); }}
-                    className="w-full text-left px-3.5 py-2.5 min-h-[44px] text-xs font-bold rounded-2xl flex items-center gap-2.5 text-slate-700 hover:bg-slate-900/5 dark:text-slate-200 dark:hover:bg-white/5 transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0F766E] dark:focus-visible:ring-teal-400"
-                  >
-                    <span className="w-7 h-7 rounded-xl neu-card-sm flex items-center justify-center text-sky-700 dark:text-sky-300">
-                      <i className="fa-solid fa-user-gear text-xs"></i>
-                    </span>
-                    <span>Pengaturan Akun</span>
-                  </button>
-                )}
-                {!isTataUsaha && (
-                  <button
-                    type="button"
-                    onClick={() => { setTutorialModalOpen(true); setSidebarOpen(false); }}
-                    className="clay-btn clay-btn-mint w-full justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-bold mt-2 mb-1"
-                    title="Buka panduan & tutorial lengkap seluruh menu"
-                  >
-                    <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-teal-300">
-                      <i className="fa-solid fa-book-bookmark text-xs"></i>
-                    </span>
-                    <span>Panduan & Tutorial Lengkap</span>
-                  </button>
-                )}
-                {!isSuperadmin && !isTataUsaha && (
-                  <button
-                    type="button"
-                    onClick={() => { setTourOpen(true); setSidebarOpen(false); }}
-                    className="clay-btn clay-btn-amber w-full justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold mt-1 mb-2"
-                    title="Buka kembali panduan tutorial interaktif"
-                  >
-                    <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-amber-700 dark:text-amber-300">
-                      <i className="fa-solid fa-graduation-cap text-xs"></i>
-                    </span>
-                    <span>Lihat Tutorial Lagi</span>
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const nextVal = !showAiAssistant;
-                    setShowAiAssistant(nextVal);
-                    try {
-                      localStorage.setItem('sipjam_ai_assistant_visible', String(nextVal));
-                    } catch {}
-                    if (typeof window !== 'undefined') {
-                      window.dispatchEvent(new CustomEvent('sipjam:ai_assistant_visibility', { detail: { visible: nextVal } }));
-                    }
-                  }}
-                  className="clay-btn clay-btn-secondary w-full justify-start gap-2.5 px-3.5 py-2.5 min-h-[44px] rounded-2xl text-xs font-semibold mt-1 mb-1"
-                  title={showAiAssistant ? 'Sembunyikan tombol asisten AI di layar' : 'Tampilkan tombol asisten AI di layar'}
-                >
-                  <span className="w-7 h-7 rounded-xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-teal-300">
-                    <i className={`fa-solid ${showAiAssistant ? 'fa-eye-slash text-slate-500 dark:text-slate-400' : 'fa-robot'} text-xs`}></i>
-                  </span>
-                  <span>{showAiAssistant ? 'Sembunyikan Tombol AI' : 'Tampilkan Tombol AI'}</span>
-                </button>
-              </div>
-            </div>
+          <div className="w-80 max-w-[88%] neu-shell-surface border-r h-full shadow-[12px_0_28px_rgba(163,177,198,0.45)] dark:shadow-[12px_0_30px_rgba(0,0,0,0.72)] p-4 sm:p-5 flex flex-col justify-between transform transition-transform" onClick={e => e.stopPropagation()}>
+            {renderSidebarInner(false, true)}
           </div>
         </div>
       )}
 
-      <main className="flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-8 px-3 sm:px-6 lg:px-8 z-10 max-w-7xl mx-auto">
+      {/* Mobile Bottom Navigation Bar (< 1024px) */}
+      <nav
+        aria-label="Navigasi Cepat Mobile"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 neu-shell-surface border-t px-1.5 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_16px_rgba(15,23,42,0.08)] dark:shadow-[0_-4px_18px_rgba(0,0,0,0.5)] print:hidden no-print"
+      >
+        <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
+          {mobileBottomItems.map((item) => {
+            const isActive = currentView === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleNavigation(item.id)}
+                className={`flex flex-col items-center justify-center gap-0.5 min-h-[50px] px-1 py-1 rounded-2xl transition-colors cursor-pointer ${
+                  isActive
+                    ? 'bg-[#0F766E]/12 dark:bg-teal-400/15 text-[#0F766E] dark:text-teal-300 font-extrabold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-[#0F172A] dark:hover:text-slate-200 font-semibold'
+                }`}
+              >
+                <i className={`fa-solid ${item.icon} text-sm`}></i>
+                <span className="text-[10px] leading-tight truncate max-w-full">{item.label.split(' ')[0]}</span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex flex-col items-center justify-center gap-0.5 min-h-[50px] px-1 py-1 rounded-2xl text-slate-600 dark:text-slate-400 hover:text-[#0F172A] dark:hover:text-slate-200 font-semibold transition-colors cursor-pointer"
+            aria-label="Menu Lengkap"
+          >
+            <i className="fa-solid fa-border-all text-sm"></i>
+            <span className="text-[10px] leading-tight">Menu</span>
+          </button>
+        </div>
+      </nav>
+
+      <main className={`flex-grow overflow-y-auto custom-scroll w-full relative pt-20 pb-24 lg:pb-8 px-3 sm:px-6 lg:px-8 z-10 transition-all duration-200 ${
+        desktopSidebarCollapsed ? 'lg:pl-[calc(78px+2rem)]' : 'lg:pl-[calc(16rem+2rem)]'
+      }`}>
+        <div className="max-w-[1440px] mx-auto">
         {/* Active Target School Banner for Dinas Drilldown */}
         {isDinas && activeTargetSchool && currentView !== 'view-dinas-overview' && (
           <div className="neu-card-sm rounded-2xl p-3.5 mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
@@ -1534,6 +1635,7 @@ export default function AppScreen({
               )}
             </>
           )}
+        </div>
         </div>
       </main>
 
