@@ -163,10 +163,10 @@ async function main() {
     );
   });
 
-  runTest('AC4-02: Persists Deep Learning observations to Supabase pengaturan', () => {
+  runTest('AC4-02: Persists Kokurikuler and Ekstrakurikuler to Supabase pengaturan', () => {
     assert.ok(
-      content.includes("saveDlToSupabase"),
-      'Must implement saveDlToSupabase'
+      content.includes("saveKokurikulerToSupabase") && content.includes("saveEkskulToSupabase"),
+      'Must implement saveKokurikulerToSupabase and saveEkskulToSupabase'
     );
   });
 
@@ -180,26 +180,32 @@ async function main() {
       'Must render button Simpan Rapor'
     );
     assert.ok(
-      content.includes("catatanDebounceRef"),
+      content.includes("catatanDebounceRef") && content.includes("kokurikulerDebounceRef") && content.includes("ekskulDebounceRef"),
       'Must implement debounced auto-saving'
     );
   });
 
-  runTest('AC4-04: Deep Learning observations support clean print formatting with hidden input and wrapped text', () => {
+  runTest('AC4-04: Kokurikuler, Ekstrakurikuler, and Grafik Perkembangan follow requested order before PrintSignature', () => {
     assert.ok(
-      content.includes('placeholder="Catatan mindfulness..."') &&
-      content.includes('deepLearningMap[selectedStudent.nisn]?.mindful || \'-\''),
-      'Must render print fallback paragraph for mindful learning'
+      !content.includes('Observasi Kurikulum Deep Learning'),
+      'Must remove Observasi Kurikulum Deep Learning'
     );
+    const idxMapel = content.indexOf('A. Nilai Capaian Pembelajaran');
+    const idxKokurikuler = content.indexOf('B. Kokurikuler');
+    const idxEkskul = content.indexOf('C. Ekstrakurikuler');
+    const idxAbsen = content.indexOf('D. Ketidakhadiran');
+    const idxCatatan = content.indexOf('E. Catatan Wali Kelas');
+    const idxGrafik = content.indexOf('F. Grafik Perkembangan Murid Berdasarkan Nilai Rata-Rata Kelas');
+    const idxSig = content.indexOf('<PrintSignature');
     assert.ok(
-      content.includes('placeholder="Catatan meaningfulness..."') &&
-      content.includes('deepLearningMap[selectedStudent.nisn]?.meaningful || \'-\''),
-      'Must render print fallback paragraph for meaningful learning'
-    );
-    assert.ok(
-      content.includes('placeholder="Catatan joyfulness..."') &&
-      content.includes('deepLearningMap[selectedStudent.nisn]?.joyful || \'-\''),
-      'Must render print fallback paragraph for joyful learning'
+      idxMapel > 0 &&
+      idxKokurikuler > idxMapel &&
+      idxEkskul > idxKokurikuler &&
+      idxAbsen > idxEkskul &&
+      idxCatatan > idxAbsen &&
+      idxGrafik > idxCatatan &&
+      idxSig > idxGrafik,
+      'Sections must appear in exact requested order with PrintSignature last'
     );
   });
 

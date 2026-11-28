@@ -12,7 +12,7 @@ import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { getSemesterDateRange } from '@/lib/workflow';
 import { formatKepalaSekolahLabel, formatRaporSubjectName } from '@/utils/textUtils';
-import { downloadRaporXlsx, downloadRaporDocx, RaporExportPayload } from '@/utils/raporExport';
+import { downloadRaporXlsx, downloadRaporDocx, RaporExportPayload, EkstrakurikulerItem } from '@/utils/raporExport';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { isMatchingWaliGuru } from '@/lib/presensiIntervensi';
 
@@ -147,7 +147,9 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
   const [selectedStudent, setSelectedStudent] = useState<StudentItem | null>(null);
   const [attendanceMap, setAttendanceMap] = useState<Record<string, { hadir: number; izin: number; sakit: number; alpa: number }>>({});
   const [catatanWaliMap, setCatatanWaliMap] = useState<Record<string, string>>({});
-  const [deepLearningMap, setDeepLearningMap] = useState<Record<string, { mindful: string; meaningful: string; joyful: string }>>({});
+  const [kokurikulerMap, setKokurikulerMap] = useState<Record<string, string>>({});
+  const [ekstrakurikulerMap, setEkstrakurikulerMap] = useState<Record<string, EkstrakurikulerItem[]>>({});
+  const [editingEkskulStudent, setEditingEkskulStudent] = useState<StudentItem | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isPrinting, setIsPrinting] = useState<boolean>(false);
   const [isExporting, setIsExporting] = useState<'xlsx' | 'docx' | null>(null);
@@ -168,11 +170,14 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
 
   // Debounce refs for persistent Supabase autosave
   const catatanDebounceRef = useRef<NodeJS.Timeout | null>(null);
-  const dlDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const kokurikulerDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const ekskulDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const catatanRef = useRef(catatanWaliMap);
   catatanRef.current = catatanWaliMap;
-  const dlRef = useRef(deepLearningMap);
-  dlRef.current = deepLearningMap;
+  const kokurikulerRef = useRef(kokurikulerMap);
+  kokurikulerRef.current = kokurikulerMap;
+  const ekskulRef = useRef(ekstrakurikulerMap);
+  ekskulRef.current = ekstrakurikulerMap;
   const hasInitializedConfig = useRef(false);
   const selectedTahunAjaranRef = useRef(selectedTahunAjaran);
   selectedTahunAjaranRef.current = selectedTahunAjaran;
@@ -188,7 +193,8 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
   useEffect(() => {
     return () => {
       if (catatanDebounceRef.current) clearTimeout(catatanDebounceRef.current);
-      if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
+      if (kokurikulerDebounceRef.current) clearTimeout(kokurikulerDebounceRef.current);
+      if (ekskulDebounceRef.current) clearTimeout(ekskulDebounceRef.current);
     };
   }, []);
 
@@ -625,9 +631,13 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       clearTimeout(catatanDebounceRef.current);
       catatanDebounceRef.current = null;
     }
-    if (dlDebounceRef.current) {
-      clearTimeout(dlDebounceRef.current);
-      dlDebounceRef.current = null;
+    if (kokurikulerDebounceRef.current) {
+      clearTimeout(kokurikulerDebounceRef.current);
+      kokurikulerDebounceRef.current = null;
+    }
+    if (ekskulDebounceRef.current) {
+      clearTimeout(ekskulDebounceRef.current);
+      ekskulDebounceRef.current = null;
     }
     setIsLoading(true);
     try {
@@ -975,47 +985,51 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       catatanRef.current = loadedNotes;
       setCatatanWaliMap(loadedNotes);
 
-      // 9. Load saved Deep Learning observations from database Supabase (pengaturan) with localStorage fallback
-      const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
-      let loadedDl: Record<string, { mindful: string; meaningful: string; joyful: string }> = {};
-      try {
-        let dlQuery = supabase.from('pengaturan').select('value').eq('key', dlKey);
-        if (sekolahId) dlQuery = dlQuery.eq('sekolah_id', sekolahId);
-        const { data: dlDb } = await dlQuery.maybeSingle();
-        if (dlDb?.value) {
-          try {
-            const parsed = JSON.parse(dlDb.value);
+      // 9. Load saved Kokurikuler & Ekstrakurikuler from database Supabase (pengaturan) with localStorage fallback
+      const loadPengaturanMap = async <T,>(storageKey: string): Promise<Record<string, T>> => {
+        let loaded: Record<string, T> = {};
+        try {
+          let q = supabase.from('pengaturan').select('value').eq('key', storageKey);
+          if (sekolahId) q = q.eq('sekolah_id', sekolahId);
+          const { data: dbRow } = await q.maybeSingle();
+          if (dbRow?.value) {
+            const parsed = JSON.parse(dbRow.value);
             if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              loadedDl = parsed;
+              loaded = parsed;
               if (typeof window !== 'undefined') {
-                try { localStorage.setItem(dlKey, dlDb.value); } catch {}
+                try { localStorage.setItem(storageKey, dbRow.value); } catch {}
               }
             }
-          } catch (jsonErr) {
-            console.warn('[RaporView] Malformed cloud deep learning JSON:', jsonErr);
           }
+        } catch (err) {
+          console.warn(`[RaporView] Cloud load error (${storageKey}):`, err);
         }
-      } catch (err) {
-        console.warn('[RaporView] Cloud deep learning load error:', err);
-      }
-      if ((!loadedDl || typeof loadedDl !== 'object' || Array.isArray(loadedDl) || Object.keys(loadedDl).length === 0) && typeof window !== 'undefined') {
-        const savedDl = localStorage.getItem(dlKey);
-        if (savedDl) {
-          try {
-            const parsed = JSON.parse(savedDl);
-            if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-              loadedDl = parsed;
+        if (Object.keys(loaded).length === 0 && typeof window !== 'undefined') {
+          const savedLocal = localStorage.getItem(storageKey);
+          if (savedLocal) {
+            try {
+              const parsed = JSON.parse(savedLocal);
+              if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+                loaded = parsed;
+              }
+            } catch {
+              // ignore parsing error
             }
-          } catch {
-            // ignore parsing error
           }
         }
-      }
-      if (!loadedDl || typeof loadedDl !== 'object' || Array.isArray(loadedDl)) {
-        loadedDl = {};
-      }
-      dlRef.current = loadedDl;
-      setDeepLearningMap(loadedDl);
+        return loaded;
+      };
+
+      const kokurikulerKey = `sipjam_rapor_kokurikuler_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+      const ekskulKey = `sipjam_rapor_ekskul_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+      const [loadedKokurikuler, loadedEkskul] = await Promise.all([
+        loadPengaturanMap<string>(kokurikulerKey),
+        loadPengaturanMap<EkstrakurikulerItem[]>(ekskulKey)
+      ]);
+      kokurikulerRef.current = loadedKokurikuler;
+      setKokurikulerMap(loadedKokurikuler);
+      ekskulRef.current = loadedEkskul;
+      setEkstrakurikulerMap(loadedEkskul);
     } catch (err: any) {
       if (currentReqId === fetchClassRequestId.current) {
         console.error('Error fetching class data for rapor:', err);
@@ -1067,40 +1081,54 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     }
   }, [selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId]);
 
-  // Save Deep Learning observations to database Supabase & localStorage
-  const saveDlToSupabase = useCallback(async (dataToSave: Record<string, { mindful: string; meaningful: string; joyful: string }>, options: { throwOnError?: boolean } = {}) => {
-    if (isTataUsaha || !selectedKelas) return false;
-    setIsSaving(true);
-    setSaveStatus('Menyimpan...');
-    const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
-    if (typeof window !== 'undefined') {
-      try {
-        localStorage.setItem(dlKey, JSON.stringify(dataToSave));
-      } catch {
-        // ignore
+  // Generic helper to persist rapor section maps to Supabase pengaturan & localStorage
+  const savePengaturanMap = useCallback(
+    async (storageKey: string, dataToSave: unknown, options: { throwOnError?: boolean } = {}) => {
+      if (isTataUsaha || !selectedKelas) return false;
+      setIsSaving(true);
+      setSaveStatus('Menyimpan...');
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+        } catch {
+          // ignore
+        }
       }
-    }
-    try {
-      const payload: any = {
-        key: dlKey,
-        value: JSON.stringify(dataToSave)
-      };
-      if (sekolahId) payload.sekolah_id = sekolahId;
+      try {
+        const payload: any = {
+          key: storageKey,
+          value: JSON.stringify(dataToSave)
+        };
+        if (sekolahId) payload.sekolah_id = sekolahId;
 
-      const conflictTarget = sekolahId ? 'sekolah_id,key' : 'key';
-      const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: conflictTarget });
-      if (error) throw error;
-      setSaveStatus('Tersimpan di database');
-      return true;
-    } catch (err) {
-      console.error('Error saving deep learning to database:', err);
-      setSaveStatus('Tersimpan lokal');
-      if (options.throwOnError) throw err;
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [selectedKelas, selectedSemester, selectedTahunAjaran, sekolahId]);
+        const conflictTarget = sekolahId ? 'sekolah_id,key' : 'key';
+        const { error } = await supabase.from('pengaturan').upsert(payload, { onConflict: conflictTarget });
+        if (error) throw error;
+        setSaveStatus('Tersimpan di database');
+        return true;
+      } catch (err) {
+        console.error(`Error saving ${storageKey} to database:`, err);
+        setSaveStatus('Tersimpan lokal');
+        if (options.throwOnError) throw err;
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [isTataUsaha, selectedKelas, sekolahId]
+  );
+
+  const saveKokurikulerToSupabase = useCallback(
+    (dataToSave: Record<string, string>, options: { throwOnError?: boolean } = {}) =>
+      savePengaturanMap(`sipjam_rapor_kokurikuler_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`, dataToSave, options),
+    [savePengaturanMap, selectedKelas, selectedSemester, selectedTahunAjaran]
+  );
+
+  const saveEkskulToSupabase = useCallback(
+    (dataToSave: Record<string, EkstrakurikulerItem[]>, options: { throwOnError?: boolean } = {}) =>
+      savePengaturanMap(`sipjam_rapor_ekskul_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`, dataToSave, options),
+    [savePengaturanMap, selectedKelas, selectedSemester, selectedTahunAjaran]
+  );
 
   // Handle Catatan Change with Debounced Auto-save
   const handleCatatanChange = (nisn: string, text: string) => {
@@ -1121,24 +1149,41 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     }, 800);
   };
 
-  // Handle Deep Learning Change with Debounced Auto-save
-  const handleDeepLearningChange = (nisn: string, field: 'mindful' | 'meaningful' | 'joyful', text: string) => {
-    const prev = dlRef.current[nisn] || { mindful: '', meaningful: '', joyful: '' };
-    const updatedObj = { ...prev, [field]: text };
-    const updatedMap = { ...dlRef.current, [nisn]: updatedObj };
-    dlRef.current = updatedMap;
-    setDeepLearningMap(updatedMap);
-    const dlKey = `sipjam_rapor_dl_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+  // Handle Kokurikuler Change with Debounced Auto-save
+  const handleKokurikulerChange = (nisn: string, text: string) => {
+    const updated = { ...kokurikulerRef.current, [nisn]: text };
+    kokurikulerRef.current = updated;
+    setKokurikulerMap(updated);
+    const kokurikulerKey = `sipjam_rapor_kokurikuler_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem(dlKey, JSON.stringify(updatedMap));
+        localStorage.setItem(kokurikulerKey, JSON.stringify(updated));
       } catch {
         // ignore
       }
     }
-    if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
-    dlDebounceRef.current = setTimeout(() => {
-      saveDlToSupabase(updatedMap);
+    if (kokurikulerDebounceRef.current) clearTimeout(kokurikulerDebounceRef.current);
+    kokurikulerDebounceRef.current = setTimeout(() => {
+      saveKokurikulerToSupabase(updated);
+    }, 800);
+  };
+
+  // Handle Ekstrakurikuler Change with Debounced Auto-save
+  const handleEkskulChange = (nisn: string, items: EkstrakurikulerItem[]) => {
+    const updated = { ...ekskulRef.current, [nisn]: items };
+    ekskulRef.current = updated;
+    setEkstrakurikulerMap(updated);
+    const ekskulKey = `sipjam_rapor_ekskul_${selectedKelas}_${selectedSemester}_${selectedTahunAjaran}`;
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(ekskulKey, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+    }
+    if (ekskulDebounceRef.current) clearTimeout(ekskulDebounceRef.current);
+    ekskulDebounceRef.current = setTimeout(() => {
+      saveEkskulToSupabase(updated);
     }, 800);
   };
 
@@ -1151,14 +1196,16 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     }
     try {
       if (catatanDebounceRef.current) clearTimeout(catatanDebounceRef.current);
-      if (dlDebounceRef.current) clearTimeout(dlDebounceRef.current);
+      if (kokurikulerDebounceRef.current) clearTimeout(kokurikulerDebounceRef.current);
+      if (ekskulDebounceRef.current) clearTimeout(ekskulDebounceRef.current);
       setIsSaving(true);
-      const [catatanOk, dlOk] = await Promise.all([
+      const [catatanOk, kokurikulerOk, ekskulOk] = await Promise.all([
         saveCatatanToSupabase(catatanRef.current, { throwOnError: true }),
-        saveDlToSupabase(dlRef.current, { throwOnError: true })
+        saveKokurikulerToSupabase(kokurikulerRef.current, { throwOnError: true }),
+        saveEkskulToSupabase(ekskulRef.current, { throwOnError: true })
       ]);
-      if (catatanOk && dlOk) {
-        showToast('Tersimpan', 'Catatan wali & observasi deep learning berhasil disimpan ke database.', 'success');
+      if (catatanOk && kokurikulerOk && ekskulOk) {
+        showToast('Tersimpan', 'Catatan wali, kokurikuler, dan ekstrakurikuler berhasil disimpan ke database.', 'success');
       } else {
         showToast('Penyimpanan Lokal', 'Data disimpan di penyimpanan lokal.', 'info');
       }
@@ -1275,6 +1322,42 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
     return map;
   }, [students, getStudentSubjectScores]);
 
+  // Class-wide subject average & overall class average for student progress chart
+  const { classSubjectAverageMap, overallClassAverage } = useMemo(() => {
+    const subjectTotals: Record<string, { sum: number; count: number }> = {};
+    let classAvgSum = 0;
+    let classAvgCount = 0;
+
+    students.forEach(s => {
+      const scores = getStudentSubjectScores(s);
+      const graded = scores.filter(sc => typeof sc.nilaiAkhir === 'number' && !isNaN(sc.nilaiAkhir));
+      if (graded.length > 0) {
+        const studentMean = graded.reduce((acc, c) => acc + (c.nilaiAkhir as number), 0) / graded.length;
+        classAvgSum += studentMean;
+        classAvgCount += 1;
+      }
+      graded.forEach(sc => {
+        if (!subjectTotals[sc.namaMapel]) {
+          subjectTotals[sc.namaMapel] = { sum: 0, count: 0 };
+        }
+        subjectTotals[sc.namaMapel].sum += sc.nilaiAkhir as number;
+        subjectTotals[sc.namaMapel].count += 1;
+      });
+    });
+
+    const map: Record<string, number> = {};
+    Object.entries(subjectTotals).forEach(([mapel, agg]) => {
+      if (agg.count > 0) {
+        map[mapel] = parseFloat((agg.sum / agg.count).toFixed(1));
+      }
+    });
+
+    return {
+      classSubjectAverageMap: map,
+      overallClassAverage: classAvgCount > 0 ? parseFloat((classAvgSum / classAvgCount).toFixed(1)) : null
+    };
+  }, [students, getStudentSubjectScores]);
+
   // Handle GPS-verified print
   const handlePrintRapor = async () => {
     setIsPrinting(true);
@@ -1354,7 +1437,16 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       }));
 
       const att = attendanceMap[selectedStudent.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
-      const dl = deepLearningMap[selectedStudent.nisn] || { mindful: '', meaningful: '', joyful: '' };
+      const kokurikulerText = (kokurikulerMap[selectedStudent.nisn] || '').trim();
+      const ekskulList = (ekstrakurikulerMap[selectedStudent.nisn] || []).filter(
+        ek => ek.kegiatan.trim() || ek.predikat.trim() || ek.keterangan.trim()
+      );
+      const classComparison = gradedScores.map(sc => ({
+        namaMapel: sc.namaMapel,
+        nilaiSiswa: sc.nilaiAkhir,
+        rataRataKelas: classSubjectAverageMap[sc.namaMapel] ?? sc.nilaiAkhir
+      }));
+
       const payload: RaporExportPayload = {
         schoolName,
         namaSiswa: selectedStudent.nama_siswa,
@@ -1363,11 +1455,13 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         semester: selectedSemester,
         tahunAjaran: selectedTahunAjaran,
         scores: gradedScores,
+        kokurikuler: kokurikulerText,
+        ekstrakurikuler: ekskulList,
         attendance: { sakit: att.sakit || 0, izin: att.izin || 0, alpa: att.alpa || 0 },
-        deepLearning: { mindful: dl.mindful || '', meaningful: dl.meaningful || '', joyful: dl.joyful || '' },
         catatanWali:
           catatanWaliMap[selectedStudent.nisn] ||
           'Menunjukkan perkembangan belajar yang positif. Tingkatkan terus kedisiplinan dan pertahankan motivasi belajar untuk capaian yang lebih baik.',
+        classComparison,
         waliNama: assignedWaliInfo?.nama_guru || (!isAdmin && !isTataUsaha ? user?.nama : '') || '...........................................',
         waliNip: assignedWaliInfo?.nip ?? (!isAdmin && !isTataUsaha ? user?.nip : undefined),
         kepalaSekolahLabel: kepalaSekolahNama ? formatKepalaSekolahLabel(effectiveStatus) : undefined,
@@ -1432,7 +1526,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                   onClick={handleManualSave}
                   disabled={isSaving}
                   className="neu-btn neu-btn-teal min-h-[40px] px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                  title="Simpan Catatan & Observasi ke Database"
+                  title="Simpan Catatan, Kokurikuler & Ekstrakurikuler ke Database"
                 >
                   <i className="fa-solid fa-cloud-arrow-up text-xs"></i>
                   Simpan Rapor
@@ -1643,7 +1737,9 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                     <th className="py-3 px-3 w-32 text-center" title="Hadir / Sakit / Izin / Alpa">
                       Kehadiran (H/S/I/A)
                     </th>
-                    <th className="py-3 px-3 min-w-[250px]">Catatan Wali Kelas</th>
+                    <th className="py-3 px-3 min-w-[210px]">Kokurikuler</th>
+                    <th className="py-3 px-3 w-40 text-center">Ekstrakurikuler</th>
+                    <th className="py-3 px-3 min-w-[230px]">Catatan Wali Kelas</th>
                     <th className="py-3 px-3 w-24 text-center no-print">Aksi</th>
                   </tr>
                 </thead>
@@ -1651,6 +1747,8 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                   {filteredStudents.map((s, idx) => {
                     const avgData = studentAverageMap[s.nisn] || { avg: '-', predikat: '-' };
                     const att = attendanceMap[s.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0 };
+                    const kokurikulerText = kokurikulerMap[s.nisn] || '';
+                    const ekskulItems = (ekstrakurikulerMap[s.nisn] || []).filter(ek => ek.kegiatan.trim());
                     const note = catatanWaliMap[s.nisn] || '';
 
                     return (
@@ -1687,6 +1785,40 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                             <span className="text-slate-400">/</span>
                             <span className="text-rose-700 dark:text-rose-400" title="Alpa">{att.alpa}A</span>
                           </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          {isTataUsaha ? (
+                            <span className="text-xs text-slate-700 dark:text-slate-300 italic">{kokurikulerText || '-'}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              aria-label={`Kokurikuler untuk ${s.nama_siswa}`}
+                              value={kokurikulerText}
+                              placeholder="Tulis capaian kokurikuler..."
+                              onChange={(e) => handleKokurikulerChange(s.nisn, e.target.value)}
+                              className="neu-input w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 placeholder-slate-400"
+                            />
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-center">
+                          {isTataUsaha ? (
+                            <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+                              {ekskulItems.length > 0 ? `${ekskulItems.length} kegiatan` : '-'}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setEditingEkskulStudent(s)}
+                              className={`neu-btn min-h-[36px] px-3 py-1.5 rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5 cursor-pointer ${
+                                ekskulItems.length > 0
+                                  ? 'text-emerald-700 dark:text-emerald-400'
+                                  : 'text-amber-700 dark:text-amber-400'
+                              }`}
+                            >
+                              <i className={`fa-solid ${ekskulItems.length > 0 ? 'fa-pen-to-square' : 'fa-plus'}`}></i>
+                              {ekskulItems.length > 0 ? `${ekskulItems.length} Kegiatan` : 'Lengkapi'}
+                            </button>
+                          )}
                         </td>
                         <td className="py-3 px-3">
                           {isTataUsaha ? (
@@ -1808,97 +1940,191 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 </div>
               </div>
 
-              {/* ATTENDANCE SUMMARY & DEEP LEARNING */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 print:grid-cols-2">
-                {/* Rekap Kehadiran */}
-                <div>
-                  <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
-                    B. Ketidakhadiran
-                  </h3>
-                  <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
-                    <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
-                      <span className="text-slate-600 dark:text-slate-400 print:text-black">1. Sakit</span>
-                      <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
-                        {attendanceMap[selectedStudent.nisn]?.sakit || 0} hari
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
-                      <span className="text-slate-600 dark:text-slate-400 print:text-black">2. Izin</span>
-                      <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
-                        {attendanceMap[selectedStudent.nisn]?.izin || 0} hari
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2.5 px-3">
-                      <span className="text-slate-600 dark:text-slate-400 print:text-black">3. Tanpa Keterangan (Alpa)</span>
-                      <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
-                        {attendanceMap[selectedStudent.nisn]?.alpa || 0} hari
-                      </span>
-                    </div>
-                  </div>
+              {/* B. KOKURIKULER */}
+              <div className="mb-6">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
+                  B. Kokurikuler
+                </h3>
+                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-3 text-xs min-h-[56px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                  {!isTataUsaha && (
+                    <textarea
+                      aria-label="Kokurikuler"
+                      value={kokurikulerMap[selectedStudent.nisn] ?? ''}
+                      onChange={(e) => handleKokurikulerChange(selectedStudent.nisn, e.target.value)}
+                      placeholder="Tulis deskripsi kegiatan dan capaian kokurikuler siswa..."
+                      rows={3}
+                      className="neu-input w-full text-slate-800 dark:text-slate-200 leading-relaxed resize-y print:hidden px-3 py-2 rounded-xl text-xs"
+                    />
+                  )}
+                  <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black leading-relaxed whitespace-pre-wrap`}>
+                    {kokurikulerMap[selectedStudent.nisn] || '-'}
+                  </p>
                 </div>
+              </div>
 
-                {/* Observasi Kurikulum Deep Learning */}
-                <div>
-                  <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
-                    C. Observasi Kurikulum Deep Learning
+              {/* C. EKSTRAKURIKULER */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black">
+                    C. Ekstrakurikuler
                   </h3>
-                  <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
-                    <div className="flex flex-col py-2 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
-                      <span className="font-bold text-slate-900 dark:text-white print:text-black">1. Mindful Learning (Kesadaran Belajar)</span>
-                      {!isTataUsaha && (
-                        <input
-                          type="text"
-                          aria-label="Catatan Mindful Learning"
-                          className="neu-input mt-1.5 w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 print:hidden"
-                          placeholder="Catatan mindfulness..."
-                          value={deepLearningMap[selectedStudent.nisn]?.mindful || ''}
-                          onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'mindful', e.target.value)}
-                        />
-                      )}
-                      <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black italic mt-0.5 text-xs`}>
-                        {deepLearningMap[selectedStudent.nisn]?.mindful || '-'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col py-2 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
-                      <span className="font-bold text-slate-900 dark:text-white print:text-black">2. Meaningful Learning (Pemaknaan Materi)</span>
-                      {!isTataUsaha && (
-                        <input
-                          type="text"
-                          aria-label="Catatan Meaningful Learning"
-                          className="neu-input mt-1.5 w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 print:hidden"
-                          placeholder="Catatan meaningfulness..."
-                          value={deepLearningMap[selectedStudent.nisn]?.meaningful || ''}
-                          onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'meaningful', e.target.value)}
-                        />
-                      )}
-                      <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black italic mt-0.5 text-xs`}>
-                        {deepLearningMap[selectedStudent.nisn]?.meaningful || '-'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col py-2 px-3">
-                      <span className="font-bold text-slate-900 dark:text-white print:text-black">3. Joyful Learning (Kegembiraan Belajar)</span>
-                      {!isTataUsaha && (
-                        <input
-                          type="text"
-                          aria-label="Catatan Joyful Learning"
-                          className="neu-input mt-1.5 w-full text-xs px-3 py-2 min-h-[40px] rounded-xl text-slate-800 dark:text-slate-200 print:hidden"
-                          placeholder="Catatan joyfulness..."
-                          value={deepLearningMap[selectedStudent.nisn]?.joyful || ''}
-                          onChange={(e) => handleDeepLearningChange(selectedStudent.nisn, 'joyful', e.target.value)}
-                        />
-                      )}
-                      <p className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-slate-800 dark:text-slate-200 print:text-black italic mt-0.5 text-xs`}>
-                        {deepLearningMap[selectedStudent.nisn]?.joyful || '-'}
-                      </p>
-                    </div>
+                  {!isTataUsaha && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const current = ekstrakurikulerMap[selectedStudent.nisn] || [];
+                        handleEkskulChange(selectedStudent.nisn, [
+                          ...current,
+                          { kegiatan: '', predikat: 'Baik', keterangan: '' }
+                        ]);
+                      }}
+                      className="neu-btn px-3 py-1.5 min-h-[34px] rounded-xl text-[11px] font-bold text-[#0F766E] dark:text-[#14B8A6] inline-flex items-center gap-1.5 cursor-pointer print:hidden"
+                    >
+                      <i className="fa-solid fa-plus text-[10px]"></i>
+                      Tambah Ekstrakurikuler
+                    </button>
+                  )}
+                </div>
+                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] p-2 rounded-xl print:bg-white print:text-black print:p-0 print:border print:border-black print:shadow-none print:rounded-none">
+                  <div className="overflow-x-auto rounded-lg print:overflow-visible print:rounded-none">
+                    <table className="w-full text-left text-xs border-collapse print:text-black">
+                      <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-bold border-b border-slate-300 dark:border-slate-700 text-[11px] print:bg-white print:text-black print:border-black">
+                        <tr>
+                          <th className="py-2.5 px-3 w-10 text-center border-r border-slate-300/70 dark:border-slate-700 print:border-black">#</th>
+                          <th className="py-2.5 px-3 w-56 border-r border-slate-300/70 dark:border-slate-700 print:border-black">Kegiatan Ekstrakurikuler</th>
+                          <th className="py-2.5 px-3 w-32 text-center border-r border-slate-300/70 dark:border-slate-700 print:border-black">Predikat</th>
+                          <th className="py-2.5 px-3 min-w-[220px]">Keterangan</th>
+                          {!isTataUsaha && <th className="py-2.5 px-2 w-12 text-center print:hidden">Hapus</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-300/60 dark:divide-slate-700 print:divide-black">
+                        {(ekstrakurikulerMap[selectedStudent.nisn] || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={isTataUsaha ? 4 : 5} className="py-3 text-center text-slate-500 print:text-black italic">
+                              Belum ada kegiatan ekstrakurikuler yang diisi.
+                            </td>
+                          </tr>
+                        ) : (
+                          (ekstrakurikulerMap[selectedStudent.nisn] || []).map((ek, idx) => (
+                            <tr key={idx} className="print:bg-white">
+                              <td className="py-2 px-3 text-center text-slate-500 print:text-black font-num border-r border-slate-300/70 dark:border-slate-700 print:border-black">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-300/70 dark:border-slate-700 print:border-black">
+                                {!isTataUsaha && (
+                                  <input
+                                    type="text"
+                                    aria-label={`Kegiatan Ekstrakurikuler ${idx + 1}`}
+                                    value={ek.kegiatan}
+                                    placeholder="Nama ekstrakurikuler..."
+                                    onChange={(e) => {
+                                      const list = [...(ekstrakurikulerMap[selectedStudent.nisn] || [])];
+                                      list[idx] = { ...list[idx], kegiatan: e.target.value };
+                                      handleEkskulChange(selectedStudent.nisn, list);
+                                    }}
+                                    className="neu-input w-full px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-slate-100 print:hidden"
+                                  />
+                                )}
+                                <span className={`${isTataUsaha ? 'block' : 'hidden print:block'} font-semibold text-slate-900 dark:text-white print:text-black`}>
+                                  {ek.kegiatan || '-'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-center border-r border-slate-300/70 dark:border-slate-700 print:border-black">
+                                {!isTataUsaha && (
+                                  <select
+                                    aria-label={`Predikat Ekstrakurikuler ${idx + 1}`}
+                                    value={ek.predikat}
+                                    onChange={(e) => {
+                                      const list = [...(ekstrakurikulerMap[selectedStudent.nisn] || [])];
+                                      list[idx] = { ...list[idx], predikat: e.target.value };
+                                      handleEkskulChange(selectedStudent.nisn, list);
+                                    }}
+                                    className="neu-input w-full px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-900 dark:text-slate-100 print:hidden"
+                                  >
+                                    <option value="Sangat Baik">Sangat Baik</option>
+                                    <option value="Baik">Baik</option>
+                                    <option value="Cukup">Cukup</option>
+                                    <option value="Kurang">Kurang</option>
+                                  </select>
+                                )}
+                                <span className={`${isTataUsaha ? 'block' : 'hidden print:block'} font-semibold text-slate-900 dark:text-white print:text-black`}>
+                                  {ek.predikat || '-'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3">
+                                {!isTataUsaha && (
+                                  <input
+                                    type="text"
+                                    aria-label={`Keterangan Ekstrakurikuler ${idx + 1}`}
+                                    value={ek.keterangan}
+                                    placeholder="Deskripsi capaian ekstrakurikuler..."
+                                    onChange={(e) => {
+                                      const list = [...(ekstrakurikulerMap[selectedStudent.nisn] || [])];
+                                      list[idx] = { ...list[idx], keterangan: e.target.value };
+                                      handleEkskulChange(selectedStudent.nisn, list);
+                                    }}
+                                    className="neu-input w-full px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-slate-100 print:hidden"
+                                  />
+                                )}
+                                <span className={`${isTataUsaha ? 'block' : 'hidden print:block'} text-[11px] text-slate-700 dark:text-slate-300 print:text-black`}>
+                                  {ek.keterangan || '-'}
+                                </span>
+                              </td>
+                              {!isTataUsaha && (
+                                <td className="py-2 px-2 text-center print:hidden">
+                                  <button
+                                    type="button"
+                                    aria-label={`Hapus ekstrakurikuler ${idx + 1}`}
+                                    onClick={() => {
+                                      const list = (ekstrakurikulerMap[selectedStudent.nisn] || []).filter((_, i) => i !== idx);
+                                      handleEkskulChange(selectedStudent.nisn, list);
+                                    }}
+                                    className="w-8 h-8 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 inline-flex items-center justify-center cursor-pointer"
+                                  >
+                                    <i className="fa-solid fa-trash-can text-xs"></i>
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
 
-              {/* Catatan Wali Kelas */}
-              <div className="mb-8">
+              {/* D. KETIDAKHADIRAN */}
+              <div className="mb-6">
                 <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
-                  D. Catatan Wali Kelas
+                  D. Ketidakhadiran
+                </h3>
+                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                  <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
+                    <span className="text-slate-600 dark:text-slate-400 print:text-black">1. Sakit</span>
+                    <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
+                      {attendanceMap[selectedStudent.nisn]?.sakit || 0} hari
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
+                    <span className="text-slate-600 dark:text-slate-400 print:text-black">2. Izin</span>
+                    <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
+                      {attendanceMap[selectedStudent.nisn]?.izin || 0} hari
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2.5 px-3">
+                    <span className="text-slate-600 dark:text-slate-400 print:text-black">3. Tanpa Keterangan (Alpa)</span>
+                    <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
+                      {attendanceMap[selectedStudent.nisn]?.alpa || 0} hari
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* E. CATATAN WALI KELAS */}
+              <div className="mb-6">
+                <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
+                  E. Catatan Wali Kelas
                 </h3>
                 <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-3 text-xs min-h-[50px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
                   {!isTataUsaha && (
@@ -1918,7 +2144,87 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 </div>
               </div>
 
-              {/* PRINT SIGNATURE */}
+              {/* F. GRAFIK PERKEMBANGAN MURID BERDASARKAN NILAI RATA-RATA KELAS */}
+              {(() => {
+                const studentScores = getStudentSubjectScores(selectedStudent);
+                const studentOverall = studentAverageMap[selectedStudent.nisn]?.avg;
+                const diff =
+                  typeof studentOverall === 'number' && overallClassAverage !== null
+                    ? parseFloat((studentOverall - overallClassAverage).toFixed(1))
+                    : null;
+
+                return (
+                  <div className="mb-8 print:break-inside-avoid">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                      <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black">
+                        F. Grafik Perkembangan Murid Berdasarkan Nilai Rata-Rata Kelas
+                      </h3>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold font-num">
+                        <span className="inline-flex items-center gap-1.5 text-[#0F766E] dark:text-[#14B8A6] print:text-black">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-[#0F766E] dark:bg-[#14B8A6] print:bg-black inline-block"></span>
+                          Nilai Siswa: {typeof studentOverall === 'number' ? studentOverall : '-'}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5 text-slate-600 dark:text-slate-300 print:text-black">
+                          <span className="w-2.5 h-2.5 rounded-sm bg-slate-400 dark:bg-slate-500 print:bg-gray-400 inline-block"></span>
+                          Rata-Rata Kelas: {overallClassAverage !== null ? overallClassAverage : '-'}
+                        </span>
+                        {diff !== null && (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] ${
+                            diff >= 0
+                              ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                              : 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                          } print:border print:border-black print:text-black`}>
+                            {diff >= 0 ? `+${diff} di atas rata-rata kelas` : `${diff} di bawah rata-rata kelas`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-4 text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                      {studentScores.length === 0 ? (
+                        <p className="text-center text-slate-500 print:text-black italic py-2">
+                          Belum ada data nilai untuk menampilkan grafik perkembangan murid.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {studentScores.map(item => {
+                            const sVal = typeof item.nilaiAkhir === 'number' ? item.nilaiAkhir : 0;
+                            const cVal = classSubjectAverageMap[item.namaMapel] ?? sVal;
+                            return (
+                              <div key={item.namaMapel} className="space-y-1">
+                                <div className="flex items-center justify-between gap-2 text-[11px]">
+                                  <span className="font-bold text-slate-800 dark:text-slate-100 print:text-black truncate">
+                                    {item.namaMapel}
+                                  </span>
+                                  <span className="font-num text-slate-600 dark:text-slate-300 print:text-black shrink-0">
+                                    Siswa: <strong className="text-[#0F766E] dark:text-[#14B8A6] print:text-black">{sVal}</strong> · Kelas: <strong>{cVal}</strong>
+                                  </span>
+                                </div>
+                                <div className="space-y-1">
+                                  <div className="w-full h-2.5 rounded-full bg-slate-300/60 dark:bg-slate-700/60 overflow-hidden print:border print:border-slate-400">
+                                    <div
+                                      className="h-full rounded-full bg-[#0F766E] dark:bg-[#14B8A6] print:bg-black transition-all duration-300"
+                                      style={{ width: `${Math.min(100, Math.max(0, sVal))}%` }}
+                                    />
+                                  </div>
+                                  <div className="w-full h-2 rounded-full bg-slate-300/40 dark:bg-slate-700/40 overflow-hidden print:border print:border-slate-300">
+                                    <div
+                                      className="h-full rounded-full bg-slate-400 dark:bg-slate-500 print:bg-gray-400 transition-all duration-300"
+                                      style={{ width: `${Math.min(100, Math.max(0, cVal))}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* PRINT SIGNATURE (PALING AKHIR) */}
               <PrintSignature
                 leftTitle="Mengetahui,"
                 leftSubtitle="Orang Tua / Wali Murid"
@@ -1986,6 +2292,121 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
               </p>
             </div>
           )
+        )}
+
+        {/* MODAL LENGKAPI EKSTRAKURIKULER WALI KELAS */}
+        {editingEkskulStudent && !isTataUsaha && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Ekstrakurikuler ${editingEkskulStudent.nama_siswa}`}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/65 no-print"
+          >
+            <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl w-full max-w-2xl p-5 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                    Lengkapi Ekstrakurikuler
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {editingEkskulStudent.nama_siswa} ({editingEkskulStudent.nisn})
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingEkskulStudent(null)}
+                  className="neu-btn w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 cursor-pointer"
+                  aria-label="Tutup modal ekstrakurikuler"
+                >
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+
+              <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
+                {(ekstrakurikulerMap[editingEkskulStudent.nisn] || []).length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic py-4 text-center">
+                    Belum ada kegiatan ekstrakurikuler. Klik &quot;Tambah Kegiatan&quot; di bawah.
+                  </p>
+                ) : (
+                  (ekstrakurikulerMap[editingEkskulStudent.nisn] || []).map((ek, idx) => (
+                    <div key={idx} className="neu-inset p-3 rounded-xl grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                      <input
+                        type="text"
+                        placeholder="Nama kegiatan..."
+                        value={ek.kegiatan}
+                        onChange={(e) => {
+                          const list = [...(ekstrakurikulerMap[editingEkskulStudent.nisn] || [])];
+                          list[idx] = { ...list[idx], kegiatan: e.target.value };
+                          handleEkskulChange(editingEkskulStudent.nisn, list);
+                        }}
+                        className="neu-input sm:col-span-4 px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-slate-100"
+                      />
+                      <select
+                        value={ek.predikat}
+                        onChange={(e) => {
+                          const list = [...(ekstrakurikulerMap[editingEkskulStudent.nisn] || [])];
+                          list[idx] = { ...list[idx], predikat: e.target.value };
+                          handleEkskulChange(editingEkskulStudent.nisn, list);
+                        }}
+                        className="neu-input sm:col-span-3 px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-900 dark:text-slate-100"
+                      >
+                        <option value="Sangat Baik">Sangat Baik</option>
+                        <option value="Baik">Baik</option>
+                        <option value="Cukup">Cukup</option>
+                        <option value="Kurang">Kurang</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Keterangan capaian..."
+                        value={ek.keterangan}
+                        onChange={(e) => {
+                          const list = [...(ekstrakurikulerMap[editingEkskulStudent.nisn] || [])];
+                          list[idx] = { ...list[idx], keterangan: e.target.value };
+                          handleEkskulChange(editingEkskulStudent.nisn, list);
+                        }}
+                        className="neu-input sm:col-span-4 px-2.5 py-1.5 rounded-lg text-xs text-slate-900 dark:text-slate-100"
+                      />
+                      <button
+                        type="button"
+                        aria-label={`Hapus kegiatan ${idx + 1}`}
+                        onClick={() => {
+                          const list = (ekstrakurikulerMap[editingEkskulStudent.nisn] || []).filter((_, i) => i !== idx);
+                          handleEkskulChange(editingEkskulStudent.nisn, list);
+                        }}
+                        className="sm:col-span-1 w-8 h-8 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 inline-flex items-center justify-center cursor-pointer mx-auto"
+                      >
+                        <i className="fa-solid fa-trash-can text-xs"></i>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-300/60 dark:border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const current = ekstrakurikulerMap[editingEkskulStudent.nisn] || [];
+                    handleEkskulChange(editingEkskulStudent.nisn, [
+                      ...current,
+                      { kegiatan: '', predikat: 'Baik', keterangan: '' }
+                    ]);
+                  }}
+                  className="neu-btn px-3 py-2 rounded-xl text-xs font-bold text-[#0F766E] dark:text-[#14B8A6] inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <i className="fa-solid fa-plus"></i>
+                  Tambah Kegiatan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingEkskulStudent(null)}
+                  className="neu-btn neu-btn-teal px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
+                >
+                  Selesai
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </section>

@@ -6,6 +6,18 @@ export interface RaporExportSubject {
   deskripsiCapaian: string;
 }
 
+export interface EkstrakurikulerItem {
+  kegiatan: string;
+  predikat: string;
+  keterangan: string;
+}
+
+export interface ClassComparisonItem {
+  namaMapel: string;
+  nilaiSiswa: number;
+  rataRataKelas: number;
+}
+
 export interface RaporExportPayload {
   schoolName?: string;
   namaSiswa: string;
@@ -14,17 +26,15 @@ export interface RaporExportPayload {
   semester: string;
   tahunAjaran: string;
   scores: RaporExportSubject[];
+  kokurikuler: string;
+  ekstrakurikuler: EkstrakurikulerItem[];
   attendance: {
     sakit: number;
     izin: number;
     alpa: number;
   };
-  deepLearning: {
-    mindful: string;
-    meaningful: string;
-    joyful: string;
-  };
   catatanWali: string;
+  classComparison?: ClassComparisonItem[];
   waliNama: string;
   waliNip?: string | null;
   kepalaSekolahLabel?: string;
@@ -197,20 +207,63 @@ export async function buildRaporXlsxBuffer(payload: RaporExportPayload): Promise
   }
 
   r++;
-  rows.push(buildXlsxRowXml(r++, [{ value: 'B. KETIDAKHADIRAN', style: 2 }]));
+  rows.push(buildXlsxRowXml(r++, [{ value: 'B. KOKURIKULER', style: 2 }]));
+  rows.push(buildXlsxRowXml(r++, [{ value: payload.kokurikuler || '-', style: 4 }]));
+
+  r++;
+  rows.push(buildXlsxRowXml(r++, [{ value: 'C. EKSTRAKURIKULER', style: 2 }]));
+  rows.push(buildXlsxRowXml(r++, [
+    { value: 'No', style: 3 },
+    { value: 'Kegiatan Ekstrakurikuler', style: 3 },
+    { value: 'Predikat', style: 3 },
+    { value: 'Keterangan', style: 3 }
+  ]));
+  if (payload.ekstrakurikuler.length === 0) {
+    rows.push(buildXlsxRowXml(r++, [
+      { value: '-', style: 5 },
+      { value: '-', style: 4 },
+      { value: '-', style: 5 },
+      { value: '-', style: 4 }
+    ]));
+  } else {
+    payload.ekstrakurikuler.forEach((ek, idx) => {
+      rows.push(buildXlsxRowXml(r++, [
+        { value: idx + 1, style: 5 },
+        { value: ek.kegiatan || '-', style: 4 },
+        { value: ek.predikat || '-', style: 5 },
+        { value: ek.keterangan || '-', style: 4 }
+      ]));
+    });
+  }
+
+  r++;
+  rows.push(buildXlsxRowXml(r++, [{ value: 'D. KETIDAKHADIRAN', style: 2 }]));
   rows.push(buildXlsxRowXml(r++, [{ value: '1. Sakit', style: 4 }, { value: `${payload.attendance.sakit} hari`, style: 4 }]));
   rows.push(buildXlsxRowXml(r++, [{ value: '2. Izin', style: 4 }, { value: `${payload.attendance.izin} hari`, style: 4 }]));
   rows.push(buildXlsxRowXml(r++, [{ value: '3. Tanpa Keterangan (Alpa)', style: 4 }, { value: `${payload.attendance.alpa} hari`, style: 4 }]));
 
   r++;
-  rows.push(buildXlsxRowXml(r++, [{ value: 'C. OBSERVASI KURIKULUM DEEP LEARNING', style: 2 }]));
-  rows.push(buildXlsxRowXml(r++, [{ value: '1. Mindful Learning (Kesadaran Belajar)', style: 4 }, { value: payload.deepLearning.mindful || '-', style: 4 }]));
-  rows.push(buildXlsxRowXml(r++, [{ value: '2. Meaningful Learning (Pemaknaan Materi)', style: 4 }, { value: payload.deepLearning.meaningful || '-', style: 4 }]));
-  rows.push(buildXlsxRowXml(r++, [{ value: '3. Joyful Learning (Kegembiraan Belajar)', style: 4 }, { value: payload.deepLearning.joyful || '-', style: 4 }]));
-
-  r++;
-  rows.push(buildXlsxRowXml(r++, [{ value: 'D. CATATAN WALI KELAS', style: 2 }]));
+  rows.push(buildXlsxRowXml(r++, [{ value: 'E. CATATAN WALI KELAS', style: 2 }]));
   rows.push(buildXlsxRowXml(r++, [{ value: payload.catatanWali, style: 0 }]));
+
+  if (payload.classComparison && payload.classComparison.length > 0) {
+    r++;
+    rows.push(buildXlsxRowXml(r++, [{ value: 'F. PERKEMBANGAN MURID VS RATA-RATA KELAS', style: 2 }]));
+    rows.push(buildXlsxRowXml(r++, [
+      { value: 'No', style: 3 },
+      { value: 'Mata Pelajaran', style: 3 },
+      { value: 'Nilai Siswa', style: 3 },
+      { value: 'Rata-Rata Kelas', style: 3 }
+    ]));
+    payload.classComparison.forEach((cmp, idx) => {
+      rows.push(buildXlsxRowXml(r++, [
+        { value: idx + 1, style: 5 },
+        { value: cmp.namaMapel, style: 4 },
+        { value: cmp.nilaiSiswa, style: 5 },
+        { value: cmp.rataRataKelas, style: 5 }
+      ]));
+    });
+  }
 
   r++;
   rows.push(buildXlsxRowXml(r++, [
@@ -346,7 +399,27 @@ export async function buildRaporDocxBuffer(payload: RaporExportPayload): Promise
   bodyParts.push(docxTable(scoreRows, true));
 
   bodyParts.push(docxParagraph('', { spaceAfter: 120 }));
-  bodyParts.push(docxParagraph('B. KETIDAKHADIRAN', { bold: true, size: 22, spaceAfter: 80 }));
+  bodyParts.push(docxParagraph('B. KOKURIKULER', { bold: true, size: 22, spaceAfter: 80 }));
+  bodyParts.push(docxTable([
+    `<w:tr>${docxCell(payload.kokurikuler || '-', { width: 9638, italic: !payload.kokurikuler })}</w:tr>`
+  ], true));
+
+  bodyParts.push(docxParagraph('', { spaceAfter: 120 }));
+  bodyParts.push(docxParagraph('C. EKSTRAKURIKULER', { bold: true, size: 22, spaceAfter: 80 }));
+  const ekskulRows = [
+    `<w:tr>${docxCell('No', { width: 650, bold: true, align: 'center', shade: 'E2E8F0' })}${docxCell('Kegiatan Ekstrakurikuler', { width: 3200, bold: true, shade: 'E2E8F0' })}${docxCell('Predikat', { width: 1500, bold: true, align: 'center', shade: 'E2E8F0' })}${docxCell('Keterangan', { width: 4288, bold: true, shade: 'E2E8F0' })}</w:tr>`
+  ];
+  if (payload.ekstrakurikuler.length === 0) {
+    ekskulRows.push(`<w:tr>${docxCell('-', { width: 650, align: 'center' })}${docxCell('-', { width: 3200 })}${docxCell('-', { width: 1500, align: 'center' })}${docxCell('-', { width: 4288 })}</w:tr>`);
+  } else {
+    payload.ekstrakurikuler.forEach((ek, idx) => {
+      ekskulRows.push(`<w:tr>${docxCell(String(idx + 1), { width: 650, align: 'center' })}${docxCell(ek.kegiatan || '-', { width: 3200, bold: true })}${docxCell(ek.predikat || '-', { width: 1500, align: 'center' })}${docxCell(ek.keterangan || '-', { width: 4288 })}</w:tr>`);
+    });
+  }
+  bodyParts.push(docxTable(ekskulRows, true));
+
+  bodyParts.push(docxParagraph('', { spaceAfter: 120 }));
+  bodyParts.push(docxParagraph('D. KETIDAKHADIRAN', { bold: true, size: 22, spaceAfter: 80 }));
   bodyParts.push(docxTable([
     `<w:tr>${docxCell('1. Sakit', { width: 6000 })}${docxCell(`${payload.attendance.sakit} hari`, { width: 3638, bold: true, align: 'right' })}</w:tr>`,
     `<w:tr>${docxCell('2. Izin', { width: 6000 })}${docxCell(`${payload.attendance.izin} hari`, { width: 3638, bold: true, align: 'right' })}</w:tr>`,
@@ -354,18 +427,22 @@ export async function buildRaporDocxBuffer(payload: RaporExportPayload): Promise
   ], true));
 
   bodyParts.push(docxParagraph('', { spaceAfter: 120 }));
-  bodyParts.push(docxParagraph('C. OBSERVASI KURIKULUM DEEP LEARNING', { bold: true, size: 22, spaceAfter: 80 }));
-  bodyParts.push(docxTable([
-    `<w:tr>${docxCell('1. Mindful Learning (Kesadaran Belajar)', { width: 3600, bold: true })}${docxCell(payload.deepLearning.mindful || '-', { width: 6038, italic: true })}</w:tr>`,
-    `<w:tr>${docxCell('2. Meaningful Learning (Pemaknaan Materi)', { width: 3600, bold: true })}${docxCell(payload.deepLearning.meaningful || '-', { width: 6038, italic: true })}</w:tr>`,
-    `<w:tr>${docxCell('3. Joyful Learning (Kegembiraan Belajar)', { width: 3600, bold: true })}${docxCell(payload.deepLearning.joyful || '-', { width: 6038, italic: true })}</w:tr>`
-  ], true));
-
-  bodyParts.push(docxParagraph('', { spaceAfter: 120 }));
-  bodyParts.push(docxParagraph('D. CATATAN WALI KELAS', { bold: true, size: 22, spaceAfter: 80 }));
+  bodyParts.push(docxParagraph('E. CATATAN WALI KELAS', { bold: true, size: 22, spaceAfter: 80 }));
   bodyParts.push(docxTable([
     `<w:tr>${docxCell(payload.catatanWali, { width: 9638, italic: true })}</w:tr>`
   ], true));
+
+  if (payload.classComparison && payload.classComparison.length > 0) {
+    bodyParts.push(docxParagraph('', { spaceAfter: 120 }));
+    bodyParts.push(docxParagraph('F. PERKEMBANGAN MURID VS RATA-RATA KELAS', { bold: true, size: 22, spaceAfter: 80 }));
+    const cmpRows = [
+      `<w:tr>${docxCell('No', { width: 650, bold: true, align: 'center', shade: 'E2E8F0' })}${docxCell('Mata Pelajaran', { width: 4988, bold: true, shade: 'E2E8F0' })}${docxCell('Nilai Siswa', { width: 2000, bold: true, align: 'center', shade: 'E2E8F0' })}${docxCell('Rata-Rata Kelas', { width: 2000, bold: true, align: 'center', shade: 'E2E8F0' })}</w:tr>`
+    ];
+    payload.classComparison.forEach((cmp, idx) => {
+      cmpRows.push(`<w:tr>${docxCell(String(idx + 1), { width: 650, align: 'center' })}${docxCell(cmp.namaMapel, { width: 4988, bold: true })}${docxCell(String(cmp.nilaiSiswa), { width: 2000, bold: true, align: 'center' })}${docxCell(String(cmp.rataRataKelas), { width: 2000, align: 'center' })}</w:tr>`);
+    });
+    bodyParts.push(docxTable(cmpRows, true));
+  }
 
   bodyParts.push(docxParagraph('', { spaceAfter: 200 }));
   const sigCols = payload.kepalaSekolahNama

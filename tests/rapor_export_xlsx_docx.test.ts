@@ -29,12 +29,15 @@ async function main() {
       }
     ],
     attendance: { sakit: 1, izin: 2, alpa: 0 },
-    deepLearning: {
-      mindful: 'Fokus dan reflektif',
-      meaningful: 'Mampu mengaitkan materi dengan kehidupan nyata',
-      joyful: 'Antusias dalam diskusi'
-    },
+    kokurikuler: 'Aktif dalam projek P5 kewirausahaan sekolah.',
+    ekstrakurikuler: [
+      { kegiatan: 'Pramuka', predikat: 'Sangat Baik', keterangan: 'Disiplin dan aktif memimpin regu.' }
+    ],
     catatanWali: 'Pertahankan prestasi dan kedisiplinan.',
+    classComparison: [
+      { namaMapel: 'Matematika', nilaiSiswa: 88.5, rataRataKelas: 82.4 },
+      { namaMapel: 'Bahasa Indonesia', nilaiSiswa: 91, rataRataKelas: 84.0 }
+    ],
     waliNama: 'Ibu Sari, S.Pd',
     waliNip: '198501012010012001',
     kepalaSekolahLabel: 'Kepala Sekolah',
@@ -55,7 +58,8 @@ async function main() {
   assert.ok(sheetXml.includes('Matematika'), 'XLSX must include subject name');
   assert.ok(sheetXml.includes('<v>88.5</v>'), 'XLSX must store numeric grade as number cell');
   assert.ok(sheetXml.includes('1 hari'), 'XLSX must include attendance');
-  assert.ok(sheetXml.includes('Fokus dan reflektif'), 'XLSX must include Deep Learning notes');
+  assert.ok(sheetXml.includes('Aktif dalam projek P5 kewirausahaan sekolah.'), 'XLSX must include Kokurikuler notes');
+  assert.ok(sheetXml.includes('Pramuka'), 'XLSX must include Ekstrakurikuler');
 
   // 2. Validate .docx archive structure and XML content
   const docxBytes = await buildRaporDocxBuffer(samplePayload);
