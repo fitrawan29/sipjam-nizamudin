@@ -2186,37 +2186,82 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                           Belum ada data nilai untuk menampilkan grafik perkembangan murid.
                         </p>
                       ) : (
-                        <div className="space-y-3">
-                          {studentScores.map(item => {
-                            const sVal = typeof item.nilaiAkhir === 'number' ? item.nilaiAkhir : 0;
-                            const cVal = classSubjectAverageMap[item.namaMapel] ?? sVal;
-                            return (
-                              <div key={item.namaMapel} className="space-y-1">
-                                <div className="flex items-center justify-between gap-2 text-[11px]">
-                                  <span className="font-bold text-slate-800 dark:text-slate-100 print:text-black truncate">
-                                    {item.namaMapel}
-                                  </span>
-                                  <span className="font-num text-slate-600 dark:text-slate-300 print:text-black shrink-0">
-                                    Siswa: <strong className="text-[#0F766E] dark:text-[#14B8A6] print:text-black">{sVal}</strong> · Kelas: <strong>{cVal}</strong>
-                                  </span>
-                                </div>
-                                <div className="space-y-1">
-                                  <div className="w-full h-2.5 rounded-full bg-slate-300/60 dark:bg-slate-700/60 overflow-hidden print:border print:border-slate-400">
-                                    <div
-                                      className="h-full rounded-full bg-[#0F766E] dark:bg-[#14B8A6] print:bg-black transition-all duration-300"
-                                      style={{ width: `${Math.min(100, Math.max(0, sVal))}%` }}
-                                    />
-                                  </div>
-                                  <div className="w-full h-2 rounded-full bg-slate-300/40 dark:bg-slate-700/40 overflow-hidden print:border print:border-slate-300">
-                                    <div
-                                      className="h-full rounded-full bg-slate-400 dark:bg-slate-500 print:bg-gray-400 transition-all duration-300"
-                                      style={{ width: `${Math.min(100, Math.max(0, cVal))}%` }}
-                                    />
-                                  </div>
+                        <div className="overflow-x-auto print:overflow-visible">
+                          <div className="min-w-[460px] pt-4 pb-1">
+                            <div className="flex">
+                              {/* Y-axis scale */}
+                              <div className="w-8 shrink-0 h-44 flex flex-col justify-between text-right pr-2 text-[10px] font-num font-semibold text-slate-500 dark:text-slate-400 print:text-black select-none">
+                                <span>100</span>
+                                <span>75</span>
+                                <span>50</span>
+                                <span>25</span>
+                                <span>0</span>
+                              </div>
+
+                              {/* Plot area */}
+                              <div className="relative flex-1 h-44 border-l border-b border-slate-400/60 dark:border-slate-600 print:border-black">
+                                {/* Horizontal gridlines */}
+                                {[0, 25, 50, 75].map(tick => (
+                                  <div
+                                    key={tick}
+                                    className="absolute inset-x-0 border-t border-dashed border-slate-300/80 dark:border-slate-700/70 print:border-slate-300 pointer-events-none"
+                                    style={{ top: `${tick}%` }}
+                                  />
+                                ))}
+
+                                {/* Vertical bar groups */}
+                                <div className="relative z-10 h-full flex items-end justify-around gap-2 px-2">
+                                  {studentScores.map(item => {
+                                    const sVal = typeof item.nilaiAkhir === 'number' ? item.nilaiAkhir : 0;
+                                    const cVal = classSubjectAverageMap[item.namaMapel] ?? sVal;
+                                    const sPct = Math.min(100, Math.max(0, sVal));
+                                    const cPct = Math.min(100, Math.max(0, cVal));
+                                    return (
+                                      <div key={item.namaMapel} className="flex-1 min-w-[54px] max-w-[92px] h-full flex items-end justify-center gap-1.5">
+                                        {/* Bar: Nilai Siswa */}
+                                        <div className="h-full flex flex-col items-center justify-end w-5 sm:w-6">
+                                          <span className="text-[9px] font-bold font-num text-[#0F766E] dark:text-[#14B8A6] print:text-black leading-none mb-1">
+                                            {sVal}
+                                          </span>
+                                          <div
+                                            title={`Nilai Siswa (${item.namaMapel}): ${sVal}`}
+                                            className="w-full rounded-t-md bg-[#0F766E] dark:bg-[#14B8A6] print:bg-black transition-all duration-300"
+                                            style={{ height: `${Math.max(sPct, 2)}%` }}
+                                          />
+                                        </div>
+                                        {/* Bar: Rata-Rata Kelas */}
+                                        <div className="h-full flex flex-col items-center justify-end w-5 sm:w-6">
+                                          <span className="text-[9px] font-semibold font-num text-slate-600 dark:text-slate-300 print:text-black leading-none mb-1">
+                                            {cVal}
+                                          </span>
+                                          <div
+                                            title={`Rata-Rata Kelas (${item.namaMapel}): ${cVal}`}
+                                            className="w-full rounded-t-md bg-slate-400 dark:bg-slate-500 print:bg-gray-400 transition-all duration-300"
+                                            style={{ height: `${Math.max(cPct, 2)}%` }}
+                                          />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            );
-                          })}
+                            </div>
+
+                            {/* X-axis subject labels */}
+                            <div className="flex mt-2">
+                              <div className="w-8 shrink-0" />
+                              <div className="flex-1 flex justify-around gap-2 px-2">
+                                {studentScores.map(item => (
+                                  <div
+                                    key={item.namaMapel}
+                                    className="flex-1 min-w-[54px] max-w-[92px] text-center text-[10px] font-bold text-slate-700 dark:text-slate-200 print:text-black leading-tight break-words"
+                                  >
+                                    {item.namaMapel}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
