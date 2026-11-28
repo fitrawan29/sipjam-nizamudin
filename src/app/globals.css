@@ -908,6 +908,9 @@ body.fade-out {
 /* Ensure SweetAlert modals sit on top of high z-index exam overlays and adopt Neumorphism */
 .swal2-container {
   z-index: 100000 !important;
+}
+
+body:not(.swal2-toast-shown) .swal2-container.swal2-backdrop-show:not(:has(.swal2-toast)) {
   backdrop-filter: blur(4px);
 }
 
