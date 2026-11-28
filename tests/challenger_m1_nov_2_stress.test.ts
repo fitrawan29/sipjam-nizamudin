@@ -254,22 +254,22 @@ async function runChallengerStressSuite() {
   const adeCardDisplay1 = `${resolvedAde[0].nama_mapel} ${resolvedAde[0].kelas ? `• Kelas ${resolvedAde[0].kelas}` : ''}`;
   const adeCardDisplay2 = `${resolvedAde[1].nama_mapel} ${resolvedAde[1].kelas ? `• Kelas ${resolvedAde[1].kelas}` : ''}`;
   assert(
-    adeCardDisplay1 === 'Matematika • Kelas X Merdeka' || adeCardDisplay2 === 'Matematika • Kelas X Merdeka',
+    adeCardDisplay1 === 'Matematika • Kelas X' || adeCardDisplay2 === 'Matematika • Kelas X',
     'T3.1.3',
-    'Class X subject formatted correctly on Card: "Matematika • Kelas X Merdeka"'
+    'Class X subject formatted correctly on Card: "Matematika • Kelas X"'
   );
   assert(
-    adeCardDisplay1 === 'Informatika • Kelas X Merdeka' || adeCardDisplay2 === 'Informatika • Kelas X Merdeka',
+    adeCardDisplay1 === 'Informatika • Kelas X' || adeCardDisplay2 === 'Informatika • Kelas X',
     'T3.1.4',
-    'Class X subject formatted correctly on Card: "Informatika • Kelas X Merdeka"'
+    'Class X subject formatted correctly on Card: "Informatika • Kelas X"'
   );
 
   // Check Table Print Formatting: `${sub.nama_mapel}${sub.kelas ? ` (Kelas ${sub.kelas})` : ''}`
   const adePrintDisplay = `${resolvedAde[0].nama_mapel}${resolvedAde[0].kelas ? ` (Kelas ${resolvedAde[0].kelas})` : ''}`;
   assert(
-    adePrintDisplay.includes('(Kelas X Merdeka)'),
+    adePrintDisplay.includes('(Kelas X)'),
     'T3.1.5',
-    'Class X subject formatted correctly in Print Table: "... (Kelas X Merdeka)"'
+    'Class X subject formatted correctly in Print Table: "... (Kelas X)"'
   );
 
   // Teacher 2: Susana Muliono (Susan)
@@ -280,9 +280,9 @@ async function runChallengerStressSuite() {
   };
   const resolvedSusan = resolveTeacherSubjects(teacherSusan, jadwalListSample, [], []);
   assert(
-    resolvedSusan.length === 2,
+    resolvedSusan.length === 1,
     'T3.2.1',
-    `Susan resolves both Class X parallel sections (found ${resolvedSusan.length})`
+    `Susan collapses Class X parallel sections into 1 grade-level entry (found ${resolvedSusan.length})`
   );
   assert(
     resolvedSusan.every(s => s.nama_mapel === 'Bahasa Inggris'),
@@ -291,9 +291,9 @@ async function runChallengerStressSuite() {
   );
   const susanClasses = resolvedSusan.map(s => s.kelas);
   assert(
-    susanClasses.includes('X Merdeka 1') && susanClasses.includes('X Merdeka 2'),
+    susanClasses.includes('X'),
     'T3.2.3',
-    'Susan assigned to both "X Merdeka 1" and "X Merdeka 2"'
+    'Susan assigned to collapsed grade level "X"'
   );
 
   // Teacher 3: Setia Ambar Ningsih Mamonto (Ambar) - Class X must sort before Class XI
@@ -309,7 +309,7 @@ async function runChallengerStressSuite() {
     `Ambar resolves 2 subjects across grades (found ${resolvedAmbar.length})`
   );
   assert(
-    resolvedAmbar[0].kelas === 'X Merdeka' && extractTingkat(resolvedAmbar[0].kelas) === 'X',
+    resolvedAmbar[0].kelas === 'X' && extractTingkat(resolvedAmbar[0].kelas) === 'X',
     'T3.3.2',
     'Class X subject is logically sorted FIRST before upper classes'
   );

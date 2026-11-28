@@ -203,12 +203,38 @@ export const MAPEL_EXPANSIONS: Record<string, string> = {
   'mtl': 'Matematika Tingkat Lanjut'
 };
 
-export function canonicalizeSubjectName(rawMapel: string): string {
+const EMBEDDED_CLASS_SUFFIX_REGEX = /(?:\s+untuk)?(?:\s+kelas)?\s+(?:X|XI|XII|10|11|12|VII|VIII|IX|7|8|9)(?:\s+Merdeka)?(?:\s+(?:IPA|IPS|Bahasa|Keagamaan|Umum|[A-Z0-9-]{1,3}))*(?:\s+untuk\s+(?:kelas\s+)?.*)?$/i;
+
+export function extractEmbeddedClassAndSubject(rawMapel: string): { subject: string; embeddedKelas: string } {
   const trimmed = (rawMapel || '').trim();
-  if (!trimmed) return '';
-  const core = trimmed.includes('_') ? (trimmed.split('_').pop() || '').trim() : trimmed;
-  const lowerCore = core.toLowerCase();
-  return MAPEL_EXPANSIONS[lowerCore] || core;
+  if (!trimmed) return { subject: '', embeddedKelas: '' };
+
+  let embeddedKelas = '';
+  let subject = trimmed;
+
+  if (subject.includes('_')) {
+    const parts = subject.split('_');
+    embeddedKelas = parts[0].trim();
+    subject = parts.slice(1).join('_').trim();
+  }
+
+  subject = subject.replace(/^kelas\s+/i, '').trim();
+  const suffixMatch = subject.match(EMBEDDED_CLASS_SUFFIX_REGEX);
+  if (suffixMatch && suffixMatch.index !== undefined && suffixMatch.index > 0) {
+    if (!embeddedKelas) {
+      embeddedKelas = suffixMatch[0].replace(/^\s*(?:untuk\s+)?(?:kelas\s+)?/i, '').trim();
+    }
+    subject = subject.slice(0, suffixMatch.index).trim();
+  }
+
+  return { subject, embeddedKelas };
+}
+
+export function canonicalizeSubjectName(rawMapel: string): string {
+  const { subject } = extractEmbeddedClassAndSubject(rawMapel);
+  if (!subject) return '';
+  const lowerCore = subject.toLowerCase();
+  return MAPEL_EXPANSIONS[lowerCore] || subject;
 }
 
 export function isMapelMatch(m1?: string | null, m2?: string | null): boolean {
@@ -262,16 +288,10 @@ export function resolveTeacherSubjects(
     if (!rawMapel || isInvalidMapel(rawMapel)) return;
     if (isCrossTenantMapelOrKelas(rawMapel, rawKelas, targetSekolahId, validClasses)) return;
 
-    let mapel = rawMapel.trim();
+    const { subject: extractedMapel, embeddedKelas } = extractEmbeddedClassAndSubject(rawMapel);
+    let mapel = extractedMapel;
     let kelas = (rawKelas || '').trim();
     if (NON_CLASS_KATEGORI_REGEX.test(kelas)) kelas = '';
-
-    // Handle format "X Merdeka_MTK"
-    if (mapel.includes('_')) {
-      const parts = mapel.split('_');
-      if (!kelas) kelas = parts[0].trim();
-      mapel = parts.slice(1).join('_').trim();
-    }
 
     // Look up exact match in scopedMapelList if kelas is still missing
     if (!kelas && scopedMapelList.length > 0) {
@@ -292,18 +312,23 @@ export function resolveTeacherSubjects(
     }
 
     if (isCrossTenantMapelOrKelas(mapel, kelas, targetSekolahId, validClasses)) return;
+    if (!kelas && embeddedKelas) kelas = embeddedKelas;
 
     // Canonicalize subject name (e.g. MTK -> Matematika)
     const canonicalMapel = canonicalizeSubjectName(mapel);
     if (!canonicalMapel) return;
 
+    // Collapse parallel classes to grade level (tingkat) for Perangkat Pembelajaran
+    const tingkat = kelas ? extractTingkat(kelas) : '';
+    const normalizedKelas = tingkat || kelas;
+
     const lowerCanon = canonicalMapel.toLowerCase();
-    // Avoid adding a duplicate classless entry when a class-specific assignment already exists for the same subject
-    if (!kelas && subjects.some(s => s.nama_mapel.toLowerCase() === lowerCanon && Boolean(s.kelas))) {
+    // Avoid adding a duplicate classless entry when a grade-specific assignment already exists for the same subject
+    if (!normalizedKelas && subjects.some(s => s.nama_mapel.toLowerCase() === lowerCanon && Boolean(s.kelas))) {
       return;
     }
-    // If a classless entry was added earlier and now we have a specific class, upgrade it in-place
-    if (kelas) {
+    // If a classless entry was added earlier and now we have a specific grade level, upgrade it in-place
+    if (normalizedKelas) {
       const classlessIdx = subjects.findIndex(s => s.nama_mapel.toLowerCase() === lowerCanon && !s.kelas);
       if (classlessIdx !== -1) {
         seen.delete(`${lowerCanon}__`);
@@ -311,12 +336,12 @@ export function resolveTeacherSubjects(
       }
     }
 
-    const key = `${lowerCanon}__${kelas.toLowerCase()}`;
+    const key = `${lowerCanon}__${normalizedKelas.toLowerCase()}`;
     if (!seen.has(key)) {
       seen.add(key);
       subjects.push({
         nama_mapel: canonicalMapel,
-        kelas: kelas
+        kelas: normalizedKelas
       });
     }
   };
@@ -812,7 +837,8 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
       let fileUrl = '';
       if (file) {
         try {
-          const label = `${selectedMapel || 'Mapel'} - ${targetTingkat || 'Tingkat'} - ${user.nama || 'Guru'}`.replace(/[\\/:*?"<>|]/g, ' ');
+          const tingkatLabel = targetTingkat ? `Kelas ${targetTingkat}` : 'Tingkat';
+          const label = `${selectedMapel || 'Mapel'} - ${tingkatLabel} - ${user.nama || 'Guru'}`.replace(/[\\/:*?"<>|]/g, ' ');
           fileUrl = await uploadToDrive(file, user.nama, 'Perangkat_Pembelajaran', label);
         } catch (err: any) {
           setLoading(false);
@@ -1964,7 +1990,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                           </span>
                         </div>
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white leading-tight break-words">
-                          {`${dok.mapel || '-'} - ${dok.kelas ? extractTingkat(dok.kelas) : '-'} - ${dok.nama_guru || '-'}`}
+                          {`${dok.mapel || '-'} - ${dok.kelas ? `Kelas ${extractTingkat(dok.kelas)}` : '-'} - ${dok.nama_guru || '-'}`}
                         </h4>
                         <div className="text-[10px] font-num text-slate-500 dark:text-slate-400">
                           {dok.timestamp ? formatTimestampWita(dok.timestamp) : '-'}

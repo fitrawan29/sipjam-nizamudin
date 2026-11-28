@@ -133,37 +133,42 @@ const resolvedNiz = resolveTeacherSubjects(
 
 check(
   resolvedNiz.length === 2 &&
-  resolvedNiz[0].nama_mapel === 'Matematika' && resolvedNiz[0].kelas === 'X Merdeka' &&
-  resolvedNiz[1].nama_mapel === 'Informatika' && resolvedNiz[1].kelas === 'XI Merdeka',
-  'Nizamudin teacher resolves strictly assigned subjects (Matematika X Merdeka, Informatika XI Merdeka) without foreign Tutuyan or stale unassigned subjects or classless duplicates'
+  resolvedNiz[0].nama_mapel === 'Matematika' && resolvedNiz[0].kelas === 'X' &&
+  resolvedNiz[1].nama_mapel === 'Informatika' && resolvedNiz[1].kelas === 'XI',
+  'Nizamudin teacher resolves strictly assigned subjects (Matematika X, Informatika XI) without foreign Tutuyan or stale unassigned subjects or classless duplicates'
 );
 
 const tutuyanTeacher = {
   id: 'guru-tut-1',
   nama_guru: 'Guru Tutuyan, S.Pd',
   nip: '198802022015022002',
-  mata_pelajaran: 'Biologi, X Merdeka_MTK', // polluted with Nizamudin X Merdeka_MTK
+  mata_pelajaran: 'Biologi, Biologi X A, kelas Biologi X A, Biologi X A untuk kelas 10 Merdeka, Biologi X Merdeka, X Merdeka_MTK', // polluted + duplicate variants
   sekolah_id: TUTUYAN_SEKOLAH_ID
 };
 
 const tutuyanJadwal = [
   { nama_guru: 'Guru Tutuyan, S.Pd', mata_pelajaran: 'Biologi', kelas: 'X Merdeka A', sekolah_id: TUTUYAN_SEKOLAH_ID },
-  { nama_guru: 'Guru Tutuyan, S.Pd', mata_pelajaran: 'Biologi', kelas: 'X Merdeka B', sekolah_id: TUTUYAN_SEKOLAH_ID }
+  { nama_guru: 'Guru Tutuyan, S.Pd', mata_pelajaran: 'Biologi', kelas: 'X Merdeka C', sekolah_id: TUTUYAN_SEKOLAH_ID }
+];
+
+const tutuyanGuruMapel = [
+  { guru_id: 'guru-tut-1', nama_guru: 'Guru Tutuyan, S.Pd', nama_mapel: 'Biologi X A', kelas: 'X A', sekolah_id: TUTUYAN_SEKOLAH_ID },
+  { guru_id: 'guru-tut-1', nama_guru: 'Guru Tutuyan, S.Pd', nama_mapel: 'Biologi', kelas: '10 Merdeka', sekolah_id: TUTUYAN_SEKOLAH_ID }
 ];
 
 const resolvedTut = resolveTeacherSubjects(
   tutuyanTeacher,
   tutuyanJadwal,
   mixedDataMapel,
-  [],
-  ['X Merdeka A', 'X Merdeka B']
+  tutuyanGuruMapel,
+  ['X Merdeka A', 'X Merdeka B', 'X Merdeka C']
 );
 
 check(
-  resolvedTut.length === 2 &&
-  resolvedTut.every(s => s.nama_mapel === 'Biologi') &&
-  resolvedTut.map(s => s.kelas).join(',') === 'X Merdeka A,X Merdeka B',
-  'Tutuyan teacher resolves strictly Biologi in X Merdeka A & B and rejects Nizamudin X Merdeka_MTK pollution'
+  resolvedTut.length === 1 &&
+  resolvedTut[0].nama_mapel === 'Biologi' &&
+  resolvedTut[0].kelas === 'X',
+  'Tutuyan teacher collapses Biologi parallel classes & duplicate variants (X A, kelas Biologi X A, 10 Merdeka, X C) into single "Biologi - X" entry and rejects Nizamudin X Merdeka_MTK'
 );
 
 // -------------------------------------------------------------------------
