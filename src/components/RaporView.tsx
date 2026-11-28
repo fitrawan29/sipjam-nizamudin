@@ -11,7 +11,7 @@ import { TujuanPembelajaran, AsesmenKolom, CapaianPembelajaran } from '@/types/d
 import { isInvalidMapel } from '@/lib/dataIntegrityGuard';
 import { isStudentEligibleForSubject } from '@/lib/agamaFilter';
 import { getSemesterDateRange } from '@/lib/workflow';
-import { formatKepalaSekolahLabel } from '@/utils/textUtils';
+import { formatKepalaSekolahLabel, formatRaporSubjectName } from '@/utils/textUtils';
 import { downloadRaporXlsx, downloadRaporDocx, RaporExportPayload } from '@/utils/raporExport';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
 import { isMatchingWaliGuru } from '@/lib/presensiIntervensi';
@@ -1229,14 +1229,18 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         const res = generateKurikulumMerdekaDeskripsi(student.nama_siswa, tpScoresList);
 
         return {
-          namaMapel: mapel,
+          namaMapel: formatRaporSubjectName(mapel),
           nilaiAkhir: res.nilaiRapor,
           predikat: res.predikat,
           predikatBadge: res.predikatBadge,
           deskripsiCapaian: res.deskripsiCapaian
         };
       })
-      .filter(item => typeof item.nilaiAkhir === 'number' && !isNaN(item.nilaiAkhir) && item.nilaiAkhir >= 1);
+      .filter(item => typeof item.nilaiAkhir === 'number' && !isNaN(item.nilaiAkhir) && item.nilaiAkhir >= 1)
+      .filter((item, idx, arr) => {
+        const key = item.namaMapel.trim().toLowerCase();
+        return arr.findIndex(other => other.namaMapel.trim().toLowerCase() === key) === idx;
+      });
     },
     [activeMapels, tpList, columnsList, gradesMap]
   );

@@ -156,3 +156,52 @@ export function formatKepalaSekolahTitle(schoolName?: string | null, status?: st
   return `${prefix}Kepala ${formattedSchool}`;
 }
 
+const RAPOR_SUBJECT_EXPANSIONS: Record<string, string> = {
+  mtk: 'Matematika',
+  matematika: 'Matematika',
+  informatika: 'Informatika',
+  fisika: 'Fisika',
+  kimia: 'Kimia',
+  biologi: 'Biologi',
+  geografi: 'Geografi',
+  sosiologi: 'Sosiologi',
+  ekonomi: 'Ekonomi',
+  sejarah: 'Sejarah',
+  pp: 'Pendidikan Pancasila',
+  pkn: 'Pendidikan Pancasila',
+  pjok: 'PJOK',
+  sb: 'Seni Budaya',
+  'b. ing': 'Bahasa Inggris',
+  'b.ing': 'Bahasa Inggris',
+  'b ing': 'Bahasa Inggris',
+  'b. indo': 'Bahasa Indonesia',
+  'b.indo': 'Bahasa Indonesia',
+  'b indo': 'Bahasa Indonesia',
+  'pai bp': 'PAI & BP',
+  mtl: 'Matematika Tingkat Lanjut'
+};
+
+/**
+ * Formats a subject name for E-Rapor display by stripping any embedded class
+ * prefix/suffix (e.g. "X_Merdeka_MTK", "Matematika - X A", "Matematika Kelas 10")
+ * and expanding standard subject acronyms.
+ */
+export function formatRaporSubjectName(rawMapel?: string | null): string {
+  const trimmed = (rawMapel || '').trim();
+  if (!trimmed) return '';
+
+  // 1. Strip class prefix separated by underscore (e.g. "X_Merdeka_MTK" -> "MTK")
+  let core = trimmed.includes('_') ? (trimmed.split('_').pop() || '').trim() : trimmed;
+
+  // 2. Strip trailing class suffixes (e.g. "Matematika - X A", "Matematika Kelas 10")
+  core = core
+    .replace(/\s*-\s*(?:kelas\s+)?(?:XII|XI|X|IX|VIII|VII|1[0-2]|[1-9])(?:\s+merdeka)?(?:\s+[A-Z0-9]+)?\s*$/i, '')
+    .replace(/\s+kelas\s+(?:XII|XI|X|IX|VIII|VII|1[0-2]|[1-9])(?:\s+merdeka)?(?:\s+[A-Z0-9]+)?\s*$/i, '')
+    .replace(/\s*\((?:kelas\s+)?(?:XII|XI|X|IX|VIII|VII|1[0-2]|[1-9])(?:\s+merdeka)?(?:\s+[A-Z0-9]+)?\)\s*$/i, '')
+    .trim();
+
+  if (!core) return trimmed;
+  return RAPOR_SUBJECT_EXPANSIONS[core.toLowerCase()] || core;
+}
+
+

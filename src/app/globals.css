@@ -927,6 +927,8 @@ body:not(.swal2-toast-shown) .swal2-container.swal2-backdrop-show:not(:has(.swal
 
 .swal2-toast {
   background: var(--neu-surface) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   color: var(--foreground) !important;
   border-radius: 1rem !important;
   border: 1px solid var(--neu-edge) !important;
@@ -934,6 +936,14 @@ body:not(.swal2-toast-shown) .swal2-container.swal2-backdrop-show:not(:has(.swal
     6px 6px 14px var(--neu-shadow-dark),
     -6px -6px 14px var(--neu-shadow-light) !important;
   font-family: var(--font-sans), sans-serif !important;
+}
+
+html[data-ui-preset="glass-teal"] .swal2-toast {
+  background: #FFFFFF !important;
+}
+
+html.dark[data-ui-preset="glass-teal"] .swal2-toast {
+  background: #1E293B !important;
 }
 
 .swal2-title {
