@@ -6305,7 +6305,7 @@ export default function GradebookView({
       <div className={activeTab === 'rapor' ? 'block' : 'hidden'}>
         {canAccessRapor ? (
           /* AST preservation: <RaporView user={user} assignedKelas={assignedKelas || null} /> */
-          <RaporView user={user} assignedKelas={effectiveAssignedKelas} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} />
+          <RaporView user={user} assignedKelas={effectiveAssignedKelas} statusKepalaSekolah={statusKepalaSekolah} isKepalaSekolah={isKepalaSekolah} isActive={activeTab === 'rapor'} />
         ) : (
           <AccessDeniedCard
             title="Akses Terblokir"

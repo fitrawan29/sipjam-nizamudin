@@ -14,7 +14,7 @@ import { getSemesterDateRange } from '@/lib/workflow';
 import { formatKepalaSekolahLabel, formatRaporSubjectName } from '@/utils/textUtils';
 import { downloadRaporXlsx, downloadRaporDocx, RaporExportPayload, EkstrakurikulerItem } from '@/utils/raporExport';
 import { checkIsKepalaSekolah } from '@/hooks/useKepalaSekolah';
-import { isMatchingWaliGuru } from '@/lib/presensiIntervensi';
+import { isMatchingWaliGuru, findLastKbmJournal, resolveDailyStudentAttendance } from '@/lib/presensiIntervensi';
 
 const ROMAN_TO_NUM: Record<string, string> = {
   xii: '12', xi: '11', x: '10', ix: '9', viii: '8', vii: '7',
@@ -27,11 +27,43 @@ const normK = (k?: string | null) =>
     .replace(/[\s\-_.]/g, '')
     .replace(/^(xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)/i, m => ROMAN_TO_NUM[m] || m);
 
+const normTa = (ta?: string | null) => (ta || '').replace(/\s+/g, '').replace(/-/g, '/').trim();
+const normSem = (sem?: string | null) => {
+  const s = (sem || '').trim().toLowerCase();
+  if (s === '1' || s === 'ganjil' || s.includes('ganjil')) return 'ganjil';
+  if (s === '2' || s === 'genap' || s.includes('genap')) return 'genap';
+  return s;
+};
+const normNisn = (n?: string | null) => (n || '').trim().replace(/^0+/, '');
+const resolveStudentNisn = (row: any, studentList: StudentItem[]): string | null => {
+  const rawNisn = (row?.nisn || '').trim();
+  if (rawNisn) {
+    const exact = studentList.find(s => (s.nisn || '').trim() === rawNisn);
+    if (exact) return exact.nisn;
+    const stripped = normNisn(rawNisn);
+    if (stripped) {
+      const byNormNisn = studentList.find(s => normNisn(s.nisn) === stripped);
+      if (byNormNisn) return byNormNisn.nisn;
+    }
+  }
+  if (row?.siswa_id) {
+    const byId = studentList.find(s => s.id && s.id === row.siswa_id);
+    if (byId) return byId.nisn;
+  }
+  const rawNama = (row?.nama_siswa || '').trim().toLowerCase();
+  if (rawNama) {
+    const byName = studentList.find(s => (s.nama_siswa || '').trim().toLowerCase() === rawNama);
+    if (byName) return byName.nisn;
+  }
+  return rawNisn || null;
+};
+
 interface RaporViewProps {
   user: any;
   assignedKelas: string | null;
   statusKepalaSekolah?: string;
   isKepalaSekolah?: boolean;
+  isActive?: boolean;
 }
 
 interface StudentItem {
@@ -56,7 +88,7 @@ interface WaliKelasInfo {
   nip: string | null;
 }
 
-export default function RaporView({ user, assignedKelas, statusKepalaSekolah, isKepalaSekolah: propsIsKepalaSekolah }: RaporViewProps) {
+export default function RaporView({ user, assignedKelas, statusKepalaSekolah, isKepalaSekolah: propsIsKepalaSekolah, isActive }: RaporViewProps) {
   const isAdmin = user?.role === 'Admin' || user?.role === 'Superadmin' || user?.role === 'admin';
   const isSuperadmin = user?.role === 'Superadmin' || user?.role === 'superadmin';
   const isTataUsaha = (user?.role || '').toLowerCase().replace(/[\s_-]+/g, '') === 'tatausaha';
@@ -708,27 +740,68 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         setSelectedStudent(null);
       }
 
-      // 2. Fetch Attendance Summary (filtered by semester date range)
+      // 2. Fetch Attendance Summary (filtered by semester date range, aligned with RekapSiswaView)
       const { startDate, endDate } = getSemesterDateRange(selectedSemester, selectedTahunAjaran);
+      const targetClassNorm = normK(resolvedClassKey || selectedKelas);
+      const classCandidates = Array.from(new Set([selectedKelas, resolvedClassKey].filter(Boolean)));
+
       let aQuery = supabase
         .from('absensi')
         /* .select('nisn, status') */
-        .select('nisn, status, tanggal')
-        .eq('kelas', selectedKelas)
+        .select('nisn, siswa_id, nama_siswa, status, tanggal, kelas')
+        .in('kelas', classCandidates)
         .gte('tanggal', startDate)
         .lte('tanggal', endDate);
       if (sekolahId) aQuery = aQuery.eq('sekolah_id', sekolahId);
       let { data: aData } = await aQuery;
 
-      if ((!aData || aData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+      if (!aData || aData.length === 0) {
         let fbAQuery = supabase
           .from('absensi')
-          .select('nisn, status, tanggal')
-          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean))
+          .select('nisn, siswa_id, nama_siswa, status, tanggal, kelas')
           .gte('tanggal', startDate)
           .lte('tanggal', endDate);
-        const { data: fbA } = await fbAQuery;
-        if (fbA && fbA.length > 0) aData = fbA;
+        if (sekolahId) fbAQuery = fbAQuery.eq('sekolah_id', sekolahId);
+        let { data: fbA } = await fbAQuery;
+        if ((!fbA || fbA.length === 0) && sekolahId) {
+          const { data: globalA } = await supabase
+            .from('absensi')
+            .select('nisn, siswa_id, nama_siswa, status, tanggal, kelas')
+            .gte('tanggal', startDate)
+            .lte('tanggal', endDate);
+          fbA = globalA;
+        }
+        if (fbA && fbA.length > 0) {
+          aData = fbA.filter((row: any) => !row.kelas || normK(row.kelas) === targetClassNorm);
+        }
+      }
+
+      // Fetch jurnal_pembelajaran & presensi_siswa for daily attendance fallback (aligned with RekapSiswaView)
+      let jAttData: any[] = [];
+      let gateAttData: any[] = [];
+      try {
+        let jQ = supabase
+          .from('jurnal_pembelajaran')
+          .select('tanggal, jam_ke, mapel, absensi_siswa, detail_absen, kehadiran_murid, kelas')
+          .in('kelas', classCandidates)
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
+        if (sekolahId) jQ = jQ.eq('sekolah_id', sekolahId);
+        const { data: jRes } = await jQ;
+        jAttData = jRes || [];
+
+        let gQ = supabase
+          .from('presensi_siswa')
+          .select('tanggal, siswa_id, nisn, status, kelas')
+          .in('kelas', classCandidates)
+          .eq('status', 'datang')
+          .gte('tanggal', startDate)
+          .lte('tanggal', endDate);
+        if (sekolahId) gQ = gQ.eq('sekolah_id', sekolahId);
+        const { data: gRes } = await gQ;
+        gateAttData = gRes || [];
+      } catch {
+        // ignore if optional tables unavailable
       }
 
       const attRecord: Record<string, { hadir: number; izin: number; sakit: number; alpa: number }> = {};
@@ -736,17 +809,50 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         attRecord[s.nisn] = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
       });
 
-      if (aData) {
+      const dateSet = new Set<string>();
+      (aData || []).forEach((a: any) => { if (a.tanggal) dateSet.add(a.tanggal); });
+      jAttData.forEach((j: any) => { if (j.tanggal) dateSet.add(j.tanggal); });
+      gateAttData.forEach((g: any) => { if (g.tanggal) dateSet.add(g.tanggal); });
+
+      if (dateSet.size > 0 && (jAttData.length > 0 || gateAttData.length > 0)) {
+        Array.from(dateSet).sort().forEach(d => {
+          if (d < startDate || d > endDate) return;
+          const dateJournals = jAttData.filter((j: any) => j.tanggal === d);
+          const dateGateDatang = new Set<string>();
+          gateAttData.filter((g: any) => g.tanggal === d).forEach((g: any) => {
+            if (g.nisn) dateGateDatang.add(String(g.nisn).trim());
+            if (g.siswa_id) dateGateDatang.add(String(g.siswa_id));
+          });
+          const dateAbsensi = (aData || []).filter((a: any) => a.tanggal === d);
+
+          sortedStudents.forEach((s: any) => {
+            const absRecord = dateAbsensi.find((a: any) => resolveStudentNisn(a, [s]) === s.nisn);
+            const hasGate = Boolean(
+              (s.nisn && dateGateDatang.has(String(s.nisn).trim())) ||
+              (s.id && dateGateDatang.has(String(s.id)))
+            );
+            const studentLastJurnal = findLastKbmJournal(dateJournals, s);
+            const resolved = resolveDailyStudentAttendance(s, absRecord, hasGate, studentLastJurnal);
+            const st = String(resolved.status || '').trim().toUpperCase();
+            if (st === 'H' || st === 'HADIR') attRecord[s.nisn].hadir++;
+            else if (st === 'I' || st === 'IZIN') attRecord[s.nisn].izin++;
+            else if (st === 'S' || st === 'SAKIT') attRecord[s.nisn].sakit++;
+            else if (st === 'A' || st === 'ALPA' || st === 'ALFA' || st === 'BOLOS' || st === 'B') attRecord[s.nisn].alpa++;
+          });
+        });
+      } else if (aData) {
         aData.forEach((row: any) => {
           if (row.tanggal && (row.tanggal < startDate || row.tanggal > endDate)) return;
-          if (!attRecord[row.nisn]) {
-            attRecord[row.nisn] = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+          const targetNisn = resolveStudentNisn(row, sortedStudents);
+          if (!targetNisn) return;
+          if (!attRecord[targetNisn]) {
+            attRecord[targetNisn] = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
           }
           const st = (row.status || '').toUpperCase();
-          if (st === 'H' || st === 'HADIR') attRecord[row.nisn].hadir++;
-          else if (st === 'I' || st === 'IZIN') attRecord[row.nisn].izin++;
-          else if (st === 'S' || st === 'SAKIT') attRecord[row.nisn].sakit++;
-          else if (st === 'A' || st === 'ALPA' || st === 'ALFA' || st === 'BOLOS' || st === 'B') attRecord[row.nisn].alpa++;
+          if (st === 'H' || st === 'HADIR') attRecord[targetNisn].hadir++;
+          else if (st === 'I' || st === 'IZIN') attRecord[targetNisn].izin++;
+          else if (st === 'S' || st === 'SAKIT') attRecord[targetNisn].sakit++;
+          else if (st === 'A' || st === 'ALPA' || st === 'ALFA' || st === 'BOLOS' || st === 'B') attRecord[targetNisn].alpa++;
         });
       }
       setAttendanceMap(attRecord);
@@ -828,23 +934,37 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       let mapels = Array.from(activeMapelSet).filter((m: string) => !isInvalidMapel(m));
 
       // 4. Fetch Capaian Pembelajaran (capaian_pembelajaran)
+      const targetSemNorm = normSem(selectedSemester);
+      const targetTaNorm = normTa(selectedTahunAjaran);
+
       let cpQuery = supabase
         .from('capaian_pembelajaran')
         .select('id, kode_cp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
-        .eq('kelas', selectedKelas)
+        .in('kelas', classCandidates)
         .eq('semester', selectedSemester)
         .eq('tahun_ajaran', selectedTahunAjaran);
       if (sekolahId) cpQuery = cpQuery.eq('sekolah_id', sekolahId);
       let { data: cpData } = await cpQuery.order('urutan', { ascending: true });
-      if ((!cpData || cpData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+      if (!cpData || cpData.length === 0) {
         let fbCp = supabase
           .from('capaian_pembelajaran')
-          .select('id, kode_cp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
-          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean))
-          .eq('semester', selectedSemester)
-          .eq('tahun_ajaran', selectedTahunAjaran);
-        const { data: fbData } = await fbCp.order('urutan', { ascending: true });
-        if (fbData && fbData.length > 0) cpData = fbData;
+          .select('id, kode_cp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran');
+        if (sekolahId) fbCp = fbCp.eq('sekolah_id', sekolahId);
+        let { data: fbData } = await fbCp.order('urutan', { ascending: true });
+        if ((!fbData || fbData.length === 0) && sekolahId) {
+          const { data: globalCp } = await supabase
+            .from('capaian_pembelajaran')
+            .select('id, kode_cp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+            .order('urutan', { ascending: true });
+          fbData = globalCp;
+        }
+        if (fbData && fbData.length > 0) {
+          cpData = fbData.filter((cp: any) =>
+            normK(cp.kelas) === targetClassNorm &&
+            (!cp.semester || normSem(cp.semester) === targetSemNorm) &&
+            (!cp.tahun_ajaran || normTa(cp.tahun_ajaran) === targetTaNorm)
+          );
+        }
       }
       const currentCps = (cpData || []) as CapaianPembelajaran[];
       setCpList(currentCps);
@@ -859,27 +979,105 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       let tpQuery = supabase
         .from('tujuan_pembelajaran')
         .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
-        .eq('kelas', selectedKelas)
+        .in('kelas', classCandidates)
         .eq('semester', selectedSemester)
         .eq('tahun_ajaran', selectedTahunAjaran);
       if (sekolahId) tpQuery = tpQuery.eq('sekolah_id', sekolahId);
       let { data: tpData } = await tpQuery.order('urutan', { ascending: true });
-      if ((!tpData || tpData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
+      if (!tpData || tpData.length === 0) {
         let fbTp = supabase
           .from('tujuan_pembelajaran')
-          .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
-          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean))
-          .eq('semester', selectedSemester)
-          .eq('tahun_ajaran', selectedTahunAjaran);
-        const { data: fbData } = await fbTp.order('urutan', { ascending: true });
-        if (fbData && fbData.length > 0) tpData = fbData;
+          .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran');
+        if (sekolahId) fbTp = fbTp.eq('sekolah_id', sekolahId);
+        let { data: fbData } = await fbTp.order('urutan', { ascending: true });
+        if ((!fbData || fbData.length === 0) && sekolahId) {
+          const { data: globalTp } = await supabase
+            .from('tujuan_pembelajaran')
+            .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+            .order('urutan', { ascending: true });
+          fbData = globalTp;
+        }
+        if (fbData && fbData.length > 0) {
+          tpData = fbData.filter((tp: any) =>
+            normK(tp.kelas) === targetClassNorm &&
+            (!tp.semester || normSem(tp.semester) === targetSemNorm) &&
+            (!tp.tahun_ajaran || normTa(tp.tahun_ajaran) === targetTaNorm)
+          );
+        }
       }
-      const currentTps = (tpData || []) as TujuanPembelajaran[];
+      let currentTps = (tpData || []) as TujuanPembelajaran[];
+
+      // 7 (Pre-fetch Nilai Siswa so orphaned tp_id references can be recovered)
+      const currentGrades: Record<string, Record<string, number | null>> = {};
+      let nsQuery = supabase
+        .from('nilai_siswa')
+        .select('asesmen_id, tp_id, nisn, siswa_id, nama_siswa, nilai, mapel, kelas')
+        .in('kelas', classCandidates);
+      if (sekolahId) nsQuery = nsQuery.eq('sekolah_id', sekolahId);
+      let { data: nsData } = await nsQuery;
+      if (!nsData || nsData.length === 0) {
+        const studentIds = sortedStudents.map((s: any) => s.id).filter(Boolean);
+        const studentNisns = sortedStudents.map((s: any) => s.nisn).filter(Boolean);
+        let fbNs: any[] | null = null;
+        if (studentNisns.length > 0) {
+          let byNisn = supabase
+            .from('nilai_siswa')
+            .select('asesmen_id, tp_id, nisn, siswa_id, nama_siswa, nilai, mapel, kelas')
+            .in('nisn', studentNisns);
+          if (sekolahId) byNisn = byNisn.eq('sekolah_id', sekolahId);
+          const { data: dN } = await byNisn;
+          if (dN && dN.length > 0) fbNs = dN;
+        }
+        if ((!fbNs || fbNs.length === 0) && studentIds.length > 0) {
+          let byId = supabase
+            .from('nilai_siswa')
+            .select('asesmen_id, tp_id, nisn, siswa_id, nama_siswa, nilai, mapel, kelas')
+            .in('siswa_id', studentIds);
+          if (sekolahId) byId = byId.eq('sekolah_id', sekolahId);
+          const { data: dI } = await byId;
+          if (dI && dI.length > 0) fbNs = dI;
+        }
+        if ((!fbNs || fbNs.length === 0) && sekolahId) {
+          const { data: globalNs } = await supabase
+            .from('nilai_siswa')
+            .select('asesmen_id, tp_id, nisn, siswa_id, nama_siswa, nilai, mapel, kelas')
+            .in('kelas', classCandidates);
+          if (globalNs && globalNs.length > 0) fbNs = globalNs;
+        }
+        if (fbNs && fbNs.length > 0) {
+          nsData = fbNs.filter((r: any) => !r.kelas || normK(r.kelas) === targetClassNorm);
+        }
+      }
+
+      // Recover any tujuan_pembelajaran referenced by nilai_siswa that weren't returned above
+      const existingTpIds = new Set(currentTps.map(tp => tp.id));
+      const missingTpIds = Array.from(
+        new Set((nsData || []).map((r: any) => r.tp_id).filter((id: any) => id && !existingTpIds.has(id)))
+      ) as string[];
+      if (missingTpIds.length > 0) {
+        const { data: extraTps } = await supabase
+          .from('tujuan_pembelajaran')
+          .select('id, kode_tp, deskripsi, nama_mapel, kelas, urutan, semester, tahun_ajaran')
+          .in('id', missingTpIds)
+          .order('urutan', { ascending: true });
+        if (extraTps && extraTps.length > 0) {
+          const compatibleExtra = extraTps.filter((tp: any) =>
+            (!tp.semester || normSem(tp.semester) === targetSemNorm) &&
+            (!tp.tahun_ajaran || normTa(tp.tahun_ajaran) === targetTaNorm)
+          );
+          currentTps = [...currentTps, ...(compatibleExtra as TujuanPembelajaran[])];
+        }
+      }
       setTpList(currentTps);
 
       currentTps.forEach(tp => {
         if (tp.nama_mapel && !mapels.includes(tp.nama_mapel)) {
           mapels.push(tp.nama_mapel);
+        }
+      });
+      (nsData || []).forEach((row: any) => {
+        if (row.mapel && !isInvalidMapel(row.mapel) && !mapels.includes(row.mapel)) {
+          mapels.push(row.mapel);
         }
       });
       mapels.sort();
@@ -907,37 +1105,22 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       }
       setColumnsList(currentCols);
 
-      // 7. Fetch Nilai Siswa (nilai_siswa)
-      const currentGrades: Record<string, Record<string, number | null>> = {};
-      let nsQuery = supabase
-        .from('nilai_siswa')
-        .select('asesmen_id, tp_id, nisn, nilai, mapel')
-        .eq('kelas', selectedKelas);
-      if (sekolahId) nsQuery = nsQuery.eq('sekolah_id', sekolahId);
-      let { data: nsData } = await nsQuery;
-      if ((!nsData || nsData.length === 0) && (sekolahId || resolvedClassKey !== selectedKelas)) {
-        let fbNs = supabase
-          .from('nilai_siswa')
-          .select('asesmen_id, tp_id, nisn, nilai, mapel')
-          .in('kelas', [selectedKelas, resolvedClassKey].filter(Boolean));
-        const { data: fbData } = await fbNs;
-        if (fbData && fbData.length > 0) nsData = fbData;
-      }
-
+      // 7. Map Nilai Siswa (nilai_siswa) to canonical student NISN
       if (nsData) {
         nsData.forEach((row: any) => {
-          if (!row.nisn) return;
-          if (!currentGrades[row.nisn]) currentGrades[row.nisn] = {};
+          const targetNisn = resolveStudentNisn(row, sortedStudents);
+          if (!targetNisn) return;
+          if (!currentGrades[targetNisn]) currentGrades[targetNisn] = {};
           const numVal =
             row.nilai !== null && row.nilai !== undefined && row.nilai !== ''
               ? Number(row.nilai)
               : null;
           const parsed = numVal !== null && !isNaN(numVal) ? numVal : null;
           if (row.asesmen_id) {
-            currentGrades[row.nisn][row.asesmen_id] = parsed;
+            currentGrades[targetNisn][row.asesmen_id] = parsed;
           }
           if (row.tp_id) {
-            currentGrades[row.nisn][`tp_${row.tp_id}`] = parsed;
+            currentGrades[targetNisn][`tp_${row.tp_id}`] = parsed;
           }
         });
       }
@@ -1045,6 +1228,14 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
   useEffect(() => {
     fetchClassData();
   }, [fetchClassData]);
+
+  const wasActiveRef = useRef(Boolean(isActive));
+  useEffect(() => {
+    if (isActive && !wasActiveRef.current) {
+      fetchClassData();
+    }
+    wasActiveRef.current = Boolean(isActive);
+  }, [isActive, fetchClassData]);
 
   // Save Catatan Wali to database Supabase & localStorage
   const saveCatatanToSupabase = useCallback(async (dataToSave: Record<string, string>, options: { throwOnError?: boolean } = {}) => {
@@ -1224,8 +1415,10 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
       const eligibleMapels = activeMapels.filter(mapel => isStudentEligibleForSubject(student, mapel));
 
       return eligibleMapels.map(mapel => {
+        const normTargetMapel = formatRaporSubjectName(mapel).trim().toLowerCase();
         const subjectTps = tpList.filter(
-          tp => (tp.nama_mapel || '').trim().toLowerCase() === mapel.trim().toLowerCase()
+          tp => (tp.nama_mapel || '').trim().toLowerCase() === mapel.trim().toLowerCase() ||
+            formatRaporSubjectName(tp.nama_mapel || '').trim().toLowerCase() === normTargetMapel
         );
 
         const tpScoresList = subjectTps.map(tp => {
