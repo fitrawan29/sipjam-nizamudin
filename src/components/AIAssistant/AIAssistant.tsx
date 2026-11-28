@@ -238,7 +238,7 @@ export function AIAssistant({
     <>
       {/* Floating Trigger Button Container */}
       {isVisible && (
-        <div className="fixed bottom-5 right-5 z-[45] flex items-center group/ai-btn no-print print:hidden">
+        <div className="fixed bottom-24 lg:bottom-5 right-4 sm:right-5 z-[45] flex items-center group/ai-btn no-print print:hidden">
           {/* Quick dismiss/hide button accessible on touch & hover */}
           <button
             type="button"
@@ -277,7 +277,7 @@ export function AIAssistant({
           role="dialog"
           aria-modal="true"
           aria-label="Panel Asisten AI SIPJAM"
-          className="neu-card fixed bottom-22 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[calc(100dvh-7.5rem)] h-[480px] z-[45] flex flex-col rounded-3xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 no-print print:hidden"
+          className="neu-card fixed bottom-24 lg:bottom-22 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-96 max-h-[calc(100dvh-8.5rem)] lg:max-h-[calc(100dvh-7.5rem)] h-[480px] z-[45] flex flex-col rounded-3xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-5 no-print print:hidden"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-[#0F766E] to-[#115E59] text-white px-4 py-3 flex items-center justify-between border-b border-white/15">

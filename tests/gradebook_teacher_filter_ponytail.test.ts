@@ -174,7 +174,7 @@ runTest('3.2: GradebookView defines syncTeacherAssignments callback', () => {
 runTest('3.3: GradebookView defines handleSelectGuru with dirty grades guard', () => {
   assert.ok(code.includes('const handleSelectGuru = (newGuru: string) => {'), 'GradebookView must define handleSelectGuru');
   assert.ok(code.includes('Object.keys(dirtyGrades).length > 0'), 'handleSelectGuru must check dirtyGrades');
-  assert.ok(code.includes('window.confirm('), 'handleSelectGuru must confirm unsaved changes');
+  assert.ok(code.includes('confirmUnsavedGradeSwitch('), 'handleSelectGuru must confirm unsaved changes');
 });
 
 runTest('3.4: Guru Pengampu select element uses onChange={e => handleSelectGuru(e.target.value)}', () => {

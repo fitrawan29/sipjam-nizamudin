@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -2228,7 +2228,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                   <span className="font-bold text-[#64748B] dark:text-[#94A3B8] text-[10px] block">Siswa:</span>
                                   <div className="flex flex-wrap gap-1 mt-1">
                                     {siswaList.map(s => (
-                                      <span key={s.id} className="text-[9px] neu-inset text-[#334155] dark:text-[#CBD5E1] px-2 py-0.5 rounded-md font-medium">
+                                      <span key={s.id} className="text-[11px] neu-inset text-[#334155] dark:text-[#CBD5E1] px-2 py-0.5 rounded-md font-medium">
                                         {s.siswa_nama} {s.kelas ? `(${s.kelas})` : ''}
                                       </span>
                                     ))}
@@ -2254,7 +2254,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 <div className="font-bold text-xs text-[#0F172A] dark:text-[#F1F5F9]">{l.guru_pelapor}</div>
                                 <div className="font-num text-[10px] text-[#64748B] dark:text-[#94A3B8]">{l.tanggal}</div>
                               </div>
-                              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${
+                              <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${
                                 l.status_verifikasi === 'Disetujui' || l.status_verifikasi === 'Diverifikasi' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                                 l.status_verifikasi === 'Ditolak' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
                                 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
@@ -3086,11 +3086,11 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                 <td className="py-2.5 px-3">
                                   {item.status === 'datang' ? (
                                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 inline-flex items-center gap-1">
-                                      <i className="fa-solid fa-right-to-bracket text-[9px]"></i> Datang
+                                      <i className="fa-solid fa-right-to-bracket text-[11px]"></i> Datang
                                     </span>
                                   ) : (
                                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 inline-flex items-center gap-1">
-                                      <i className="fa-solid fa-right-from-bracket text-[9px]"></i> Pulang
+                                      <i className="fa-solid fa-right-from-bracket text-[11px]"></i> Pulang
                                     </span>
                                   )}
                                 </td>
@@ -3585,7 +3585,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                         }`}
                       >
                         <span>{day}</span>
-                        <span className="font-num text-[9px] opacity-80 font-normal">
+                        <span className="font-num text-[11px] opacity-80 font-normal">
                           {penugasanList.filter(p => p.hari === day).length} Petugas
                         </span>
                       </button>
@@ -4110,7 +4110,7 @@ export default function PiketView({ user, statusKepalaSekolah }: { user: any; st
                                           {formatDateWita(item.tanggal)} ({item.tanggal ? getWitaDayName(new Date(item.tanggal + 'T00:00:00+08:00')) : '-'})
                                       </div>
                                   </div>
-                                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg ${
+                                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg ${
                                       item.status_verifikasi?.toLowerCase() === 'tidak membuat laporan piket' ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' :
                                       item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' :
                                       item.status_verifikasi === 'Ditolak' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :

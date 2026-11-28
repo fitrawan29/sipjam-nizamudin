@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase, getActiveTargetSchool } from '@/lib/supabaseClient';
@@ -1316,7 +1316,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
 
   return (
     <section id="view-dokumen" className="view-section page-enter">
-      <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] p-4 sm:p-6 mb-6 print:bg-white print:text-black print:shadow-none print:border-none print:p-0 print:mb-0">
+      <div className="neu-card bg-[var(--neu-surface)] p-4 sm:p-6 mb-6 print:bg-white print:text-black print:shadow-none print:border-none print:p-0 print:mb-0">
         {/* Print Header (Official School Kop) */}
         <PrintHeader user={user} sekolahId={user?.sekolah_id} />
 
@@ -1454,7 +1454,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
           <div className="space-y-6 fade-in no-print">
             {/* KPI Summary Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+              <div className="neu-card-sm bg-[var(--neu-surface)] p-4 rounded-2xl min-w-0">
                 <div className="text-[10px] font-bold text-[#0F766E] dark:text-[#14B8A6] uppercase tracking-wide">
                   Total Dewan Guru
                 </div>
@@ -1463,7 +1463,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 </div>
               </div>
 
-              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+              <div className="neu-card-sm bg-[var(--neu-surface)] p-4 rounded-2xl min-w-0">
                 <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide">
                   Dokumen Lengkap (<span className="font-num">6/6</span>)
                 </div>
@@ -1475,7 +1475,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 </div>
               </div>
 
-              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+              <div className="neu-card-sm bg-[var(--neu-surface)] p-4 rounded-2xl min-w-0">
                 <div className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wide">
                   Belum Lengkap (<span className="font-num">&lt;6</span>)
                 </div>
@@ -1484,7 +1484,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 </div>
               </div>
 
-              <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl min-w-0">
+              <div className="neu-card-sm bg-[var(--neu-surface)] p-4 rounded-2xl min-w-0">
                 <div className="text-[10px] font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wide">
                   Menunggu Verifikasi
                 </div>
@@ -1528,7 +1528,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
 
             {/* Minimalist Cards Grid Per-Teacher Per-Subject */}
             {filteredTeacherSubjectCards.length === 0 ? (
-              <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] text-center py-12 px-4 text-slate-500 dark:text-slate-400 text-xs italic rounded-2xl">
+              <div className="neu-inset bg-[var(--neu-inset)] text-center py-12 px-4 text-slate-500 dark:text-slate-400 text-xs italic rounded-2xl">
                 Tidak ada data guru atau mata pelajaran yang cocok dengan filter atau pencarian.
               </div>
             ) : (
@@ -1537,7 +1537,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                   const tOpen = expandedTeacherId === g.teacher.id;
                   const doneCount = g.cards.filter(c => c.isComplete).length;
                   return (
-                    <div key={g.teacher.id} className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4">
+                    <div key={g.teacher.id} className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-4">
                       <button
                         type="button"
                         onClick={() => setExpandedTeacherId(tOpen ? null : g.teacher.id)}
@@ -1570,7 +1570,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                               <div
                                 key={card.cardKey}
                                 onClick={() => setExpandedCardKey(isExpanded ? null : card.cardKey)}
-                                className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 transition-all cursor-pointer card-interactive flex flex-col justify-between min-w-0"
+                                className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-4 transition-all cursor-pointer card-interactive flex flex-col justify-between min-w-0"
                               >
                                 <div>
                                   {/* Header: Teacher Name, Subject Badge, & Progress Pill */}
@@ -1634,7 +1634,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                                         return (
                                           <div
                                             key={rIdx}
-                                            className="p-2.5 rounded-xl neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2"
+                                            className="p-2.5 rounded-xl neu-inset bg-[var(--neu-inset)] flex flex-wrap sm:flex-nowrap items-center justify-between gap-2"
                                           >
                                             <div className="min-w-0">
                                               <div className="flex items-center gap-1.5 min-w-0">
@@ -1703,7 +1703,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         {isAdmin && activeTab === 'syarat' && (
           <div className="space-y-6 fade-in no-print">
             {/* Header & Filter Toolbar */}
-            <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 rounded-2xl">
+            <div className="neu-inset bg-[var(--neu-inset)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 rounded-2xl">
               <div className="min-w-0">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <i className="fa-solid fa-gear text-[#0F766E] dark:text-[#14B8A6]"></i>
@@ -1735,10 +1735,10 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                   onChange={e => setFilterSyaratMapel(e.target.value)}
                   className="px-3 py-2 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 font-semibold cursor-pointer"
                 >
-                  <option value="Semua" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">Semua Kategori Mapel</option>
-                  <option value="Semua Mapel" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">Semua Mapel (Global)</option>
+                  <option value="Semua" className="bg-[var(--neu-bg)] text-[var(--foreground)]">Semua Kategori Mapel</option>
+                  <option value="Semua Mapel" className="bg-[var(--neu-bg)] text-[var(--foreground)]">Semua Mapel (Global)</option>
                   {Array.from(new Set(syaratList.map(s => s.nama_mapel).filter(m => m && m !== 'Semua Mapel'))).map(m => (
-                    <option key={m} value={m} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">{m}</option>
+                    <option key={m} value={m} className="bg-[var(--neu-bg)] text-[var(--foreground)]">{m}</option>
                   ))}
                 </select>
               </div>
@@ -1749,7 +1749,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
             </div>
 
             {/* Syarat List Table */}
-            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-2">
+            <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-2">
               <div className="overflow-x-auto rounded-xl">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-200/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 uppercase text-[10px] font-bold border-b border-slate-300/70 dark:border-slate-700">
@@ -1864,7 +1864,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                 return (
                   <div
                     key={`${sub.nama_mapel}-${sub.kelas}-${sIdx}`}
-                    className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 space-y-3"
+                    className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-4 space-y-3"
                   >
                     {/* Subject Header with Progress */}
                     <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-slate-300/60 dark:border-slate-700/60">
@@ -1901,7 +1901,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                         return (
                           <div
                             key={doc.id}
-                            className={`neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] p-3 rounded-xl flex flex-col justify-between min-h-[115px] min-w-0 gap-2 transition ${
+                            className={`neu-inset bg-[var(--neu-inset)] p-3 rounded-xl flex flex-col justify-between min-h-[115px] min-w-0 gap-2 transition ${
                               isUploaded ? 'ring-1 ring-emerald-500/40 dark:ring-emerald-400/30' : ''
                             }`}
                           >
@@ -1962,7 +1962,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
               </h3>
 
               {dokumenList.length === 0 ? (
-                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] text-center py-12 px-4 text-slate-500 dark:text-slate-400 text-xs italic rounded-2xl">
+                <div className="neu-inset bg-[var(--neu-inset)] text-center py-12 px-4 text-slate-500 dark:text-slate-400 text-xs italic rounded-2xl">
                   Belum ada dokumen yang diunggah. Klik tab &quot;Upload Baru&quot; untuk mengunggah berkas.
                 </div>
               ) : (
@@ -1970,7 +1970,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                   {dokumenList.map(dok => (
                     <div
                       key={dok.id}
-                      className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-4 rounded-2xl flex flex-col justify-between gap-3 min-w-0"
+                      className="neu-card-sm bg-[var(--neu-surface)] p-4 rounded-2xl flex flex-col justify-between gap-3 min-w-0"
                     >
                       <div className="space-y-1.5 min-w-0">
                         <div className="flex justify-between items-start gap-1">
@@ -2027,7 +2027,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
         {/* ========================================================================= */}
         {!isAdmin && activeTab === 'upload' && (
           <div id="dokumen-content-upload" className="fade-in max-w-xl mx-auto no-print">
-            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] p-5 sm:p-6 rounded-2xl">
+            <div className="neu-card-sm bg-[var(--neu-surface)] p-5 sm:p-6 rounded-2xl">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
                 <i className="fa-solid fa-cloud-arrow-up text-[#0F766E] dark:text-[#14B8A6]"></i>
                 Upload Perangkat Pembelajaran Baru
@@ -2044,9 +2044,9 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
                     onChange={e => setJenis(e.target.value)}
                     className="w-full px-3 py-2.5 min-h-[40px] text-xs rounded-xl input-premium neu-input text-slate-900 dark:text-slate-100 cursor-pointer"
                   >
-                    <option value="" disabled className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">-- Pilih Jenis Dokumen --</option>
+                    <option value="" disabled className="bg-[var(--neu-bg)] text-[var(--foreground)]">-- Pilih Jenis Dokumen --</option>
                     {KURIKULUM_DOCS.map(d => (
-                      <option key={d.id} value={d.name} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                      <option key={d.id} value={d.name} className="bg-[var(--neu-bg)] text-[var(--foreground)]">
                         {d.name} ({d.short})
                       </option>
                     ))}
@@ -2273,7 +2273,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
             aria-modal="true"
             aria-label={`Pratinjau dokumen ${previewDoc.judul || previewDoc.jenis_dokumen}`}
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl w-full max-w-lg p-5 sm:p-6 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl w-full max-w-lg p-5 sm:p-6 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll"
           >
             <div className="flex justify-between items-start gap-3 pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <div className="min-w-0">
@@ -2387,7 +2387,7 @@ export default function DokumenView({ user, isReadOnly = false, statusKepalaSeko
             aria-modal="true"
             aria-label={editingSyarat ? 'Edit Syarat Dokumen' : 'Tambah Syarat Dokumen Baru'}
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl w-full max-w-md p-5 sm:p-6 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl w-full max-w-md p-5 sm:p-6 modal-pop space-y-4 max-h-[90vh] overflow-y-auto custom-scroll"
           >
             <div className="flex justify-between items-center gap-3 pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 min-w-0">

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -1678,9 +1678,9 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
 
   return (
     <section id="view-rapor" className="space-y-6 pb-12 print:pb-0 print:space-y-0">
-      <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-6 space-y-6 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
+      <div className="neu-card bg-[var(--neu-surface)] rounded-2xl p-4 sm:p-6 space-y-6 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
         {/* HEADER & CONTROLS */}
-        <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-5 no-print">
+        <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-4 sm:p-5 no-print">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="w-12 h-12 shrink-0 rounded-2xl neu-inset flex items-center justify-center text-[#0F766E] dark:text-[#14B8A6] text-xl">
@@ -1738,7 +1738,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                     className="neu-input px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
                   >
                     {kelasList.map(k => (
-                      <option key={k} value={k} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">{k}</option>
+                      <option key={k} value={k} className="bg-[var(--neu-bg)] text-[var(--foreground)]">{k}</option>
                     ))}
                   </select>
                 ) : (
@@ -1761,10 +1761,10 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                   }}
                   className="neu-input px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
                 >
-                  <option value="Ganjil" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                  <option value="Ganjil" className="bg-[var(--neu-bg)] text-[var(--foreground)]">
                     Ganjil{activeSchoolSemester === 'Ganjil' ? ' (Aktif)' : ''}
                   </option>
-                  <option value="Genap" className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                  <option value="Genap" className="bg-[var(--neu-bg)] text-[var(--foreground)]">
                     Genap{activeSchoolSemester === 'Genap' ? ' (Aktif)' : ''}
                   </option>
                 </select>
@@ -1784,7 +1784,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                   className="neu-input font-num px-2.5 py-1.5 min-h-[36px] rounded-lg text-xs font-bold text-slate-900 dark:text-slate-100 cursor-pointer"
                 >
                   {tahunAjaranList.map(ta => (
-                    <option key={ta} value={ta} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                    <option key={ta} value={ta} className="bg-[var(--neu-bg)] text-[var(--foreground)]">
                       {ta}{ta === activeSchoolTahunAjaran ? ' (Aktif)' : ''}
                     </option>
                   ))}
@@ -1855,7 +1855,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                     className="neu-input px-3 py-2 min-h-[40px] text-xs font-bold rounded-xl text-slate-900 dark:text-slate-100 w-full sm:w-64 min-w-0 cursor-pointer"
                   >
                     {students.map(s => (
-                      <option key={s.nisn} value={s.nisn} className="bg-[#E6ECF2] text-slate-900 dark:bg-[#1F242D] dark:text-slate-100">
+                      <option key={s.nisn} value={s.nisn} className="bg-[var(--neu-bg)] text-[var(--foreground)]">
                         {s.nama_siswa} ({s.nisn})
                       </option>
                     ))}
@@ -1900,12 +1900,12 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
 
         {/* CONTENT AREA */}
         {isLoading ? (
-          <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-12 text-center">
+          <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-12 text-center">
             <i className="fa-solid fa-spinner fa-spin text-3xl text-[#0F766E] dark:text-[#14B8A6] mb-3"></i>
             <p className="text-xs text-slate-500 dark:text-slate-400">Memuat data rapor Kurikulum Merdeka...</p>
           </div>
         ) : students.length === 0 ? (
-          <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-12 text-center">
+          <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-12 text-center">
             <i className="fa-solid fa-users-slash text-3xl text-slate-400 mb-3"></i>
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Tidak Ada Siswa di Kelas Ini</h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1914,7 +1914,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
           </div>
         ) : activeTab === 'ringkasan' ? (
           /* TAB 1: RINGKASAN RAPOR KELAS */
-          <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-2">
+          <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-2">
             <div className="overflow-x-auto rounded-xl">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-slate-200/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-300/70 dark:border-slate-700">
@@ -2049,7 +2049,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
         ) : (
           /* TAB 2: CETAK INDIVIDU RAPOR KURIKULUM MERDEKA */
           selectedStudent ? (
-            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-4 sm:p-8 lg:p-10 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
+            <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-4 sm:p-8 lg:p-10 print:bg-white print:text-black print:p-0 print:border-none print:shadow-none print:rounded-none">
               {/* SCHOOL PRINT HEADER */}
               <PrintHeader sekolahId={sekolahId} user={user} />
 
@@ -2063,7 +2063,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
               </div>
 
               {/* STUDENT IDENTITY GRID */}
-              <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-6 gap-y-2 text-xs p-4 rounded-xl mb-6 print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+              <div className="neu-inset bg-[var(--neu-inset)] grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-6 gap-y-2 text-xs p-4 rounded-xl mb-6 print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
                 <div className="flex flex-wrap sm:flex-nowrap min-w-0 gap-1">
                   <span className="w-28 shrink-0 font-bold text-slate-600 dark:text-slate-400 print:text-black">Nama Siswa</span>
                   <span className="font-extrabold text-slate-900 dark:text-white print:text-black min-w-0 break-words">: {selectedStudent.nama_siswa}</span>
@@ -2091,7 +2091,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
                   A. Nilai Capaian Pembelajaran
                 </h3>
-                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] p-2 rounded-xl print:bg-white print:text-black print:p-0 print:border print:border-black print:shadow-none print:rounded-none">
+                <div className="neu-inset bg-[var(--neu-inset)] p-2 rounded-xl print:bg-white print:text-black print:p-0 print:border print:border-black print:shadow-none print:rounded-none">
                   <div className="overflow-x-auto rounded-lg print:overflow-visible print:rounded-none">
                     <table className="w-full text-left text-xs border-collapse print:text-black">
                       <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-bold border-b border-slate-300 dark:border-slate-700 text-[11px] print:bg-white print:text-black print:border-black">
@@ -2138,7 +2138,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
                   B. Kokurikuler
                 </h3>
-                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-3 text-xs min-h-[56px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                <div className="neu-inset bg-[var(--neu-inset)] rounded-xl p-3 text-xs min-h-[56px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
                   {!isTataUsaha && (
                     <textarea
                       aria-label="Kokurikuler"
@@ -2178,7 +2178,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                     </button>
                   )}
                 </div>
-                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] p-2 rounded-xl print:bg-white print:text-black print:p-0 print:border print:border-black print:shadow-none print:rounded-none">
+                <div className="neu-inset bg-[var(--neu-inset)] p-2 rounded-xl print:bg-white print:text-black print:p-0 print:border print:border-black print:shadow-none print:rounded-none">
                   <div className="overflow-x-auto rounded-lg print:overflow-visible print:rounded-none">
                     <table className="w-full text-left text-xs border-collapse print:text-black">
                       <thead className="bg-slate-200/70 dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 font-bold border-b border-slate-300 dark:border-slate-700 text-[11px] print:bg-white print:text-black print:border-black">
@@ -2292,7 +2292,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
                   D. Ketidakhadiran
                 </h3>
-                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                <div className="neu-inset bg-[var(--neu-inset)] rounded-xl overflow-hidden text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
                   <div className="flex justify-between py-2.5 px-3 border-b border-slate-300/60 dark:border-slate-700 print:border-black">
                     <span className="text-slate-600 dark:text-slate-400 print:text-black">1. Sakit</span>
                     <span className="font-bold font-num text-slate-900 dark:text-white print:text-black">
@@ -2319,7 +2319,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                 <h3 className="text-xs font-black uppercase text-slate-900 dark:text-white print:text-black mb-2">
                   E. Catatan Wali Kelas
                 </h3>
-                <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-3 text-xs min-h-[50px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                <div className="neu-inset bg-[var(--neu-inset)] rounded-xl p-3 text-xs min-h-[50px] print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
                   {!isTataUsaha && (
                     <textarea
                       aria-label="Catatan Wali Kelas"
@@ -2373,7 +2373,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
                       </div>
                     </div>
 
-                    <div className="neu-inset bg-[#E6ECF2] dark:bg-[#1F242D] rounded-xl p-4 text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
+                    <div className="neu-inset bg-[var(--neu-inset)] rounded-xl p-4 text-xs print:bg-white print:text-black print:border print:border-black print:shadow-none print:rounded-none">
                       {studentScores.length === 0 ? (
                         <p className="text-center text-slate-500 print:text-black italic py-2">
                           Belum ada data nilai untuk menampilkan grafik perkembangan murid.
@@ -2522,7 +2522,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
               </div>
             </div>
           ) : (
-            <div className="neu-card-sm bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl p-12 text-center">
+            <div className="neu-card-sm bg-[var(--neu-surface)] rounded-2xl p-12 text-center">
               <i className="fa-solid fa-user-xmark text-3xl text-slate-400 mb-3"></i>
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Pilih Siswa Terlebih Dahulu</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -2540,7 +2540,7 @@ export default function RaporView({ user, assignedKelas, statusKepalaSekolah, is
             aria-label={`Ekstrakurikuler ${editingEkskulStudent.nama_siswa}`}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/65 no-print"
           >
-            <div className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl w-full max-w-2xl p-5 space-y-4">
+            <div className="neu-card bg-[var(--neu-surface)] rounded-2xl w-full max-w-2xl p-5 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-black text-slate-900 dark:text-white">

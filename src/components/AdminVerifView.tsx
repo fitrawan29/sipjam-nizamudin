@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
@@ -1489,20 +1489,20 @@ export default function AdminVerifView({
                         </p>
                       </div>
                       {isBebasHadir ? (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 shrink-0">
+                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-sky-500/15 text-sky-700 dark:text-sky-300 shrink-0">
                           Bebas Hadir
                         </span>
                       ) : isPiketUnsubmitted ? (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 shrink-0">
+                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 shrink-0">
                           tidak membuat laporan piket
                         </span>
                       ) : isPresensiUnsubmitted ? (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 dark:text-red-300 shrink-0">
-                          <i className="fa-solid fa-user-xmark mr-1 text-[8px]"></i> Alpa
+                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-red-500/15 text-red-700 dark:text-red-300 shrink-0">
+                          <i className="fa-solid fa-user-xmark mr-1 text-[11px]"></i> Alpa
                         </span>
                       ) : (
-                        <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 shrink-0">
-                          <i className="fa-solid fa-clock-rotate-left mr-1 text-[8px]"></i> Belum Selesai
+                        <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 shrink-0">
+                          <i className="fa-solid fa-clock-rotate-left mr-1 text-[11px]"></i> Belum Selesai
                         </span>
                       )}
                     </div>
@@ -1581,7 +1581,7 @@ export default function AdminVerifView({
                   <h3 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">
                     {activeTab === 'Piket' ? item.guru_pelapor : item.nama_guru}
                   </h3>
-                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
                       item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' :
                       item.status_verifikasi === 'Ditolak' ? 'bg-red-500/15 text-red-700 dark:text-red-300' :
                       item.status_verifikasi === 'Sakit' ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' :

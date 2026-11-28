@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Swal from 'sweetalert2';
@@ -2268,8 +2268,8 @@ export default function BkJurnalView({
                             (Array.isArray(item.detail_layanan?.peserta_didik) && item.detail_layanan.peserta_didik.length > 1) ||
                             item.sasaran === 'Kelompok' ||
                             isMultiStudentService(item.jenis_layanan)) && (
-                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-[#0F766E]/10 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6] text-[9px] font-bold font-num border border-[#0F766E]/20 dark:border-[#14B8A6]/25">
-                              <i className="fa-solid fa-users text-[8px]"></i>
+                            <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded bg-[#0F766E]/10 text-[#0F766E] dark:bg-[#14B8A6]/15 dark:text-[#14B8A6] text-[11px] font-bold font-num border border-[#0F766E]/20 dark:border-[#14B8A6]/25">
+                              <i className="fa-solid fa-users text-[11px]"></i>
                               <span>
                                 Kelompok ({
                                   (Array.isArray(item.peserta_didik) && item.peserta_didik.length) ||
@@ -2317,22 +2317,22 @@ export default function BkJurnalView({
                           <div className="flex flex-col items-center gap-1">
                             {renderStatusBadge(item.status)}
                             {item.status_verifikasi === 'Disetujui' || item.status_verifikasi === 'Diverifikasi' ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:text-emerald-300">
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-emerald-500/15 text-emerald-700 border border-emerald-500/30 dark:text-emerald-300">
                                 Terverifikasi
                               </span>
                             ) : item.status_verifikasi === 'Ditolak' ? (
                               <span
-                                className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/30 dark:text-rose-300"
+                                className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-rose-500/15 text-rose-700 border border-rose-500/30 dark:text-rose-300"
                                 title={item.alasan_penolakan || item.catatan_admin || 'Ditolak admin'}
                               >
                                 Ditolak
                               </span>
                             ) : item.status_verifikasi === 'Dispensasi' ? (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-500/15 text-sky-700 border border-sky-500/30 dark:text-sky-300">
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-bold bg-sky-500/15 text-sky-700 border border-sky-500/30 dark:text-sky-300">
                                 Dispensasi
                               </span>
                             ) : (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/15 text-amber-700 border border-amber-500/30 dark:text-amber-300">
+                              <span className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-amber-500/15 text-amber-700 border border-amber-500/30 dark:text-amber-300">
                                 Menunggu Verifikasi
                               </span>
                             )}
@@ -2477,7 +2477,7 @@ export default function BkJurnalView({
                 Pratinjau Tabel Laporan
               </span>
               <span className="inline-flex items-center gap-1 text-[#0F766E] dark:text-[#14B8A6] font-semibold text-[10px]">
-                <i className="fa-solid fa-arrows-left-right text-[9px] animate-pulse"></i>
+                <i className="fa-solid fa-arrows-left-right text-[11px] animate-pulse"></i>
                 Geser tabel ke samping
               </span>
             </div>
@@ -2530,7 +2530,7 @@ export default function BkJurnalView({
                                   {multiList.map((s, sIdx) => (
                                     <li key={sIdx} className="leading-tight">
                                       <span className="font-semibold">{s.nama_siswa}</span>
-                                      <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num"> ({s.kelas}{s.nisn ? ` • ${s.nisn}` : ''})</span>
+                                      <span className="text-[11px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num"> ({s.kelas}{s.nisn ? ` • ${s.nisn}` : ''})</span>
                                     </li>
                                   ))}
                                 </ol>
@@ -2542,7 +2542,7 @@ export default function BkJurnalView({
                             <div>
                               <div className="font-bold">{e.nama_siswa}</div>
                               <div className="text-[10px] font-num">Kelas: {e.kelas}</div>
-                              {e.nisn && <div className="text-[9px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num">NISN: {e.nisn}</div>}
+                              {e.nisn && <div className="text-[11px] text-[#475569] dark:text-[#94A3B8] print:text-gray-600 font-num">NISN: {e.nisn}</div>}
                             </div>
                           );
                         })()}
@@ -2588,7 +2588,7 @@ export default function BkJurnalView({
                           }
 
                           return (
-                            <div className="text-[9px] text-[#334155] dark:text-[#CBD5E1] print:text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
+                            <div className="text-[11px] text-[#334155] dark:text-[#CBD5E1] print:text-gray-700 italic max-w-[100px] mx-auto truncate" title={docUrl.replace(/^file:/, '')}>
                               <i className="fa-solid fa-file-lines text-xs block mb-0.5 text-[#475569] dark:text-[#94A3B8] print:text-gray-500"></i>
                               <span>{docUrl.replace(/^file:/, '')}</span>
                             </div>

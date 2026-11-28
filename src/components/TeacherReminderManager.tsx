@@ -718,7 +718,7 @@ export function TeacherReminderManager({ user, onNavigate }: TeacherReminderMana
     <div
       role="region"
       aria-label="Pengingat Tugas Harian Guru"
-      className="neu-card fixed bottom-20 left-4 sm:left-6 z-40 max-w-sm w-[calc(100vw-2rem)] sm:w-96 rounded-2xl p-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+      className="neu-card fixed bottom-24 lg:bottom-6 left-4 sm:left-6 z-[44] max-w-sm w-[calc(100vw-2rem)] sm:w-96 rounded-2xl p-4 transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
     >
       <div className="flex items-start gap-3">
         <div className="neu-inset w-10 h-10 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">

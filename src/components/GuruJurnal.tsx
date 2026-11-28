@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -2289,7 +2289,7 @@ export default function GuruJurnal({
                       </select>
                     )}
                     {(!dailyState?.hasBlockedSchedule || dailyState?.isBlok) && (
-                      <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
+                      <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] mt-1 italic ml-1">Jenis jurnal diatur otomatis oleh sistem berdasarkan jadwal Anda.</p>
                     )}
                 </div>
 
@@ -2437,7 +2437,7 @@ export default function GuruJurnal({
                                   title="Tandai siswa yang sudah presensi di gerbang datang sebagai Hadir"
                                 >
                                   {/* AST preservation: Terapkan Presensi Piket */}
-                                  <i className="fa-solid fa-wand-magic-sparkles text-[9px]"></i> Terapkan Presensi Datang
+                                  <i className="fa-solid fa-wand-magic-sparkles text-[11px]"></i> Terapkan Presensi Datang
                                 </button>
                               </div>
                               <div className="space-y-2.5 max-h-60 overflow-y-auto custom-scroll p-2">
@@ -2457,26 +2457,26 @@ export default function GuruJurnal({
                                           <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9]">{siswa.nama_siswa}</span>
                                             {isTruant ? (
-                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30 flex items-center gap-1 shrink-0 animate-pulse">
+                                              <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/30 flex items-center gap-1 shrink-0 animate-pulse">
                                                 {/* AST preservation: Terindikasi Bolos (Hadir Gerbang pk. ... Alpa Mapel) */}
-                                                <i className="fa-solid fa-triangle-exclamation text-[8px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
+                                                <i className="fa-solid fa-triangle-exclamation text-[11px]"></i> ⚠️ Terindikasi Bolos (Alfa Mapel, Pagi Hadir)
                                               </span>
                                             ) : pRec ? (
-                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold font-num bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold font-num bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1 shrink-0">
                                                 {/* AST preservation: ✓ Hadir di Sekolah (Piket */}
-                                                <i className="fa-solid fa-check text-[8px]"></i> ✓ Hadir di Sekolah (Datang {pRec.jam})
+                                                <i className="fa-solid fa-check text-[11px]"></i> ✓ Hadir di Sekolah (Datang {pRec.jam})
                                               </span>
                                             ) : (
-                                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
                                                 {/* AST preservation: Belum Scan Piket / Belum Presensi Piket */}
-                                                <i className="fa-solid fa-clock text-[8px]"></i> Belum Presensi Datang
+                                                <i className="fa-solid fa-clock text-[11px]"></i> Belum Presensi Datang
                                               </span>
                                             )}
                                           </div>
-                                          <div className="text-[9px] font-num text-[#475569] dark:text-[#94A3B8]">{siswa.nisn || siswa.id || 'NISN belum terdata'}</div>
+                                          <div className="text-[11px] font-num text-[#475569] dark:text-[#94A3B8]">{siswa.nisn || siswa.id || 'NISN belum terdata'}</div>
                                           {changeRec && (
-                                            <div className="mt-1 text-[9px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
-                                              <i className="fa-solid fa-clock-rotate-left text-[8px] text-[#0F766E] dark:text-[#14B8A6]"></i>
+                                            <div className="mt-1 text-[11px] leading-tight text-slate-500 dark:text-slate-400 flex items-center gap-1 flex-wrap">
+                                              <i className="fa-solid fa-clock-rotate-left text-[11px] text-[#0F766E] dark:text-[#14B8A6]"></i>
                                               <span>
                                                 Terakhir diubah oleh <strong className="text-slate-700 dark:text-slate-200">{changeRec.diubah_oleh}</strong>
                                                 {' '}(<span className="font-semibold text-[#0F766E] dark:text-[#14B8A6]">{changeRec.sumber_perubahan}</span>)
@@ -2491,7 +2491,7 @@ export default function GuruJurnal({
                                       <div className="flex items-center gap-1 shrink-0">
                                         {isMorningLocked ? (
                                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 min-h-[36px] rounded-lg text-[10px] font-bold neu-inset text-amber-800 dark:text-amber-300 border border-amber-500/30">
-                                            <i className="fa-solid fa-lock text-[9px] text-amber-600 dark:text-amber-400"></i>
+                                            <i className="fa-solid fa-lock text-[11px] text-amber-600 dark:text-amber-400"></i>
                                             <span>{(morningLockedAttendance[sKey] || morningLockedAttendance[siswa.nisn])?.label} (Terkunci)</span>
                                           </span>
                                         ) : (
@@ -2514,7 +2514,7 @@ export default function GuruJurnal({
                                                 }`}
                                                 title={opt.title}
                                               >
-                                                <i className={`fa-solid ${opt.icon} text-[9px]`}></i> {opt.label}
+                                                <i className={`fa-solid ${opt.icon} text-[11px]`}></i> {opt.label}
                                               </button>
                                             ))}
                                           </div>

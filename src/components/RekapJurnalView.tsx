@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, isSchemaCacheOrMissingTableError } from '@/lib/supabaseClient';
@@ -1769,7 +1769,7 @@ export default function RekapJurnalView({
                       >
                         {isAdmin || isKepalaSekolah || tabMode === 'pribadi' ? (
                           <>
-                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
+                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">
                               {!isAdmin && !isKepalaSekolah && assignedKelasList.length > 0
                                 ? (mapel ? `Semua Kelas (${mapel})` : 'Semua Kelas Ditugaskan')
                                 : 'Semua Kelas'}
@@ -1779,12 +1779,12 @@ export default function RekapJurnalView({
                                   ? Array.from(new Set(teacherAssignments.filter(a => (a.nama_mata_pelajaran === mapel || a.nama_mapel === mapel)).map(a => a.kelas).filter(Boolean)))
                                   : assignedKelasList)
                               : kelasList
-                            ).map((k, i) => <option key={i} value={k} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">{k}</option>)}
+                            ).map((k, i) => <option key={i} value={k} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">{k}</option>)}
                           </>
                         ) : (
                           <>
                             {waliClasses.map((w, i) => (
-                              <option key={i} value={w} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
+                              <option key={i} value={w} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">
                                 {w} (Kelas Anda)
                               </option>
                             ))}
@@ -1812,22 +1812,22 @@ export default function RekapJurnalView({
                       >
                         {!isAdmin && !isKepalaSekolah && tabMode === 'pribadi' && assignedMapelList.length > 0 ? (
                           <>
-                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
+                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">
                               {kelas ? `Semua Mapel (${kelas})` : 'Semua Mapel Ditugaskan'}
                             </option>
                             {(kelas && teacherAssignments.length > 0
                               ? Array.from(new Set(teacherAssignments.filter(a => a.kelas === kelas).map(a => a.nama_mata_pelajaran || a.nama_mapel).filter(Boolean)))
                               : assignedMapelList
                             ).map((m, i) => (
-                              <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">
+                              <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">
                                 {m}
                               </option>
                             ))}
                           </>
                         ) : (
                           <>
-                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">Semua Mapel</option>
-                            {mapelList.map((m, i) => <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[#E6ECF2] dark:bg-[#1F242D]">{m}</option>)}
+                            <option value="" className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">Semua Mapel</option>
+                            {mapelList.map((m, i) => <option key={i} value={m} className="text-[#0F172A] dark:text-[#F1F5F9] bg-[var(--neu-bg)]">{m}</option>)}
                           </>
                         )}
                       </select>
@@ -2100,13 +2100,13 @@ export default function RekapJurnalView({
                                         href={fotoUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
+                                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
                                       >
-                                        <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
+                                        <i className="fa-solid fa-arrow-up-right-from-square text-[11px]"></i> Lihat
                                       </a>
                                       {(j.lokasi || (j.latitude && j.longitude)) && (
-                                        <div className="text-[8px] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight no-print">
-                                          <i className="fa-solid fa-location-dot text-red-500 text-[8px]"></i>
+                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 flex items-center justify-center gap-1 mt-0.5 max-w-[100px] text-center leading-tight no-print">
+                                          <i className="fa-solid fa-location-dot text-red-500 text-[11px]"></i>
                                           <span className="truncate" title={j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}>
                                             {j.lokasi || `${j.latitude?.toFixed(5)}, ${j.longitude?.toFixed(5)}`}
                                           </span>
@@ -2145,9 +2145,9 @@ export default function RekapJurnalView({
                                     {ketKehadiran}
                                   </span>
                                   {j.status_verifikasi === 'Ditolak' && (j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan) && (
-                                    <div className="mt-1 text-[9px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded border border-red-200 dark:border-red-900/50 text-left">
+                                    <div className="mt-1 text-[11px] text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 p-1.5 rounded border border-red-200 dark:border-red-900/50 text-left">
                                       <div className="font-bold flex items-center gap-1">
-                                        <i className="fa-solid fa-circle-exclamation text-[8px]"></i> Alasan Penolakan:
+                                        <i className="fa-solid fa-circle-exclamation text-[11px]"></i> Alasan Penolakan:
                                       </div>
                                       <div className="italic break-words">
                                         {j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan}
@@ -2161,7 +2161,7 @@ export default function RekapJurnalView({
                                       className="text-[10px] font-bold text-[#0F766E] dark:text-teal-400 hover:underline inline-flex items-center gap-1"
                                       title="Lihat Detail Lengkap Jurnal"
                                     >
-                                      <i className="fa-solid fa-eye text-[9px]"></i> Detail
+                                      <i className="fa-solid fa-eye text-[11px]"></i> Detail
                                     </button>
                                   </div>
                                 </td>
@@ -2187,23 +2187,23 @@ export default function RekapJurnalView({
                               {/* Absensi Murid (H/I/S/A) */}
                             </th>
                             <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-10 print:w-[4%] text-[10px] print:text-[7pt]">
-                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              <span className="text-[11px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
                               Jumlah
                             </th>
                             <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-green-700 dark:text-green-400 print:text-black">
-                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              <span className="text-[11px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
                               Hadir
                             </th>
                             <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-blue-700 dark:text-blue-400 print:text-black">
-                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              <span className="text-[11px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
                               Sakit
                             </th>
                             <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-amber-700 dark:text-amber-400 print:text-black">
-                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              <span className="text-[11px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
                               Izin
                             </th>
                             <th className="px-1 py-1.5 print:p-0.5 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold w-9 print:w-[4%] text-[10px] print:text-[7pt] text-red-700 dark:text-red-400 print:text-black">
-                              <span className="text-[8px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
+                              <span className="text-[11px] uppercase tracking-wider block text-gray-500 dark:text-gray-400 print:text-black">Keadaan Siswa</span>
                               Alpa
                             </th>
                             <th className="px-2 py-1.5 print:p-1 border border-gray-300 dark:border-gray-600 print:border-black text-center font-bold print:w-[10%]">Tempat/Lokasi KBM</th>
@@ -2318,9 +2318,9 @@ export default function RekapJurnalView({
                                         href={fotoUrl}
                                         target="_blank"
                                         rel="noreferrer"
-                                        className="text-[9px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
+                                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold no-print inline-flex items-center gap-0.5"
                                       >
-                                        <i className="fa-solid fa-arrow-up-right-from-square text-[8px]"></i> Lihat
+                                        <i className="fa-solid fa-arrow-up-right-from-square text-[11px]"></i> Lihat
                                       </a>
                                       {j.waktu_upload && (
                                         <div className="text-[7px] text-gray-400 font-mono text-center no-print">
@@ -2339,9 +2339,9 @@ export default function RekapJurnalView({
                                     {isTidakMasukKelas ? 'tidak masuk kelas' : (j.catatan_refleksi || j.refleksi || (isTidakMasukKelas ? 'tidak masuk kelas' : isTidakKegiatan ? (isHanyaKbmUser ? 'Wajib Hadir KBM' : 'tidak melaksanakan kegiatan apapun') : (isHanyaKbmUser ? 'Hadir KBM' : (j.keterangan || '-'))))}
                                   </div>
                                   {j.status_verifikasi === 'Ditolak' && (
-                                    <div className="mt-1.5 p-1.5 bg-red-50 dark:bg-red-950/40 rounded border border-red-200 dark:border-red-800 text-[9px] text-red-700 dark:text-red-300 not-italic">
+                                    <div className="mt-1.5 p-1.5 bg-red-50 dark:bg-red-950/40 rounded border border-red-200 dark:border-red-800 text-[11px] text-red-700 dark:text-red-300 not-italic">
                                       <span className="font-bold text-red-800 dark:text-red-200 flex items-center gap-1">
-                                        <i className="fa-solid fa-circle-exclamation text-[8px]"></i> Ditolak Admin:
+                                        <i className="fa-solid fa-circle-exclamation text-[11px]"></i> Ditolak Admin:
                                       </span>
                                       <span className="italic break-words">
                                         {j.catatan_admin || j.alasan_penolakan || j.catatan_penolakan || j.keterangan_penolakan || 'Harap perbaiki dokumentasi/materi KBM'}
@@ -2355,7 +2355,7 @@ export default function RekapJurnalView({
                                       className="text-[10px] font-bold text-[#0F766E] dark:text-teal-400 hover:underline inline-flex items-center gap-1"
                                       title="Lihat Detail Lengkap Jurnal"
                                     >
-                                      <i className="fa-solid fa-eye text-[9px]"></i> Detail
+                                      <i className="fa-solid fa-eye text-[11px]"></i> Detail
                                     </button>
                                     {!isReadOnly && !j.id?.startsWith('unfilled-') && (tabMode === 'pribadi' || controlledMode === 'pribadi') && (
                                       <>
@@ -2365,7 +2365,7 @@ export default function RekapJurnalView({
                                           className="text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline inline-flex items-center gap-1"
                                           title="Edit Jurnal KBM"
                                         >
-                                          <i className="fa-solid fa-pen-to-square text-[9px]"></i> Edit
+                                          <i className="fa-solid fa-pen-to-square text-[11px]"></i> Edit
                                         </button>
                                         <button
                                           type="button"
@@ -2373,7 +2373,7 @@ export default function RekapJurnalView({
                                           className="text-[10px] font-bold text-red-600 dark:text-red-400 hover:underline inline-flex items-center gap-1"
                                           title="Hapus Jurnal KBM"
                                         >
-                                          <i className="fa-solid fa-trash-can text-[9px]"></i> Hapus
+                                          <i className="fa-solid fa-trash-can text-[11px]"></i> Hapus
                                         </button>
                                       </>
                                     )}
@@ -2572,7 +2572,7 @@ export default function RekapJurnalView({
             onClick={() => setSelectedJurnal(null)}
           >
             <div 
-              className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90dvh] overflow-y-auto space-y-4"
+              className="neu-card bg-[var(--neu-surface)] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[90dvh] overflow-y-auto space-y-4"
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
@@ -2828,7 +2828,7 @@ export default function RekapJurnalView({
             }}
           >
             <div 
-              className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[92dvh] overflow-y-auto space-y-4"
+              className="neu-card bg-[var(--neu-surface)] rounded-3xl p-5 sm:p-6 max-w-2xl w-full max-h-[92dvh] overflow-y-auto space-y-4"
               onClick={e => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -2880,7 +2880,7 @@ export default function RekapJurnalView({
                     {/* 1. Nomor */}
                     <div>
                       <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">1</span>
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">1</span>
                         Nomor (Pertemuan ke-)
                       </label>
                       <input
@@ -2895,7 +2895,7 @@ export default function RekapJurnalView({
                     {/* 2. Hari/Tanggal */}
                     <div>
                       <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">2</span>
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">2</span>
                         Hari/Tanggal <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -2910,7 +2910,7 @@ export default function RekapJurnalView({
                     {/* 3. Materi/Konten */}
                     <div>
                       <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">3</span>
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">3</span>
                         Materi / Konten Pembelajaran <span className="text-red-500">*</span>
                       </label>
                       <textarea
@@ -2926,7 +2926,7 @@ export default function RekapJurnalView({
                     {/* 4. Kelas/JP */}
                     <div className="p-3 neu-inset rounded-2xl space-y-2.5">
                       <span className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">4</span>
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">4</span>
                         Kelas / Jam Pembelajaran (JP)
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -2987,7 +2987,7 @@ export default function RekapJurnalView({
                     <div className="p-3 neu-inset rounded-2xl space-y-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">5</span>
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">5</span>
                           Keadaan Siswa (H / I / S / A)
                         </span>
                         <span className="text-[10px] text-[#475569] dark:text-[#94A3B8] font-mono font-num">
@@ -3076,7 +3076,7 @@ export default function RekapJurnalView({
                     {/* 6. Tempat/Lokasi KBM */}
                     <div>
                       <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
-                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">6</span>
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">6</span>
                         Tempat / Lokasi KBM <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -3139,7 +3139,7 @@ export default function RekapJurnalView({
                 <div className="p-3 neu-inset rounded-2xl space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="block text-[11px] font-bold text-[#0F172A] dark:text-[#F1F5F9]">
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">7</span>
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">7</span>
                       Dokumentasi Foto KBM
                     </span>
                     <span className="text-[10px] text-[#0F766E] dark:text-teal-400 font-semibold">
@@ -3229,7 +3229,7 @@ export default function RekapJurnalView({
                 {/* 8. Keterangan (Opsional) */}
                 <div>
                   <label className="block text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] mb-1">
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[9px] font-bold font-num mr-1">8</span>
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-amber-500/20 text-[#D97706] dark:text-amber-300 text-[11px] font-bold font-num mr-1">8</span>
                     Keterangan <span className="text-[#64748B] font-normal">(Opsional)</span>
                   </label>
                   <textarea

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -563,35 +563,52 @@ export default function GradebookView({
   }, [dirtyGrades]);
 
   // Safe Filter Selection Handlers guarding unsaved grade changes
-  const handleSelectGuru = (newGuru: string) => {
-    if (Object.keys(dirtyGrades).length > 0) {
-      if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti guru pengampu? Perubahan belum disimpan akan hilang.')) {
-        return;
-      }
-    }
-    setDirtyGrades({});
-    setSelectedGuru(newGuru);
-    if (!newGuru) {
-      setMapelList([]);
-      setSelectedMapel('');
-      setKelasList([]);
-      setSelectedKelas('');
-      return;
-    }
-    syncTeacherAssignments(
-      newGuru,
-      allTeacherAssignments,
-      teachersList,
-      masterMapelList,
-      masterClassesList,
-      '',
-      ''
-    );
+  const confirmUnsavedGradeSwitch = async (targetLabel: string): Promise<boolean> => {
+    const result = await Swal.fire({
+      title: 'Perubahan Belum Disimpan',
+      text: `Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti ${targetLabel}? Perubahan belum disimpan akan hilang.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Ya, Lanjutkan',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#0F766E',
+    });
+    return result.isConfirmed;
   };
 
-  const handleSelectMapel = (newMapel: string) => {
+  const handleSelectGuru = (newGuru: string) => {
+    const applyGuru = () => {
+      setDirtyGrades({});
+      setSelectedGuru(newGuru);
+      if (!newGuru) {
+        setMapelList([]);
+        setSelectedMapel('');
+        setKelasList([]);
+        setSelectedKelas('');
+        return;
+      }
+      syncTeacherAssignments(
+        newGuru,
+        allTeacherAssignments,
+        teachersList,
+        masterMapelList,
+        masterClassesList,
+        '',
+        ''
+      );
+    };
     if (Object.keys(dirtyGrades).length > 0) {
-      if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti mata pelajaran? Perubahan belum disimpan akan hilang.')) {
+      void confirmUnsavedGradeSwitch('guru pengampu').then(confirmed => {
+        if (confirmed) applyGuru();
+      });
+      return;
+    }
+    applyGuru();
+  };
+
+  const handleSelectMapel = async (newMapel: string) => {
+    if (Object.keys(dirtyGrades).length > 0) {
+      if (!(await confirmUnsavedGradeSwitch('mata pelajaran'))) {
         return;
       }
     }
@@ -643,9 +660,9 @@ export default function GradebookView({
     }
   };
 
-  const handleSelectKelas = (newKelas: string) => {
+  const handleSelectKelas = async (newKelas: string) => {
     if (Object.keys(dirtyGrades).length > 0) {
-      if (!window.confirm('Terdapat perubahan nilai yang belum disimpan. Yakin ingin mengganti kelas? Perubahan belum disimpan akan hilang.')) {
+      if (!(await confirmUnsavedGradeSwitch('kelas'))) {
         return;
       }
     }
@@ -3897,7 +3914,7 @@ export default function GradebookView({
                                   {tp.kode_tp}
                                 </span>
                                 {parentCp && (
-                                  <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold">
+                                  <span className="text-[11px] px-1 py-0.2 rounded bg-sky-500/15 text-sky-700 dark:text-sky-300 font-semibold">
                                     {parentCp.kode_cp}
                                   </span>
                                 )}
@@ -4574,12 +4591,12 @@ export default function GradebookView({
                           <div className="flex flex-col items-center justify-center gap-0.5">
                             <div className="flex items-center justify-center gap-1">
                               <span>{diagnostikCol.nama}</span>
-                              <span className="text-[9px] px-1 bg-sky-500/15 text-sky-700 dark:text-sky-300 rounded font-num">
+                              <span className="text-[11px] px-1 bg-sky-500/15 text-sky-700 dark:text-sky-300 rounded font-num">
                                 1x
                               </span>
                             </div>
                             {diagnostikCol.keterangan && (
-                              <span className="text-[9px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
+                              <span className="text-[11px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
                                 {diagnostikCol.keterangan}
                               </span>
                             )}
@@ -4626,7 +4643,7 @@ export default function GradebookView({
                                 )}
                               </div>
                               {col.keterangan && (
-                                <span className="text-[9px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
+                                <span className="text-[11px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
                                   {col.keterangan}
                                 </span>
                               )}
@@ -4674,7 +4691,7 @@ export default function GradebookView({
                                 )}
                               </div>
                               {col.keterangan && (
-                                <span className="text-[9px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
+                                <span className="text-[11px] font-normal text-[#475569] dark:text-[#94A3B8] truncate max-w-[90px]">
                                   {col.keterangan}
                                 </span>
                               )}
@@ -4705,11 +4722,11 @@ export default function GradebookView({
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
                           {/* Student Info */}
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-1.5 md:px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
-                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2 px-1.5 md:px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
                             <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
                             <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
@@ -5046,9 +5063,9 @@ export default function GradebookView({
                         >
                           <div className="font-extrabold text-emerald-800 dark:text-emerald-300 flex items-center justify-center gap-1">
                             <span>{tp.kode_tp}</span>
-                            <span className="text-[8px] px-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 rounded font-black">F</span>
+                            <span className="text-[11px] px-1 bg-emerald-500/15 text-emerald-700 dark:text-emerald-200 rounded font-black">F</span>
                           </div>
-                          <div className="font-normal text-[9px] text-[#475569] dark:text-[#94A3B8] truncate max-w-[80px] mx-auto">
+                          <div className="font-normal text-[11px] text-[#475569] dark:text-[#94A3B8] truncate max-w-[80px] mx-auto">
                             {tp.deskripsi}
                           </div>
                         </th>
@@ -5056,7 +5073,7 @@ export default function GradebookView({
                       {/* Overall Formatif Average */}
                       <th className="py-2 px-2.5 w-24 text-center font-black bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 border-r border-slate-300/60 dark:border-slate-700/60">
                         <div>Rata F</div>
-                        <div className="text-[9px] font-normal text-emerald-700 dark:text-emerald-300">Formatif</div>
+                        <div className="text-[11px] font-normal text-emerald-700 dark:text-emerald-300">Formatif</div>
                       </th>
 
                       {/* Header per TP - Sumatif */}
@@ -5067,9 +5084,9 @@ export default function GradebookView({
                         >
                           <div className="font-extrabold text-[#0F766E] dark:text-teal-300 flex items-center justify-center gap-1">
                             <span>{tp.kode_tp}</span>
-                            <span className="text-[8px] px-1 bg-teal-500/15 text-[#0F766E] dark:text-teal-200 rounded font-black">S</span>
+                            <span className="text-[11px] px-1 bg-teal-500/15 text-[#0F766E] dark:text-teal-200 rounded font-black">S</span>
                           </div>
-                          <div className="font-normal text-[9px] text-[#475569] dark:text-[#94A3B8] truncate max-w-[80px] mx-auto">
+                          <div className="font-normal text-[11px] text-[#475569] dark:text-[#94A3B8] truncate max-w-[80px] mx-auto">
                             {tp.deskripsi}
                           </div>
                         </th>
@@ -5077,13 +5094,13 @@ export default function GradebookView({
                       {/* Overall Sumatif Average */}
                       <th className="py-2 px-2.5 w-24 text-center font-black bg-teal-500/15 text-[#0F766E] dark:text-teal-200 border-r border-slate-300/60 dark:border-slate-700/60">
                         <div>Rata S</div>
-                        <div className="text-[9px] font-normal text-[#0F766E] dark:text-teal-300">Sumatif</div>
+                        <div className="text-[11px] font-normal text-[#0F766E] dark:text-teal-300">Sumatif</div>
                       </th>
 
                       {/* Kehadiran */}
                       <th className="py-2 px-2.5 w-24 text-center font-black bg-sky-500/10 text-sky-900 dark:text-sky-200 border-r border-slate-300/60 dark:border-slate-700/60">
                         <div>Kehadiran</div>
-                        <div className="text-[9px] font-normal font-num text-sky-700 dark:text-sky-300">{bobotKehadiran}%</div>
+                        <div className="text-[11px] font-normal font-num text-sky-700 dark:text-sky-300">{bobotKehadiran}%</div>
                       </th>
 
                       <th className="py-2.5 px-3 w-32 text-center font-black bg-amber-500/15 text-amber-900 dark:text-amber-200 border-r border-slate-300/60 dark:border-slate-700/60">
@@ -5102,11 +5119,11 @@ export default function GradebookView({
                           key={student.nisn}
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-1.5 md:px-2.5 text-center text-[#475569] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
-                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2.5 px-1.5 md:px-2.5 text-center text-[#475569] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2.5 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
                             <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
                             <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
@@ -5365,28 +5382,28 @@ export default function GradebookView({
                       {sessions.map(sess => (
                         <th
                           key={sess.sessionNumber}
-                          className="py-2 px-2 w-20 text-center border-r border-slate-300/60 dark:border-slate-700/60 bg-[#E6ECF2]/60 dark:bg-[#1F242D]/60"
+                          className="py-2 px-2 w-20 text-center border-r border-slate-300/60 dark:border-slate-700/60 bg-[var(--neu-surface-alt)]"
                         >
                           <div className="flex flex-col items-center justify-center gap-0.5">
                             <span className="font-extrabold font-num text-[#0F172A] dark:text-[#F1F5F9] text-[11px]">
                               P{sess.sessionNumber}
                             </span>
                             {sess.tanggal ? (
-                              <span className="text-[8px] font-normal text-[#475569] dark:text-[#94A3B8] font-mono font-num">
+                              <span className="text-[11px] font-normal text-[#475569] dark:text-[#94A3B8] font-mono font-num">
                                 {sess.tanggal.slice(5)}
                               </span>
                             ) : (
-                              <span className="text-[8px] font-normal text-[#64748B] italic">
+                              <span className="text-[11px] font-normal text-[#64748B] italic">
                                 Belum
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => handleMarkAllPresent(sess.sessionNumber)}
-                              className="text-[9px] px-2 py-1 min-h-[28px] rounded-lg bg-teal-500/15 text-[#0F766E] hover:bg-teal-500/25 dark:text-teal-300 font-semibold transition flex items-center gap-1 mt-0.5"
+                              className="text-[11px] px-2 py-1 min-h-[28px] rounded-lg bg-teal-500/15 text-[#0F766E] hover:bg-teal-500/25 dark:text-teal-300 font-semibold transition flex items-center gap-1 mt-0.5"
                               title={`Tandai Semua Hadir pada Pertemuan ${sess.sessionNumber}`}
                             >
-                              <i className="fa-solid fa-check-double text-[8px]"></i> Hadir
+                              <i className="fa-solid fa-check-double text-[11px]"></i> Hadir
                             </button>
                           </div>
                         </th>
@@ -5435,11 +5452,11 @@ export default function GradebookView({
                           key={student.nisn}
                           className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 transition-colors group"
                         >
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-1.5 md:px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
-                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
+                          <td className="sticky left-0 z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2 px-1.5 md:px-2.5 text-center text-[#475569] dark:text-[#94A3B8] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">
                             {student.nisn}
                           </td>
-                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
                             <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
                             <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
@@ -5532,9 +5549,9 @@ export default function GradebookView({
                       const dStat = dailyClassAttendance[student.nisn] || { hadir: 0, sakit: 0, izin: 0, alpa: 0, total: 0, percentage: 100 };
                       return (
                         <tr key={student.nisn} className="hover:bg-teal-500/5 dark:hover:bg-teal-500/10 group">
-                          <td className="sticky left-0 z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-1.5 md:px-2.5 text-center text-[#475569] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
-                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
-                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[#E6ECF2] dark:bg-[#1F242D] group-hover:bg-[#DDE4EE] dark:group-hover:bg-[#181C24] print:bg-white py-2.5 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
+                          <td className="sticky left-0 z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2.5 px-1.5 md:px-2.5 text-center text-[#475569] font-medium font-num w-8 min-w-[32px] max-w-[32px] md:w-10 md:min-w-[40px] md:max-w-[40px]">{idx + 1}</td>
+                          <td className="hidden md:table-cell sticky left-[40px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2.5 px-2.5 font-mono font-num text-[11px] text-[#475569] dark:text-[#94A3B8] w-24 min-w-[96px] max-w-[96px]">{student.nisn}</td>
+                          <td className="sticky left-[32px] md:left-[136px] z-10 bg-[var(--neu-bg)] group-hover:bg-[var(--neu-surface-alt)] print:bg-white py-2.5 px-2 md:px-3 font-semibold text-[#0F172A] dark:text-[#F1F5F9] w-[140px] min-w-[140px] max-w-[140px] md:w-[200px] md:min-w-[200px] md:max-w-[200px] border-r border-slate-300/60 dark:border-slate-700/60 shadow-[4px_0_8px_-4px_rgba(15,23,42,0.14)] dark:shadow-[4px_0_8px_-4px_rgba(0,0,0,0.45)]" title={student.nama_siswa}>
                             <span className="whitespace-normal line-clamp-2 leading-tight md:whitespace-nowrap md:truncate block">{student.nama_siswa}</span>
                             <span className="md:hidden block text-[10px] font-mono font-num font-normal text-[#475569] dark:text-[#94A3B8] mt-0.5 truncate">{student.nisn}</span>
                           </td>
@@ -5732,7 +5749,7 @@ export default function GradebookView({
             aria-modal="true"
             aria-label={editingTp ? 'Edit Tujuan Pembelajaran' : 'Tambah Tujuan Pembelajaran (TP)'}
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
@@ -5879,7 +5896,7 @@ export default function GradebookView({
             aria-modal="true"
             aria-label={editingCol ? 'Edit Kolom Asesmen' : `Tambah Kolom ${colForm.kategori}`}
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-sm w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl max-w-sm w-full p-5 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
@@ -5980,7 +5997,7 @@ export default function GradebookView({
             aria-modal="true"
             aria-label={editingCp ? 'Edit Capaian Pembelajaran' : 'Tambah Capaian Pembelajaran (CP)'}
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">
@@ -6047,7 +6064,7 @@ export default function GradebookView({
             aria-modal="true"
             aria-label="Pengaturan Bobot Nilai Akhir & Kehadiran"
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto custom-scroll"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl max-w-md w-full p-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto custom-scroll"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">Pengaturan Bobot Nilai Akhir & Kehadiran</h3>
@@ -6217,7 +6234,7 @@ export default function GradebookView({
             aria-modal="true"
             aria-label="Isi Nilai Cepat (Bulk Fill)"
             onClick={e => e.stopPropagation()}
-            className="neu-card bg-[#E6ECF2] dark:bg-[#1F242D] rounded-2xl max-w-sm w-full p-5 animate-in fade-in zoom-in-95 duration-150"
+            className="neu-card bg-[var(--neu-surface)] rounded-2xl max-w-sm w-full p-5 animate-in fade-in zoom-in-95 duration-150"
           >
             <div className="flex justify-between items-center pb-3 border-b border-slate-300/60 dark:border-slate-700/60">
               <h3 className="text-sm font-black text-[#0F172A] dark:text-[#F1F5F9]">

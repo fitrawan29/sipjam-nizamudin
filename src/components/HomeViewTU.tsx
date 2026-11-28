@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
@@ -869,7 +869,7 @@ export default function HomeViewTU({
               </p>
               <div className="flex items-center gap-2">
                 <h2 className="font-bold text-sm sm:text-base text-[#0F172A] dark:text-[#F1F5F9] leading-tight truncate">{user?.nama || 'Staf Tata Usaha'}</h2>
-                <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[8px] sm:text-[9px] uppercase shrink-0">
+                <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-bold text-[11px] uppercase shrink-0">
                   Tata Usaha
                 </span>
               </div>
@@ -896,15 +896,15 @@ export default function HomeViewTU({
 
         <div className="relative z-10 grid grid-cols-3 gap-2.5 text-center pt-2.5 border-t border-slate-300/60 dark:border-slate-700/60">
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
+            <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Status</p>
             <p className="text-[10px] sm:text-xs font-bold text-[#0F766E] dark:text-teal-400 truncate">Aktif</p>
           </div>
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
+            <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Tanggal</p>
             <p className="text-[10px] sm:text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] leading-tight break-words whitespace-normal">{dashboardDateStr}</p>
           </div>
           <div className="neu-inset px-2 py-2 rounded-xl">
-            <p className="text-[8px] sm:text-[9px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
+            <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] uppercase font-bold tracking-wider mb-0.5">Jam</p>
             <p className="text-xs sm:text-sm font-black font-num text-[#D97706] dark:text-amber-400 font-mono tracking-tight leading-none pt-0.5">{timeStr}</p>
           </div>
         </div>
@@ -913,25 +913,25 @@ export default function HomeViewTU({
       {/* Monthly Summary Cards for TU (Tier 3: Compact) */}
       <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-2">
         <div className="clay-card clay-card-mint card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
-          <span className="text-[9px] sm:text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wide">Presensi TU</span>
+          <span className="text-[11px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wide">Presensi TU</span>
           <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {attendanceStats.hadir} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">Hari</span>
           </span>
-          <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Kehadiran Bulan Ini</span>
+          <span className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Kehadiran Bulan Ini</span>
         </div>
         <div className="clay-card clay-card-blue card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
-          <span className="text-[9px] sm:text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">Jurnal Kegiatan</span>
+          <span className="text-[11px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wide">Jurnal Kegiatan</span>
           <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {monthlyJurnalCount} <span className="text-[10px] sm:text-xs text-[#475569] dark:text-[#94A3B8] font-bold">Laporan</span>
           </span>
-          <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Agenda Administrasi</span>
+          <span className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Agenda Administrasi</span>
         </div>
         <div className="clay-card clay-card-purple card-tier-compact p-2.5 rounded-2xl flex flex-col items-center text-center">
-          <span className="text-[9px] sm:text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Status Kerja</span>
+          <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wide">Status Kerja</span>
           <span className="text-base sm:text-lg font-black font-num text-[#0F172A] dark:text-[#F1F5F9] mt-0.5">
             {attendanceStats.alpa === 0 ? 'Tertib' : `${attendanceStats.alpa} Alpa`}
           </span>
-          <span className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Disiplin Tenaga TU</span>
+          <span className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate mt-0.5">Disiplin Tenaga TU</span>
         </div>
       </div>
 
@@ -961,7 +961,7 @@ export default function HomeViewTU({
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-[#0F766E] dark:text-teal-300 uppercase tracking-wider">Hadir (H)</p>
               <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.hadir}</p>
-              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Kehadiran kantor</p>
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Kehadiran kantor</p>
             </div>
           </div>
 
@@ -973,7 +973,7 @@ export default function HomeViewTU({
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-teal-700 dark:text-teal-300 uppercase tracking-wider">Dinas Luar (DL)</p>
               <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.dinasLuar}</p>
-              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Tugas kedinasan</p>
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Tugas kedinasan</p>
             </div>
           </div>
 
@@ -985,7 +985,7 @@ export default function HomeViewTU({
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-sky-700 dark:text-sky-300 uppercase tracking-wider">Izin (I)</p>
               <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.izin}</p>
-              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Izin resmi</p>
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Izin resmi</p>
             </div>
           </div>
 
@@ -997,7 +997,7 @@ export default function HomeViewTU({
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Sakit (S)</p>
               <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.sakit}</p>
-              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Dengan surat</p>
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Dengan surat</p>
             </div>
           </div>
 
@@ -1009,7 +1009,7 @@ export default function HomeViewTU({
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 uppercase tracking-wider">Alpa (A)</p>
               <p className="text-lg sm:text-xl font-black font-num text-[#0F172A] dark:text-[#F1F5F9] leading-tight">{attendanceStats.alpa}</p>
-              <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Tanpa keterangan</p>
+              <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Tanpa keterangan</p>
             </div>
           </div>
         </div>
@@ -1034,7 +1034,7 @@ export default function HomeViewTU({
           </div>
           {akumulasiTelat.alpa > 0 && (
             <div className="text-right">
-              <p className="text-[9px] font-bold text-rose-600 dark:text-rose-400 uppercase">Potongan Alpa</p>
+              <p className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase">Potongan Alpa</p>
               <p className="text-sm font-black font-num text-rose-600 dark:text-rose-400">{akumulasiTelat.alpa} Hari</p>
             </div>
           )}
@@ -1136,7 +1136,7 @@ export default function HomeViewTU({
                     {step.status === 'done' ? <i className="fa-solid fa-check" /> :
                      step.status === 'active' ? <i className={`fa-solid ${step.icon}`} /> :
                      step.status === 'skipped' ? <i className="fa-solid fa-minus" /> :
-                     <i className="fa-solid fa-lock text-[9px]" />}
+                     <i className="fa-solid fa-lock text-[11px]" />}
                   </div>
 
                   <div className="flex-grow min-w-0 pb-1">
@@ -1153,7 +1153,7 @@ export default function HomeViewTU({
                         {step.verifStatus && (() => {
                           const meta = getVerifStatusBadgeMeta(step.verifStatus);
                           return (
-                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full shrink-0 ${meta.badgeClass}`}>
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${meta.badgeClass}`}>
                               {meta.label}
                             </span>
                           );
@@ -1169,7 +1169,7 @@ export default function HomeViewTU({
                           }}
                           className="neu-btn neu-btn-amber btn-click text-[10px] font-bold px-3 py-1.5 min-h-[36px] rounded-xl flex items-center gap-1 shrink-0 transition"
                         >
-                          Buka <i className="fa-solid fa-arrow-right text-[8px]"></i>
+                          Buka <i className="fa-solid fa-arrow-right text-[11px]"></i>
                         </button>
                       )}
                     </div>
@@ -1216,11 +1216,11 @@ export default function HomeViewTU({
           <div className="flex items-center gap-1.5 shrink-0">
             {dailyState?.jurnalKegiatan ? (
               <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <i className="fa-solid fa-circle-check text-[9px]"></i> Jurnal Terisi
+                <i className="fa-solid fa-circle-check text-[11px]"></i> Jurnal Terisi
               </span>
             ) : (
               <span className="bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <i className="fa-solid fa-clock text-[9px]"></i> Menunggu Pengisian
+                <i className="fa-solid fa-clock text-[11px]"></i> Menunggu Pengisian
               </span>
             )}
           </div>
@@ -1289,10 +1289,10 @@ export default function HomeViewTU({
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Presensi TU</h5>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Datang, pulang & riwayat</p>
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Datang, pulang & riwayat</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-[#0F766E] dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
+            <div className="text-[11px] font-bold text-[#0F766E] dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Presensi <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </button>
@@ -1309,10 +1309,10 @@ export default function HomeViewTU({
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Jurnal Kegiatan</h5>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan aktivitas TU</p>
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Laporan aktivitas TU</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
+            <div className="text-[11px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Jurnal <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </button>
@@ -1329,10 +1329,10 @@ export default function HomeViewTU({
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Asesmen</h5>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Rekap nilai & CP (Tinjau)</p>
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Rekap nilai & CP (Tinjau)</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-teal-700 dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
+            <div className="text-[11px] font-bold text-teal-700 dark:text-teal-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Tinjau Nilai <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </button>
@@ -1349,10 +1349,10 @@ export default function HomeViewTU({
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Rapor Siswa</h5>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Cetak & kelengkapan rapor</p>
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Cetak & kelengkapan rapor</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
+            <div className="text-[11px] font-bold text-sky-700 dark:text-sky-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Rapor <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </button>
@@ -1369,10 +1369,10 @@ export default function HomeViewTU({
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Informasi Sekolah</h5>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Siaran & pengumuman</p>
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Siaran & pengumuman</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
+            <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Buka Info <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </button>
@@ -1392,10 +1392,10 @@ export default function HomeViewTU({
               </div>
               <div className="min-w-0">
                 <h5 className="text-xs font-bold text-[#0F172A] dark:text-[#F1F5F9] truncate">Pengaturan Akun</h5>
-                <p className="text-[9px] text-[#475569] dark:text-[#94A3B8] truncate">Profil & kata sandi</p>
+                <p className="text-[11px] text-[#475569] dark:text-[#94A3B8] truncate">Profil & kata sandi</p>
               </div>
             </div>
-            <div className="text-[9px] font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
+            <div className="text-[11px] font-bold text-[#334155] dark:text-[#CBD5E1] flex items-center justify-end gap-1 pt-1 border-t border-slate-300/50 dark:border-slate-700/50 w-full">
               Kelola Akun <i className="fa-solid fa-arrow-right text-[7px]"></i>
             </div>
           </button>
